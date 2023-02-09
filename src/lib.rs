@@ -1,4 +1,3 @@
-use macros::print::pretty_print_name_hex_fields;
 use std::fmt::{self, Debug};
 
 pub mod macros;
@@ -10,23 +9,49 @@ pub trait GbtWord: fmt::Debug + PartialEq {
 
 // ITS data format: https://gitlab.cern.ch/alice-its-wp10-firmware/RU_mainFPGA/-/wikis/ITS%20Data%20Format#Introduction
 
+// Newtype pattern used to enforce type safety on fields that are not byte-aligned
+#[derive(Debug, PartialEq, Clone, Copy)]
+struct CruidDw(u16); // 12 bit cru_id, 4 bit dw
+#[derive(Debug, PartialEq, Clone, Copy)]
+struct BcReserved(u32); // 12 bit bc, 20 bit reserved
+#[derive(Debug, PartialEq, Clone, Copy)]
+struct DataformatReserved(u64); // 8 bit data_format, 56 bit reserved0
+
 #[repr(packed)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub struct RdhCRUv7 {
     pub rdh0: Rdh0,
     pub offset_new_packet: u16,
     pub memory_size: u16,
     pub link_id: u8,
     pub packet_counter: u8,
-    pub cru_id: u16, // 12 bit
-    pub dw: u8,      // data wrapper id: 4 bit
+    cruid_dw: CruidDw, // 12 bit cru_id, 4 bit dw
     pub rdh1: Rdh1,
-    pub data_format: u8,
-    pub reserved0: u64, // 56 bit
+    dataformat_reserved0: DataformatReserved, // 8 bit data_format, 56 bit reserved0
     pub rdh2: Rdh2,
     pub reserved1: u64,
     pub rdh3: Rdh3,
     pub reserved2: u64,
+}
+impl RdhCRUv7 {
+    pub fn cru_id(&self) -> u16 {
+        // Get the cru_id present in the 12 LSB
+        self.cruid_dw.0 & 0x0FFF
+    }
+    pub fn dw(&self) -> u8 {
+        // Get the dw present in the 4 MSB
+        ((self.cruid_dw.0 & 0xF000) >> 12).try_into().unwrap()
+    }
+    pub fn data_format(&self) -> u8 {
+        // Get the data_format present in the 8 LSB
+        (self.dataformat_reserved0.0 & 0x00000000000000FF)
+            .try_into()
+            .unwrap()
+    }
+    pub fn reserved0(&self) -> u64 {
+        // Get the reserved0 present in the 56 MSB
+        (self.dataformat_reserved0.0 & 0xFFFFFFFFFFFFFF00) >> 8
+    }
 }
 
 impl GbtWord for RdhCRUv7 {
@@ -38,19 +63,12 @@ impl GbtWord for RdhCRUv7 {
         let link_id = reader.read_u8().unwrap();
         let packet_counter = reader.read_u8().unwrap();
         // cru_id is 12 bit and the following dw is 4 bit
-        let tmp_16_bit = reader.read_u16::<LittleEndian>().unwrap();
-        // Take the first 12 bits as cru_id
-        let cru_id = tmp_16_bit & 0x0FFF;
-        // Take the last 4 bits as dw, convert to u8 and panic! if it fails
-        let dw: u8 = ((tmp_16_bit >> 12) & 0x000F).try_into().unwrap();
+        let tmp_cruid_dw = CruidDw(reader.read_u16::<LittleEndian>().unwrap());
         let rdh1 = Rdh1::load(reader);
         // Now the next 64 bits contain the reserved0 and data_format
         // [7:0]data_format, [63:8]reserved0
-        let tmp_64_bit = reader.read_u64::<LittleEndian>().unwrap();
-        // Take the first 8 bits as data_format, convert to u8 and panic! if it doesn't fit
-        let data_format = (tmp_64_bit & 0x00000000000000FF).try_into().unwrap();
-        // Take the last 56 bits as reserved0
-        let reserved0 = tmp_64_bit >> 8;
+        let tmp_dataformat_reserverd0 =
+            DataformatReserved(reader.read_u64::<LittleEndian>().unwrap());
         let rdh2 = Rdh2::load(reader);
         let reserved1 = reader.read_u64::<LittleEndian>().unwrap();
         let rdh3 = Rdh3::load(reader);
@@ -62,11 +80,9 @@ impl GbtWord for RdhCRUv7 {
             memory_size,
             link_id,
             packet_counter,
-            cru_id,
-            dw,
+            cruid_dw: tmp_cruid_dw,
             rdh1,
-            data_format,
-            reserved0,
+            dataformat_reserved0: tmp_dataformat_reserverd0,
             rdh2,
             reserved1,
             rdh3,
@@ -74,7 +90,6 @@ impl GbtWord for RdhCRUv7 {
         }
     }
     fn print(&self) {
-        use macros::print::pretty_print_hex_fields;
         println!("===================\nRdhCRU:");
         self.rdh0.print();
         pretty_print_hex_fields!(
@@ -82,12 +97,13 @@ impl GbtWord for RdhCRUv7 {
             offset_new_packet,
             memory_size,
             link_id,
-            packet_counter,
-            cru_id,
-            dw
+            packet_counter
         );
+        pretty_print_var_hex!("cru_id", self.cru_id());
+        pretty_print_var_hex!("dw", self.dw());
         self.rdh1.print();
-        pretty_print_hex_fields!(self, data_format, reserved0);
+        pretty_print_var_hex!("data_format", self.data_format());
+        pretty_print_var_hex!("reserved0", self.reserved0());
         self.rdh2.print();
         pretty_print_hex_fields!(self, reserved1);
         self.rdh3.print();
@@ -101,22 +117,22 @@ impl Debug for RdhCRUv7 {
         let tmp_memory_size = self.memory_size;
         let tmp_link_id = self.link_id;
         let tmp_packet_counter = self.packet_counter;
-        let tmp_cru_id = self.cru_id;
-        let tmp_dw = self.dw;
+        let tmp_cruid = &self.cru_id();
+        let tmp_dw = &self.dw();
         let tmp_rdh1 = &self.rdh1;
-        let tmp_data_format = self.data_format;
-        let tmp_reserved0 = self.reserved0;
+        let tmp_data_format = self.data_format();
+        let tmp_reserved0 = self.reserved0();
         let tmp_rdh2 = &self.rdh2;
         let tmp_reserved1 = self.reserved1;
         let tmp_rdh3 = &self.rdh3;
         let tmp_reserved2 = self.reserved2;
 
-        write!(f, "RdhCRUv7: rdh0: {:?}, offset_new_packet: {:x?}, memory_size: {:x?}, link_id: {:x?}, packet_counter: {:x?}, cru_id: {:x?}, dw: {:x?}, rdh1: {:?}, data_format: {:x?}, reserved0: {:x?}, rdh2: {:?}, reserved1: {:x?}, rdh3: {:?}, reserved2: {:x?}",
-               tmp_rdh0, tmp_offset_new_packet, tmp_memory_size, tmp_link_id, tmp_packet_counter, tmp_cru_id, tmp_dw, tmp_rdh1, tmp_data_format, tmp_reserved0, tmp_rdh2, tmp_reserved1, tmp_rdh3, tmp_reserved2)
+        write!(f, "RdhCRUv7: rdh0: {:?}, offset_new_packet: {:x?}, memory_size: {:x?}, link_id: {:x?}, packet_counter: {:x?}, cruid: {:x?}, dw: {:x?}, rdh1: {:?}, data_format: {:x?}, reserved0: {:x?}, rdh2: {:?}, reserved1: {:x?}, rdh3: {:?}, reserved2: {:x?}",
+               tmp_rdh0, tmp_offset_new_packet, tmp_memory_size, tmp_link_id, tmp_packet_counter, tmp_cruid, tmp_dw, tmp_rdh1, tmp_data_format, tmp_reserved0, tmp_rdh2, tmp_reserved1, tmp_rdh3, tmp_reserved2)
     }
 }
 #[repr(packed)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub struct Rdh0 {
     // Represents 64 bit
     pub header_id: u8,
@@ -188,12 +204,20 @@ impl Debug for Rdh0 {
 }
 
 #[repr(packed)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub struct Rdh1 {
-    // Represents 64 bit
-    pub bc: u16,        //bunch counter 12 bit
-    pub reserved0: u32, // 20 bit
-    pub orbit: u32,     // 32 bit
+    // Rdh1 is 64 bit total
+    bc_reserved0: BcReserved, //bunch counter 12 bit + reserved 20 bit
+    pub orbit: u32,           // 32 bit
+}
+
+impl Rdh1 {
+    pub fn bc(&self) -> u16 {
+        (self.bc_reserved0.0 & 0x0FFF).try_into().unwrap()
+    }
+    pub fn reserved0(&self) -> u32 {
+        self.bc_reserved0.0 >> 12
+    }
 }
 
 impl GbtWord for Rdh1 {
@@ -213,31 +237,24 @@ impl GbtWord for Rdh1 {
         }
         use byteorder::ByteOrder;
         use byteorder::LittleEndian;
-        // Load the first 2 bytes that contain the bc[11:0] and reserved0[15:12]
-        let _first_2_bytes = LittleEndian::read_u16(&load_bytes!(2));
-        // Extract the bc[11:0] by masking the first 12 bits
-        let tmp_bc: u16 = _first_2_bytes & 0x0FFF;
-        // Extract the reserved0[15:12] by masking the last 4 bits and shifting them to the LSB
-        let tmp_reserved0: u32 = ((_first_2_bytes & 0xF000) >> 12) as u32;
-        // Load the next 2 bytes that contain the 16 MSB of reserved0
-        let _next_2_bytes: u16 = LittleEndian::read_u16(&load_bytes!(2));
-        // Combine the 16 MSB of reserved0 with the 4 LSB of reserved0
-        let tmp_reserved0 = tmp_reserved0 | ((_next_2_bytes as u32) << 4);
 
         Rdh1 {
-            bc: tmp_bc,
-            reserved0: tmp_reserved0,
+            bc_reserved0: BcReserved(LittleEndian::read_u32(&load_bytes!(4))),
             orbit: LittleEndian::read_u32(&load_bytes!(4)),
         }
     }
     fn print(&self) {
-        pretty_print_name_hex_fields!(Rdh1, self, bc, reserved0, orbit);
+        println!("Rdh1:");
+        pretty_print_var_hex!("bc", self.bc());
+        pretty_print_var_hex!("reserved0", self.reserved0());
+        let tmp_orbit = self.orbit;
+        pretty_print_var_hex!("orbit", tmp_orbit);
     }
 }
 impl Debug for Rdh1 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let tmp_bc = self.bc;
-        let tmp_reserved0 = self.reserved0;
+        let tmp_bc = self.bc();
+        let tmp_reserved0 = self.reserved0();
         let tmp_orbit = self.orbit;
         write!(
             f,
@@ -248,7 +265,7 @@ impl Debug for Rdh1 {
 }
 
 #[repr(packed)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub struct Rdh2 {
     pub trigger_type: u32, // 32 bit
     pub pages_counter: u16,
@@ -299,7 +316,7 @@ impl Debug for Rdh2 {
 }
 
 #[repr(packed)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub struct Rdh3 {
     pub detector_field: u32,
     pub par_bit: u16,
@@ -368,15 +385,12 @@ mod tests {
             memory_size: 0x13E0,
             link_id: 0x0,
             packet_counter: 0x0,
-            cru_id: 0x18,
-            dw: 0x0,
+            cruid_dw: CruidDw(0x0018),
             rdh1: Rdh1 {
-                bc: 0x0,
-                reserved0: 0x0,
+                bc_reserved0: BcReserved(0x0),
                 orbit: 0x0b7dd575,
             },
-            data_format: 0x2,
-            reserved0: 0x0,
+            dataformat_reserved0: DataformatReserved(0x2),
             rdh2: Rdh2 {
                 trigger_type: 0x00006a03,
                 pages_counter: 0x0,
@@ -421,11 +435,6 @@ mod tests {
         // Breaks after cru_id as it is written to disk as a 16 bit value
         // but actually is only 12 bits, and the other 4 bits should repressent dw
         // Instead they are broken up into a 16 bit value and an 8 bit value, which causes misalignment
-        assert_eq!(
-            rdh_cru.cru_id.to_le_bytes(),
-            correct_rdh_cru.cru_id.to_le_bytes()
-        );
-        // only works because dw is 0 in this case
-        assert_eq!(rdh_cru.dw, correct_rdh_cru.dw);
+        assert_eq!(rdh_cru.cru_id(), correct_rdh_cru.cru_id());
     }
 }
