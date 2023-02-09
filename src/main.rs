@@ -1,6 +1,8 @@
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
+
+use fastpasta::{GbtWord, RdhCRUv7};
 use structopt::StructOpt;
 /// StructOpt is a library that allows parsing command line arguments
 #[derive(StructOpt, Debug)]
@@ -21,9 +23,18 @@ struct Opt {
 pub fn main() -> std::io::Result<()> {
     let opt = Opt::from_args();
     println!("{:#?}", opt);
-
-    parse_and_print_data_files(opt.files, opt.bytes);
-
+    let offset: i64 = 0;
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .open(opt.files.first().unwrap())
+        .expect("File not found");
+    let mut buf_reader = std::io::BufReader::new(file);
+    let rdh_cru = RdhCRUv7::load(&mut buf_reader);
+    let offset = offset.wrapping_add_unsigned(rdh_cru.offset_new_packet as u64);
+    buf_reader.seek_relative(offset).expect("Error seeking");
+    let rdh_cru2 = RdhCRUv7::load(&mut buf_reader);
+    rdh_cru.print();
+    rdh_cru2.print();
     Ok(())
 }
 
