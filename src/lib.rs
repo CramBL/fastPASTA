@@ -131,6 +131,106 @@ impl Debug for RdhCRUv7 {
                tmp_rdh0, tmp_offset_new_packet, tmp_memory_size, tmp_link_id, tmp_packet_counter, tmp_cruid, tmp_dw, tmp_rdh1, tmp_data_format, tmp_reserved0, tmp_rdh2, tmp_reserved1, tmp_rdh3, tmp_reserved2)
     }
 }
+
+#[repr(packed)]
+#[derive(PartialEq, Clone, Copy)]
+pub struct RdhCRUv6 {
+    pub rdh0: Rdh0,
+    pub offset_new_packet: u16,
+    pub memory_size: u16,
+    pub link_id: u8,
+    pub packet_counter: u8,
+    cruid_dw: CruidDw, // 12 bit cru_id, 4 bit dw
+    pub rdh1: Rdh1,
+    pub reserved0: u64,
+    pub rdh2: Rdh2,
+    pub reserved1: u64,
+    pub rdh3: Rdh3,
+    pub reserved2: u64,
+}
+impl RdhCRUv6 {
+    pub fn cru_id(&self) -> u16 {
+        // Get the cru_id present in the 12 LSB
+        self.cruid_dw.0 & 0x0FFF
+    }
+    pub fn dw(&self) -> u8 {
+        // Get the dw present in the 4 MSB
+        ((self.cruid_dw.0 & 0xF000) >> 12).try_into().unwrap()
+    }
+}
+
+impl GbtWord for RdhCRUv6 {
+    fn load<T: std::io::Read>(reader: &mut T) -> Self {
+        use byteorder::{LittleEndian, ReadBytesExt};
+        let rdh0 = Rdh0::load(reader);
+        let offset_new_packet = reader.read_u16::<LittleEndian>().unwrap();
+        let memory_size = reader.read_u16::<LittleEndian>().unwrap();
+        let link_id = reader.read_u8().unwrap();
+        let packet_counter = reader.read_u8().unwrap();
+        // cru_id is 12 bit and the following dw is 4 bit
+        let tmp_cruid_dw = CruidDw(reader.read_u16::<LittleEndian>().unwrap());
+        let rdh1 = Rdh1::load(reader);
+        let reserved0 = reader.read_u64::<LittleEndian>().unwrap();
+        let rdh2 = Rdh2::load(reader);
+        let reserved1 = reader.read_u64::<LittleEndian>().unwrap();
+        let rdh3 = Rdh3::load(reader);
+        let reserved2 = reader.read_u64::<LittleEndian>().unwrap();
+        // Finally return the RdhCRU
+        RdhCRUv6 {
+            rdh0,
+            offset_new_packet,
+            memory_size,
+            link_id,
+            packet_counter,
+            cruid_dw: tmp_cruid_dw,
+            rdh1,
+            reserved0,
+            rdh2,
+            reserved1,
+            rdh3,
+            reserved2,
+        }
+    }
+    fn print(&self) {
+        println!("===================\nRdhCRU:");
+        self.rdh0.print();
+        pretty_print_hex_fields!(
+            self,
+            offset_new_packet,
+            memory_size,
+            link_id,
+            packet_counter
+        );
+        pretty_print_var_hex!("cru_id", self.cru_id());
+        pretty_print_var_hex!("dw", self.dw());
+        self.rdh1.print();
+        pretty_print_hex_fields!(self, reserved0);
+        self.rdh2.print();
+        pretty_print_hex_fields!(self, reserved1);
+        self.rdh3.print();
+        pretty_print_hex_fields!(self, reserved2);
+    }
+}
+impl Debug for RdhCRUv6 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let tmp_rdh0 = &self.rdh0;
+        let tmp_offset_new_packet = self.offset_new_packet;
+        let tmp_memory_size = self.memory_size;
+        let tmp_link_id = self.link_id;
+        let tmp_packet_counter = self.packet_counter;
+        let tmp_cruid = &self.cru_id();
+        let tmp_dw = &self.dw();
+        let tmp_rdh1 = &self.rdh1;
+        let tmp_reserved0 = self.reserved0;
+        let tmp_rdh2 = &self.rdh2;
+        let tmp_reserved1 = self.reserved1;
+        let tmp_rdh3 = &self.rdh3;
+        let tmp_reserved2 = self.reserved2;
+
+        write!(f, "RdhCRUv7: rdh0: {:?}, offset_new_packet: {:x?}, memory_size: {:x?}, link_id: {:x?}, packet_counter: {:x?}, cruid: {:x?}, dw: {:x?}, rdh1: {:?}, reserved0: {:x?}, rdh2: {:?}, reserved1: {:x?}, rdh3: {:?}, reserved2: {:x?}",
+               tmp_rdh0, tmp_offset_new_packet, tmp_memory_size, tmp_link_id, tmp_packet_counter, tmp_cruid, tmp_dw, tmp_rdh1, tmp_reserved0, tmp_rdh2, tmp_reserved1, tmp_rdh3, tmp_reserved2)
+    }
+}
 #[repr(packed)]
 #[derive(PartialEq, Clone, Copy)]
 pub struct Rdh0 {
@@ -364,6 +464,12 @@ impl Debug for Rdh3 {
     }
 }
 
+/// if T is a struct you better implement repr(packed) OR PADDING WILL BE UNITIALIZED MEMORY AND THEREFOR UNDEFINED BEHAVIOR!!!
+unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
+    // Create read-only reference to T as a byte slice, safe as long as no padding bytes are read
+    ::core::slice::from_raw_parts((p as *const T) as *const u8, ::core::mem::size_of::<T>())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -406,12 +512,7 @@ mod tests {
             reserved2: 0x0,
         };
 
-        let rdh_cru_as_u8_slice = unsafe {
-            ::core::slice::from_raw_parts(
-                &correct_rdh_cru as *const RdhCRUv7 as *const u8,
-                ::core::mem::size_of::<RdhCRUv7>(),
-            )
-        };
+        let rdh_cru_as_u8_slice = unsafe { any_as_u8_slice(&correct_rdh_cru) };
 
         let filepath = PathBuf::from("test_rdh_cru");
         let mut file = File::create(&filepath).unwrap();
@@ -420,21 +521,53 @@ mod tests {
         let file = OpenOptions::new().read(true).open(&filepath).unwrap();
         let mut buf_reader = BufReader::new(file);
         let rdh_cru = RdhCRUv7::load(&mut buf_reader);
+        assert_eq!(rdh_cru, correct_rdh_cru);
+    }
 
-        assert_eq!(rdh_cru.rdh0, correct_rdh_cru.rdh0);
-        assert_eq!(
-            rdh_cru.offset_new_packet.to_le_bytes(),
-            correct_rdh_cru.offset_new_packet.to_le_bytes()
-        );
-        assert_eq!(
-            rdh_cru.memory_size.to_le_bytes(),
-            correct_rdh_cru.memory_size.to_le_bytes()
-        );
-        assert_eq!(rdh_cru.link_id, correct_rdh_cru.link_id);
-        assert_eq!(rdh_cru.packet_counter, correct_rdh_cru.packet_counter);
-        // Breaks after cru_id as it is written to disk as a 16 bit value
-        // but actually is only 12 bits, and the other 4 bits should repressent dw
-        // Instead they are broken up into a 16 bit value and an 8 bit value, which causes misalignment
-        assert_eq!(rdh_cru.cru_id(), correct_rdh_cru.cru_id());
+    #[test]
+    fn test_load_rdhcruv6() {
+        let correct_rdhcruv6 = RdhCRUv6 {
+            rdh0: Rdh0 {
+                header_id: 0x6,
+                header_size: 0x40,
+                fee_id: 0x502A,
+                priority_bit: 0x0,
+                system_id: 0x20,
+                reserved0: 0,
+            },
+            offset_new_packet: 0x13E0,
+            memory_size: 0x13E0,
+            link_id: 0x2,
+            packet_counter: 0x1,
+            cruid_dw: CruidDw(0x0018),
+            rdh1: Rdh1 {
+                bc_reserved0: BcReserved(0x0),
+                orbit: 0x0b7dd575,
+            },
+            reserved0: 0x0,
+            rdh2: Rdh2 {
+                trigger_type: 0x00006a03,
+                pages_counter: 0x0,
+                stop_bit: 0x0,
+                reserved0: 0x0,
+            },
+            reserved1: 0x0,
+            rdh3: Rdh3 {
+                detector_field: 0x0,
+                par_bit: 0x0,
+                reserved0: 0x0,
+            },
+            reserved2: 0x0,
+        };
+
+        let rdh_cruv6_as_u8_slice = unsafe { any_as_u8_slice(&correct_rdhcruv6) };
+        let filepath = PathBuf::from("test_rdh_cruv6");
+        let mut file = File::create(&filepath).unwrap();
+        file.write_all(&rdh_cruv6_as_u8_slice).unwrap();
+
+        let file = OpenOptions::new().read(true).open(&filepath).unwrap();
+        let mut buf_reader = BufReader::new(file);
+        let rdh_cru = RdhCRUv6::load(&mut buf_reader);
+        assert_eq!(rdh_cru, correct_rdhcruv6);
     }
 }
