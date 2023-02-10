@@ -1,8 +1,9 @@
-use std::fs::File;
+use fastpasta::data_words::rdh::RdhCRUv7;
+use fastpasta::GbtWord;
 use std::io::Read;
 use std::path::PathBuf;
+use std::{fs::File, io::Seek};
 
-use fastpasta::{GbtWord, RdhCRUv7};
 use structopt::StructOpt;
 /// StructOpt is a library that allows parsing command line arguments
 #[derive(StructOpt, Debug)]
@@ -23,10 +24,19 @@ struct Opt {
 const RDH_CRU_SIZE_BYTES: u64 = 64;
 
 struct RelativeOffset(i64);
+pub enum SeekError {
+    EOF,
+}
 
 impl RelativeOffset {
     fn new(byte_offset: u64) -> Self {
         RelativeOffset(byte_offset as i64)
+    }
+    fn next(byte_offset: u64, f_len: u64) -> Result<RelativeOffset, SeekError> {
+        if byte_offset >= f_len {
+            return Err(SeekError::EOF);
+        }
+        Ok(RelativeOffset(byte_offset as i64))
     }
 }
 
@@ -37,8 +47,9 @@ pub fn main() -> std::io::Result<()> {
         .read(true)
         .open(opt.files.first().unwrap())
         .expect("File not found");
+
     let mut buf_reader = std::io::BufReader::new(file);
-    let rdh_cru = RdhCRUv7::load(&mut buf_reader);
+    let rdh_cru = RdhCRUv7::load(&mut buf_reader).expect("Error loading RDH");
     // Size of an RDH needs to be subtracted from the offset_new_packet seek to the right position
     // it is possible to move the file cursor, but this is not recommended as it requires a mutable file descriptor
     let relative_offset =
@@ -46,7 +57,7 @@ pub fn main() -> std::io::Result<()> {
     buf_reader
         .seek_relative(relative_offset.0)
         .expect("Error seeking");
-    let rdh_cru2 = RdhCRUv7::load(&mut buf_reader);
+    let rdh_cru2 = RdhCRUv7::load(&mut buf_reader).expect("Error loading RDH");
     let relative_offset =
         RelativeOffset::new((rdh_cru2.offset_new_packet as u64) - RDH_CRU_SIZE_BYTES);
     rdh_cru.print();
@@ -55,8 +66,19 @@ pub fn main() -> std::io::Result<()> {
         .seek_relative(relative_offset.0)
         .expect("Error seeking");
 
-    for i in 1..20 {
-        let tmp_rdh = RdhCRUv7::load(&mut buf_reader);
+    for i in 1..500000 {
+        let tmp_rdh = match RdhCRUv7::load(&mut buf_reader) {
+            Ok(rdh) => rdh,
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                print!("EOF reached! ");
+                println!("{} packets processed", i);
+                break;
+            }
+            Err(e) => {
+                println!("Error: {}", e);
+                break;
+            }
+        };
         let relative_offset =
             RelativeOffset::new((tmp_rdh.offset_new_packet as u64) - RDH_CRU_SIZE_BYTES);
         buf_reader
@@ -65,41 +87,14 @@ pub fn main() -> std::io::Result<()> {
         if tmp_rdh.rdh0.header_id != 7 {
             println!("WRONG header ID: {}", tmp_rdh.rdh0.header_id);
         }
+        if i % 100 == 0 {
+            println!("{} packets processed", i);
+        }
+        if i == 40000 {
+            println!("40000 packets processed");
+            print!("RDH 40000: ");
+            tmp_rdh.print();
+        }
     }
     Ok(())
-}
-
-/// Parse and print the data of the files with the given number of bytes to read from the CLI
-///
-/// Iterates through the files provided on the CLI and reads into a buffer consisting of a vector of bytes
-/// Reads the number of bytes specified on the CLI, if that number exceeds the length of the file, it will read the entire file
-/// Finally prints the bytes in hex format, efficiently by slicing the vector
-///
-/// # Examples
-/// ```
-/// let files = vec!["file1.txt", "file2.txt"];
-/// let bytes_to_read = 10;
-/// parse_and_print_data_files(files, bytes_to_read);
-/// ```
-/// # Example output on 2 files with 10 bytes to read:
-/// ```
-/// ../Downloads/data_ols_ul.raw contains: [7, 40, 2a, 50, 0, 20, 0, 0, e0, 13]
-/// ../Downloads/data_ols_no_ul.raw contains: [7, 40, 2a, 50, 0, 20, 0, 0, b0, 1f]
-/// ```
-pub fn parse_and_print_data_files(files_in: Vec<PathBuf>, bytes_to_read: usize) {
-    files_in.iter().for_each(|file| {
-        let count = 1000;
-        let mut f = File::open(file.to_owned()).expect("File not found");
-        let mut buf: Vec<u8> = vec![0; count];
-        f.read_exact(&mut buf).expect("Error reading file");
-        let bytes_to_print = match buf.len() {
-            b_len if b_len < bytes_to_read => b_len,
-            _ => bytes_to_read,
-        };
-        println!(
-            "{filepath} contains: {data:x?}",
-            data = &buf[0..bytes_to_print],
-            filepath = file.display(),
-        );
-    });
 }

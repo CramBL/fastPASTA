@@ -1,4 +1,4 @@
-use crate::{FeeId, Rdh0};
+use crate::data_words::rdh::{FeeId, Rdh0};
 
 pub struct FeeIdSanityValidator {
     pub reserved0: u8,

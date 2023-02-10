@@ -9,7 +9,6 @@ macro_rules! pretty_print_hex_field {
         );
     };
 }
-
 #[macro_export]
 macro_rules! pretty_print_var_hex {
     ($var_str:expr, $value:expr) => {
@@ -23,6 +22,16 @@ macro_rules! pretty_print_var_hex {
 }
 
 #[macro_export]
+macro_rules! pretty_print_hex_fields {
+    ($self:ident, $( $i:ident ),+) => {
+        $(
+            pretty_print_hex_field!($i, $self.$i.to_le_bytes()[0]);
+        )+
+        println!();
+    };
+}
+
+#[macro_export]
 macro_rules! pretty_print_name_hex_fields {
     ($type:ty, $self:ident, $( $i:ident ),+) => {
         print!("{}: 0x", stringify!($type));
@@ -32,16 +41,6 @@ macro_rules! pretty_print_name_hex_fields {
         println!();
         $(
             print!("{:ident$}", "", ident = 2);
-            pretty_print_hex_field!($i, $self.$i.to_le_bytes()[0]);
-        )+
-        println!();
-    };
-}
-
-#[macro_export]
-macro_rules! pretty_print_hex_fields {
-    ($self:ident, $( $i:ident ),+) => {
-        $(
             pretty_print_hex_field!($i, $self.$i.to_le_bytes()[0]);
         )+
         println!();
