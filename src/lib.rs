@@ -473,7 +473,7 @@ unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::{File, OpenOptions};
+    use std::fs::{self, File, OpenOptions};
     use std::{io::BufReader, io::Write, path::PathBuf};
 
     // Verifies that the RdhCruv7 struct is serialized and deserialized correctly
@@ -483,6 +483,7 @@ mod tests {
         // write it to a file
         // read it back
         // assert that they are equal
+        let filename = "test_rdhcruv7.raw";
         let correct_rdh_cru = RdhCRUv7 {
             rdh0: Rdh0 {
                 header_id: 0x7,
@@ -519,13 +520,16 @@ mod tests {
 
         let rdh_cru_as_u8_slice = unsafe { any_as_u8_slice(&correct_rdh_cru) };
 
-        let filepath = PathBuf::from("test_rdh_cru");
+        let filepath = PathBuf::from(filename);
         let mut file = File::create(&filepath).unwrap();
         file.write_all(&rdh_cru_as_u8_slice).unwrap();
 
         let file = OpenOptions::new().read(true).open(&filepath).unwrap();
         let mut buf_reader = BufReader::new(file);
         let rdh_cru = RdhCRUv7::load(&mut buf_reader);
+        // This function currently corresponds to the unlink function on Unix and the DeleteFile function on Windows. Note that, this may change in the future.
+        // More info: https://doc.rust-lang.org/std/fs/fn.remove_file.html
+        fs::remove_file(&filepath).unwrap();
         assert_eq!(rdh_cru, correct_rdh_cru);
     }
 
@@ -536,6 +540,7 @@ mod tests {
         // write it to a file
         // read it back
         // assert that they are equal
+        let filename = "test_rdhcruv6.raw";
         let correct_rdhcruv6 = RdhCRUv6 {
             rdh0: Rdh0 {
                 header_id: 0x6,
@@ -571,13 +576,16 @@ mod tests {
         };
 
         let rdh_cruv6_as_u8_slice = unsafe { any_as_u8_slice(&correct_rdhcruv6) };
-        let filepath = PathBuf::from("test_rdh_cruv6");
+        let filepath = PathBuf::from(filename);
         let mut file = File::create(&filepath).unwrap();
         file.write_all(&rdh_cruv6_as_u8_slice).unwrap();
 
         let file = OpenOptions::new().read(true).open(&filepath).unwrap();
         let mut buf_reader = BufReader::new(file);
         let rdh_cru = RdhCRUv6::load(&mut buf_reader);
+        // This function currently corresponds to the unlink function on Unix and the DeleteFile function on Windows. Note that, this may change in the future.
+        // More info: https://doc.rust-lang.org/std/fs/fn.remove_file.html
+        fs::remove_file(&filepath).unwrap();
         assert_eq!(rdh_cru, correct_rdhcruv6);
     }
 }
