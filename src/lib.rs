@@ -464,7 +464,7 @@ impl Debug for Rdh3 {
     }
 }
 
-/// if T is a struct you better implement repr(packed) OR PADDING WILL BE UNITIALIZED MEMORY AND THEREFOR UNDEFINED BEHAVIOR!!!
+/// WARNING: if T is a struct you HAVE TO implement repr(packed) because PADDING is UNITIALIZED MEMORY -> UNDEFINED BEHAVIOR!
 unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
     // Create read-only reference to T as a byte slice, safe as long as no padding bytes are read
     ::core::slice::from_raw_parts((p as *const T) as *const u8, ::core::mem::size_of::<T>())
@@ -476,8 +476,13 @@ mod tests {
     use std::fs::{File, OpenOptions};
     use std::{io::BufReader, io::Write, path::PathBuf};
 
+    // Verifies that the RdhCruv7 struct is serialized and deserialized correctly
     #[test]
     fn test_load_rdhcruv7() {
+        // Create an instace of an RDH-CRU v7
+        // write it to a file
+        // read it back
+        // assert that they are equal
         let correct_rdh_cru = RdhCRUv7 {
             rdh0: Rdh0 {
                 header_id: 0x7,
@@ -524,8 +529,13 @@ mod tests {
         assert_eq!(rdh_cru, correct_rdh_cru);
     }
 
+    // Verifies that the RdhCruv6 struct is serialized and deserialized correctly
     #[test]
     fn test_load_rdhcruv6() {
+        // Create an instace of an RDH-CRU v6
+        // write it to a file
+        // read it back
+        // assert that they are equal
         let correct_rdhcruv6 = RdhCRUv6 {
             rdh0: Rdh0 {
                 header_id: 0x6,
