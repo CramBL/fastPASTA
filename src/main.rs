@@ -20,21 +20,52 @@ struct Opt {
     bytes: usize,
 }
 
+const RDH_CRU_SIZE_BYTES: u64 = 64;
+
+struct RelativeOffset(i64);
+
+impl RelativeOffset {
+    fn new(byte_offset: u64) -> Self {
+        RelativeOffset(byte_offset as i64)
+    }
+}
+
 pub fn main() -> std::io::Result<()> {
     let opt = Opt::from_args();
     println!("{:#?}", opt);
-    let offset: i64 = 0;
     let file = std::fs::OpenOptions::new()
         .read(true)
         .open(opt.files.first().unwrap())
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
     let rdh_cru = RdhCRUv7::load(&mut buf_reader);
-    let offset = offset.wrapping_add_unsigned(rdh_cru.offset_new_packet as u64);
-    buf_reader.seek_relative(offset).expect("Error seeking");
+    // Size of an RDH needs to be subtracted from the offset_new_packet seek to the right position
+    // it is possible to move the file cursor, but this is not recommended as it requires a mutable file descriptor
+    let relative_offset =
+        RelativeOffset::new((rdh_cru.offset_new_packet as u64) - RDH_CRU_SIZE_BYTES);
+    buf_reader
+        .seek_relative(relative_offset.0)
+        .expect("Error seeking");
     let rdh_cru2 = RdhCRUv7::load(&mut buf_reader);
+    let relative_offset =
+        RelativeOffset::new((rdh_cru2.offset_new_packet as u64) - RDH_CRU_SIZE_BYTES);
     rdh_cru.print();
     rdh_cru2.print();
+    buf_reader
+        .seek_relative(relative_offset.0)
+        .expect("Error seeking");
+
+    for i in 1..20 {
+        let tmp_rdh = RdhCRUv7::load(&mut buf_reader);
+        let relative_offset =
+            RelativeOffset::new((tmp_rdh.offset_new_packet as u64) - RDH_CRU_SIZE_BYTES);
+        buf_reader
+            .seek_relative(relative_offset.0)
+            .expect("Error seeking");
+        if tmp_rdh.rdh0.header_id != 7 {
+            println!("WRONG header ID: {}", tmp_rdh.rdh0.header_id);
+        }
+    }
     Ok(())
 }
 
