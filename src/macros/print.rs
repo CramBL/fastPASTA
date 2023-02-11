@@ -8,9 +8,7 @@ macro_rules! pretty_print_hex_field {
             min_width = 20
         );
     };
-}
-#[macro_export]
-macro_rules! pretty_print_var_hex {
+
     ($var_str:expr, $value:expr) => {
         print!(
             "{:min_width$}:  {:#04x?}\n",

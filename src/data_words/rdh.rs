@@ -1,12 +1,11 @@
 // ITS data format: https://gitlab.cern.ch/alice-its-wp10-firmware/RU_mainFPGA/-/wikis/ITS%20Data%20Format#Introduction
-
 use crate::validators::rdh::GbtError;
 use crate::{
     pretty_print_hex_field, pretty_print_hex_fields, pretty_print_name_hex_fields,
-    pretty_print_var_hex, validators::rdh::Rdh0Validator, GbtWord,
+    validators::rdh::Rdh0Validator, GbtWord,
 };
-use std::fmt;
-use std::fmt::Debug;
+use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
+use std::fmt::{self, Debug};
 // Newtype pattern used to enforce type safety on fields that are not byte-aligned
 #[derive(Debug, PartialEq, Clone, Copy)]
 struct CruidDw(u16); // 12 bit cru_id, 4 bit dw
@@ -56,8 +55,6 @@ impl RdhCRUv7 {
 
 impl GbtWord for RdhCRUv7 {
     fn load<T: std::io::Read>(reader: &mut T) -> Result<RdhCRUv7, std::io::Error> {
-        use byteorder::{LittleEndian, ReadBytesExt};
-
         let rdh0 = match Rdh0::load(reader) {
             Ok(rdh0) => rdh0,
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
@@ -100,16 +97,16 @@ impl GbtWord for RdhCRUv7 {
         println!("===================\nRdhCRU:");
         self.rdh0.print();
         let tmp_offset_new_packet = self.offset_new_packet;
-        pretty_print_var_hex!("offset_new_packet", tmp_offset_new_packet);
+        pretty_print_hex_field!("offset_new_packet", tmp_offset_new_packet);
         let tmp_memory_size = self.memory_size;
-        pretty_print_var_hex!("memory_size", tmp_memory_size);
-        pretty_print_var_hex!("link_id", self.link_id);
-        pretty_print_var_hex!("packet_counter", self.packet_counter);
-        pretty_print_var_hex!("cru_id", self.cru_id());
-        pretty_print_var_hex!("dw", self.dw());
+        pretty_print_hex_field!("memory_size", tmp_memory_size);
+        pretty_print_hex_field!("link_id", self.link_id);
+        pretty_print_hex_field!("packet_counter", self.packet_counter);
+        pretty_print_hex_field!("cru_id", self.cru_id());
+        pretty_print_hex_field!("dw", self.dw());
         self.rdh1.print();
-        pretty_print_var_hex!("data_format", self.data_format());
-        pretty_print_var_hex!("reserved0", self.reserved0());
+        pretty_print_hex_field!("data_format", self.data_format());
+        pretty_print_hex_field!("reserved0", self.reserved0());
         self.rdh2.print();
         pretty_print_hex_fields!(self, reserved1);
         self.rdh3.print();
@@ -167,7 +164,6 @@ impl RdhCRUv6 {
 
 impl GbtWord for RdhCRUv6 {
     fn load<T: std::io::Read>(reader: &mut T) -> Result<RdhCRUv6, std::io::Error> {
-        use byteorder::{LittleEndian, ReadBytesExt};
         let rdh0 = match Rdh0::load(reader) {
             Ok(rdh0) => rdh0,
             Err(e) => return Err(e),
@@ -210,8 +206,8 @@ impl GbtWord for RdhCRUv6 {
             link_id,
             packet_counter
         );
-        pretty_print_var_hex!("cru_id", self.cru_id());
-        pretty_print_var_hex!("dw", self.dw());
+        pretty_print_hex_field!("cru_id", self.cru_id());
+        pretty_print_hex_field!("dw", self.dw());
         self.rdh1.print();
         pretty_print_hex_fields!(self, reserved0);
         self.rdh2.print();
@@ -271,9 +267,6 @@ impl GbtWord for Rdh0 {
                 }
             };
         }
-
-        use byteorder::ByteOrder;
-        use byteorder::LittleEndian;
         // Now we construct return it
         Ok(Rdh0 {
             header_id: load_part!(1)[0],
@@ -286,14 +279,14 @@ impl GbtWord for Rdh0 {
     }
     fn print(&self) {
         println!("Rdh0:");
-        pretty_print_var_hex!("header_id", self.header_id);
-        pretty_print_var_hex!("header_size", self.header_size);
+        pretty_print_hex_field!("header_id", self.header_id);
+        pretty_print_hex_field!("header_size", self.header_size);
         let tmp_fee_id = self.fee_id.0;
-        pretty_print_var_hex!("fee_id", tmp_fee_id);
-        pretty_print_var_hex!("priority_bit", self.priority_bit);
-        pretty_print_var_hex!("system_id", self.system_id);
+        pretty_print_hex_field!("fee_id", tmp_fee_id);
+        pretty_print_hex_field!("priority_bit", self.priority_bit);
+        pretty_print_hex_field!("system_id", self.system_id);
         let tmp_reserved0 = self.reserved0;
-        pretty_print_var_hex!("reserved0", tmp_reserved0);
+        pretty_print_hex_field!("reserved0", tmp_reserved0);
     }
 }
 impl Rdh0 {
@@ -351,8 +344,6 @@ impl GbtWord for Rdh1 {
                 buf
             }};
         }
-        use byteorder::ByteOrder;
-        use byteorder::LittleEndian;
 
         Ok(Rdh1 {
             bc_reserved0: BcReserved(LittleEndian::read_u32(&load_bytes!(4))),
@@ -361,10 +352,10 @@ impl GbtWord for Rdh1 {
     }
     fn print(&self) {
         println!("Rdh1:");
-        pretty_print_var_hex!("bc", self.bc());
-        pretty_print_var_hex!("reserved0", self.reserved0());
+        pretty_print_hex_field!("bc", self.bc());
+        pretty_print_hex_field!("reserved0", self.reserved0());
         let tmp_orbit = self.orbit;
-        pretty_print_var_hex!("orbit", tmp_orbit);
+        pretty_print_hex_field!("orbit", tmp_orbit);
     }
 }
 impl Debug for Rdh1 {
@@ -403,8 +394,6 @@ impl GbtWord for Rdh2 {
                 buf
             }};
         }
-        use byteorder::ByteOrder;
-        use byteorder::LittleEndian;
 
         Ok(Rdh2 {
             trigger_type: LittleEndian::read_u32(&load_bytes!(4)),
@@ -453,8 +442,6 @@ impl GbtWord for Rdh3 {
                 buf
             }};
         }
-        use byteorder::ByteOrder;
-        use byteorder::LittleEndian;
 
         Ok(Rdh3 {
             detector_field: LittleEndian::read_u32(&load_bytes!(4)),
