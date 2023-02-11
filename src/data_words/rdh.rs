@@ -1,3 +1,4 @@
+use crate::ByteSlice;
 // ITS data format: https://gitlab.cern.ch/alice-its-wp10-firmware/RU_mainFPGA/-/wikis/ITS%20Data%20Format#Introduction
 use crate::validators::rdh::GbtError;
 use crate::{
@@ -53,7 +54,32 @@ impl RdhCRUv7 {
     }
 }
 
+impl ByteSlice for RdhCRUv7 {
+    fn to_byte_slice(&self) -> &[u8] {
+        unsafe { crate::any_as_u8_slice(self) }
+    }
+}
+
 impl GbtWord for RdhCRUv7 {
+    fn print(&self) {
+        println!("===================\nRdhCRU:");
+        self.rdh0.print();
+        let tmp_offset_new_packet = self.offset_new_packet;
+        pretty_print_hex_field!("offset_new_packet", tmp_offset_new_packet);
+        let tmp_memory_size = self.memory_size;
+        pretty_print_hex_field!("memory_size", tmp_memory_size);
+        pretty_print_hex_field!("link_id", self.link_id);
+        pretty_print_hex_field!("packet_counter", self.packet_counter);
+        pretty_print_hex_field!("cru_id", self.cru_id());
+        pretty_print_hex_field!("dw", self.dw());
+        self.rdh1.print();
+        pretty_print_hex_field!("data_format", self.data_format());
+        pretty_print_hex_field!("reserved0", self.reserved0());
+        self.rdh2.print();
+        pretty_print_hex_fields!(self, reserved1);
+        self.rdh3.print();
+        pretty_print_hex_fields!(self, reserved2);
+    }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<RdhCRUv7, std::io::Error> {
         let rdh0 = match Rdh0::load(reader) {
             Ok(rdh0) => rdh0,
@@ -92,25 +118,6 @@ impl GbtWord for RdhCRUv7 {
             rdh3,
             reserved2,
         })
-    }
-    fn print(&self) {
-        println!("===================\nRdhCRU:");
-        self.rdh0.print();
-        let tmp_offset_new_packet = self.offset_new_packet;
-        pretty_print_hex_field!("offset_new_packet", tmp_offset_new_packet);
-        let tmp_memory_size = self.memory_size;
-        pretty_print_hex_field!("memory_size", tmp_memory_size);
-        pretty_print_hex_field!("link_id", self.link_id);
-        pretty_print_hex_field!("packet_counter", self.packet_counter);
-        pretty_print_hex_field!("cru_id", self.cru_id());
-        pretty_print_hex_field!("dw", self.dw());
-        self.rdh1.print();
-        pretty_print_hex_field!("data_format", self.data_format());
-        pretty_print_hex_field!("reserved0", self.reserved0());
-        self.rdh2.print();
-        pretty_print_hex_fields!(self, reserved1);
-        self.rdh3.print();
-        pretty_print_hex_fields!(self, reserved2);
     }
 }
 impl Debug for RdhCRUv7 {
@@ -162,7 +169,32 @@ impl RdhCRUv6 {
     }
 }
 
+impl ByteSlice for RdhCRUv6 {
+    fn to_byte_slice(&self) -> &[u8] {
+        unsafe { crate::any_as_u8_slice(self) }
+    }
+}
+
 impl GbtWord for RdhCRUv6 {
+    fn print(&self) {
+        println!("===================\nRdhCRU:");
+        self.rdh0.print();
+        pretty_print_hex_fields!(
+            self,
+            offset_new_packet,
+            memory_size,
+            link_id,
+            packet_counter
+        );
+        pretty_print_hex_field!("cru_id", self.cru_id());
+        pretty_print_hex_field!("dw", self.dw());
+        self.rdh1.print();
+        pretty_print_hex_fields!(self, reserved0);
+        self.rdh2.print();
+        pretty_print_hex_fields!(self, reserved1);
+        self.rdh3.print();
+        pretty_print_hex_fields!(self, reserved2);
+    }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<RdhCRUv6, std::io::Error> {
         let rdh0 = match Rdh0::load(reader) {
             Ok(rdh0) => rdh0,
@@ -195,25 +227,6 @@ impl GbtWord for RdhCRUv6 {
             rdh3,
             reserved2,
         })
-    }
-    fn print(&self) {
-        println!("===================\nRdhCRU:");
-        self.rdh0.print();
-        pretty_print_hex_fields!(
-            self,
-            offset_new_packet,
-            memory_size,
-            link_id,
-            packet_counter
-        );
-        pretty_print_hex_field!("cru_id", self.cru_id());
-        pretty_print_hex_field!("dw", self.dw());
-        self.rdh1.print();
-        pretty_print_hex_fields!(self, reserved0);
-        self.rdh2.print();
-        pretty_print_hex_fields!(self, reserved1);
-        self.rdh3.print();
-        pretty_print_hex_fields!(self, reserved2);
     }
 }
 impl Debug for RdhCRUv6 {
@@ -249,6 +262,17 @@ pub struct Rdh0 {
 }
 
 impl GbtWord for Rdh0 {
+    fn print(&self) {
+        println!("Rdh0:");
+        pretty_print_hex_field!("header_id", self.header_id);
+        pretty_print_hex_field!("header_size", self.header_size);
+        let tmp_fee_id = self.fee_id.0;
+        pretty_print_hex_field!("fee_id", tmp_fee_id);
+        pretty_print_hex_field!("priority_bit", self.priority_bit);
+        pretty_print_hex_field!("system_id", self.system_id);
+        let tmp_reserved0 = self.reserved0;
+        pretty_print_hex_field!("reserved0", tmp_reserved0);
+    }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh0, std::io::Error> {
         // Create a helper macro for loading an array of the given size from
         // the reader.
@@ -276,17 +300,6 @@ impl GbtWord for Rdh0 {
             system_id: load_part!(1)[0],
             reserved0: LittleEndian::read_u16(&load_part!(2)),
         })
-    }
-    fn print(&self) {
-        println!("Rdh0:");
-        pretty_print_hex_field!("header_id", self.header_id);
-        pretty_print_hex_field!("header_size", self.header_size);
-        let tmp_fee_id = self.fee_id.0;
-        pretty_print_hex_field!("fee_id", tmp_fee_id);
-        pretty_print_hex_field!("priority_bit", self.priority_bit);
-        pretty_print_hex_field!("system_id", self.system_id);
-        let tmp_reserved0 = self.reserved0;
-        pretty_print_hex_field!("reserved0", tmp_reserved0);
     }
 }
 impl Rdh0 {
@@ -330,6 +343,13 @@ impl Rdh1 {
 }
 
 impl GbtWord for Rdh1 {
+    fn print(&self) {
+        println!("Rdh1:");
+        pretty_print_hex_field!("bc", self.bc());
+        pretty_print_hex_field!("reserved0", self.reserved0());
+        let tmp_orbit = self.orbit;
+        pretty_print_hex_field!("orbit", tmp_orbit);
+    }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh1, std::io::Error> {
         // Create a helper macro for loading an array of the given size from
         // the reader.
@@ -349,13 +369,6 @@ impl GbtWord for Rdh1 {
             bc_reserved0: BcReserved(LittleEndian::read_u32(&load_bytes!(4))),
             orbit: LittleEndian::read_u32(&load_bytes!(4)),
         })
-    }
-    fn print(&self) {
-        println!("Rdh1:");
-        pretty_print_hex_field!("bc", self.bc());
-        pretty_print_hex_field!("reserved0", self.reserved0());
-        let tmp_orbit = self.orbit;
-        pretty_print_hex_field!("orbit", tmp_orbit);
     }
 }
 impl Debug for Rdh1 {
@@ -380,6 +393,9 @@ pub struct Rdh2 {
     pub reserved0: u8,
 }
 impl GbtWord for Rdh2 {
+    fn print(&self) {
+        pretty_print_name_hex_fields!(Rdh2, self, trigger_type, pages_counter, stop_bit, reserved0);
+    }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh2, std::io::Error> {
         // Create a helper macro for loading an array of the given size from
         // the reader.
@@ -401,9 +417,6 @@ impl GbtWord for Rdh2 {
             stop_bit: load_bytes!(1)[0],
             reserved0: load_bytes!(1)[0],
         })
-    }
-    fn print(&self) {
-        pretty_print_name_hex_fields!(Rdh2, self, trigger_type, pages_counter, stop_bit, reserved0);
     }
 }
 impl Debug for Rdh2 {
@@ -428,6 +441,9 @@ pub struct Rdh3 {
     pub reserved0: u16,
 }
 impl GbtWord for Rdh3 {
+    fn print(&self) {
+        pretty_print_name_hex_fields!(Rdh3, self, detector_field, par_bit, reserved0);
+    }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh3, std::io::Error> {
         // Create a helper macro for loading an array of the given size from
         // the reader.
@@ -448,9 +464,6 @@ impl GbtWord for Rdh3 {
             par_bit: LittleEndian::read_u16(&load_bytes!(2)),
             reserved0: LittleEndian::read_u16(&load_bytes!(2)),
         })
-    }
-    fn print(&self) {
-        pretty_print_name_hex_fields!(Rdh3, self, detector_field, par_bit, reserved0);
     }
 }
 impl Debug for Rdh3 {
