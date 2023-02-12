@@ -5,6 +5,7 @@ use crate::{
     pretty_print_hex_field, pretty_print_hex_fields, pretty_print_name_hex_fields,
     validators::rdh::Rdh0Validator, GbtWord,
 };
+use binrw::binrw;
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use std::fmt::{self, Debug};
 // Newtype pattern used to enforce type safety on fields that are not byte-aligned
@@ -16,6 +17,30 @@ struct BcReserved(u32); // 12 bit bc, 20 bit reserved
 struct DataformatReserved(u64); // 8 bit data_format, 56 bit reserved0
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct FeeId(pub(crate) u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
+
+#[binrw]
+#[brw(little)]
+#[derive(Debug, PartialEq, Clone)]
+pub struct RdhCRUtest {
+    pub rdh0: Rdh0Test,
+    pub offset_new_packet: u16,
+    pub memory_size: u16,
+    pub link_id: u8,
+    pub packet_counter: u8,
+    cruid_dw: u16, // 12 bit cru_id, 4 bit dw
+}
+#[binrw]
+#[brw(little)]
+#[derive(Debug, PartialEq, Clone)]
+pub struct Rdh0Test {
+    // Represents 64 bit
+    pub header_id: u8,
+    pub header_size: u8,
+    pub fee_id: u16, // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
+    pub priority_bit: u8,
+    pub system_id: u8,
+    pub reserved0: u16,
+}
 
 #[repr(packed)]
 #[derive(PartialEq, Clone, Copy)]
@@ -482,6 +507,8 @@ impl Debug for Rdh3 {
 
 #[cfg(test)]
 mod tests {
+    use binrw::{BinRead, BinWrite};
+
     use super::*;
     use std::fs::{self, File, OpenOptions};
     use std::{io::BufReader, io::Write, path::PathBuf};
@@ -597,5 +624,35 @@ mod tests {
         // More info: https://doc.rust-lang.org/std/fs/fn.remove_file.html
         fs::remove_file(&filepath).unwrap();
         assert_eq!(rdh_cru, correct_rdhcruv6);
+    }
+
+    #[test]
+    fn test_binrw() {
+        let rdh_test = RdhCRUtest {
+            rdh0: Rdh0Test {
+                header_id: 0x7,
+                header_size: 0x40,
+                fee_id: 0x502A,
+                priority_bit: 0x0,
+                system_id: 0x20,
+                reserved0: 0,
+            },
+            offset_new_packet: 0x13E0,
+            memory_size: 0x13E0,
+            link_id: 0x0,
+            packet_counter: 0x0,
+            cruid_dw: 0x0018,
+        };
+
+        let filename = "test1.raw";
+        let filepath = PathBuf::from(filename);
+        //let mut file = File::open(filepath).unwrap();
+        let mut file = File::create(&filepath).unwrap();
+        //RdhCRUtest::write(&rdh_test, &mut file).unwrap();
+        rdh_test.write(&mut file).unwrap();
+        // let mut buf_reader = std::io::BufReader::new(file);
+
+        //let t = RdhCRUtest::read(&mut file).unwrap();
+        //dbg!(t);
     }
 }
