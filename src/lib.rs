@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 pub mod data_words;
 pub mod macros;
 pub mod validators;
@@ -19,4 +21,21 @@ pub trait ByteSlice {
 pub unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
     // Create read-only reference to T as a byte slice, safe as long as no padding bytes are read
     ::core::slice::from_raw_parts((p as *const T) as *const u8, ::core::mem::size_of::<T>())
+}
+
+#[inline]
+pub fn file_open_read_only(path: &PathBuf) -> std::io::Result<std::fs::File> {
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .open(path)
+        .expect("File not found");
+    Ok(file)
+}
+
+#[inline(always)]
+pub fn buf_reader_with_capacity(
+    file: std::fs::File,
+    capacity: usize,
+) -> std::io::BufReader<std::fs::File> {
+    std::io::BufReader::with_capacity(capacity, file)
 }
