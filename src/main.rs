@@ -1,5 +1,7 @@
 use fastpasta::data_words::rdh::RdhCRUv7;
-use fastpasta::GbtWord;
+use fastpasta::macros::print;
+use fastpasta::{buf_reader_with_capacity, file_open_read_only, ByteSlice, GbtWord};
+
 use std::io::Read;
 use std::path::PathBuf;
 use std::{fs::File, io::Seek};
@@ -15,10 +17,6 @@ struct Opt {
     /// Files to process
     #[structopt(name = "FILE", parse(from_os_str))]
     files: Vec<PathBuf>,
-
-    /// Number of bytes to read
-    #[structopt(short, long, default_value = "10")]
-    bytes: usize,
 }
 
 const RDH_CRU_SIZE_BYTES: u64 = 64;
@@ -43,12 +41,9 @@ impl RelativeOffset {
 pub fn main() -> std::io::Result<()> {
     let opt = Opt::from_args();
     println!("{:#?}", opt);
-    let file = std::fs::OpenOptions::new()
-        .read(true)
-        .open(opt.files.first().unwrap())
-        .expect("File not found");
-
-    let mut buf_reader = std::io::BufReader::new(file);
+    const CAPACITY: usize = 1024 * 1024 * 10; // 10 MB
+    let file = file_open_read_only(opt.files.first().unwrap())?;
+    let mut buf_reader = buf_reader_with_capacity(file, CAPACITY);
     let rdh_cru = RdhCRUv7::load(&mut buf_reader).expect("Error loading RDH");
     // Size of an RDH needs to be subtracted from the offset_new_packet seek to the right position
     // it is possible to move the file cursor, but this is not recommended as it requires a mutable file descriptor
@@ -65,6 +60,12 @@ pub fn main() -> std::io::Result<()> {
     buf_reader
         .seek_relative(relative_offset.0)
         .expect("Error seeking");
+
+    use std::{thread, time};
+
+    let now = time::Instant::now();
+
+    let mut rdhs = vec![rdh_cru, rdh_cru2];
 
     for i in 1..500000 {
         let tmp_rdh = match RdhCRUv7::load(&mut buf_reader) {
@@ -95,6 +96,20 @@ pub fn main() -> std::io::Result<()> {
             print!("RDH 40000: ");
             tmp_rdh.print();
         }
+        rdhs.push(tmp_rdh);
     }
+    println!("Vec size: {}", rdhs.len());
+    println!("example rdh-cru: {:?}", rdhs[40002]);
+    println!("example rdh-cru: {:?}", rdhs[80002]);
+    println!("example rdh-cru: {:?}", rdhs[45]);
+    println!("Elapsed: {:?}", now.elapsed());
+    //Write RDHs to file
+    let filepath = PathBuf::from("rdhs.raw");
+    let mut file = File::create(&filepath).unwrap();
+    rdhs.into_iter().for_each(|rdh| {
+        std::io::Write::write_all(&mut file, rdh.to_byte_slice()).unwrap();
+    });
+    println!("Elapsed: {:?}", now.elapsed());
+
     Ok(())
 }
