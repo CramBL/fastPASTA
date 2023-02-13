@@ -5,17 +5,25 @@ use crate::{
     pretty_print_hex_field, pretty_print_hex_fields, pretty_print_name_hex_fields,
     validators::rdh::Rdh0Validator, GbtWord,
 };
-use binrw::binrw;
+use binrw::{binrw, BinRead};
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use std::fmt::{self, Debug};
 // Newtype pattern used to enforce type safety on fields that are not byte-aligned
 #[derive(Debug, PartialEq, Clone, Copy)]
+#[binrw]
+#[brw(little)]
 struct CruidDw(u16); // 12 bit cru_id, 4 bit dw
 #[derive(Debug, PartialEq, Clone, Copy)]
+#[binrw]
+#[brw(little)]
 struct BcReserved(u32); // 12 bit bc, 20 bit reserved
+#[binrw]
+#[brw(little)]
 #[derive(Debug, PartialEq, Clone, Copy)]
 struct DataformatReserved(u64); // 8 bit data_format, 56 bit reserved0
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[binrw]
+#[brw(little)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct FeeId(pub(crate) u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
 
 #[binrw]
@@ -31,7 +39,7 @@ pub struct RdhCRUtest {
 }
 #[binrw]
 #[brw(little)]
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Rdh0Test {
     // Represents 64 bit
     pub header_id: u8,
@@ -42,7 +50,8 @@ pub struct Rdh0Test {
     pub reserved0: u16,
 }
 
-#[repr(packed)]
+#[binrw]
+#[brw(little)]
 #[derive(PartialEq, Clone, Copy)]
 pub struct RdhCRUv7 {
     pub rdh0: Rdh0,
@@ -167,7 +176,8 @@ impl Debug for RdhCRUv7 {
     }
 }
 
-#[repr(packed)]
+#[binrw]
+#[brw(little)]
 #[derive(PartialEq, Clone, Copy)]
 pub struct RdhCRUv6 {
     pub rdh0: Rdh0,
@@ -274,8 +284,9 @@ impl Debug for RdhCRUv6 {
                tmp_rdh0, tmp_offset_new_packet, tmp_memory_size, tmp_link_id, tmp_packet_counter, tmp_cruid, tmp_dw, tmp_rdh1, tmp_reserved0, tmp_rdh2, tmp_reserved1, tmp_rdh3, tmp_reserved2)
     }
 }
-#[repr(packed)]
-#[derive(PartialEq, Clone, Copy)]
+#[binrw]
+#[brw(little)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct Rdh0 {
     // Represents 64 bit
     pub header_id: u8,
@@ -350,7 +361,8 @@ impl Debug for Rdh0 {
     }
 }
 
-#[repr(packed)]
+#[binrw]
+#[brw(little)]
 #[derive(PartialEq, Clone, Copy)]
 pub struct Rdh1 {
     // Rdh1 is 64 bit total
@@ -409,7 +421,8 @@ impl Debug for Rdh1 {
     }
 }
 
-#[repr(packed)]
+#[binrw]
+#[brw(little)]
 #[derive(PartialEq, Clone, Copy)]
 pub struct Rdh2 {
     pub trigger_type: u32, // 32 bit
@@ -458,7 +471,8 @@ impl Debug for Rdh2 {
     }
 }
 
-#[repr(packed)]
+#[binrw]
+#[brw(little)]
 #[derive(PartialEq, Clone, Copy)]
 pub struct Rdh3 {
     pub detector_field: u32,
@@ -507,11 +521,13 @@ impl Debug for Rdh3 {
 
 #[cfg(test)]
 mod tests {
+    use crate::file_open_read_only;
+    use crate::validators::rdh;
     use binrw::{BinRead, BinWrite};
 
     use super::*;
     use std::fs::{self, File, OpenOptions};
-    use std::{io::BufReader, io::Write, path::PathBuf};
+    use std::{io::BufReader, path::PathBuf};
 
     // Verifies that the RdhCruv7 struct is serialized and deserialized correctly
     #[test]
@@ -520,7 +536,7 @@ mod tests {
         // write it to a file
         // read it back
         // assert that they are equal
-        let filename = "test_rdhcruv7.raw";
+        let filename = "test_files/test_rdhcruv7.raw";
         let correct_rdh_cru = RdhCRUv7 {
             rdh0: Rdh0 {
                 header_id: 0x7,
@@ -554,20 +570,24 @@ mod tests {
             },
             reserved2: 0x0,
         };
-
-        let rdh_cru_as_u8_slice = unsafe { crate::any_as_u8_slice(&correct_rdh_cru) };
-
         let filepath = PathBuf::from(filename);
         let mut file = File::create(&filepath).unwrap();
-        file.write_all(&rdh_cru_as_u8_slice).unwrap();
-
-        let file = OpenOptions::new().read(true).open(&filepath).unwrap();
+        // Write the RDH-CRU v7 to the file
+        correct_rdh_cru.write(&mut file).unwrap();
+        // Open and read with the manual serialization method
+        let file = file_open_read_only(&filepath).unwrap();
         let mut buf_reader = BufReader::new(file);
         let rdh_cru = RdhCRUv7::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
+        // Open and read with the binrw serialization implementation
+        let file = file_open_read_only(&filepath).unwrap();
+        let mut buf_reader = BufReader::new(file);
+        let rdh_cru_binrw = RdhCRUv7::read(&mut buf_reader).expect("Failed to load RdhCRUv7");
+        // Assert that the two methods are equal
+        assert_eq!(rdh_cru, correct_rdh_cru);
+        assert_eq!(rdh_cru_binrw, correct_rdh_cru);
         // This function currently corresponds to the unlink function on Unix and the DeleteFile function on Windows. Note that, this may change in the future.
         // More info: https://doc.rust-lang.org/std/fs/fn.remove_file.html
         fs::remove_file(&filepath).unwrap();
-        assert_eq!(rdh_cru, correct_rdh_cru);
     }
 
     // Verifies that the RdhCruv6 struct is serialized and deserialized correctly
@@ -577,7 +597,7 @@ mod tests {
         // write it to a file
         // read it back
         // assert that they are equal
-        let filename = "test_rdhcruv6.raw";
+        let filename = "test_files/test_rdhcruv6.raw";
         let correct_rdhcruv6 = RdhCRUv6 {
             rdh0: Rdh0 {
                 header_id: 0x6,
@@ -612,22 +632,30 @@ mod tests {
             reserved2: 0x0,
         };
 
-        let rdh_cruv6_as_u8_slice = unsafe { crate::any_as_u8_slice(&correct_rdhcruv6) };
         let filepath = PathBuf::from(filename);
         let mut file = File::create(&filepath).unwrap();
-        file.write_all(&rdh_cruv6_as_u8_slice).unwrap();
+        correct_rdhcruv6.write(&mut file).unwrap();
 
+        // Open, and read the file manual way
         let file = OpenOptions::new().read(true).open(&filepath).unwrap();
         let mut buf_reader = BufReader::new(file);
         let rdh_cru = RdhCRUv6::load(&mut buf_reader).expect("Failed to load RdhCRUv6");
+        // Open and read the file using binrw
+        let file_binrw = File::options().read(true).open(&filepath).unwrap();
+        let mut buf_reader_binrw = BufReader::new(file_binrw);
+        let rdh_cru_binrw = RdhCRUv6::read(&mut buf_reader_binrw).expect("Failed to load RdhCRUv6");
+
+        // Check that both the manual and binrw way of reading the file are correct
+        assert_eq!(rdh_cru, correct_rdhcruv6);
+        assert_eq!(rdh_cru_binrw, correct_rdhcruv6);
+
         // This function currently corresponds to the unlink function on Unix and the DeleteFile function on Windows. Note that, this may change in the future.
         // More info: https://doc.rust-lang.org/std/fs/fn.remove_file.html
         fs::remove_file(&filepath).unwrap();
-        assert_eq!(rdh_cru, correct_rdhcruv6);
     }
 
     #[test]
-    fn test_binrw() {
+    fn test_binrw_write() {
         let rdh_test = RdhCRUtest {
             rdh0: Rdh0Test {
                 header_id: 0x7,
@@ -644,15 +672,87 @@ mod tests {
             cruid_dw: 0x0018,
         };
 
-        let filename = "test1.raw";
+        let filename = "test_files/test1.raw";
         let filepath = PathBuf::from(filename);
-        //let mut file = File::open(filepath).unwrap();
-        let mut file = File::create(&filepath).unwrap();
-        //RdhCRUtest::write(&rdh_test, &mut file).unwrap();
-        rdh_test.write(&mut file).unwrap();
-        // let mut buf_reader = std::io::BufReader::new(file);
+        match filepath.exists() {
+            true => {
+                fs::File::options().read(true).open(&filepath).unwrap();
+                ()
+            }
+            false => {
+                let mut file = fs::File::create(&filepath).unwrap();
+                rdh_test.write(&mut file).expect("Failed to write")
+            }
+        }
+    }
 
-        //let t = RdhCRUtest::read(&mut file).unwrap();
-        //dbg!(t);
+    #[test]
+    fn test_binrw_read() {
+        let rdh_test = RdhCRUtest {
+            rdh0: Rdh0Test {
+                header_id: 0x7,
+                header_size: 0x40,
+                fee_id: 0x502A,
+                priority_bit: 0x0,
+                system_id: 0x20,
+                reserved0: 0,
+            },
+            offset_new_packet: 0x13E0,
+            memory_size: 0x13E0,
+            link_id: 0x0,
+            packet_counter: 0x0,
+            cruid_dw: 0x0018,
+        };
+
+        let filename = "test_files/test1.raw";
+        let filepath = PathBuf::from(filename);
+
+        let file = match filepath.exists() {
+            true => file_open_read_only(&filepath).unwrap(),
+            false => {
+                while filepath.exists() == false {
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                }
+                file_open_read_only(&filepath).unwrap()
+            }
+        };
+
+        let mut buf_reader = std::io::BufReader::new(file);
+
+        let t = RdhCRUtest::read(&mut buf_reader).unwrap();
+
+        assert_eq!(t, rdh_test);
+    }
+
+    #[test]
+    fn test_binrw_rdh0() {
+        let rdh0 = Rdh0 {
+            header_id: 0x7,
+            header_size: 0x40,
+            fee_id: FeeId(0x502A),
+            priority_bit: 0x0,
+            system_id: 0x20,
+            reserved0: 0,
+        };
+
+        let filename = "test_files/rdh0.raw";
+        let filepath = PathBuf::from(filename);
+        let mut file = match filepath.exists() {
+            true => fs::File::options()
+                .read(true)
+                .write(true)
+                .open(&filepath)
+                .unwrap(),
+            false => {
+                let mut f_write = fs::File::create(&filepath).unwrap();
+                rdh0.write(&mut f_write).expect("Failed to write");
+                std::io::Write::flush(&mut f_write).unwrap();
+                let file = fs::File::options().read(true).open(&filepath).unwrap();
+                file
+            }
+        };
+
+        let rdh0_read = Rdh0::read(&mut file).unwrap();
+        assert_eq!(rdh0, rdh0_read);
     }
 }
