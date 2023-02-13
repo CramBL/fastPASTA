@@ -1,10 +1,7 @@
 use fastpasta::data_words::rdh::RdhCRUv7;
-use fastpasta::macros::print;
 use fastpasta::{buf_reader_with_capacity, file_open_read_only, ByteSlice, GbtWord};
 
-use std::io::Read;
 use std::path::PathBuf;
-use std::{fs::File, io::Seek};
 
 use structopt::StructOpt;
 /// StructOpt is a library that allows parsing command line arguments
@@ -21,7 +18,7 @@ struct Opt {
 
 const RDH_CRU_SIZE_BYTES: u64 = 64;
 
-struct RelativeOffset(i64);
+pub struct RelativeOffset(i64);
 pub enum SeekError {
     EOF,
 }
@@ -29,12 +26,6 @@ pub enum SeekError {
 impl RelativeOffset {
     fn new(byte_offset: u64) -> Self {
         RelativeOffset(byte_offset as i64)
-    }
-    fn next(byte_offset: u64, f_len: u64) -> Result<RelativeOffset, SeekError> {
-        if byte_offset >= f_len {
-            return Err(SeekError::EOF);
-        }
-        Ok(RelativeOffset(byte_offset as i64))
     }
 }
 
@@ -105,7 +96,7 @@ pub fn main() -> std::io::Result<()> {
     println!("Elapsed: {:?}", now.elapsed());
     //Write RDHs to file
     let filepath = PathBuf::from("rdhs.raw");
-    let mut file = File::create(&filepath).unwrap();
+    let mut file = std::fs::File::create(&filepath).unwrap();
     rdhs.into_iter().for_each(|rdh| {
         std::io::Write::write_all(&mut file, rdh.to_byte_slice()).unwrap();
     });
