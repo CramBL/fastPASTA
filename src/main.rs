@@ -11,9 +11,25 @@ use structopt::StructOpt;
     about = "A tool to scan and verify the CRU protocol of the ALICE readout system"
 )]
 struct Opt {
+    /// Dump RDHs to stdout or file
+    #[structopt(short = "d-rhd", long = "dump-rhds")]
+    dump_rhds: bool,
+
+    /// Activate sanity checks
+    #[structopt(short = "s", long = "sanity-checks")]
+    sanity_checks: bool,
+
     /// Files to process
     #[structopt(name = "FILE", parse(from_os_str))]
-    files: Vec<PathBuf>,
+    file: PathBuf,
+
+    /// Where to write the output: to `stdout` or `file`
+    #[structopt(short = "o", long = "out-type", default_value = "stdout")]
+    out_type: String,
+
+    /// File name: only required when `out-type` is set to `file`
+    #[structopt(name = "OUTFILE", required_if("out-type", "file"))]
+    outfile_name: Option<String>,
 }
 
 const RDH_CRU_SIZE_BYTES: u64 = 64;
@@ -32,38 +48,24 @@ impl RelativeOffset {
 pub fn main() -> std::io::Result<()> {
     let opt = Opt::from_args();
     println!("{:#?}", opt);
-    const CAPACITY: usize = 1024 * 1024 * 10; // 10 MB
-    let file = file_open_read_only(opt.files.first().unwrap())?;
+    const CAPACITY: usize = 1024 * 10; // 10 KB
+    let file = file_open_read_only(&opt.file)?;
     let mut buf_reader = buf_reader_with_capacity(file, CAPACITY);
-    let rdh_cru = RdhCRUv7::load(&mut buf_reader).expect("Error loading RDH");
-    // Size of an RDH needs to be subtracted from the offset_new_packet seek to the right position
-    // it is possible to move the file cursor, but this is not recommended as it requires a mutable file descriptor
-    let relative_offset =
-        RelativeOffset::new((rdh_cru.offset_new_packet as u64) - RDH_CRU_SIZE_BYTES);
-    buf_reader
-        .seek_relative(relative_offset.0)
-        .expect("Error seeking");
-    let rdh_cru2 = RdhCRUv7::load(&mut buf_reader).expect("Error loading RDH");
-    let relative_offset =
-        RelativeOffset::new((rdh_cru2.offset_new_packet as u64) - RDH_CRU_SIZE_BYTES);
-    rdh_cru.print();
-    rdh_cru2.print();
-    buf_reader
-        .seek_relative(relative_offset.0)
-        .expect("Error seeking");
-
-    use std::{thread, time};
+    use std::time;
 
     let now = time::Instant::now();
 
-    let mut rdhs = vec![rdh_cru, rdh_cru2];
+    let mut rdhs: Vec<RdhCRUv7> = vec![];
 
-    for i in 1..500000 {
+    let rdh_validator = fastpasta::validators::rdh::RDH_CRU_V7_VALIDATOR;
+    let mut processed = 0;
+
+    loop {
         let tmp_rdh = match RdhCRUv7::load(&mut buf_reader) {
             Ok(rdh) => rdh,
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
                 print!("EOF reached! ");
-                println!("{} packets processed", i);
+                println!("{} packets processed", processed);
                 break;
             }
             Err(e) => {
@@ -76,31 +78,37 @@ pub fn main() -> std::io::Result<()> {
         buf_reader
             .seek_relative(relative_offset.0)
             .expect("Error seeking");
-        if tmp_rdh.rdh0.header_id != 7 {
-            println!("WRONG header ID: {}", tmp_rdh.rdh0.header_id);
+
+        if opt.sanity_checks {
+            match rdh_validator.sanity_check(&tmp_rdh) {
+                Ok(_) => (),
+                Err(e) => {
+                    println!("Sanity check failed: {}", e);
+                    break;
+                }
+            }
         }
-        if i % 100 == 0 {
-            println!("{} packets processed", i);
+
+        processed += 1;
+        if opt.dump_rhds {
+            if opt.out_type == "file" {
+                rdhs.push(tmp_rdh);
+            } else if opt.out_type == "stdout" {
+                println!("{:?}", tmp_rdh);
+            }
         }
-        if i == 40000 {
-            println!("40000 packets processed");
-            print!("RDH 40000: ");
-            tmp_rdh.print();
-        }
-        rdhs.push(tmp_rdh);
     }
     println!("Vec size: {}", rdhs.len());
-    println!("example rdh-cru: {:?}", rdhs[40002]);
-    println!("example rdh-cru: {:?}", rdhs[80002]);
-    println!("example rdh-cru: {:?}", rdhs[45]);
     println!("Elapsed: {:?}", now.elapsed());
     //Write RDHs to file
-    let filepath = PathBuf::from("rdhs.raw");
-    let mut file = std::fs::File::create(&filepath).unwrap();
-    rdhs.into_iter().for_each(|rdh| {
-        std::io::Write::write_all(&mut file, rdh.to_byte_slice()).unwrap();
-    });
-    println!("Elapsed: {:?}", now.elapsed());
+    if opt.out_type == "file" {
+        let filepath = PathBuf::from(opt.outfile_name.unwrap());
+        let mut file = std::fs::File::create(&filepath).unwrap();
+        rdhs.into_iter().for_each(|rdh| {
+            std::io::Write::write_all(&mut file, rdh.to_byte_slice()).unwrap();
+        });
+        println!("Elapsed: {:?}", now.elapsed());
+    }
 
     Ok(())
 }
