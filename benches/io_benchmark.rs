@@ -1,6 +1,5 @@
 use std::{
-    fs::remove_file,
-    io::{BufWriter, Read, Write},
+    io::{Read, Write},
     vec,
 };
 
@@ -80,7 +79,7 @@ fn parse_rdh_manual(rdh_cru_size_bytes: u64, filename: &str, iterations: usize) 
 fn bench_deserialization(c: &mut Criterion) {
     let mut group = c.benchmark_group("deserialization");
     const RDH_CRU_SIZE_BYTES: u64 = 64;
-    let filename = "../fastpasta_test_files/data_ols_ul.raw";
+    let filename = "../fastpasta_test_files/data_ols_its-ul-v0.5_3.4GB";
     for i in [1000, 10000, 50000].iter() {
         group.bench_with_input(BenchmarkId::new("manual", i.to_string()), i, |b, i| {
             b.iter(|| {
@@ -128,7 +127,6 @@ fn bench_serialization_write(c: &mut Criterion) {
         })
         .collect();
     let filename_manual = "manualrds.raw";
-    let filename_binrw = "binrwrds.raw";
 
     group.bench_with_input(BenchmarkId::new("manual", ""), filename_manual, |b, f| {
         b.iter(|| write_rdh_manual(black_box(rdhs.clone()), black_box(f)))
