@@ -13,7 +13,7 @@ use std::fmt::{self, Debug};
 struct CruidDw(u16); // 12 bit cru_id, 4 bit dw
 #[derive(Debug, PartialEq, Clone, Copy)]
 #[repr(packed)]
-struct BcReserved(u32); // 12 bit bc, 20 bit reserved
+pub(crate) struct BcReserved(u32); // 12 bit bc, 20 bit reserved
 #[repr(packed)]
 #[derive(Debug, PartialEq, Clone, Copy)]
 struct DataformatReserved(u64); // 8 bit data_format, 56 bit reserved0
@@ -302,29 +302,22 @@ impl GbtWord for Rdh0 {
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh0, std::io::Error> {
         // Create a helper macro for loading an array of the given size from
         // the reader.
-        macro_rules! load_part {
-            // Take an option `size` literal as a parameter
-            ($size:literal) => {
-                // The whole body goes into a scope so that it is a valid
-                // expression when the macro gets expanded.
-                {
-                    // Create a buffer array of the given size
-                    let mut buf = [0u8; $size];
-                    // Read into the buffer
-                    reader.read_exact(&mut buf)?;
-                    // The buffer
-                    buf
-                }
-            };
+        macro_rules! load_bytes {
+            ($size:literal) => {{
+                // Create a buffer array of the given size
+                let mut buf = [0u8; $size];
+                // Read into the buffer
+                reader.read_exact(&mut buf)?;
+                buf
+            }};
         }
-        // Now we construct return it
         Ok(Rdh0 {
-            header_id: load_part!(1)[0],
-            header_size: load_part!(1)[0],
-            fee_id: FeeId(LittleEndian::read_u16(&load_part!(2))),
-            priority_bit: load_part!(1)[0],
-            system_id: load_part!(1)[0],
-            reserved0: LittleEndian::read_u16(&load_part!(2)),
+            header_id: load_bytes!(1)[0],
+            header_size: load_bytes!(1)[0],
+            fee_id: FeeId(LittleEndian::read_u16(&load_bytes!(2))),
+            priority_bit: load_bytes!(1)[0],
+            system_id: load_bytes!(1)[0],
+            reserved0: LittleEndian::read_u16(&load_bytes!(2)),
         })
     }
 }
@@ -360,6 +353,14 @@ pub struct Rdh1 {
 }
 
 impl Rdh1 {
+    // only meant for unit tests
+    pub const fn test_new(bc: u16, orbit: u32, reserved0: u32) -> Self {
+        Rdh1 {
+            bc_reserved0: BcReserved((bc as u32) | (reserved0 << 12)),
+            orbit,
+        }
+    }
+
     pub fn bc(&self) -> u16 {
         (self.bc_reserved0.0 & 0x0FFF).try_into().unwrap()
     }
@@ -380,13 +381,11 @@ impl GbtWord for Rdh1 {
         // Create a helper macro for loading an array of the given size from
         // the reader.
         macro_rules! load_bytes {
-            // Take an option `size` which is a literal as a parameter
             ($size:literal) => {{
                 // Create a buffer array of the given size
                 let mut buf = [0u8; $size];
                 // Read into the buffer
-                reader.read_exact(&mut buf).unwrap();
-                // The buffer
+                reader.read_exact(&mut buf)?;
                 buf
             }};
         }
@@ -427,13 +426,11 @@ impl GbtWord for Rdh2 {
         // Create a helper macro for loading an array of the given size from
         // the reader.
         macro_rules! load_bytes {
-            // Take an option `size`
             ($size:literal) => {{
                 // Create a buffer array of the given size
                 let mut buf = [0u8; $size];
                 // Read into the buffer
-                reader.read_exact(&mut buf).unwrap();
-                // The buffer
+                reader.read_exact(&mut buf)?;
                 buf
             }};
         }
@@ -475,13 +472,11 @@ impl GbtWord for Rdh3 {
         // Create a helper macro for loading an array of the given size from
         // the reader.
         macro_rules! load_bytes {
-            // Take an option `size`
             ($size:literal) => {{
                 // Create a buffer array of the given size
                 let mut buf = [0u8; $size];
                 // Read into the buffer
-                reader.read_exact(&mut buf).unwrap();
-                // The buffer
+                reader.read_exact(&mut buf)?;
                 buf
             }};
         }
@@ -510,8 +505,6 @@ impl Debug for Rdh3 {
 #[cfg(test)]
 mod tests {
     use crate::file_open_read_only;
-    use crate::validators::rdh;
-    use binrw::{BinRead, BinWrite};
 
     use super::*;
     use std::fs::{self, File, OpenOptions};
