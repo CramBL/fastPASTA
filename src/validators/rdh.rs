@@ -1,7 +1,6 @@
-use crate::data_words::rdh::{BcReserved, FeeId, Rdh0, Rdh1};
+use crate::data_words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3, RdhCRUv6, RdhCRUv7};
+use std::fmt;
 use std::fmt::Write as _;
-use std::fmt::{self, write};
-use std::io::Write as _;
 
 // TODO: implement std:error::Error for all errors (or not? It's not program errors)
 #[derive(Debug)]
@@ -121,7 +120,7 @@ pub struct Rdh0Validator {
 }
 
 impl Rdh0Validator {
-    pub fn sanity_check(&self, rdh0: &Rdh0) -> Result<(), GbtError> {
+    pub fn sanity_check(&self, rdh0: &Rdh0) -> Result<(), String> {
         let mut err_str = String::new();
         let mut err_cnt: u8 = 0;
         if rdh0.header_id != self.header_id {
@@ -174,10 +173,10 @@ impl Rdh0Validator {
         if rdh0.reserved0 != self.reserved0 {
             err_cnt += 1;
             let tmp = rdh0.reserved0;
-            write!(err_str, "{} = {:#x} ", stringify!(reserved0), tmp).unwrap();
+            write!(err_str, "{} = {:#x} ", stringify!(rdh0.reserved0), tmp).unwrap();
         }
         if err_cnt != 0 {
-            return Err(GbtError::InvalidWord(err_str.to_owned()));
+            return Err(err_str.to_owned());
         }
         Ok(())
     }
@@ -191,12 +190,20 @@ pub const RDH0_V7_VALIDATOR: Rdh0Validator = Rdh0Validator {
     system_id: ITS_SYSTEM_ID,
     reserved0: 0,
 };
+pub const RDH0_V6_VALIDATOR: Rdh0Validator = Rdh0Validator {
+    header_id: 6,
+    header_size: 0x40,
+    fee_id: FEE_ID_SANITY_VALIDATOR,
+    priority_bit: 0,
+    system_id: ITS_SYSTEM_ID,
+    reserved0: 0,
+};
 
 pub struct Rdh1Validator {
     valid_rdh1: Rdh1,
 }
 impl Rdh1Validator {
-    pub fn sanity_check(&self, rdh1: &Rdh1) -> Result<(), GbtError> {
+    pub fn sanity_check(&self, rdh1: &Rdh1) -> Result<(), String> {
         let mut err_str = String::new();
         let mut err_cnt: u8 = 0;
         if rdh1.reserved0() != self.valid_rdh1.reserved0() {
@@ -204,7 +211,7 @@ impl Rdh1Validator {
             write!(
                 err_str,
                 "{} = {:#x} ",
-                stringify!(reserved0),
+                stringify!(rdh1.reserved0),
                 rdh1.reserved0()
             )
             .unwrap();
@@ -221,18 +228,268 @@ impl Rdh1Validator {
         //     write!(err_str, "{} = {:#x} ", stringify!(orbit), tmp).unwrap();
         // }
         if err_cnt != 0 {
-            return Err(GbtError::InvalidWord(err_str.to_owned()));
+            return Err(err_str.to_owned());
         }
         Ok(())
     }
 }
-pub const RDH1_V7_VALIDATOR: Rdh1Validator = Rdh1Validator {
+pub const RDH1_VALIDATOR: Rdh1Validator = Rdh1Validator {
     valid_rdh1: Rdh1::test_new(0, 0, 0),
+};
+
+pub struct Rdh2Validator {}
+impl Rdh2Validator {
+    pub fn sanity_check(&self, rdh2: &Rdh2) -> Result<(), String> {
+        let mut err_str = String::new();
+        let mut err_cnt: u8 = 0;
+        if rdh2.reserved0 != 0 {
+            err_cnt += 1;
+            write!(
+                err_str,
+                "{} = {:#x} ",
+                stringify!(rdh2.reserved0),
+                rdh2.reserved0
+            )
+            .unwrap();
+        }
+        // Any page counter is valid in a sanity check
+
+        if rdh2.stop_bit > 1 {
+            err_cnt += 1;
+            write!(err_str, "{} = {:#x} ", stringify!(stop_bit), rdh2.stop_bit).unwrap();
+        }
+        let spare_bits_15_to_26_set: u32 = 0b0000_0111_1111_1111_1000_0000_0000_0000;
+        if rdh2.trigger_type == 0 || (rdh2.trigger_type & spare_bits_15_to_26_set != 0) {
+            err_cnt += 1;
+            let tmp = rdh2.trigger_type;
+            write!(err_str, "{} = {:#x} ", stringify!(trigger_type), tmp).unwrap();
+        }
+
+        if err_cnt != 0 {
+            return Err(err_str.to_owned());
+        }
+        Ok(())
+    }
+}
+
+pub const RDH2_VALIDATOR: Rdh2Validator = Rdh2Validator {};
+
+pub struct Rdh3Validator {}
+
+impl Rdh3Validator {
+    pub fn sanity_check(&self, rdh3: &Rdh3) -> Result<(), String> {
+        let mut err_str = String::new();
+        let mut err_cnt: u8 = 0;
+        if rdh3.reserved0 != 0 {
+            err_cnt += 1;
+            let tmp = rdh3.reserved0;
+            write!(err_str, "{} = {:#x} ", stringify!(rdh3.reserved0), tmp).unwrap();
+        }
+        let reserved_bits_4_to_23_set: u32 = 0b1111_1111_1111_1111_1111_0000;
+        if rdh3.detector_field & reserved_bits_4_to_23_set != 0 {
+            err_cnt += 1;
+            let tmp = rdh3.detector_field;
+            write!(err_str, "{} = {:#x} ", stringify!(detector_field), tmp).unwrap();
+        }
+
+        // No checks on Par bit
+
+        if err_cnt != 0 {
+            return Err(err_str.to_owned());
+        }
+        Ok(())
+    }
+}
+
+pub const RDH3_VALIDATOR: Rdh3Validator = Rdh3Validator {};
+
+pub struct RdhCruv7Validator {
+    rdh0_validator: &'static Rdh0Validator,
+    rdh1_validator: &'static Rdh1Validator,
+    rdh2_validator: &'static Rdh2Validator,
+    rdh3_validator: &'static Rdh3Validator,
+    //valid_dataformat_reserved0: DataformatReserved,
+    // valid link IDs are 0-11 and 15
+    // datawrapper ID is 0 or 1
+}
+
+impl RdhCruv7Validator {
+    pub fn sanity_check(&self, rdh: &RdhCRUv7) -> Result<(), GbtError> {
+        let mut err_str = String::from("RDH v7 sanity check failed: ");
+        let mut err_cnt: u8 = 0;
+        let mut rdh_errors: Vec<String> = vec![];
+        match self.rdh0_validator.sanity_check(&rdh.rdh0) {
+            Ok(_) => (),
+            Err(e) => {
+                err_cnt += 1;
+                rdh_errors.push(e);
+            }
+        };
+        match self.rdh1_validator.sanity_check(&rdh.rdh1) {
+            Ok(_) => (),
+            Err(e) => {
+                err_cnt += 1;
+                rdh_errors.push(e);
+            }
+        };
+        match self.rdh2_validator.sanity_check(&rdh.rdh2) {
+            Ok(_) => (),
+            Err(e) => {
+                err_cnt += 1;
+                rdh_errors.push(e);
+            }
+        };
+        match self.rdh3_validator.sanity_check(&rdh.rdh3) {
+            Ok(_) => (),
+            Err(e) => {
+                err_cnt += 1;
+                rdh_errors.push(e);
+            }
+        };
+
+        // TODO: find out what the valid values for the cru id are
+        if rdh.cru_id() > 0x1F {
+            err_cnt += 1;
+            let tmp = rdh.cru_id();
+            write!(err_str, "{} = {:#x} ", stringify!(cru_id), tmp).unwrap();
+        }
+        if rdh.dw() > 1 {
+            err_cnt += 1;
+            let tmp = rdh.dw();
+            write!(err_str, "{} = {:#x} ", stringify!(dw), tmp).unwrap();
+        }
+        if rdh.data_format() != 2 {
+            err_cnt += 1;
+            let tmp = rdh.data_format();
+            write!(err_str, "{} = {:#x} ", stringify!(data_format), tmp).unwrap();
+        }
+        if rdh.reserved0() != 0 {
+            err_cnt += 1;
+            let tmp = rdh.reserved0();
+            write!(err_str, "{} = {:#x} ", stringify!(reserved0), tmp).unwrap();
+        }
+        if rdh.reserved1 != 0 {
+            err_cnt += 1;
+            let tmp = rdh.reserved1;
+            write!(err_str, "{} = {:#x} ", stringify!(reserved1), tmp).unwrap();
+        }
+        if rdh.reserved2 != 0 {
+            err_cnt += 1;
+            let tmp = rdh.reserved2;
+            write!(err_str, "{} = {:#x} ", stringify!(reserved2), tmp).unwrap();
+        }
+
+        rdh_errors.into_iter().for_each(|e| {
+            err_str.push_str(&e);
+        });
+
+        if err_cnt != 0 {
+            return Err(GbtError::InvalidWord(err_str.to_owned()));
+        }
+
+        Ok(())
+    }
+}
+
+pub const RDH_CRU_V7_VALIDATOR: RdhCruv7Validator = RdhCruv7Validator {
+    rdh0_validator: &RDH0_V7_VALIDATOR,
+    rdh1_validator: &RDH1_VALIDATOR,
+    rdh2_validator: &RDH2_VALIDATOR,
+    rdh3_validator: &RDH3_VALIDATOR,
+};
+
+pub struct RdhCruv6Validator {
+    rdh0_validator: &'static Rdh0Validator,
+    rdh1_validator: &'static Rdh1Validator,
+    rdh2_validator: &'static Rdh2Validator,
+    rdh3_validator: &'static Rdh3Validator,
+    //valid_dataformat_reserved0: DataformatReserved,
+    // valid link IDs are 0-11 and 15
+    // datawrapper ID is 0 or 1
+}
+
+impl RdhCruv6Validator {
+    pub fn sanity_check(&self, rdh: &RdhCRUv6) -> Result<(), GbtError> {
+        let mut err_str = String::from("RDH v7 sanity check failed: ");
+        let mut err_cnt: u8 = 0;
+        let mut rdh_errors: Vec<String> = vec![];
+        match self.rdh0_validator.sanity_check(&rdh.rdh0) {
+            Ok(_) => (),
+            Err(e) => {
+                err_cnt += 1;
+                rdh_errors.push(e);
+            }
+        };
+        match self.rdh1_validator.sanity_check(&rdh.rdh1) {
+            Ok(_) => (),
+            Err(e) => {
+                err_cnt += 1;
+                rdh_errors.push(e);
+            }
+        };
+        match self.rdh2_validator.sanity_check(&rdh.rdh2) {
+            Ok(_) => (),
+            Err(e) => {
+                err_cnt += 1;
+                rdh_errors.push(e);
+            }
+        };
+        match self.rdh3_validator.sanity_check(&rdh.rdh3) {
+            Ok(_) => (),
+            Err(e) => {
+                err_cnt += 1;
+                rdh_errors.push(e);
+            }
+        };
+
+        // TODO: find out what the valid values for the cru id are
+        if rdh.cru_id() > 0x1F {
+            err_cnt += 1;
+            let tmp = rdh.cru_id();
+            write!(err_str, "{} = {:#x} ", stringify!(cru_id), tmp).unwrap();
+        }
+        if rdh.dw() > 1 {
+            err_cnt += 1;
+            let tmp = rdh.dw();
+            write!(err_str, "{} = {:#x} ", stringify!(dw), tmp).unwrap();
+        }
+        if rdh.reserved0 != 0 {
+            err_cnt += 1;
+            let tmp = rdh.reserved0;
+            write!(err_str, "{} = {:#x} ", stringify!(reserved0), tmp).unwrap();
+        }
+        if rdh.reserved1 != 0 {
+            err_cnt += 1;
+            let tmp = rdh.reserved1;
+            write!(err_str, "{} = {:#x} ", stringify!(reserved1), tmp).unwrap();
+        }
+        if rdh.reserved2 != 0 {
+            err_cnt += 1;
+            let tmp = rdh.reserved2;
+            write!(err_str, "{} = {:#x} ", stringify!(reserved2), tmp).unwrap();
+        }
+
+        rdh_errors.into_iter().for_each(|e| {
+            err_str.push_str(&e);
+        });
+
+        if err_cnt != 0 {
+            return Err(GbtError::InvalidWord(err_str.to_owned()));
+        }
+
+        Ok(())
+    }
+}
+pub const RDH_CRU_V6_VALIDATOR: RdhCruv6Validator = RdhCruv6Validator {
+    rdh0_validator: &RDH0_V6_VALIDATOR,
+    rdh1_validator: &RDH1_VALIDATOR,
+    rdh2_validator: &RDH2_VALIDATOR,
+    rdh3_validator: &RDH3_VALIDATOR,
 };
 
 #[cfg(test)]
 mod tests {
-    use crate::macros::print;
+    use crate::data_words::rdh::{BcReserved, CruidDw, DataformatReserved};
 
     use super::*;
 
@@ -380,16 +637,244 @@ mod tests {
     // RDH1 sanity check
     #[test]
     fn validate_rdh1() {
-        let validator = RDH1_V7_VALIDATOR;
+        let validator = RDH1_VALIDATOR;
         let rdh1 = Rdh1::test_new(0, 0, 0);
         let res = validator.sanity_check(&rdh1);
         assert!(res.is_ok());
     }
     #[test]
     fn invalidate_rdh1_bad_reserved0() {
-        let validator = RDH1_V7_VALIDATOR;
+        let validator = RDH1_VALIDATOR;
         let rdh1 = Rdh1::test_new(0, 0, 1);
         let res = validator.sanity_check(&rdh1);
+        println!("{:?}", res);
+        assert!(res.is_err());
+    }
+
+    // RDH2 sanity check
+    #[test]
+    fn validate_rdh2() {
+        let validator = RDH2_VALIDATOR;
+        let rdh2 = Rdh2 {
+            trigger_type: 1,
+            pages_counter: 0,
+            stop_bit: 0,
+            reserved0: 0,
+        };
+        let res = validator.sanity_check(&rdh2);
+        assert!(res.is_ok());
+    }
+    #[test]
+    fn invalidate_rdh2_bad_reserved0() {
+        let validator = RDH2_VALIDATOR;
+        let rdh2 = Rdh2 {
+            trigger_type: 1,
+            pages_counter: 0,
+            stop_bit: 0,
+            reserved0: 1,
+        };
+        let res = validator.sanity_check(&rdh2);
+        println!("{:?}", res);
+        assert!(res.is_err());
+    }
+    #[test]
+    fn invalidate_rdh2_bad_trigger_type() {
+        let validator = RDH2_VALIDATOR;
+        let rdh2 = Rdh2 {
+            trigger_type: 0,
+            pages_counter: 0,
+            stop_bit: 0,
+            reserved0: 0,
+        };
+        let res = validator.sanity_check(&rdh2);
+        println!("{:?}", res);
+        assert!(res.is_err());
+    }
+    #[test]
+    fn invalidate_rdh2_bad_stop_bit() {
+        let validator = RDH2_VALIDATOR;
+        let rdh2 = Rdh2 {
+            trigger_type: 1,
+            pages_counter: 0,
+            stop_bit: 2,
+            reserved0: 0,
+        };
+        let res = validator.sanity_check(&rdh2);
+        println!("{:?}", res);
+        assert!(res.is_err());
+    }
+
+    // RDH3 sanity check
+    #[test]
+    fn validate_rdh3() {
+        let validator = RDH3_VALIDATOR;
+        let rdh3 = Rdh3 {
+            detector_field: 0,
+            par_bit: 0,
+            reserved0: 0,
+        };
+        let res = validator.sanity_check(&rdh3);
+        assert!(res.is_ok());
+    }
+    #[test]
+    fn invalidate_rdh3_bad_reserved0() {
+        let validator = RDH3_VALIDATOR;
+        let rdh3 = Rdh3 {
+            detector_field: 0,
+            par_bit: 0,
+            reserved0: 1,
+        };
+        let res = validator.sanity_check(&rdh3);
+        println!("{:?}", res);
+        assert!(res.is_err());
+    }
+    #[test]
+    fn invalidate_rdh3_bad_detector_field() {
+        let validator = RDH3_VALIDATOR;
+        let _reserved_bits_4_to_23_set: u32 = 0b1111_1111_1111_1111_1111_0000;
+        let example_bad_detector_field = 0b1000_0000;
+        let rdh3 = Rdh3 {
+            detector_field: example_bad_detector_field,
+            par_bit: 0,
+            reserved0: 0,
+        };
+        let res = validator.sanity_check(&rdh3);
+        println!("{:?}", res);
+        assert!(res.is_err());
+    }
+
+    // RDH-CRU v7 sanity check
+    // Data for use in tests:
+    const CORRECT_RDH_CRU: RdhCRUv7 = RdhCRUv7 {
+        rdh0: Rdh0 {
+            header_id: 0x7,
+            header_size: 0x40,
+            fee_id: FeeId(0x502A),
+            priority_bit: 0x0,
+            system_id: 0x20,
+            reserved0: 0,
+        },
+        offset_new_packet: 0x13E0,
+        memory_size: 0x13E0,
+        link_id: 0x0,
+        packet_counter: 0x0,
+        cruid_dw: CruidDw(0x0018),
+        rdh1: Rdh1 {
+            bc_reserved0: BcReserved(0x0),
+            orbit: 0x0b7dd575,
+        },
+        dataformat_reserved0: DataformatReserved(0x2),
+        rdh2: Rdh2 {
+            trigger_type: 0x00006a03,
+            pages_counter: 0x0,
+            stop_bit: 0x0,
+            reserved0: 0x0,
+        },
+        reserved1: 0x0,
+        rdh3: Rdh3 {
+            detector_field: 0x0,
+            par_bit: 0x0,
+            reserved0: 0x0,
+        },
+        reserved2: 0x0,
+    };
+
+    #[test]
+    fn validate_rdh_cru_v7() {
+        let validator = RDH_CRU_V7_VALIDATOR;
+        let res = validator.sanity_check(&CORRECT_RDH_CRU);
+        assert!(res.is_ok());
+    }
+    #[test]
+    fn invalidate_rdh_cru_v7_bad_header_id() {
+        let validator = RDH_CRU_V7_VALIDATOR;
+        let mut rdh_cru = CORRECT_RDH_CRU;
+        rdh_cru.rdh0.header_id = 0x0;
+        let res = validator.sanity_check(&rdh_cru);
+        println!("{:?}", res);
+        assert!(res.is_err());
+    }
+    #[test]
+    fn invalidate_rdh_cru_v7_multiple_errors() {
+        let validator = RDH_CRU_V7_VALIDATOR;
+        let mut rdh_cru = CORRECT_RDH_CRU;
+        rdh_cru.rdh0.header_size = 0x0;
+        rdh_cru.rdh2.reserved0 = 0x1;
+        rdh_cru.rdh3.detector_field = 0x5;
+        rdh_cru.rdh3.reserved0 = 0x1;
+        rdh_cru.reserved1 = 0x1;
+        rdh_cru.reserved2 = 0x1;
+        let fee_id_invalid_layer_is_7 = FeeId(0b0111_0000_0000_0000);
+        rdh_cru.rdh0.fee_id = fee_id_invalid_layer_is_7;
+        let res = validator.sanity_check(&rdh_cru);
+        println!("{:?}", res);
+        assert!(res.is_err());
+    }
+
+    // RDH-CRU v6 sanity check
+    // Data for use in tests:
+    const CORRECT_RDH_CRU_V6: RdhCRUv6 = RdhCRUv6 {
+        rdh0: Rdh0 {
+            header_id: 0x6,
+            header_size: 0x40,
+            fee_id: FeeId(0x502A),
+            priority_bit: 0x0,
+            system_id: 0x20,
+            reserved0: 0,
+        },
+        offset_new_packet: 0x13E0,
+        memory_size: 0x13E0,
+        link_id: 0x2,
+        packet_counter: 0x1,
+        cruid_dw: CruidDw(0x0018),
+        rdh1: Rdh1 {
+            bc_reserved0: BcReserved(0x0),
+            orbit: 0x0b7dd575,
+        },
+        reserved0: 0x0,
+        rdh2: Rdh2 {
+            trigger_type: 0x00006a03,
+            pages_counter: 0x0,
+            stop_bit: 0x0,
+            reserved0: 0x0,
+        },
+        reserved1: 0x0,
+        rdh3: Rdh3 {
+            detector_field: 0x0,
+            par_bit: 0x0,
+            reserved0: 0x0,
+        },
+        reserved2: 0x0,
+    };
+
+    #[test]
+    fn validate_rdh_cru_v6() {
+        let validator = RDH_CRU_V6_VALIDATOR;
+        let res = validator.sanity_check(&CORRECT_RDH_CRU_V6);
+        assert!(res.is_ok());
+    }
+    #[test]
+    fn invalidate_rdh_cru_v6_bad_header_id() {
+        let validator = RDH_CRU_V6_VALIDATOR;
+        let mut rdh_cru = CORRECT_RDH_CRU_V6;
+        rdh_cru.rdh0.header_id = 0x0;
+        let res = validator.sanity_check(&rdh_cru);
+        println!("{:?}", res);
+        assert!(res.is_err());
+    }
+    #[test]
+    fn invalidate_rdh_cru_v6_multiple_errors() {
+        let validator = RDH_CRU_V6_VALIDATOR;
+        let mut rdh_cru = CORRECT_RDH_CRU_V6;
+        rdh_cru.rdh0.header_size = 0x0;
+        rdh_cru.rdh2.reserved0 = 0x1;
+        rdh_cru.rdh3.detector_field = 0x5;
+        rdh_cru.rdh3.reserved0 = 0x1;
+        rdh_cru.reserved1 = 0x1;
+        rdh_cru.reserved2 = 0x1;
+        let fee_id_invalid_layer_is_7 = FeeId(0b0111_0000_0000_0000);
+        rdh_cru.rdh0.fee_id = fee_id_invalid_layer_is_7;
+        let res = validator.sanity_check(&rdh_cru);
         println!("{:?}", res);
         assert!(res.is_err());
     }

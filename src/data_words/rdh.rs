@@ -10,38 +10,16 @@ use std::fmt::{self, Debug};
 // Newtype pattern used to enforce type safety on fields that are not byte-aligned
 #[derive(Debug, PartialEq, Clone, Copy)]
 #[repr(packed)]
-struct CruidDw(u16); // 12 bit cru_id, 4 bit dw
+pub(crate) struct CruidDw(pub(crate) u16); // 12 bit cru_id, 4 bit dw
 #[derive(Debug, PartialEq, Clone, Copy)]
 #[repr(packed)]
-pub(crate) struct BcReserved(u32); // 12 bit bc, 20 bit reserved
+pub(crate) struct BcReserved(pub(crate) u32); // 12 bit bc, 20 bit reserved
 #[repr(packed)]
 #[derive(Debug, PartialEq, Clone, Copy)]
-struct DataformatReserved(u64); // 8 bit data_format, 56 bit reserved0
+pub struct DataformatReserved(pub(crate) u64); // 8 bit data_format, 56 bit reserved0
 #[repr(packed)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct FeeId(pub(crate) u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
-
-#[repr(packed)]
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub struct RdhCRUtest {
-    pub rdh0: Rdh0Test,
-    pub offset_new_packet: u16,
-    pub memory_size: u16,
-    pub link_id: u8,
-    pub packet_counter: u8,
-    cruid_dw: u16, // 12 bit cru_id, 4 bit dw
-}
-#[repr(packed)]
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub struct Rdh0Test {
-    // Represents 64 bit
-    pub header_id: u8,
-    pub header_size: u8,
-    pub fee_id: u16, // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
-    pub priority_bit: u8,
-    pub system_id: u8,
-    pub reserved0: u16,
-}
 
 #[repr(packed)]
 #[derive(PartialEq, Clone, Copy)]
@@ -51,9 +29,9 @@ pub struct RdhCRUv7 {
     pub memory_size: u16,
     pub link_id: u8,
     pub packet_counter: u8,
-    cruid_dw: CruidDw, // 12 bit cru_id, 4 bit dw
+    pub(crate) cruid_dw: CruidDw, // 12 bit cru_id, 4 bit dw
     pub rdh1: Rdh1,
-    dataformat_reserved0: DataformatReserved, // 8 bit data_format, 56 bit reserved0
+    pub(crate) dataformat_reserved0: DataformatReserved, // 8 bit data_format, 56 bit reserved0
     pub rdh2: Rdh2,
     pub reserved1: u64,
     pub rdh3: Rdh3,
@@ -176,7 +154,7 @@ pub struct RdhCRUv6 {
     pub memory_size: u16,
     pub link_id: u8,
     pub packet_counter: u8,
-    cruid_dw: CruidDw, // 12 bit cru_id, 4 bit dw
+    pub(crate) cruid_dw: CruidDw, // 12 bit cru_id, 4 bit dw
     pub rdh1: Rdh1,
     pub reserved0: u64,
     pub rdh2: Rdh2,
@@ -322,7 +300,7 @@ impl GbtWord for Rdh0 {
     }
 }
 impl Rdh0 {
-    pub fn sanity_check(&self, validator: &Rdh0Validator) -> Result<(), GbtError> {
+    pub fn sanity_check(&self, validator: &Rdh0Validator) -> Result<(), String> {
         match validator.sanity_check(self) {
             Ok(()) => Ok(()),
             Err(e) => Err(e),
@@ -348,8 +326,8 @@ impl Debug for Rdh0 {
 #[derive(PartialEq, Clone, Copy)]
 pub struct Rdh1 {
     // Rdh1 is 64 bit total
-    bc_reserved0: BcReserved, //bunch counter 12 bit + reserved 20 bit
-    pub orbit: u32,           // 32 bit
+    pub(crate) bc_reserved0: BcReserved, //bunch counter 12 bit + reserved 20 bit
+    pub orbit: u32,                      // 32 bit
 }
 
 impl Rdh1 {
@@ -460,7 +438,7 @@ impl Debug for Rdh2 {
 #[repr(packed)]
 #[derive(PartialEq, Clone, Copy)]
 pub struct Rdh3 {
-    pub detector_field: u32,
+    pub detector_field: u32, // 23:4 is reserved
     pub par_bit: u16,
     pub reserved0: u16,
 }
