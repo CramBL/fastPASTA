@@ -4,7 +4,6 @@ use std::{
     vec,
 };
 
-use binrw::BinRead;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use fastpasta::{
     buf_reader_with_capacity, data_words::rdh::RdhCRUv7, file_open_read_only, ByteSlice, GbtWord,
@@ -78,24 +77,6 @@ fn parse_rdh_manual(rdh_cru_size_bytes: u64, filename: &str, iterations: usize) 
     }
 }
 
-#[inline]
-fn parse_rdh_binrw(rdh_cru_size_bytes: u64, filename: &str, iterations: usize) {
-    let filepath = std::path::PathBuf::from(filename);
-    let file = file_open_read_only(&filepath).unwrap();
-    let mut buf_reader = std::io::BufReader::new(file);
-    for _i in 1..iterations {
-        let rdh_tmp = RdhCRUv7::read(&mut buf_reader).expect("Failed to load RdhCRUv7");
-        let relative_offset =
-            RelativeOffset::new((rdh_tmp.offset_new_packet as u64) - rdh_cru_size_bytes);
-        buf_reader
-            .seek_relative(relative_offset.0)
-            .expect("Error seeking");
-        if rdh_tmp.rdh0.header_id != 7 {
-            println!("WRONG header ID: {}", rdh_tmp.rdh0.header_id);
-        }
-    }
-}
-
 fn bench_deserialization(c: &mut Criterion) {
     let mut group = c.benchmark_group("deserialization");
     const RDH_CRU_SIZE_BYTES: u64 = 64;
@@ -104,15 +85,6 @@ fn bench_deserialization(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("manual", i.to_string()), i, |b, i| {
             b.iter(|| {
                 parse_rdh_manual(
-                    black_box(RDH_CRU_SIZE_BYTES),
-                    black_box(filename),
-                    black_box(*i),
-                )
-            })
-        });
-        group.bench_with_input(BenchmarkId::new("binrw", i.to_string()), i, |b, i| {
-            b.iter(|| {
-                parse_rdh_binrw(
                     black_box(RDH_CRU_SIZE_BYTES),
                     black_box(filename),
                     black_box(*i),
@@ -134,20 +106,6 @@ fn write_rdh_manual(rdhs: Vec<RdhCRUv7>, filename: &str) {
     let mut buf_writer = std::io::BufWriter::new(file);
     rdhs.into_iter().for_each(|rdh| {
         buf_writer.write_all(rdh.to_byte_slice()).unwrap();
-    });
-}
-
-#[inline]
-fn write_rdh_binrw(rdhs: Vec<RdhCRUv7>, filename: &str) {
-    let filepath = std::path::PathBuf::from(filename);
-    let file = std::fs::File::options()
-        .write(true)
-        .create(true)
-        .open(&filepath)
-        .unwrap();
-    let mut buf_writer = std::io::BufWriter::new(file);
-    rdhs.into_iter().for_each(|rdh| {
-        binrw::BinWrite::write(&rdh, &mut buf_writer).expect("Failed to write RdhCRUv7");
     });
 }
 
@@ -175,15 +133,9 @@ fn bench_serialization_write(c: &mut Criterion) {
     group.bench_with_input(BenchmarkId::new("manual", ""), filename_manual, |b, f| {
         b.iter(|| write_rdh_manual(black_box(rdhs.clone()), black_box(f)))
     });
-    group.bench_with_input(BenchmarkId::new("binrw", ""), filename_binrw, |b, f| {
-        b.iter(|| write_rdh_binrw(black_box(rdhs.clone()), black_box(f)))
-    });
-
     // cleanup
     let filepath = std::path::PathBuf::from(filename_manual);
     std::fs::remove_file(&filepath).unwrap();
-    let fpath = std::path::PathBuf::from(filename_binrw);
-    std::fs::remove_file(&fpath).unwrap();
 
     group.finish();
 }
