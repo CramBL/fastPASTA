@@ -60,6 +60,8 @@ pub fn main() -> std::io::Result<()> {
     let rdh_validator = fastpasta::validators::rdh::RDH_CRU_V7_VALIDATOR;
     let mut processed = 0;
 
+    let mut running_rdh_checker = fastpasta::validators::rdh::RdhCruv7RunningChecker::new();
+
     loop {
         let tmp_rdh = match RdhCRUv7::load(&mut buf_reader) {
             Ok(rdh) => rdh,
@@ -86,6 +88,19 @@ pub fn main() -> std::io::Result<()> {
                     println!("Sanity check failed: {}", e);
                     break;
                 }
+            }
+        }
+
+        // RDH CHECH: There is always page 0 + minimum page 1 + stop flag
+        match running_rdh_checker.check(&tmp_rdh) {
+            Ok(_) => (),
+            Err(e) => {
+                println!("RDH check failed: {}", e);
+                println!("Last RDH: {:?}", running_rdh_checker.last_rdh2.unwrap());
+                println!("Current RDH: {:?}", tmp_rdh);
+                println!("Processed: {}", processed);
+
+                break;
             }
         }
 

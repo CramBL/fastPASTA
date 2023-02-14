@@ -487,6 +487,58 @@ pub const RDH_CRU_V6_VALIDATOR: RdhCruv6Validator = RdhCruv6Validator {
     rdh3_validator: &RDH3_VALIDATOR,
 };
 
+pub struct RdhCruv7RunningChecker {
+    pub expect_pages_counter: u16,
+    pub last_rdh2: Option<Rdh2>,
+}
+impl RdhCruv7RunningChecker {
+    pub fn new() -> Self {
+        Self {
+            expect_pages_counter: 0,
+            last_rdh2: None,
+        }
+    }
+    pub fn check(&mut self, rdh: &RdhCRUv7) -> Result<(), GbtError> {
+        let mut err_str = String::from("RDH v7 running check failed: ");
+        let mut err_cnt: u8 = 0;
+        match rdh.rdh2.stop_bit {
+            0 => {
+                if rdh.rdh2.pages_counter != self.expect_pages_counter {
+                    err_cnt += 1;
+                    let tmp = rdh.rdh2.pages_counter;
+                    write!(err_str, "{} = {:#x} ", stringify!(pages_counter), tmp).unwrap();
+                }
+                self.expect_pages_counter += 1;
+            }
+            1 => {
+                if rdh.rdh2.pages_counter != self.expect_pages_counter {
+                    err_cnt += 1;
+                    let tmp = rdh.rdh2.pages_counter;
+                    write!(err_str, "{} = {:#x} ", stringify!(pages_counter), tmp).unwrap();
+                }
+                self.expect_pages_counter = 0;
+            }
+            _ => {
+                err_cnt += 1;
+                write!(
+                    err_str,
+                    "{} = {:#x} ",
+                    stringify!(stop_bit),
+                    rdh.rdh2.stop_bit
+                )
+                .unwrap();
+            }
+        };
+
+        if err_cnt != 0 {
+            return Err(GbtError::InvalidWord(err_str.to_owned()));
+        }
+
+        self.last_rdh2 = Some(rdh.rdh2);
+
+        Ok(())
+    }
+}
 #[cfg(test)]
 mod tests {
     use crate::data_words::rdh::{BcReserved, CruidDw, DataformatReserved};
