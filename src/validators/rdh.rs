@@ -520,13 +520,8 @@ impl RdhCruv7RunningChecker {
             }
             _ => {
                 err_cnt += 1;
-                write!(
-                    err_str,
-                    "{} = {:#x} ",
-                    stringify!(stop_bit),
-                    rdh.rdh2.stop_bit
-                )
-                .unwrap();
+                let tmp = rdh.rdh2.stop_bit;
+                write!(err_str, "{} = {:#x} ", stringify!(stop_bit), tmp).unwrap();
             }
         };
 

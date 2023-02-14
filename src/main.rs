@@ -125,5 +125,7 @@ pub fn main() -> std::io::Result<()> {
         println!("Elapsed: {:?}", now.elapsed());
     }
 
+    debug_assert!(running_rdh_checker.expect_pages_counter == 0);
+
     Ok(())
 }
