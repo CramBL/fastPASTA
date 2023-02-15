@@ -469,11 +469,10 @@ impl RdhCruv6Validator {
             write!(err_str, "{} = {:#x} ", stringify!(reserved2), tmp).unwrap();
         }
 
-        rdh_errors.into_iter().for_each(|e| {
-            err_str.push_str(&e);
-        });
-
         if err_cnt != 0 {
+            rdh_errors.into_iter().for_each(|e| {
+                err_str.push_str(&e);
+            });
             return Err(GbtError::InvalidWord(err_str.to_owned()));
         }
 
@@ -498,38 +497,74 @@ impl RdhCruv7RunningChecker {
             last_rdh2: None,
         }
     }
+    #[inline]
     pub fn check(&mut self, rdh: &RdhCRUv7) -> Result<(), GbtError> {
         let mut err_str = String::from("RDH v7 running check failed: ");
+        let mut rdh_errors: Vec<String> = vec![];
         let mut err_cnt: u8 = 0;
-        match rdh.rdh2.stop_bit {
+
+        match self.check_stop_bit_and_page_counter(&rdh.rdh2) {
+            Ok(_) => (),
+            Err(e) => {
+                err_cnt += 1;
+                rdh_errors.push(e);
+            }
+        };
+
+        if err_cnt != 0 {
+            rdh_errors.into_iter().for_each(|e| {
+                err_str.push_str(&e);
+            });
+            return Err(GbtError::InvalidWord(err_str.to_owned()));
+        }
+
+        self.last_rdh2 = Some(rdh.rdh2);
+
+        Ok(())
+    }
+
+    /// # Check `stop_bit` and `pages_counter` across a CDP
+    ///
+    /// 1. If `stop_bit` is 0, page counter should be equal to either:
+    ///      * the previous `pages_counter` + 1
+    ///      * 0 if the `stop_bit` of the previous `Rdh2` was 1 (handled in the match on `stop_bit == 1`)
+    ///
+    ///     Side effect: `self.expect_pages_counter += 1`
+    ///
+    /// 2. If `stop_bit` is 1, `pages_counter` should be equal to the previous `pages_counter` + 1
+    ///
+    ///    Side effect: `self.expect_pages_counter = 0`
+    #[inline]
+    fn check_stop_bit_and_page_counter(&mut self, rdh2: &Rdh2) -> Result<(), String> {
+        let mut err_str = String::from("RDH2 check stop_bit & page_counter failed: ");
+        let mut err_cnt: u8 = 0;
+        match rdh2.stop_bit {
             0 => {
-                if rdh.rdh2.pages_counter != self.expect_pages_counter {
+                if rdh2.pages_counter != self.expect_pages_counter {
                     err_cnt += 1;
-                    let tmp = rdh.rdh2.pages_counter;
+                    let tmp = rdh2.pages_counter;
                     write!(err_str, "{} = {:#x} ", stringify!(pages_counter), tmp).unwrap();
                 }
                 self.expect_pages_counter += 1;
             }
             1 => {
-                if rdh.rdh2.pages_counter != self.expect_pages_counter {
+                if rdh2.pages_counter != self.expect_pages_counter {
                     err_cnt += 1;
-                    let tmp = rdh.rdh2.pages_counter;
+                    let tmp = rdh2.pages_counter;
                     write!(err_str, "{} = {:#x} ", stringify!(pages_counter), tmp).unwrap();
                 }
                 self.expect_pages_counter = 0;
             }
             _ => {
                 err_cnt += 1;
-                let tmp = rdh.rdh2.stop_bit;
+                let tmp = rdh2.stop_bit;
                 write!(err_str, "{} = {:#x} ", stringify!(stop_bit), tmp).unwrap();
             }
         };
 
         if err_cnt != 0 {
-            return Err(GbtError::InvalidWord(err_str.to_owned()));
+            return Err(err_str.to_owned());
         }
-
-        self.last_rdh2 = Some(rdh.rdh2);
 
         Ok(())
     }
