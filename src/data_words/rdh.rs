@@ -42,13 +42,11 @@ impl RdhCRUv7 {
     }
     pub fn dw(&self) -> u8 {
         // Get the dw present in the 4 MSB
-        ((self.cruid_dw.0 & 0xF000) >> 12).try_into().unwrap()
+        ((self.cruid_dw.0 & 0xF000) >> 12) as u8
     }
     pub fn data_format(&self) -> u8 {
         // Get the data_format present in the 8 LSB
-        (self.dataformat_reserved0.0 & 0x00000000000000FF)
-            .try_into()
-            .unwrap()
+        (self.dataformat_reserved0.0 & 0x00000000000000FF) as u8
     }
     pub fn reserved0(&self) -> u64 {
         // Get the reserved0 present in the 56 MSB
@@ -64,23 +62,16 @@ impl ByteSlice for RdhCRUv7 {
 
 impl GbtWord for RdhCRUv7 {
     fn print(&self) {
-        println!("===================\nRdhCRU:");
+        println!("RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop"); //Needed?  Memory   CRU   DW");
+        println!("ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit\n"); //Needed?    size     ID    ID\n");
         self.rdh0.print();
-        let tmp_offset_new_packet = self.offset_new_packet;
-        pretty_print_hex_field!("offset_new_packet", tmp_offset_new_packet);
-        let tmp_memory_size = self.memory_size;
-        pretty_print_hex_field!("memory_size", tmp_memory_size);
-        pretty_print_hex_field!("link_id", self.link_id);
-        pretty_print_hex_field!("packet_counter", self.packet_counter);
-        pretty_print_hex_field!("cru_id", self.cru_id());
-        pretty_print_hex_field!("dw", self.dw());
+        let tmp_offset = self.offset_new_packet;
+        let tmp_link = self.link_id;
+        let tmp_packet_cnt = self.packet_counter;
+        print!("{:<8}{:<6}{:<10}", tmp_offset, tmp_link, tmp_packet_cnt);
         self.rdh1.print();
-        pretty_print_hex_field!("data_format", self.data_format());
-        pretty_print_hex_field!("reserved0", self.reserved0());
+        print!("{:<11}", self.data_format());
         self.rdh2.print();
-        pretty_print_hex_fields!(self, reserved1);
-        self.rdh3.print();
-        pretty_print_hex_fields!(self, reserved2);
     }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<RdhCRUv7, std::io::Error> {
         let rdh0 = match Rdh0::load(reader) {
@@ -167,7 +158,7 @@ impl RdhCRUv6 {
     }
     pub fn dw(&self) -> u8 {
         // Get the dw present in the 4 MSB
-        ((self.cruid_dw.0 & 0xF000) >> 12).try_into().unwrap()
+        ((self.cruid_dw.0 & 0xF000) >> 12) as u8
     }
 }
 
@@ -179,23 +170,15 @@ impl ByteSlice for RdhCRUv6 {
 
 impl GbtWord for RdhCRUv6 {
     fn print(&self) {
-        println!("===================\nRdhCRU:");
+        println!("RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Trigger   Pages    Stop"); //Needed?  Memory   CRU   DW");
+        println!("ver   size    ID    ID    next    ID    counter        counter     type      counter  bit\n"); //Needed?    size     ID    ID\n");
         self.rdh0.print();
-        pretty_print_hex_fields!(
-            self,
-            offset_new_packet,
-            memory_size,
-            link_id,
-            packet_counter
-        );
-        pretty_print_hex_field!("cru_id", self.cru_id());
-        pretty_print_hex_field!("dw", self.dw());
+        let tmp_offset = self.offset_new_packet;
+        let tmp_link = self.link_id;
+        let tmp_packet_cnt = self.packet_counter;
+        print!("{:<8}{:<6}{:<10}", tmp_offset, tmp_link, tmp_packet_cnt);
         self.rdh1.print();
-        pretty_print_hex_fields!(self, reserved0);
         self.rdh2.print();
-        pretty_print_hex_fields!(self, reserved1);
-        self.rdh3.print();
-        pretty_print_hex_fields!(self, reserved2);
     }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<RdhCRUv6, std::io::Error> {
         let rdh0 = match Rdh0::load(reader) {
@@ -265,15 +248,12 @@ pub struct Rdh0 {
 
 impl GbtWord for Rdh0 {
     fn print(&self) {
-        println!("Rdh0:");
-        pretty_print_hex_field!("header_id", self.header_id);
-        pretty_print_hex_field!("header_size", self.header_size);
-        let tmp_fee_id = self.fee_id.0;
-        pretty_print_hex_field!("fee_id", tmp_fee_id);
-        pretty_print_hex_field!("priority_bit", self.priority_bit);
-        pretty_print_hex_field!("system_id", self.system_id);
-        let tmp_reserved0 = self.reserved0;
-        pretty_print_hex_field!("reserved0", tmp_reserved0);
+        // {:0>5} {:[fill][align][width]}
+        let tmp_fee = self.fee_id.0;
+        print!(
+            "{:<6}{:<7}{:<7}{:<6}",
+            self.header_id, self.header_size, tmp_fee, self.system_id
+        );
     }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh0, std::io::Error> {
         // Create a helper macro for loading an array of the given size from
@@ -329,7 +309,7 @@ impl Rdh1 {
     }
 
     pub fn bc(&self) -> u16 {
-        (self.bc_reserved0.0 & 0x0FFF).try_into().unwrap()
+        (self.bc_reserved0.0 & 0x0FFF) as u16
     }
     pub fn reserved0(&self) -> u32 {
         self.bc_reserved0.0 >> 12
@@ -338,11 +318,9 @@ impl Rdh1 {
 
 impl GbtWord for Rdh1 {
     fn print(&self) {
-        println!("Rdh1:");
-        pretty_print_hex_field!("bc", self.bc());
-        pretty_print_hex_field!("reserved0", self.reserved0());
         let tmp_orbit = self.orbit;
-        pretty_print_hex_field!("orbit", tmp_orbit);
+        let orbit_as_hex = format!("{:#x}", tmp_orbit);
+        print!("{:<5}{:<12}", self.bc(), orbit_as_hex);
     }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh1, std::io::Error> {
         // Create a helper macro for loading an array of the given size from
@@ -387,7 +365,13 @@ pub struct Rdh2 {
 
 impl GbtWord for Rdh2 {
     fn print(&self) {
-        pretty_print_name_hex_fields!(Rdh2, self, trigger_type, pages_counter, stop_bit, reserved0);
+        let tmp_trigger_type = self.trigger_type;
+        let tmp_pages_counter = self.pages_counter;
+        let trigger_type_as_hex = format!("{:#x}", tmp_trigger_type);
+        println!(
+            "{:<10}{:<9}{:<5}",
+            trigger_type_as_hex, tmp_pages_counter, self.stop_bit
+        );
     }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh2, std::io::Error> {
         // Create a helper macro for loading an array of the given size from
@@ -529,6 +513,8 @@ mod tests {
         let file = file_open_read_only(&filepath).unwrap();
         let mut buf_reader = BufReader::new(file);
         let rdh_cru = RdhCRUv7::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
+
+        rdh_cru.print();
         //let rdh_cru_binrw = RdhCRUv7::read(&mut buf_reader).expect("Failed to load RdhCRUv7");
         // Assert that the two methods are equal
         assert_eq!(rdh_cru, correct_rdh_cru);
@@ -593,7 +579,7 @@ mod tests {
         let rdh_cru = RdhCRUv6::load(&mut buf_reader).expect("Failed to load RdhCRUv6");
         // Check that both the manual and binrw way of reading the file are correct
         assert_eq!(rdh_cru, correct_rdhcruv6);
-        //assert_eq!(rdh_cru_binrw, correct_rdhcruv6);
+        rdh_cru.print();
 
         // This function currently corresponds to the unlink function on Unix and the DeleteFile function on Windows. Note that, this may change in the future.
         // More info: https://doc.rust-lang.org/std/fs/fn.remove_file.html
