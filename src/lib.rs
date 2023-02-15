@@ -4,6 +4,10 @@ pub mod data_words;
 pub mod macros;
 pub mod validators;
 
+/// This is the trait that all GBT words must implement
+/// It is used to:
+/// * pretty printing to stdout
+/// * deserialize the GBT words from the binary file
 pub trait GbtWord: std::fmt::Debug + PartialEq {
     fn print(&self);
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
@@ -11,6 +15,8 @@ pub trait GbtWord: std::fmt::Debug + PartialEq {
         Self: Sized;
 }
 
+/// This trait is used to convert a struct to a byte slice
+/// All structs that are used to represent a full GBT word (not sub RDH words) must implement this trait
 pub trait ByteSlice {
     fn to_byte_slice(&self) -> &[u8];
 }
