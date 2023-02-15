@@ -12,7 +12,7 @@ use structopt::StructOpt;
 )]
 struct Opt {
     /// Dump RDHs to stdout or file
-    #[structopt(short = "d-rhd", long = "dump-rhds")]
+    #[structopt(short, long = "dump-rhds")]
     dump_rhds: bool,
 
     /// Activate sanity checks
@@ -23,13 +23,8 @@ struct Opt {
     #[structopt(name = "FILE", parse(from_os_str))]
     file: PathBuf,
 
-    /// Where to write the output: to `stdout` or `file`
-    #[structopt(short = "o", long = "out-type", default_value = "stdout")]
-    out_type: String,
-
-    /// File name: only required when `out-type` is set to `file`
-    #[structopt(name = "OUTFILE", required_if("out-type", "file"))]
-    outfile_name: Option<String>,
+    #[structopt(short, long, parse(from_os_str))]
+    output: Option<PathBuf>,
 }
 
 const RDH_CRU_SIZE_BYTES: u64 = 64;
@@ -106,9 +101,9 @@ pub fn main() -> std::io::Result<()> {
 
         processed += 1;
         if opt.dump_rhds {
-            if opt.out_type == "file" {
+            if opt.output.is_some() {
                 rdhs.push(tmp_rdh);
-            } else if opt.out_type == "stdout" {
+            } else {
                 println!("{:?}", tmp_rdh);
             }
         }
@@ -116,8 +111,8 @@ pub fn main() -> std::io::Result<()> {
     println!("Vec size: {}", rdhs.len());
     println!("Elapsed: {:?}", now.elapsed());
     //Write RDHs to file
-    if opt.out_type == "file" {
-        let filepath = PathBuf::from(opt.outfile_name.unwrap());
+    if opt.output.is_some() {
+        let filepath = PathBuf::from(opt.output.unwrap());
         let mut file = std::fs::File::create(&filepath).unwrap();
         rdhs.into_iter().for_each(|rdh| {
             std::io::Write::write_all(&mut file, rdh.to_byte_slice()).unwrap();
