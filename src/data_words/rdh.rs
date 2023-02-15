@@ -52,6 +52,13 @@ impl RdhCRUv7 {
         // Get the reserved0 present in the 56 MSB
         (self.dataformat_reserved0.0 & 0xFFFFFFFFFFFFFF00) >> 8
     }
+
+    pub fn print_header_text() {
+        println!("RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop");
+        //Needed?  Memory   CRU   DW");
+        println!("ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit\n");
+        //Needed?    size     ID    ID\n");
+    }
 }
 
 impl ByteSlice for RdhCRUv7 {
@@ -62,8 +69,6 @@ impl ByteSlice for RdhCRUv7 {
 
 impl GbtWord for RdhCRUv7 {
     fn print(&self) {
-        println!("RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop"); //Needed?  Memory   CRU   DW");
-        println!("ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit\n"); //Needed?    size     ID    ID\n");
         self.rdh0.print();
         let tmp_offset = self.offset_new_packet;
         let tmp_link = self.link_id;
