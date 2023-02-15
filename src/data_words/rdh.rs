@@ -1,9 +1,7 @@
 use crate::ByteSlice;
 // ITS data format: https://gitlab.cern.ch/alice-its-wp10-firmware/RU_mainFPGA/-/wikis/ITS%20Data%20Format#Introduction
-use crate::validators::rdh::GbtError;
 use crate::{
-    pretty_print_hex_field, pretty_print_hex_fields, pretty_print_name_hex_fields,
-    validators::rdh::Rdh0Validator, GbtWord,
+    pretty_print_hex_field, pretty_print_hex_fields, pretty_print_name_hex_fields, GbtWord,
 };
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use std::fmt::{self, Debug};
@@ -16,10 +14,10 @@ pub(crate) struct CruidDw(pub(crate) u16); // 12 bit cru_id, 4 bit dw
 pub(crate) struct BcReserved(pub(crate) u32); // 12 bit bc, 20 bit reserved
 #[repr(packed)]
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub struct DataformatReserved(pub(crate) u64); // 8 bit data_format, 56 bit reserved0
+pub(crate) struct DataformatReserved(pub(crate) u64); // 8 bit data_format, 56 bit reserved0
 #[repr(packed)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct FeeId(pub(crate) u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
+pub(crate) struct FeeId(pub(crate) u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
 
 #[repr(packed)]
 #[derive(PartialEq, Clone, Copy)]
@@ -259,7 +257,7 @@ pub struct Rdh0 {
     // Represents 64 bit
     pub header_id: u8,
     pub header_size: u8,
-    pub fee_id: FeeId, // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
+    pub(crate) fee_id: FeeId, // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
     pub priority_bit: u8,
     pub system_id: u8,
     pub reserved0: u16,
@@ -299,15 +297,6 @@ impl GbtWord for Rdh0 {
         })
     }
 }
-impl Rdh0 {
-    pub fn sanity_check(&self, validator: &Rdh0Validator) -> Result<(), String> {
-        match validator.sanity_check(self) {
-            Ok(()) => Ok(()),
-            Err(e) => Err(e),
-        }
-    }
-}
-
 impl Debug for Rdh0 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let tmp_header_id = self.header_id;
