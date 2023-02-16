@@ -18,7 +18,7 @@ pub(crate) struct DataformatReserved(pub(crate) u64); // 8 bit data_format, 56 b
 pub(crate) struct FeeId(pub(crate) u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
 
 #[repr(packed)]
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq)]
 pub struct RdhCRUv7 {
     pub rdh0: Rdh0,
     pub offset_new_packet: u16,
@@ -139,7 +139,7 @@ impl Debug for RdhCRUv7 {
 }
 
 #[repr(packed)]
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq)]
 pub struct RdhCRUv6 {
     pub rdh0: Rdh0,
     pub offset_new_packet: u16,

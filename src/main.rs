@@ -11,7 +11,19 @@ pub fn main() -> std::io::Result<()> {
     let mut stats = fastpasta::Stats::new();
 
     let mut buf_reader = setup_buffered_reading(&opt);
-    let mut file_tracker = fastpasta::FileTracker::new();
+    let mut file_tracker = fastpasta::FilePosTracker::new();
+
+    // 1. Create reader
+    //      - Open file in read only mode
+    //      - Wrap in BufReader
+    //      - Track file position
+    //      - reads data through struct interface + buffer
+    // 2. Read into in reasonably sized buffer
+    // 3. Pass buffer to checker and read another chunk
+    // 4. Checker verifies received buffered chunk (big checks -> multi-threading)
+    //                Not valid -> Print error and abort
+    //                Valid     -> Pass chunk to writer
+    // 5. Writer writes chunk to file OR stdout
 
     let mut rdhs: Vec<RdhCRUv7> = vec![];
 
@@ -36,6 +48,9 @@ pub fn main() -> std::io::Result<()> {
                 break;
             }
         };
+        if opt.sanity_checks() {
+            sanity_validation(&tmp_rdh);
+        }
         // RDH CHECK: There is always page 0 + minimum page 1 + stop flag
         match running_rdh_checker.check(&tmp_rdh) {
             Ok(_) => (),
@@ -50,64 +65,43 @@ pub fn main() -> std::io::Result<()> {
                 break;
             }
         }
+        // Seen links stats:
+        if stats.links_observed.contains(&tmp_rdh.link_id) == false {
+            stats.links_observed.push(tmp_rdh.link_id);
+        }
 
         if filter_link.is_some() {
+            let offset = tmp_rdh.offset_new_packet;
             if filter_link
                 .as_mut()
                 .unwrap()
-                .filter_link(&mut buf_reader, &tmp_rdh)
+                .filter_link(&mut buf_reader, tmp_rdh)
                 == false
             {
                 buf_reader
-                    .seek_relative(file_tracker.next(tmp_rdh.offset_new_packet as u64))
+                    .seek_relative(file_tracker.next(offset as u64))
                     .expect("Error seeking");
             }
         } else {
             buf_reader
                 .seek_relative(file_tracker.next(tmp_rdh.offset_new_packet as u64))
                 .expect("Error seeking");
-        }
-
-        if opt.sanity_checks() {
-            sanity_validation(&tmp_rdh);
-        }
-
-        // Filter links rdhs
-        // if opt.filter_link().is_some() {
-        //     if opt.filter_link().unwrap() == tmp_rdh.link_id {
-        //         filtered_links.push(tmp_rdh);
-        //     }
-        // }
-
-        // Seen links stats:
-        if stats.links_observed.contains(&tmp_rdh.link_id) == false {
-            stats.links_observed.push(tmp_rdh.link_id);
+            if opt.dump_rhds() {
+                if opt.output().is_some() {
+                    rdhs.push(tmp_rdh);
+                } else {
+                    println!("{:?}", tmp_rdh);
+                }
+            }
         }
 
         stats.total_rdhs += 1;
-        if opt.dump_rhds() {
-            if opt.output().is_some() {
-                rdhs.push(tmp_rdh);
-            } else {
-                println!("{:?}", tmp_rdh);
-            }
-        }
     }
     println!("Vec size: {}", rdhs.len());
-    stats.print_time();
 
     if filter_link.is_some() {
         filter_link.unwrap().print_stats();
     }
-    // //Write RDHs to file
-    // if opt.output().is_some() {
-    //     let filepath = PathBuf::from(opt.output().as_ref().unwrap());
-    //     let mut file = std::fs::File::create(&filepath).unwrap();
-    //     rdhs.into_iter().for_each(|rdh| {
-    //         std::io::Write::write_all(&mut file, rdh.to_byte_slice()).unwrap();
-    //     });
-    //     println!("Elapsed: {:?}", now.elapsed());
-    // }
 
     debug_assert!(running_rdh_checker.expect_pages_counter == 0);
     stats.print();

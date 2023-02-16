@@ -1,6 +1,6 @@
 use std::{fs::File, io::Write, path::PathBuf};
 
-use data_words::rdh::RdhCRUv7;
+use data_words::rdh::{RdhCRUv6, RdhCRUv7};
 
 pub mod data_words;
 pub mod macros;
@@ -26,10 +26,11 @@ pub struct Opt {
     #[structopt(short = "f", long)]
     filter_link: Option<u8>,
 
-    /// Files to process
+    /// File to process
     #[structopt(name = "FILE", parse(from_os_str))]
     file: PathBuf,
 
+    /// Output file
     #[structopt(short, long, parse(from_os_str))]
     output: Option<PathBuf>,
 }
@@ -61,6 +62,12 @@ pub trait GbtWord: std::fmt::Debug + PartialEq {
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
     where
         Self: Sized;
+}
+
+pub trait LoadRdhCru<T> {
+    fn load_rdh_cru(&mut self) -> Result<T, std::io::Error>
+    where
+        T: GbtWord;
 }
 
 /// This trait is used to convert a struct to a byte slice
@@ -108,22 +115,63 @@ pub fn setup_buffered_reading(config: &Opt) -> std::io::BufReader<std::fs::File>
     buf_reader_with_capacity(file, CAPACITY)
 }
 
-pub struct FileTracker {
+pub struct FileScanner<'a> {
+    pub reader: std::io::BufReader<std::fs::File>,
+    pub tracker: &'a mut FilePosTracker,
+    pub stats: &'a mut Stats,
+}
+
+impl<'a> FileScanner<'a> {
+    pub fn new(
+        reader: std::io::BufReader<std::fs::File>,
+        tracker: &'a mut FilePosTracker,
+        stats: &'a mut Stats,
+        config: &'a Opt,
+    ) -> Self {
+        FileScanner {
+            reader,
+            tracker,
+            stats,
+        }
+    }
+}
+
+impl LoadRdhCru<RdhCRUv7> for FileScanner<'_> {
+    fn load_rdh_cru(&mut self) -> Result<RdhCRUv7, std::io::Error> {
+        let rdh = RdhCRUv7::load(&mut self.reader)?;
+        self.tracker.next(rdh.offset_new_packet as u64);
+        self.stats.total_rdhs += 1;
+        self.stats.payload_size += rdh.offset_new_packet as u64;
+        Ok(rdh)
+    }
+}
+
+impl LoadRdhCru<RdhCRUv6> for FileScanner<'_> {
+    fn load_rdh_cru(&mut self) -> Result<RdhCRUv6, std::io::Error> {
+        let rdh = RdhCRUv6::load(&mut self.reader)?;
+        self.tracker.next(rdh.offset_new_packet as u64);
+        self.stats.total_rdhs += 1;
+        self.stats.payload_size += rdh.offset_new_packet as u64;
+        Ok(rdh)
+    }
+}
+
+pub struct FilePosTracker {
     pub offset_next: i64,
     pub memory_address_bytes: u64,
     rdh_cru_size_bytes: u64,
 }
-impl FileTracker {
+impl FilePosTracker {
     pub fn new() -> Self {
-        FileTracker {
+        FilePosTracker {
             offset_next: 0,
             memory_address_bytes: 0,
             rdh_cru_size_bytes: 64, // RDH size in bytes
         }
     }
-    pub fn next(&mut self, offset: u64) -> i64 {
-        self.offset_next = (offset - self.rdh_cru_size_bytes) as i64;
-        self.memory_address_bytes += offset;
+    pub fn next(&mut self, rdh_offset: u64) -> i64 {
+        self.offset_next = (rdh_offset - self.rdh_cru_size_bytes) as i64;
+        self.memory_address_bytes += rdh_offset;
         self.offset_next
     }
 }
@@ -184,10 +232,8 @@ impl FilterLink {
             total_filtered: 0,
         }
     }
-    pub fn filter_link<T: std::io::Read>(&mut self, buf_reader: &mut T, rdh: &RdhCRUv7) -> bool {
+    pub fn filter_link<T: std::io::Read>(&mut self, buf_reader: &mut T, rdh: RdhCRUv7) -> bool {
         if rdh.link_id == self.link_to_filter {
-            self.filtered_rdhs_buffer.push(*rdh);
-
             // Read the payload of the RDH
             self.read_payload(buf_reader, rdh.memory_size as usize)
                 .expect("Failed to read from buffer");
@@ -195,6 +241,7 @@ impl FilterLink {
             if self.filtered_rdhs_buffer.len() > self.max_buffer_size {
                 self.flush();
             }
+            self.filtered_rdhs_buffer.push(rdh);
             self.total_filtered += 1;
             true
         } else {
@@ -265,7 +312,7 @@ mod tests {
 
     #[test]
     fn test_file_tracker() {
-        let mut file_tracker = FileTracker::new();
+        let mut file_tracker = FilePosTracker::new();
         assert_eq!(file_tracker.offset_next, 0);
         assert_eq!(file_tracker.memory_address_bytes, 0);
         assert_eq!(file_tracker.next(64), 0);
@@ -293,11 +340,11 @@ mod tests {
 
         let file = file_open_read_only(&config.file()).unwrap();
         let mut buf_reader = buf_reader_with_capacity(file, 1024 * 10);
-        let mut file_tracker = FileTracker::new();
+        let mut file_tracker = FilePosTracker::new();
         let rdh = RdhCRUv7::load(&mut buf_reader).unwrap();
         RdhCRUv7::print_header_text();
         rdh.print();
-        assert!(filter_link.filter_link(&mut buf_reader, &rdh));
+        assert!(filter_link.filter_link(&mut buf_reader, rdh));
         // This function currently corresponds to the unlink function on Unix and the DeleteFile function on Windows. Note that, this may change in the future.
         // More info: https://doc.rust-lang.org/std/fs/fn.remove_file.html
         std::fs::remove_file(Opt::output(&config).as_ref().unwrap()).unwrap();
