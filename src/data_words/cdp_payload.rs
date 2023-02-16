@@ -5,7 +5,6 @@ use byteorder::{ByteOrder, LittleEndian};
 use crate::{pretty_print_hex_field, pretty_print_name_hex_fields, ByteSlice, GbtWord};
 
 #[repr(packed)]
-#[derive(PartialEq)]
 pub struct Ihw {
     // Total of 80 bits
     id: u16,           // 79:72

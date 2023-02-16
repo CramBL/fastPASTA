@@ -57,7 +57,7 @@ impl Opt {
 /// It is used to:
 /// * pretty printing to stdout
 /// * deserialize the GBT words from the binary file
-pub trait GbtWord: std::fmt::Debug + PartialEq {
+pub trait GbtWord: std::fmt::Debug {
     fn print(&self);
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
     where

@@ -14,11 +14,10 @@ pub(crate) struct BcReserved(pub(crate) u32); // 12 bit bc, 20 bit reserved
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub(crate) struct DataformatReserved(pub(crate) u64); // 8 bit data_format, 56 bit reserved0
 #[repr(packed)]
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub(crate) struct FeeId(pub(crate) u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
 
 #[repr(packed)]
-#[derive(PartialEq)]
 pub struct RdhCRUv7 {
     pub rdh0: Rdh0,
     pub offset_new_packet: u16,
@@ -139,7 +138,6 @@ impl Debug for RdhCRUv7 {
 }
 
 #[repr(packed)]
-#[derive(PartialEq)]
 pub struct RdhCRUv6 {
     pub rdh0: Rdh0,
     pub offset_new_packet: u16,
@@ -238,7 +236,6 @@ impl Debug for RdhCRUv6 {
     }
 }
 #[repr(packed)]
-#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct Rdh0 {
     // Represents 64 bit
     pub header_id: u8,
@@ -295,7 +292,6 @@ impl Debug for Rdh0 {
 }
 
 #[repr(packed)]
-#[derive(PartialEq, Clone, Copy)]
 pub struct Rdh1 {
     // Rdh1 is 64 bit total
     pub(crate) bc_reserved0: BcReserved, //bunch counter 12 bit + reserved 20 bit
@@ -358,7 +354,7 @@ impl Debug for Rdh1 {
 }
 
 #[repr(packed)]
-#[derive(PartialEq, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Rdh2 {
     pub trigger_type: u32, // 32 bit
     pub pages_counter: u16,
@@ -412,7 +408,6 @@ impl Debug for Rdh2 {
 }
 
 #[repr(packed)]
-#[derive(PartialEq, Clone, Copy)]
 pub struct Rdh3 {
     pub detector_field: u32, // 23:4 is reserved
     pub par_bit: u16,
