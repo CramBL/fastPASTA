@@ -1,8 +1,6 @@
 use crate::ByteSlice;
 // ITS data format: https://gitlab.cern.ch/alice-its-wp10-firmware/RU_mainFPGA/-/wikis/ITS%20Data%20Format#Introduction
-use crate::{
-    pretty_print_hex_field, pretty_print_hex_fields, pretty_print_name_hex_fields, GbtWord,
-};
+use crate::{pretty_print_hex_field, pretty_print_name_hex_fields, GbtWord};
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use std::fmt::{self, Debug};
 // Newtype pattern used to enforce type safety on fields that are not byte-aligned
