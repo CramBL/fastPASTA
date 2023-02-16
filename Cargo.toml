@@ -9,7 +9,6 @@ edition = "2021"
 bench = false
 
 [dependencies]
-binrw = "0.11.1"
 byteorder = "1.4.3"
 criterion = "0.4.0"
 fmt = "0.1.0"
