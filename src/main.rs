@@ -6,8 +6,9 @@ pub enum SeekError {
 }
 
 pub fn main() -> std::io::Result<()> {
-    let opt = <fastpasta::Opt as structopt::StructOpt>::from_args();
+    let opt = <fastpasta::util::config::Opt as structopt::StructOpt>::from_args();
     println!("{:#?}", opt);
+
     let mut stats = fastpasta::Stats::new();
 
     let mut buf_reader = setup_buffered_reading(&opt);
@@ -95,7 +96,7 @@ pub fn main() -> std::io::Result<()> {
             }
         }
 
-        stats.total_rdhs += 1;
+        stats.rdhs_seen += 1;
     }
     println!("Vec size: {}", rdhs.len());
 
