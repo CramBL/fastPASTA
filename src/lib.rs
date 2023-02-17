@@ -1,10 +1,6 @@
-use std::{
-    fs::File,
-    io::{Read, Write},
-    path::PathBuf,
-};
+use std::{fs::File, io::Write, path::PathBuf};
 
-use data_words::rdh::{RdhCRUv6, RdhCRUv7};
+use data_words::rdh::RdhCRUv7;
 use util::config::Opt;
 
 pub mod data_words;
@@ -16,11 +12,20 @@ pub mod validators;
 /// It is used to:
 /// * pretty printing to stdout
 /// * deserialize the GBT words from the binary file
-pub trait GbtWord: std::fmt::Debug + PartialEq {
+pub trait GbtWord: std::fmt::Debug + PartialEq + Sized {
     fn print(&self);
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
     where
         Self: Sized;
+}
+
+pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice {
+    fn print(&self);
+    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
+    where
+        Self: Sized;
+    fn get_link_id(&self) -> u8;
+    fn get_payload_size(&self) -> u16;
 }
 
 /// This trait is used to convert a struct to a byte slice

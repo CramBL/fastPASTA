@@ -1,5 +1,5 @@
 use fastpasta::data_words::rdh::RdhCRUv7;
-use fastpasta::{setup_buffered_reading, FilterLink, GbtWord};
+use fastpasta::{setup_buffered_reading, FilterLink, GbtWord, RDH};
 
 pub enum SeekError {
     EOF,

@@ -1,6 +1,6 @@
 use crate::{
     data_words::rdh::{RdhCRUv6, RdhCRUv7},
-    GbtWord,
+    RDH,
 };
 
 use super::{config::Opt, file_pos_tracker::FilePosTracker, stats::Stats};
@@ -8,11 +8,28 @@ use super::{config::Opt, file_pos_tracker::FilePosTracker, stats::Stats};
 pub trait LoadRdhCru<T> {
     fn load_rdh_cru(&mut self) -> Result<T, std::io::Error>
     where
-        T: GbtWord;
+        T: RDH;
 }
 
 pub trait LoadPayload<T, U> {
     fn load_payload(&mut self) -> Result<Vec<U>, std::io::Error>;
+}
+
+pub trait ScanCDP<T> {
+    fn load_rdh_cru(&mut self) -> Result<T, std::io::Error>
+    where
+        T: RDH;
+
+    fn load_payload(&mut self) -> Result<Vec<u8>, std::io::Error>;
+
+    fn load_cdp(&mut self) -> Result<(T, Vec<u8>), std::io::Error>
+    where
+        T: RDH,
+    {
+        let rdh = self.load_rdh_cru()?;
+        let payload = self.load_payload()?;
+        Ok((rdh, payload))
+    }
 }
 
 pub struct FileScanner<'a> {

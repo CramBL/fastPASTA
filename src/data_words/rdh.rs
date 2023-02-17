@@ -1,4 +1,4 @@
-use crate::ByteSlice;
+use crate::{ByteSlice, RDH};
 // ITS data format: https://gitlab.cern.ch/alice-its-wp10-firmware/RU_mainFPGA/-/wikis/ITS%20Data%20Format#Introduction
 use crate::{pretty_print_hex_field, pretty_print_name_hex_fields, GbtWord};
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
@@ -58,13 +58,7 @@ impl RdhCRUv7 {
     }
 }
 
-impl ByteSlice for RdhCRUv7 {
-    fn to_byte_slice(&self) -> &[u8] {
-        unsafe { crate::any_as_u8_slice(self) }
-    }
-}
-
-impl GbtWord for RdhCRUv7 {
+impl RDH for RdhCRUv7 {
     fn print(&self) {
         self.rdh0.print();
         let tmp_offset = self.offset_new_packet;
@@ -114,7 +108,19 @@ impl GbtWord for RdhCRUv7 {
             reserved2,
         })
     }
+    fn get_link_id(&self) -> u8 {
+        self.link_id
+    }
+    fn get_payload_size(&self) -> u16 {
+        self.memory_size - 64 // 64 bytes are the RDH size. Payload size is the memory size minus the RDH size.
+    }
 }
+impl ByteSlice for RdhCRUv7 {
+    fn to_byte_slice(&self) -> &[u8] {
+        unsafe { crate::any_as_u8_slice(self) }
+    }
+}
+
 impl Debug for RdhCRUv7 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let tmp_rdh0 = &self.rdh0;
@@ -180,13 +186,7 @@ impl RdhCRUv6 {
     }
 }
 
-impl ByteSlice for RdhCRUv6 {
-    fn to_byte_slice(&self) -> &[u8] {
-        unsafe { crate::any_as_u8_slice(self) }
-    }
-}
-
-impl GbtWord for RdhCRUv6 {
+impl RDH for RdhCRUv6 {
     fn print(&self) {
         println!("RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Trigger   Pages    Stop"); //Needed?  Memory   CRU   DW");
         println!("ver   size    ID    ID    next    ID    counter        counter     type      counter  bit\n"); //Needed?    size     ID    ID\n");
@@ -231,7 +231,20 @@ impl GbtWord for RdhCRUv6 {
             reserved2,
         })
     }
+    fn get_link_id(&self) -> u8 {
+        self.link_id
+    }
+    fn get_payload_size(&self) -> u16 {
+        self.memory_size
+    }
 }
+
+impl ByteSlice for RdhCRUv6 {
+    fn to_byte_slice(&self) -> &[u8] {
+        unsafe { crate::any_as_u8_slice(self) }
+    }
+}
+
 impl Debug for RdhCRUv6 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let tmp_rdh0 = &self.rdh0;
