@@ -19,8 +19,8 @@ impl FilePosTracker {
         self.offset_next
     }
 
-    pub fn update_next_payload_size(&mut self, rdh: &crate::data_words::rdh::RdhCRUv7) {
-        self.next_payload_size = (rdh.offset_new_packet - self.rdh_cru_size_bytes as u16) as usize;
+    pub fn update_next_payload_size(&mut self, payload_size: usize) {
+        self.next_payload_size = payload_size;
     }
 
     pub fn next_payload_size(&self) -> usize {

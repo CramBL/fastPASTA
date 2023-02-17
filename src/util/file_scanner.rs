@@ -1,31 +1,13 @@
-use crate::{
-    data_words::rdh::{RdhCRUv6, RdhCRUv7},
-    RDH,
-};
+use crate::RDH;
 
 use super::{config::Opt, file_pos_tracker::FilePosTracker, stats::Stats};
 
-pub trait LoadRdhCru<T> {
-    fn load_rdh_cru(&mut self) -> Result<T, std::io::Error>
-    where
-        T: RDH;
-}
-
-pub trait LoadPayload<T, U> {
-    fn load_payload(&mut self) -> Result<Vec<U>, std::io::Error>;
-}
-
-pub trait ScanCDP<T> {
-    fn load_rdh_cru(&mut self) -> Result<T, std::io::Error>
-    where
-        T: RDH;
+pub trait ScanCDP {
+    fn load_rdh_cru<T: RDH>(&mut self) -> Result<T, std::io::Error>;
 
     fn load_payload(&mut self) -> Result<Vec<u8>, std::io::Error>;
 
-    fn load_cdp(&mut self) -> Result<(T, Vec<u8>), std::io::Error>
-    where
-        T: RDH,
-    {
+    fn load_cdp<T: RDH>(&mut self) -> Result<(T, Vec<u8>), std::io::Error> {
         let rdh = self.load_rdh_cru()?;
         let payload = self.load_payload()?;
         Ok((rdh, payload))
@@ -55,14 +37,15 @@ impl<'a> FileScanner<'a> {
     }
 }
 
-impl LoadRdhCru<RdhCRUv7> for FileScanner<'_> {
-    fn load_rdh_cru(&mut self) -> Result<RdhCRUv7, std::io::Error> {
-        let rdh = RdhCRUv7::load(&mut self.reader)?;
+impl ScanCDP for FileScanner<'_> {
+    fn load_rdh_cru<T: RDH>(&mut self) -> Result<T, std::io::Error> {
+        let rdh: T = RDH::load(&mut self.reader)?;
         self.stats.rdhs_seen += 1;
-        self.tracker.update_next_payload_size(&rdh);
+        self.tracker
+            .update_next_payload_size(rdh.get_payload_size() as usize);
 
         match self.link_to_filter {
-            Some(x) if x == rdh.link_id => {
+            Some(x) if x == rdh.get_link_id() => {
                 self.stats.rdhs_filtered += 1;
                 // no jump. current pos -> start of payload
                 return Ok(rdh);
@@ -74,38 +57,80 @@ impl LoadRdhCru<RdhCRUv7> for FileScanner<'_> {
             _ => {
                 // Set tracker to jump to next RDH and try again
                 self.reader
-                    .seek_relative(self.tracker.next(rdh.offset_new_packet as u64))?;
+                    .seek_relative(self.tracker.next(rdh.get_payload_size() as u64))?;
 
                 return self.load_rdh_cru();
             }
         }
     }
-}
 
-impl LoadRdhCru<RdhCRUv6> for FileScanner<'_> {
-    fn load_rdh_cru(&mut self) -> Result<RdhCRUv6, std::io::Error> {
-        let rdh = RdhCRUv6::load(&mut self.reader)?;
-        self.tracker.next(rdh.offset_new_packet as u64);
-        self.stats.rdhs_seen += 1;
-
-        //        if rdh.link_id != self.
-
-        Ok(rdh)
-    }
-}
-
-impl LoadPayload<RdhCRUv7, u8> for FileScanner<'_> {
     fn load_payload(&mut self) -> Result<Vec<u8>, std::io::Error> {
         let payload_size = self.tracker.next_payload_size();
-        let mut payload_buf: Vec<u8> = vec![0; payload_size];
-        std::io::Read::read_exact(&mut self.reader, &mut payload_buf)?;
-        debug_assert!(payload_buf.len() == payload_size);
-        Ok(payload_buf)
+        let mut payload = vec![0; payload_size];
+        std::io::Read::read_exact(&mut self.reader, &mut payload)?;
+        self.stats.payload_size += payload_size as u64;
+        Ok(payload)
+    }
+    fn load_cdp<T: RDH>(&mut self) -> Result<(T, Vec<u8>), std::io::Error> {
+        let rdh = self.load_rdh_cru()?;
+        let payload = self.load_payload()?;
+        Ok((rdh, payload))
     }
 }
+
+// impl LoadRdhCru<RdhCRUv7> for FileScanner<'_> {
+//     fn load_rdh_cru(&mut self) -> Result<RdhCRUv7, std::io::Error> {
+//         let rdh = RdhCRUv7::load(&mut self.reader)?;
+//         self.stats.rdhs_seen += 1;
+//         self.tracker.update_next_payload_size(&rdh);
+
+//         match self.link_to_filter {
+//             Some(x) if x == rdh.link_id => {
+//                 self.stats.rdhs_filtered += 1;
+//                 // no jump. current pos -> start of payload
+//                 return Ok(rdh);
+//             }
+//             None => {
+//                 // No jump, current pos -> start of payload
+//                 return Ok(rdh);
+//             }
+//             _ => {
+//                 // Set tracker to jump to next RDH and try again
+//                 self.reader
+//                     .seek_relative(self.tracker.next(rdh.offset_new_packet as u64))?;
+
+//                 return self.load_rdh_cru();
+//             }
+//         }
+//     }
+// }
+
+// impl LoadRdhCru<RdhCRUv6> for FileScanner<'_> {
+//     fn load_rdh_cru(&mut self) -> Result<RdhCRUv6, std::io::Error> {
+//         let rdh = RdhCRUv6::load(&mut self.reader)?;
+//         self.tracker.next(rdh.offset_new_packet as u64);
+//         self.stats.rdhs_seen += 1;
+
+//         //        if rdh.link_id != self.
+
+//         Ok(rdh)
+//     }
+// }
+
+// impl LoadPayload<RdhCRUv7, u8> for FileScanner<'_> {
+//     fn load_payload(&mut self) -> Result<Vec<u8>, std::io::Error> {
+//         let payload_size = self.tracker.next_payload_size();
+//         let mut payload_buf: Vec<u8> = vec![0; payload_size];
+//         std::io::Read::read_exact(&mut self.reader, &mut payload_buf)?;
+//         debug_assert!(payload_buf.len() == payload_size);
+//         Ok(payload_buf)
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
+    use crate::data_words::rdh::RdhCRUv7;
+
     use super::*;
     #[test]
     fn test_filter_link() {

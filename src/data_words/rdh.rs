@@ -235,7 +235,7 @@ impl RDH for RdhCRUv6 {
         self.link_id
     }
     fn get_payload_size(&self) -> u16 {
-        self.memory_size
+        self.memory_size - 64 // 64 bytes are the RDH size. Payload size is the memory size minus the RDH size.
     }
 }
 

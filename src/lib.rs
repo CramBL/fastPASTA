@@ -25,6 +25,8 @@ pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice {
     where
         Self: Sized;
     fn get_link_id(&self) -> u8;
+    /// Returns the size of the payload in bytes
+    /// This is EXCLUDING the size of the RDH
     fn get_payload_size(&self) -> u16;
 }
 
