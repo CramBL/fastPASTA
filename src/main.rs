@@ -9,10 +9,10 @@ pub fn main() -> std::io::Result<()> {
     let opt = <fastpasta::util::config::Opt as structopt::StructOpt>::from_args();
     println!("{:#?}", opt);
 
-    let mut stats = fastpasta::Stats::new();
+    let mut stats = fastpasta::util::stats::Stats::new();
 
     let mut buf_reader = setup_buffered_reading(&opt);
-    let mut file_tracker = fastpasta::FilePosTracker::new();
+    let mut file_tracker = fastpasta::util::file_pos_tracker::FilePosTracker::new();
 
     // 1. Create reader
     //      - Open file in read only mode
