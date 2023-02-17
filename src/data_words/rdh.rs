@@ -114,6 +114,9 @@ impl RDH for RdhCRUv7 {
     fn get_payload_size(&self) -> u16 {
         self.memory_size - 64 // 64 bytes are the RDH size. Payload size is the memory size minus the RDH size.
     }
+    fn get_offset_to_next(&self) -> u16 {
+        self.offset_new_packet
+    }
 }
 impl ByteSlice for RdhCRUv7 {
     fn to_byte_slice(&self) -> &[u8] {
@@ -236,6 +239,9 @@ impl RDH for RdhCRUv6 {
     }
     fn get_payload_size(&self) -> u16 {
         self.memory_size - 64 // 64 bytes are the RDH size. Payload size is the memory size minus the RDH size.
+    }
+    fn get_offset_to_next(&self) -> u16 {
+        self.offset_new_packet
     }
 }
 

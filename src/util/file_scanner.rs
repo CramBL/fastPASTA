@@ -57,7 +57,7 @@ impl ScanCDP for FileScanner<'_> {
             _ => {
                 // Set tracker to jump to next RDH and try again
                 self.reader
-                    .seek_relative(self.tracker.next(rdh.get_payload_size() as u64))?;
+                    .seek_relative(self.tracker.next(rdh.get_offset_to_next() as u64))?;
 
                 return self.load_rdh_cru();
             }
@@ -66,7 +66,6 @@ impl ScanCDP for FileScanner<'_> {
 
     fn load_payload(&mut self) -> Result<Vec<u8>, std::io::Error> {
         let payload_size = self.tracker.next_payload_size();
-        debug_assert!(payload_size > 0);
         let mut payload = vec![0; payload_size];
         std::io::Read::read_exact(&mut self.reader, &mut payload)?;
         debug_assert!(payload.len() == payload_size);
@@ -123,8 +122,16 @@ mod tests {
             }
         }
 
-        while let Ok(rdh) = scanner.load_rdh_cru() {
+        let mut loop_count = 0;
+        while let Ok(rdh) = scanner.load_rdh_cru::<RdhCRUv7>() {
+            rdh.print();
+            loop_count += 1;
+            print!("{} ", loop_count);
+            if loop_count % 30 == 0 {
+                RdhCRUv7::print_header_text();
+            }
             link0_rdh_data.push(rdh);
+
             link0_payload_data.push(scanner.load_payload().unwrap());
             match rdh_validator.sanity_check(&link0_rdh_data.last().unwrap()) {
                 Ok(_) => (),

@@ -28,6 +28,7 @@ pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice {
     /// Returns the size of the payload in bytes
     /// This is EXCLUDING the size of the RDH
     fn get_payload_size(&self) -> u16;
+    fn get_offset_to_next(&self) -> u16;
 }
 
 /// This trait is used to convert a struct to a byte slice
