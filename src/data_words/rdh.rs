@@ -137,6 +137,23 @@ impl Debug for RdhCRUv7 {
     }
 }
 
+impl PartialEq for RdhCRUv7 {
+    fn eq(&self, other: &Self) -> bool {
+        self.rdh0 == other.rdh0
+            && self.offset_new_packet == other.offset_new_packet
+            && self.memory_size == other.memory_size
+            && self.link_id == other.link_id
+            && self.packet_counter == other.packet_counter
+            && self.cruid_dw == other.cruid_dw
+            && self.rdh1 == other.rdh1
+            && self.dataformat_reserved0 == other.dataformat_reserved0
+            && self.rdh2 == other.rdh2
+            && self.reserved1 == other.reserved1
+            && self.rdh3 == other.rdh3
+            && self.reserved2 == other.reserved2
+    }
+}
+
 #[repr(packed)]
 pub struct RdhCRUv6 {
     pub rdh0: Rdh0,
@@ -235,6 +252,24 @@ impl Debug for RdhCRUv6 {
                tmp_rdh0, tmp_offset_new_packet, tmp_memory_size, tmp_link_id, tmp_packet_counter, tmp_cruid, tmp_dw, tmp_rdh1, tmp_reserved0, tmp_rdh2, tmp_reserved1, tmp_rdh3, tmp_reserved2)
     }
 }
+
+impl PartialEq for RdhCRUv6 {
+    fn eq(&self, other: &RdhCRUv6) -> bool {
+        self.rdh0 == other.rdh0
+            && self.offset_new_packet == other.offset_new_packet
+            && self.memory_size == other.memory_size
+            && self.link_id == other.link_id
+            && self.packet_counter == other.packet_counter
+            && self.cruid_dw == other.cruid_dw
+            && self.rdh1 == other.rdh1
+            && self.reserved0 == other.reserved0
+            && self.rdh2 == other.rdh2
+            && self.reserved1 == other.reserved1
+            && self.rdh3 == other.rdh3
+            && self.reserved2 == other.reserved2
+    }
+}
+
 #[repr(packed)]
 pub struct Rdh0 {
     // Represents 64 bit
@@ -288,6 +323,16 @@ impl Debug for Rdh0 {
 
         write!(f, "Rdh0: header_id: {:x?}, header_size: {:x?}, fee_id: {:x?}, priority_bit: {:x?}, system_id: {:x?}, reserved0: {:x?}",
                tmp_header_id, tmp_header_size, tmp_fee_id, tmp_priority_bit, tmp_system_id, tmp_reserved0)
+    }
+}
+impl PartialEq for Rdh0 {
+    fn eq(&self, other: &Self) -> bool {
+        self.header_id == other.header_id
+            && self.header_size == other.header_size
+            && self.fee_id == other.fee_id
+            && self.priority_bit == other.priority_bit
+            && self.system_id == other.system_id
+            && self.reserved0 == other.reserved0
     }
 }
 
@@ -352,6 +397,11 @@ impl Debug for Rdh1 {
         )
     }
 }
+impl PartialEq for Rdh1 {
+    fn eq(&self, other: &Self) -> bool {
+        self.bc_reserved0 == other.bc_reserved0 && self.orbit == other.orbit
+    }
+}
 
 #[repr(packed)]
 #[derive(Clone, Copy)]
@@ -407,6 +457,15 @@ impl Debug for Rdh2 {
     }
 }
 
+impl PartialEq for Rdh2 {
+    fn eq(&self, other: &Self) -> bool {
+        self.trigger_type == other.trigger_type
+            && self.pages_counter == other.pages_counter
+            && self.stop_bit == other.stop_bit
+            && self.reserved0 == other.reserved0
+    }
+}
+
 #[repr(packed)]
 pub struct Rdh3 {
     pub detector_field: u32, // 23:4 is reserved
@@ -435,6 +494,13 @@ impl GbtWord for Rdh3 {
             par_bit: LittleEndian::read_u16(&load_bytes!(2)),
             reserved0: LittleEndian::read_u16(&load_bytes!(2)),
         })
+    }
+}
+impl PartialEq for Rdh3 {
+    fn eq(&self, other: &Self) -> bool {
+        self.detector_field == other.detector_field
+            && self.par_bit == other.par_bit
+            && self.reserved0 == other.reserved0
     }
 }
 impl Debug for Rdh3 {

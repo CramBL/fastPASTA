@@ -68,3 +68,11 @@ impl Debug for Ihw {
         write!(f, "{:x} {:x} {:x}", id, reserved, active_lanes)
     }
 }
+
+impl PartialEq for Ihw {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.reserved == other.reserved
+            && self.active_lanes == other.active_lanes
+    }
+}
