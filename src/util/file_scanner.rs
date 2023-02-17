@@ -66,8 +66,10 @@ impl ScanCDP for FileScanner<'_> {
 
     fn load_payload(&mut self) -> Result<Vec<u8>, std::io::Error> {
         let payload_size = self.tracker.next_payload_size();
+        debug_assert!(payload_size > 0);
         let mut payload = vec![0; payload_size];
         std::io::Read::read_exact(&mut self.reader, &mut payload)?;
+        debug_assert!(payload.len() == payload_size);
         self.stats.payload_size += payload_size as u64;
         Ok(payload)
     }
@@ -82,48 +84,6 @@ mod tests {
     use crate::data_words::rdh::RdhCRUv7;
 
     use super::*;
-    #[test]
-    fn test_filter_link() {
-        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
-            "fastpasta",
-            "-d",
-            "-f",
-            "0",
-            "../fastpasta_test_files/data_ols_ul.raw",
-            "-o test_filter_link.raw",
-        ]);
-        println!("{:#?}", config);
-
-        // OLD TEST WITH FILTERLINK STRUCT
-
-        // let mut filter_link = FilterLink::new(&config, 1024);
-
-        // assert_eq!(filter_link.link_to_filter, 0);
-        // assert_eq!(filter_link.filtered_rdhs_buffer.len(), 0);
-        // assert_eq!(filter_link.filtered_payload_buffers.len(), 0);
-
-        // let file = crate::file_open_read_only(&config.file()).unwrap();
-        // let mut buf_reader = crate::buf_reader_with_capacity(file, 1024 * 10);
-        // let file_tracker = FilePosTracker::new();
-        // let rdh = RdhCRUv7::load(&mut buf_reader).unwrap();
-        // RdhCRUv7::print_header_text();
-        // rdh.print();
-        // assert!(filter_link.filter_link(&mut buf_reader, rdh));
-        // // This function currently corresponds to the unlink function on Unix and the DeleteFile function on Windows. Note that, this may change in the future.
-        // // More info: https://doc.rust-lang.org/std/fs/fn.remove_file.html
-        // std::fs::remove_file(Opt::output(&config).as_ref().unwrap()).unwrap();
-
-        // filter_link
-        //     .filtered_payload_buffers
-        //     .iter()
-        //     .for_each(|payload| {
-        //         println!("Payload size: {}", payload.len());
-        //     });
-
-        // let rdh2 = RdhCRUv7::load(&mut buf_reader).unwrap();
-        // rdh2.print();
-    }
-
     #[test]
     #[ignore] // Large test ignored in normal cases, useful for debugging
     fn full_file_filter() {
