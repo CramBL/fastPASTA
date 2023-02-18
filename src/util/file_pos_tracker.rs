@@ -1,7 +1,6 @@
 pub struct FilePosTracker {
     pub offset_next: i64,
     pub memory_address_bytes: u64,
-    pub next_payload_size: usize,
     rdh_cru_size_bytes: u64,
 }
 impl FilePosTracker {
@@ -9,7 +8,6 @@ impl FilePosTracker {
         FilePosTracker {
             offset_next: 0,
             memory_address_bytes: 0,
-            next_payload_size: 0,
             rdh_cru_size_bytes: 64, // RDH size in bytes
         }
     }
@@ -17,14 +15,6 @@ impl FilePosTracker {
         self.offset_next = (rdh_offset - self.rdh_cru_size_bytes) as i64;
         self.memory_address_bytes += rdh_offset;
         self.offset_next
-    }
-
-    pub fn update_next_payload_size(&mut self, payload_size: usize) {
-        self.next_payload_size = payload_size;
-    }
-
-    pub fn next_payload_size(&self) -> usize {
-        self.next_payload_size
     }
 }
 #[cfg(test)]
