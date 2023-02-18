@@ -13,7 +13,17 @@ pub trait ScanCDP {
         Ok((rdh, payload))
     }
 }
-
+/// Allows reading an RDH from a file
+/// Optionally, the RDH can be filtered by link ID
+/// # Example
+/// ```
+/// let opt: Opt = StructOpt::from_args();
+/// let file_tracker = FilePosTracker::new();
+/// let mut stats = Stats::new();
+/// let reader = crate::setup_buffered_reading(&config); // Helper function to setup a buffered reader
+/// let mut scanner = FileScanner::new(reader, file_tracker, &mut stats, &config);
+/// let (rdh, payload) = scanner.load_cdp::<RdhCRUv7>()?;
+/// ```
 pub struct FileScanner<'a> {
     pub reader: std::io::BufReader<std::fs::File>,
     pub tracker: FilePosTracker,

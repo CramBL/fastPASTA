@@ -1,18 +1,20 @@
 use fastpasta::data_words::rdh::RdhCRUv7;
-use fastpasta::{setup_buffered_reading, FilterLink, GbtWord, RDH};
+use fastpasta::util::config::Opt;
+use fastpasta::{setup_buffered_reading, util, FilterLink, GbtWord, RDH};
+use structopt::StructOpt;
 
 pub enum SeekError {
     EOF,
 }
 
 pub fn main() -> std::io::Result<()> {
-    let opt = <fastpasta::util::config::Opt as structopt::StructOpt>::from_args();
+    let opt: Opt = StructOpt::from_args();
     println!("{:#?}", opt);
 
-    let mut stats = fastpasta::util::stats::Stats::new();
+    let mut stats = util::stats::Stats::new();
 
     let mut buf_reader = setup_buffered_reading(&opt);
-    let mut file_tracker = fastpasta::util::file_pos_tracker::FilePosTracker::new();
+    let mut file_tracker = util::file_pos_tracker::FilePosTracker::new();
 
     // 1. Create reader
     //      - Open file in read only mode
