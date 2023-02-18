@@ -33,15 +33,24 @@ pub struct FileScanner<'a> {
 
 impl<'a> FileScanner<'a> {
     pub fn new(
+        config: &'a Opt,
         reader: std::io::BufReader<std::fs::File>,
         tracker: FilePosTracker,
         stats: &'a mut Stats,
-        config: &'a Opt,
     ) -> Self {
         FileScanner {
             reader,
             tracker,
             stats,
+            link_to_filter: config.filter_link(),
+        }
+    }
+    pub fn default(config: &'a Opt, stats: &'a mut Stats) -> Self {
+        let reader = crate::setup_buffered_reading(&config);
+        FileScanner {
+            reader,
+            stats,
+            tracker: FilePosTracker::new(),
             link_to_filter: config.filter_link(),
         }
     }
@@ -112,11 +121,8 @@ mod tests {
         ]);
         println!("{:#?}", config);
 
-        let file_tracker = FilePosTracker::new();
         let mut stats = Stats::new();
-        let reader = crate::setup_buffered_reading(&config);
-
-        let mut scanner = FileScanner::new(reader, file_tracker, &mut stats, &config);
+        let mut scanner = FileScanner::default(&config, &mut stats);
 
         let mut link0_rdh_data: Vec<RdhCRUv7> = vec![];
         let mut link0_payload_data: Vec<Vec<u8>> = vec![];

@@ -16,13 +16,14 @@ pub fn main() -> std::io::Result<()> {
     let mut buf_reader = setup_buffered_reading(&opt);
     let mut file_tracker = util::file_pos_tracker::FilePosTracker::new();
 
-    // 1. Create reader
+    // 1. Create reader: FileScanner (contains FilePosTracker and borrows Stats)
     //      - Open file in read only mode
     //      - Wrap in BufReader
-    //      - Track file position
+    //      - Track file position (FilePosTracker)
     //      - reads data through struct interface + buffer
-    // 2. Read into in reasonably sized buffer
-    // 3. Pass buffer to checker and read another chunk
+    //      - collects stats (Stats)
+    // 2. Read into in reasonably sized buffer (TODO)
+    // 3. Pass buffer to checker and read another chunk (TODO)
     // 4. Checker verifies received buffered chunk (big checks -> multi-threading)
     //                Not valid -> Print error and abort
     //                Valid     -> Pass chunk to writer
