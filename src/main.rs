@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::{thread, vec};
 
-use crossbeam_channel::{Receiver, Sender};
+use crossbeam_channel::{bounded, Receiver, RecvError, Sender};
 use fastpasta::data_words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7};
 use fastpasta::util::config::Opt;
 use fastpasta::util::file_pos_tracker::FilePosTracker;
@@ -12,10 +12,6 @@ use fastpasta::{
     buf_reader_with_capacity, file_open_read_only, setup_buffered_reading, GbtWord, RDH,
 };
 use structopt::StructOpt;
-
-pub enum SeekError {
-    EOF,
-}
 
 pub fn main() -> std::io::Result<()> {
     let opt: Opt = StructOpt::from_args();
@@ -63,13 +59,13 @@ pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
 
     let mut writer = BufferedWriter::<V7>::new(&config, 1024 * 1024); // 1MB buffer
 
-    use crossbeam_channel::bounded;
-
     type Cdp = (Vec<V7>, Vec<Vec<u8>>);
+    // Create producer-consumer channel for the reader to the checker
     let (sender_reader, receiver_checker): (Sender<Cdp>, Receiver<Cdp>) = bounded(100);
+    // Create producer-consumer channel for the checker to the writer
     let (sender_checker, receiver_writer): (Sender<Cdp>, Receiver<Cdp>) = bounded(100);
 
-    // Spawn file reader
+    // 1. Read data from file
     let cfg = Arc::clone(&config);
     let reader_thread = thread::spawn(move || {
         let reader = setup_buffered_reading(&cfg);
@@ -86,19 +82,21 @@ pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
                     }
                 }
             };
+            // Send a chunk to the checker
             sender_reader.send((rdh_chunk, payload_chunk)).unwrap();
         }
         stats.print();
     });
 
-    // Spawn checker
+    // 2. Do checks on a received chunk of data
     let cfg = config.clone();
     let checker_thread = thread::spawn(move || {
         loop {
+            // Receive chunk from reader
             let (rdh_chunk, payload_chunk) = match receiver_checker.recv() {
                 Ok(cdp) => cdp,
                 Err(e) => {
-                    eprintln!("Stopped receiving CDP chunks: {}", e);
+                    debug_assert_eq!(e, RecvError);
                     break;
                 }
             };
@@ -120,19 +118,22 @@ pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
                     }
                 }
             }
+            // Checks are done, send chunk to writer
             sender_checker.send((rdh_chunk, payload_chunk)).unwrap();
         }
     });
 
-    // Spawn writer
+    // 3. Write data out
     let writer_thread = thread::spawn(move || loop {
+        // Receive chunk from checker
         let (rdh_chunk, payload_chunk) = match receiver_writer.recv() {
             Ok(cdp) => cdp,
             Err(e) => {
-                eprintln!("Stopped receiving CDP chunks: {}", e);
+                debug_assert_eq!(e, RecvError);
                 break;
             }
         };
+        // Push data onto the writer's buffer, which will flush it when the buffer is full or when the writer is dropped
         writer.push_cdps_raw((rdh_chunk, payload_chunk));
     });
 
