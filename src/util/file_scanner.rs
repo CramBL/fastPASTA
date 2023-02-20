@@ -25,7 +25,7 @@ pub struct FileScanner<'a> {
 
 impl<'a> FileScanner<'a> {
     pub fn new(
-        config: &'a Opt,
+        config: &'a std::sync::Arc<Opt>,
         reader: std::io::BufReader<std::fs::File>,
         tracker: FilePosTracker,
         stats: &'a mut Stats,

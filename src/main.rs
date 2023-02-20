@@ -1,11 +1,16 @@
-use std::vec;
+use std::sync::Arc;
+use std::{thread, vec};
 
+use crossbeam_channel::{Receiver, Sender};
 use fastpasta::data_words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7};
 use fastpasta::util::config::Opt;
+use fastpasta::util::file_pos_tracker::FilePosTracker;
 use fastpasta::util::file_scanner::{FileScanner, ScanCDP};
 use fastpasta::util::stats;
 use fastpasta::util::writer::{BufferedWriter, Writer};
-use fastpasta::{buf_reader_with_capacity, file_open_read_only, GbtWord, RDH};
+use fastpasta::{
+    buf_reader_with_capacity, file_open_read_only, setup_buffered_reading, GbtWord, RDH,
+};
 use structopt::StructOpt;
 
 pub enum SeekError {
@@ -16,15 +21,17 @@ pub fn main() -> std::io::Result<()> {
     let opt: Opt = StructOpt::from_args();
     println!("{:#?}", opt);
 
+    let config: Arc<Opt> = Arc::new(opt);
+
     // Determine RDH version
-    let file = file_open_read_only(opt.file())?;
+    let file = file_open_read_only(config.file())?;
     let mut reader = buf_reader_with_capacity(file, 256);
     let rdh0 = Rdh0::load(&mut reader)?;
     // Choose the rest of the execution based on the RDH version
     // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
     match rdh0.header_id {
-        6 => process_rdh_v6(opt).unwrap(),
-        7 => process_rdh_v7(opt).unwrap(),
+        6 => process_rdh_v6(config).unwrap(),
+        7 => process_rdh_v7(config).unwrap(),
         _ => panic!("Unknown RDH version: {}", rdh0.header_id),
     }
 
@@ -47,65 +54,96 @@ pub fn main() -> std::io::Result<()> {
 // 1. Setup reading (file or stdin) // TODO: stdin support
 // 2. Do checks on read data
 // 3. Write data out (file or stdout)
-pub fn process_rdh_v7(config: Opt) -> std::io::Result<()> {
+pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
     type V7 = RdhCRUv7;
     // Setup reader, checker, writer, stats
     let mut running_rdh_checker = fastpasta::validators::rdh::RdhCruv7RunningChecker::new();
     let mut stats = stats::Stats::new();
     // Automatically extracts link to filter if one is supplied
-    let mut file_scanner = FileScanner::default(&config, &mut stats);
+
     let mut writer = BufferedWriter::<V7>::new(&config, 1024 * 1024); // 1MB buffer
 
-    loop {
-        // 1. Reading
-        // let (rdh_chunk, payload_chunk) =
-        //     get_chunk::<V7>(&mut file_scanner, 10).expect("Error reading CDP chunks");
+    use crossbeam_channel::bounded;
 
-        let (rdh_chunk, payload_chunk) = match get_chunk::<V7>(&mut file_scanner, 10) {
+    type Cdp = (Vec<V7>, Vec<Vec<u8>>);
+    let (sender_reader, receiver_checker): (Sender<Cdp>, Receiver<Cdp>) = bounded(100);
+    let (sender_checker, receiver_writer): (Sender<Cdp>, Receiver<Cdp>) = bounded(100);
+
+    // Spawn file reader
+    let cfg = Arc::clone(&config);
+    let reader_thread = thread::spawn(move || {
+        let reader = setup_buffered_reading(&cfg);
+        let mut file_scanner = FileScanner::new(&cfg, reader, FilePosTracker::new(), &mut stats);
+
+        loop {
+            let (rdh_chunk, payload_chunk) = match get_chunk::<V7>(&mut file_scanner, 100) {
+                Ok(cdp) => cdp,
+                Err(e) => {
+                    if e.kind() == std::io::ErrorKind::UnexpectedEof {
+                        break;
+                    } else {
+                        panic!("Error reading CDP chunks: {}", e);
+                    }
+                }
+            };
+            sender_reader.send((rdh_chunk, payload_chunk)).unwrap();
+        }
+        stats.print();
+    });
+
+    // Spawn checker
+    let cfg = config.clone();
+    let checker_thread = thread::spawn(move || {
+        loop {
+            let (rdh_chunk, payload_chunk) = match receiver_checker.recv() {
+                Ok(cdp) => cdp,
+                Err(e) => {
+                    eprintln!("Stopped receiving CDP chunks: {}", e);
+                    break;
+                }
+            };
+
+            for rdh in rdh_chunk.as_slice() {
+                if cfg.sanity_checks() {
+                    sanity_validation(&rdh);
+                }
+                // RDH CHECK: There is always page 0 + minimum page 1 + stop flag
+                match running_rdh_checker.check(&rdh) {
+                    Ok(_) => (),
+                    Err(e) => {
+                        eprintln!("RDH check failed: {}", e);
+                        RdhCRUv7::print_header_text();
+                        eprintln!("Last RDH:");
+                        running_rdh_checker.last_rdh2.unwrap().print();
+                        eprintln!("Current RDH:");
+                        rdh.print();
+                    }
+                }
+            }
+            sender_checker.send((rdh_chunk, payload_chunk)).unwrap();
+        }
+    });
+
+    // Spawn writer
+    let writer_thread = thread::spawn(move || loop {
+        let (rdh_chunk, payload_chunk) = match receiver_writer.recv() {
             Ok(cdp) => cdp,
             Err(e) => {
-                if e.kind() == std::io::ErrorKind::UnexpectedEof {
-                    break;
-                } else {
-                    panic!("Error reading CDP chunks: {}", e);
-                }
+                eprintln!("Stopped receiving CDP chunks: {}", e);
+                break;
             }
         };
-
-        // 2. Checking
-        for rdh in rdh_chunk.as_slice() {
-            if config.sanity_checks() {
-                sanity_validation(&rdh);
-            }
-            // RDH CHECK: There is always page 0 + minimum page 1 + stop flag
-            match running_rdh_checker.check(&rdh) {
-                Ok(_) => (),
-                Err(e) => {
-                    eprintln!("RDH check failed: {}", e);
-                    RdhCRUv7::print_header_text();
-                    eprintln!("Last RDH:");
-                    running_rdh_checker.last_rdh2.unwrap().print();
-                    eprintln!("Current RDH:");
-                    rdh.print();
-                }
-            }
-        }
-
-        for payload in payload_chunk.as_slice() {
-            if config.sanity_checks() {
-                // TODO: Sanity check for payload
-            }
-        }
-
-        // 3. Writing
         writer.push_cdps_raw((rdh_chunk, payload_chunk));
-    }
+    });
 
-    stats.print();
+    reader_thread.join().unwrap();
+    checker_thread.join().unwrap();
+    writer_thread.join().unwrap();
+
     Ok(())
 }
 
-pub fn process_rdh_v6(config: Opt) -> std::io::Result<()> {
+pub fn process_rdh_v6(config: Arc<Opt>) -> std::io::Result<()> {
     todo!("RDH v6 not implemented yet");
     let mut stats = stats::Stats::new();
     // Automatically extracts link to filter if one is supplied
