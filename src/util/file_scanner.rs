@@ -16,14 +16,6 @@ pub trait ScanCDP {
 /// Allows reading an RDH from a file
 /// Optionally, the RDH can be filtered by link ID
 /// # Example
-/// ```
-/// let opt: Opt = StructOpt::from_args();
-/// let file_tracker = FilePosTracker::new();
-/// let mut stats = Stats::new();
-/// let reader = crate::setup_buffered_reading(&config); // Helper function to setup a buffered reader
-/// let mut scanner = FileScanner::new(reader, file_tracker, &mut stats, &config);
-/// let (rdh, payload) = scanner.load_cdp::<RdhCRUv7>()?;
-/// ```
 pub struct FileScanner<'a> {
     pub reader: std::io::BufReader<std::fs::File>,
     pub tracker: FilePosTracker,
@@ -63,11 +55,15 @@ impl ScanCDP for FileScanner<'_> {
     /// If no link filter is set, it simply returns the RDH.
     fn load_rdh_cru<T: RDH>(&mut self) -> Result<T, std::io::Error> {
         let rdh: T = RDH::load(&mut self.reader)?;
+        let current_link_id = rdh.get_link_id();
         self.stats.rdhs_seen += 1;
+        if self.stats.links_observed.contains(&current_link_id) == false {
+            self.stats.links_observed.push(current_link_id);
+        }
 
         match self.link_to_filter {
             // Matches if a link is set and it is the same as the current RDH
-            Some(x) if x == rdh.get_link_id() => {
+            Some(x) if x == current_link_id => {
                 self.stats.rdhs_filtered += 1;
                 // no jump. current pos -> start of payload
                 return Ok(rdh);
