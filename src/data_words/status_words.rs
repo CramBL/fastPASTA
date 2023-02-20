@@ -188,9 +188,10 @@ impl StatusWord for Tdh {
     }
 
     fn print(&self) {
+        let tmp_trigger_orbit = self.trigger_orbit;
         println!("TDH: reserved0: {}, trigger_orbit: {}, reserved1: {}, trigger_bc: {}, reserved2: {}, continuation: {}, no_data: {}, internal_trigger: {}, trigger_type: {}",
                  self.reserved0(),
-                 self.trigger_orbit,
+                 tmp_trigger_orbit,
                  self.reserved1(),
                  self.trigger_bc(),
                  self.reserved2(),
