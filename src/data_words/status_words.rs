@@ -66,22 +66,10 @@ impl StatusWord for Ihw {
     where
         Self: Sized,
     {
-        // Create a helper macro for loading an array of the given size from
-        // the reader.
-        macro_rules! load_bytes {
-            ($size:literal) => {{
-                // Create a buffer array of the given size
-                let mut buf = [0u8; $size];
-                // Read into the buffer
-                reader.read_exact(&mut buf)?;
-                buf
-            }};
-        }
-        Ok(Ihw {
-            id: LittleEndian::read_u16(&load_bytes!(2)),
-            reserved: LittleEndian::read_u32(&load_bytes!(4)),
-            active_lanes: LittleEndian::read_u32(&load_bytes!(4)),
-        })
+        let mut buf = [0u8];
+        reader.read_exact(&mut buf)?;
+        let id: u8 = buf[0];
+        Self::load_from_id(id, reader)
     }
 }
 
@@ -205,23 +193,10 @@ impl StatusWord for Tdh {
     where
         Self: Sized,
     {
-        macro_rules! load_bytes {
-            ($size:literal) => {{
-                // Create a buffer array of the given size
-                let mut buf = [0u8; $size];
-                // Read into the buffer
-                reader.read_exact(&mut buf)?;
-                buf
-            }};
-        }
-        Ok(Tdh {
-            id_reserved0: LittleEndian::read_u16(&load_bytes!(2)),
-            trigger_orbit: LittleEndian::read_u32(&load_bytes!(4)),
-            reserved1_trigger_bc: LittleEndian::read_u16(&load_bytes!(2)),
-            reserved2_continuation_no_data_internal_trigger_trigger_type: LittleEndian::read_u16(
-                &load_bytes!(2),
-            ),
-        })
+        let mut buf = [0u8; 1];
+        reader.read_exact(&mut buf)?;
+        let id: u8 = buf[0];
+        Self::load_from_id(id, reader)
     }
 }
 
@@ -370,23 +345,10 @@ impl StatusWord for Tdt {
     where
         Self: Sized,
     {
-        macro_rules! load_bytes {
-            ($size:literal) => {{
-                // Create a buffer array of the given size
-                let mut buf = [0u8; $size];
-                // Read into the buffer
-                reader.read_exact(&mut buf)?;
-                buf
-            }};
-        }
-        Ok(Tdt {
-            id: load_bytes!(1)[0],
-            res0_lane_starts_violation_res1_transmission_timeout_packet_done: load_bytes!(1)[0],
-            timeout_to_start_timeout_start_stop_timeout_in_idle_res2: load_bytes!(1)[0],
-            lane_status_27_24: load_bytes!(1)[0],
-            lane_status_23_16: LittleEndian::read_u16(&load_bytes!(2)),
-            lane_status_15_0: LittleEndian::read_u32(&load_bytes!(4)),
-        })
+        let mut buf = [0u8];
+        reader.read_exact(&mut buf)?;
+        let id: u8 = buf[0];
+        Self::load_from_id(id, reader)
     }
 }
 
@@ -506,20 +468,10 @@ impl StatusWord for Ddw0 {
     where
         Self: Sized,
     {
-        macro_rules! load_bytes {
-            ($size:literal) => {{
-                // Create a buffer array of the given size
-                let mut buf = [0u8; $size];
-                // Read into the buffer
-                reader.read_exact(&mut buf)?;
-                buf
-            }};
-        }
-        Ok(Ddw0 {
-            id: load_bytes!(1)[0],
-            index: load_bytes!(1)[0],
-            res3_lane_status: LittleEndian::read_u64(&load_bytes!(8)),
-        })
+        let mut buf = [0u8];
+        reader.read_exact(&mut buf)?;
+        let id: u8 = buf[0];
+        Self::load_from_id(id, reader)
     }
 }
 
@@ -554,7 +506,92 @@ impl PartialEq for Ddw0 {
 
 pub struct Cdw {
     // ID: 0xF8
-    id: u8, // 79:72
-            // 71:48 calibration_word_index
-            // 47:0 calibration_user_fields
+    pub id: u8,                                              // 79:72
+    calibration_word_index_msb: u8,                          // 71:64 calibration_word_index_MSB
+    calibration_word_index_lsb_calibration_user_fields: u64, // 63:48 calibration_word_index_LSB 47:0 calibration_user_fields
+}
+
+impl Cdw {
+    pub fn calibration_word_index(&self) -> u32 {
+        ((self.calibration_word_index_msb as u32) << 16)
+            | ((self.calibration_word_index_lsb_calibration_user_fields >> 48) as u32)
+    }
+    pub fn calibration_user_fields(&self) -> u64 {
+        self.calibration_word_index_lsb_calibration_user_fields & 0xffff_ffff_ffff
+    }
+}
+
+impl StatusWord for Cdw {
+    fn load_from_id<T: std::io::Read>(id: u8, reader: &mut T) -> Result<Self, std::io::Error>
+    where
+        Self: Sized,
+    {
+        macro_rules! load_bytes {
+            ($size:literal) => {{
+                // Create a buffer array of the given size
+                let mut buf = [0u8; $size];
+                // Read into the buffer
+                reader.read_exact(&mut buf)?;
+                buf
+            }};
+        }
+        Ok(Cdw {
+            id,
+            calibration_word_index_msb: load_bytes!(1)[0],
+            calibration_word_index_lsb_calibration_user_fields: LittleEndian::read_u64(
+                &load_bytes!(8),
+            ),
+        })
+    }
+
+    fn id(&self) -> u8 {
+        self.id
+    }
+
+    fn print(&self) {
+        println!(
+            "CDW: {:x} {:x} {:x}",
+            self.id,
+            self.calibration_word_index(),
+            self.calibration_user_fields()
+        );
+    }
+
+    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
+    where
+        Self: Sized,
+    {
+        let mut buf = [0u8];
+        reader.read_exact(&mut buf)?;
+        let id: u8 = buf[0];
+        Self::load_from_id(id, reader)
+    }
+}
+
+impl ByteSlice for Cdw {
+    fn to_byte_slice(&self) -> &[u8] {
+        unsafe { crate::any_as_u8_slice(self) }
+    }
+}
+
+impl Debug for Cdw {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let id = self.id();
+        let calibration_word_index = self.calibration_word_index();
+        let calibration_user_fields = self.calibration_user_fields();
+        write!(
+            f,
+            "CDW: {:x} {:x} {:x}",
+            id, calibration_word_index, calibration_user_fields
+        )
+    }
+}
+
+impl PartialEq for Cdw {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.calibration_word_index_msb == other.calibration_word_index_msb
+            && self.calibration_word_index_lsb_calibration_user_fields
+                == other.calibration_word_index_lsb_calibration_user_fields
+    }
 }
