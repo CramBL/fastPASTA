@@ -2,12 +2,12 @@ use std::sync::Arc;
 use std::{thread, vec};
 
 use crossbeam_channel::{bounded, Receiver, RecvError, Sender};
-use fastpasta::data_words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7};
 use fastpasta::util::config::Opt;
 use fastpasta::util::file_pos_tracker::FilePosTracker;
 use fastpasta::util::file_scanner::{FileScanner, ScanCDP};
 use fastpasta::util::stats;
 use fastpasta::util::writer::{BufferedWriter, Writer};
+use fastpasta::words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7};
 use fastpasta::{
     buf_reader_with_capacity, file_open_read_only, setup_buffered_reading, GbtWord, RDH,
 };

@@ -101,7 +101,7 @@ impl ScanCDP for FileScanner<'_> {
 }
 #[cfg(test)]
 mod tests {
-    use crate::data_words::rdh::RdhCRUv7;
+    use crate::words::rdh::RdhCRUv7;
 
     use super::*;
     #[test]

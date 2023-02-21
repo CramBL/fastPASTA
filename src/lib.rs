@@ -1,12 +1,12 @@
 use std::{fs::File, io::Write, path::PathBuf};
 
-use data_words::rdh::RdhCRUv7;
 use util::config::Opt;
+use words::rdh::RdhCRUv7;
 
-pub mod data_words;
 pub mod macros;
 pub mod util;
 pub mod validators;
+pub mod words;
 
 /// This is the trait that all GBT words must implement
 /// It is used to:

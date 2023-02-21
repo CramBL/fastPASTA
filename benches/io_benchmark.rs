@@ -5,7 +5,7 @@ use std::{
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use fastpasta::{
-    buf_reader_with_capacity, data_words::rdh::RdhCRUv7, file_open_read_only, ByteSlice, RDH,
+    buf_reader_with_capacity, file_open_read_only, words::rdh::RdhCRUv7, ByteSlice, RDH,
 };
 pub struct RelativeOffset(i64);
 impl RelativeOffset {

@@ -1,4 +1,4 @@
-use crate::data_words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3, RdhCRUv6, RdhCRUv7};
+use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3, RdhCRUv6, RdhCRUv7};
 use std::fmt;
 use std::fmt::Write as _;
 
@@ -571,9 +571,8 @@ impl RdhCruv7RunningChecker {
 }
 #[cfg(test)]
 mod tests {
-    use crate::data_words::rdh::{BcReserved, CruidDw, DataformatReserved};
-
     use super::*;
+    use crate::words::rdh::{BcReserved, CruidDw, DataformatReserved};
 
     #[test]
     fn validate_fee_id() {
