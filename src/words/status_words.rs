@@ -1,5 +1,5 @@
 use crate::ByteSlice;
-use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
+use byteorder::{LittleEndian, ReadBytesExt};
 use std::fmt::Debug;
 
 pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice {
