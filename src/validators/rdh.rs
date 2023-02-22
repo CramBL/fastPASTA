@@ -2,7 +2,6 @@ use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3, RdhCRUv6, RdhCRUv7};
 use std::fmt;
 use std::fmt::Write as _;
 
-// TODO: implement std:error::Error for all errors (or not? It's not program errors)
 #[derive(Debug)]
 pub enum GbtError {
     InvalidWord(String),
@@ -17,22 +16,14 @@ pub struct FeeIdSanityValidator {
     pub reserved0: u8,
     layer_min_max: (u8, u8),
     pub reserved1: u8,
-    fiber_uplink_min_max: (u8, u8),
     pub reserved2: u8,
     stave_number_min_max: (u8, u8),
 }
 
 impl FeeIdSanityValidator {
-    const fn new(
-        layer_min_max: (u8, u8),
-        fiber_uplink_min_max: (u8, u8),
-        stave_number_min_max: (u8, u8),
-    ) -> Self {
+    const fn new(layer_min_max: (u8, u8), stave_number_min_max: (u8, u8)) -> Self {
         if layer_min_max.0 > layer_min_max.1 {
             panic!("Layer min must be smaller than layer max");
-        }
-        if fiber_uplink_min_max.0 > fiber_uplink_min_max.1 {
-            panic!("Fiber uplink min must be smaller than fiber uplink max");
         }
         if stave_number_min_max.0 > stave_number_min_max.1 {
             panic!("Stave number min must be smaller than stave number max");
@@ -41,7 +32,6 @@ impl FeeIdSanityValidator {
             reserved0: 0,
             layer_min_max,
             reserved1: 0,
-            fiber_uplink_min_max,
             reserved2: 0,
             stave_number_min_max,
         }
@@ -107,8 +97,7 @@ impl FeeIdSanityValidator {
     }
 }
 
-const FEE_ID_SANITY_VALIDATOR: FeeIdSanityValidator =
-    FeeIdSanityValidator::new((0, 6), (0, 3), (0, 47));
+const FEE_ID_SANITY_VALIDATOR: FeeIdSanityValidator = FeeIdSanityValidator::new((0, 6), (0, 3));
 
 pub struct Rdh0Validator {
     pub header_id: u8,
