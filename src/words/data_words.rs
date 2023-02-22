@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use crate::ByteSlice;
 
 pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice {

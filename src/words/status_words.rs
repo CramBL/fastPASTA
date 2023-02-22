@@ -2,6 +2,9 @@ use crate::ByteSlice;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::fmt::Debug;
 
+/// Definitions for status words
+/// `IHW`, `TDH`, `TDT`, `DDW0`, `CDW`
+
 pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice {
     fn id(&self) -> u8;
     fn print(&self);
@@ -93,42 +96,42 @@ pub struct Tdh {
     reserved0_id: u16, // 71:64 reserved, 79:72 id
 }
 impl Tdh {
-    fn reserved0(&self) -> u16 {
+    pub fn reserved0(&self) -> u16 {
         self.reserved0_id & 0xFF
     }
 
-    fn reserved1(&self) -> u16 {
+    pub fn reserved1(&self) -> u16 {
         self.trigger_bc_reserved1 & 0xF000 // doesn't need shift as it should just be checked if equal to 0
     }
 
-    fn trigger_bc(&self) -> u16 {
+    pub fn trigger_bc(&self) -> u16 {
         self.trigger_bc_reserved1 & 0x0FFF
     }
 
-    fn reserved2(&self) -> u16 {
+    pub fn reserved2(&self) -> u16 {
         // 15th bit is reserved
         self.trigger_type_internal_trigger_no_data_continuation_reserved2 & 0b1000_0000_0000_0000
     }
 
-    fn continuation(&self) -> u16 {
+    pub fn continuation(&self) -> u16 {
         // 14th bit is continuation
         (self.trigger_type_internal_trigger_no_data_continuation_reserved2 & 0b100_0000_0000_0000)
             >> 14
     }
 
-    fn no_data(&self) -> u16 {
+    pub fn no_data(&self) -> u16 {
         // 13th bit is no_data
         (self.trigger_type_internal_trigger_no_data_continuation_reserved2 & 0b10_0000_0000_0000)
             >> 13
     }
 
-    fn internal_trigger(&self) -> u16 {
+    pub fn internal_trigger(&self) -> u16 {
         // 12th bit is internal_trigger
         (self.trigger_type_internal_trigger_no_data_continuation_reserved2 & 0b1_0000_0000_0000)
             >> 12
     }
 
-    fn trigger_type(&self) -> u16 {
+    pub fn trigger_type(&self) -> u16 {
         // 11:0 is trigger_type
         self.trigger_type_internal_trigger_no_data_continuation_reserved2 & 0b1111_1111_1111
     }
@@ -377,6 +380,12 @@ impl Ddw0 {
 
     pub fn lane_status(&self) -> u64 {
         self.res3_lane_status & 0x00ff_ffff_ffff_ffff
+    }
+    pub fn reserved0_1(&self) -> u8 {
+        self.index & 0b0000_0101
+    }
+    pub fn reserved2(&self) -> u8 {
+        ((self.res3_lane_status & 0xFF00_0000_0000_0000) >> 56) as u8
     }
 }
 

@@ -205,8 +205,8 @@ impl Rdh1Validator {
             )
             .unwrap();
         }
-        // Max bunch counter is 2808 per: https://home.cern/resources/faqs/facts-and-figures-about-lhc
-        if rdh1.bc() > 2808 {
+        // Max bunch counter is 0xdeb
+        if rdh1.bc() > 0xdeb {
             err_cnt += 1;
             write!(err_str, "{} = {:#x} ", stringify!(bc), rdh1.bc()).unwrap();
         }
