@@ -37,8 +37,8 @@ pub fn main() -> std::io::Result<()> {
     //      - Track file position (FilePosTracker)
     //      - reads data through struct interface + buffer
     //      - collects stats (Stats)
-    // 2. Read into a reasonably sized buffer (TODO)
-    // 3. Pass buffer to checker and read another chunk (TODO)
+    // 2. Read into a reasonably sized buffer
+    // 3. Pass buffer to checker and read another chunk
     // 4. Checker verifies received buffered chunk (big checks -> multi-threading)
     //                Not valid -> Print error and abort
     //                Valid     -> Pass chunk to writer
@@ -51,24 +51,24 @@ pub fn main() -> std::io::Result<()> {
 // 2. Do checks on read data
 // 3. Write data out (file or stdout)
 pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
+    // Types specific for RDH v7
     type V7 = RdhCRUv7;
-    // Setup reader, checker, writer, stats
-    let mut running_rdh_checker = fastpasta::validators::rdh::RdhCruv7RunningChecker::new();
-    let mut stats = stats::Stats::new();
-    // Automatically extracts link to filter if one is supplied
-
-    let mut writer = BufferedWriter::<V7>::new(&config, 1024 * 1024); // 1MB buffer
-
     type Cdp = (Vec<V7>, Vec<Vec<u8>>);
     // Create producer-consumer channel for the reader to the checker
     let (sender_reader, receiver_checker): (Sender<Cdp>, Receiver<Cdp>) = bounded(100);
     // Create producer-consumer channel for the checker to the writer
     let (sender_checker, receiver_writer): (Sender<Cdp>, Receiver<Cdp>) = bounded(100);
 
+    // Setup reader, checker, writer, stats
+    let mut running_rdh_checker = fastpasta::validators::rdh::RdhCruv7RunningChecker::new();
+    let mut stats = stats::Stats::new();
+    let mut writer = BufferedWriter::<V7>::new(&config, 1024 * 1024); // 1MB buffer
+
     // 1. Read data from file
     let cfg = Arc::clone(&config);
     let reader_thread = thread::spawn(move || {
         let reader = setup_buffered_reading(&cfg);
+        // Automatically extracts link to filter if one is supplied
         let mut file_scanner = FileScanner::new(&cfg, reader, FilePosTracker::new(), &mut stats);
 
         loop {
