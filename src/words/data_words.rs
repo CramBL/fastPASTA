@@ -29,16 +29,16 @@ pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice {
 const VALID_IL_ID_MIN_MAX: (u8, u8) = (0x20, 0x28);
 
 // 16 lanes
-const VALID_ML_CONNECT0_IDS: (u8, u8) = (0x43, 0x46);
-const VALID_ML_CONNECT1_IDS: (u8, u8) = (0x48, 0x4B);
-const VALID_ML_CONNECT2_IDS: (u8, u8) = (0x53, 0x56);
-const VALID_ML_CONNECT3_IDS: (u8, u8) = (0x58, 0x5B);
+const VALID_ML_CONNECT0_ID_MIN_MAX: (u8, u8) = (0x43, 0x46);
+const VALID_ML_CONNECT1_ID_MIN_MAX: (u8, u8) = (0x48, 0x4B);
+const VALID_ML_CONNECT2_ID_MIN_MAX: (u8, u8) = (0x53, 0x56);
+const VALID_ML_CONNECT3_ID_MIN_MAX: (u8, u8) = (0x58, 0x5B);
 
 // 28 lanes
-const VALID_OL_CONNECT0_IDS: (u8, u8) = (0x40, 0x46);
-const VALID_OL_CONNECT1_IDS: (u8, u8) = (0x48, 0x4E);
-const VALID_OL_CONNECT2_IDS: (u8, u8) = (0x50, 0x56);
-const VALID_OL_CONNECT3_IDS: (u8, u8) = (0x58, 0x5E);
+const VALID_OL_CONNECT0_ID_MIN_MAX: (u8, u8) = (0x40, 0x46);
+const VALID_OL_CONNECT1_ID_MIN_MAX: (u8, u8) = (0x48, 0x4E);
+const VALID_OL_CONNECT2_ID_MIN_MAX: (u8, u8) = (0x50, 0x56);
+const VALID_OL_CONNECT3_ID_MIN_MAX: (u8, u8) = (0x58, 0x5E);
 
 // Newtypes for the inner/outer barrel, to avoid comparing lanes from different barrels, with 0 runtime cost
 #[repr(transparent)]
@@ -122,18 +122,18 @@ impl ItsDataWordOb {
     }
     pub fn lane(&self) -> ObLane {
         let lane_id = self.id & 0x1F;
-        if lane_id < VALID_OL_CONNECT0_IDS.1 {
+        if lane_id < VALID_OL_CONNECT0_ID_MIN_MAX.1 {
             // 0-6
-            ObLane(lane_id % VALID_OL_CONNECT0_IDS.0)
-        } else if lane_id < VALID_OL_CONNECT1_IDS.1 {
+            ObLane(lane_id % VALID_OL_CONNECT0_ID_MIN_MAX.0)
+        } else if lane_id < VALID_OL_CONNECT1_ID_MIN_MAX.1 {
             // 7-13
-            ObLane(7 + (lane_id % VALID_OL_CONNECT1_IDS.0))
-        } else if lane_id < VALID_OL_CONNECT2_IDS.1 {
+            ObLane(7 + (lane_id % VALID_OL_CONNECT1_ID_MIN_MAX.0))
+        } else if lane_id < VALID_OL_CONNECT2_ID_MIN_MAX.1 {
             // 14-20
-            ObLane(14 + (lane_id % VALID_OL_CONNECT2_IDS.0))
+            ObLane(14 + (lane_id % VALID_OL_CONNECT2_ID_MIN_MAX.0))
         } else {
             // 21-27
-            ObLane(21 + (lane_id % VALID_OL_CONNECT3_IDS.0))
+            ObLane(21 + (lane_id % VALID_OL_CONNECT3_ID_MIN_MAX.0))
         }
     }
 }
@@ -146,21 +146,21 @@ mod tests {
     fn test_valid_valids() {
         let (min, max) = VALID_IL_ID_MIN_MAX;
         assert!(min <= max);
-        let (min, max) = VALID_ML_CONNECT0_IDS;
+        let (min, max) = VALID_ML_CONNECT0_ID_MIN_MAX;
         assert!(min <= max);
-        let (min, max) = VALID_ML_CONNECT1_IDS;
+        let (min, max) = VALID_ML_CONNECT1_ID_MIN_MAX;
         assert!(min <= max);
-        let (min, max) = VALID_ML_CONNECT2_IDS;
+        let (min, max) = VALID_ML_CONNECT2_ID_MIN_MAX;
         assert!(min <= max);
-        let (min, max) = VALID_ML_CONNECT3_IDS;
+        let (min, max) = VALID_ML_CONNECT3_ID_MIN_MAX;
         assert!(min <= max);
-        let (min, max) = VALID_OL_CONNECT0_IDS;
+        let (min, max) = VALID_OL_CONNECT0_ID_MIN_MAX;
         assert!(min <= max);
-        let (min, max) = VALID_OL_CONNECT1_IDS;
+        let (min, max) = VALID_OL_CONNECT1_ID_MIN_MAX;
         assert!(min <= max);
-        let (min, max) = VALID_OL_CONNECT2_IDS;
+        let (min, max) = VALID_OL_CONNECT2_ID_MIN_MAX;
         assert!(min <= max);
-        let (min, max) = VALID_OL_CONNECT3_IDS;
+        let (min, max) = VALID_OL_CONNECT3_ID_MIN_MAX;
         assert!(min <= max);
     }
 
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn valid_ob_0() {
-        let (min, max) = VALID_OL_CONNECT0_IDS;
+        let (min, max) = VALID_OL_CONNECT0_ID_MIN_MAX;
         for i in min..=max {
             let dw = ItsDataWordOb {
                 dw0: 0,
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn valid_ob_1() {
-        let (min, max) = VALID_OL_CONNECT1_IDS;
+        let (min, max) = VALID_OL_CONNECT1_ID_MIN_MAX;
         for i in min..=max {
             let dw = ItsDataWordOb {
                 dw0: 0,
@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn valid_ob_2() {
-        let (min, max) = VALID_OL_CONNECT2_IDS;
+        let (min, max) = VALID_OL_CONNECT2_ID_MIN_MAX;
         for i in min..=max {
             let dw = ItsDataWordOb {
                 dw0: 0,
@@ -274,7 +274,7 @@ mod tests {
 
     #[test]
     fn valid_ob_3() {
-        let (min, max) = VALID_OL_CONNECT3_IDS;
+        let (min, max) = VALID_OL_CONNECT3_ID_MIN_MAX;
         for i in min..=max {
             let dw = ItsDataWordOb {
                 dw0: 0,
