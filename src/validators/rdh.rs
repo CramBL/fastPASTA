@@ -216,12 +216,13 @@ impl Rdh1Validator {
             )
             .unwrap();
         }
-        // Any orbit or bc are valid in a sanity check
-        // if rdh1.bc() != self.valid_rdh1.bc() {
-        //     err_cnt += 1;
-        //     write!(err_str, "{} = {:#x} ", stringify!(bc), rdh1.bc()).unwrap();
-        // }
+        // Max bunch counter is 2808 per: https://home.cern/resources/faqs/facts-and-figures-about-lhc
+        if rdh1.bc() > 2808 {
+            err_cnt += 1;
+            write!(err_str, "{} = {:#x} ", stringify!(bc), rdh1.bc()).unwrap();
+        }
 
+        // Any orbit number is valid in a sanity check
         // if rdh1.orbit != self.valid_rdh1.orbit {
         //     err_cnt += 1;
         //     let tmp = rdh1.orbit;
@@ -308,12 +309,13 @@ pub struct RdhCruv7Validator {
     rdh1_validator: &'static Rdh1Validator,
     rdh2_validator: &'static Rdh2Validator,
     rdh3_validator: &'static Rdh3Validator,
-    //valid_dataformat_reserved0: DataformatReserved,
+    // valid_dataformat_reserved0: DataformatReserved,
     // valid link IDs are 0-11 and 15
     // datawrapper ID is 0 or 1
 }
 
 impl RdhCruv7Validator {
+    #[inline]
     pub fn sanity_check(&self, rdh: &RdhCRUv7) -> Result<(), GbtError> {
         let mut err_str = String::from("RDH v7 sanity check failed: ");
         let mut err_cnt: u8 = 0;
@@ -358,7 +360,7 @@ impl RdhCruv7Validator {
             let tmp = rdh.dw();
             write!(err_str, "{} = {:#x} ", stringify!(dw), tmp).unwrap();
         }
-        if rdh.data_format() != 2 {
+        if rdh.data_format() > 2 {
             err_cnt += 1;
             let tmp = rdh.data_format();
             write!(err_str, "{} = {:#x} ", stringify!(data_format), tmp).unwrap();
@@ -409,6 +411,7 @@ pub struct RdhCruv6Validator {
 }
 
 impl RdhCruv6Validator {
+    #[inline]
     pub fn sanity_check(&self, rdh: &RdhCRUv6) -> Result<(), GbtError> {
         let mut err_str = String::from("RDH v7 sanity check failed: ");
         let mut err_cnt: u8 = 0;
