@@ -2,12 +2,17 @@ use std::sync::Arc;
 use std::{thread, vec};
 
 use crossbeam_channel::{bounded, Receiver, RecvError, Sender};
+use fastpasta::macros::print;
 use fastpasta::util::config::Opt;
 use fastpasta::util::file_pos_tracker::FilePosTracker;
 use fastpasta::util::file_scanner::{FileScanner, ScanCDP};
 use fastpasta::util::stats;
 use fastpasta::util::writer::{BufferedWriter, Writer};
+use fastpasta::validators::cdp_running::CdpRunningValidator;
+use fastpasta::validators::rdh::RdhCruv7RunningChecker;
+use fastpasta::validators::status_words::STATUS_WORD_SANITY_CHECKER;
 use fastpasta::words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7};
+use fastpasta::words::status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt};
 use fastpasta::{
     buf_reader_with_capacity, file_open_read_only, setup_buffered_reading, GbtWord, RDH,
 };
@@ -16,8 +21,16 @@ use structopt::StructOpt;
 pub fn main() -> std::io::Result<()> {
     let opt: Opt = StructOpt::from_args();
     println!("{:#?}", opt);
+    let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
+        "fastpasta",
+        "-s",
+        "-f",
+        "0",
+        "../fastpasta_test_files/data_ols_ul.raw",
+        "-o test_filter_link.raw",
+    ]);
 
-    let config: Arc<Opt> = Arc::new(opt);
+    let config: Arc<Opt> = Arc::new(config);
 
     // Determine RDH version
     let file = file_open_read_only(config.file())?;
@@ -60,7 +73,7 @@ pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
     let (sender_checker, receiver_writer): (Sender<Cdp>, Receiver<Cdp>) = bounded(100);
 
     // Setup reader, checker, writer, stats
-    let mut running_rdh_checker = fastpasta::validators::rdh::RdhCruv7RunningChecker::new();
+    let mut running_rdh_checker = RdhCruv7RunningChecker::new();
     let mut stats = stats::Stats::new();
     let mut writer = BufferedWriter::<V7>::new(&config, 1024 * 1024); // 1MB buffer
 
@@ -91,6 +104,8 @@ pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
     // 2. Do checks on a received chunk of data
     let cfg = config.clone();
     let checker_thread = thread::spawn(move || {
+        let mut cdp_payload_running_validator = CdpRunningValidator::new();
+
         loop {
             // Receive chunk from reader
             let (rdh_chunk, payload_chunk) = match receiver_checker.recv() {
@@ -101,22 +116,33 @@ pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
                 }
             };
 
-            for rdh in rdh_chunk.as_slice() {
+            // Do checks one each pair of RDH and payload in the chunk
+            for (rdh, payload) in rdh_chunk.iter().zip(payload_chunk.iter()) {
+                RdhCRUv7::print_header_text();
+                rdh.print();
+                // Check RDH
                 if cfg.sanity_checks() {
                     sanity_validation(&rdh);
                 }
-                // RDH CHECK: There is always page 0 + minimum page 1 + stop flag
-                match running_rdh_checker.check(&rdh) {
-                    Ok(_) => (),
-                    Err(e) => {
-                        eprintln!("RDH check failed: {}", e);
-                        RdhCRUv7::print_header_text();
-                        eprintln!("Last RDH:");
-                        running_rdh_checker.last_rdh2.unwrap().print();
-                        eprintln!("Current RDH:");
-                        rdh.print();
+                let gbt_word_slice = payload.as_slice();
+                debug_assert!(payload.len() % 16 == 0);
+
+                const ID_IDX: usize = 9;
+                // Take 10 byte slices from the payload and check if they are valid GBT words
+                for i in 0..(payload.len() / 10) {
+                    let start_idx = i * 10;
+                    let end_idx = (i + 1) * 10;
+
+                    let gbt_word = &gbt_word_slice[start_idx..end_idx];
+                    //let gbt_word_id = gbt_word[ID_IDX];
+                    let check = cdp_payload_running_validator.check(rdh, gbt_word);
+                    if check.is_err() {
+                        eprintln!("GBT word check failed: {:?}", gbt_word);
                     }
                 }
+
+                do_rdh_v7_running_checks(&rdh, &mut running_rdh_checker);
+                do_v7_payload_checks(&rdh, payload);
             }
             // Checks are done, send chunk to writer
             sender_checker.send((rdh_chunk, payload_chunk)).unwrap();
@@ -205,4 +231,82 @@ pub fn get_chunk<T: RDH>(
     }
 
     Ok((rdhs, payloads))
+}
+
+pub fn do_rdh_v7_running_checks(rdh: &RdhCRUv7, running_rdh_checker: &mut RdhCruv7RunningChecker) {
+    // RDH CHECK: There is always page 0 + minimum page 1 + stop flag
+    match running_rdh_checker.check(&rdh) {
+        Ok(_) => (),
+        Err(e) => {
+            eprintln!("RDH check failed: {}", e);
+            RdhCRUv7::print_header_text();
+            eprintln!("Last RDH:");
+            running_rdh_checker.last_rdh2.unwrap().print();
+            eprintln!("Current RDH:");
+            rdh.print();
+        }
+    }
+}
+
+const IHW_ID: u8 = 0xE0;
+const TDH_ID: u8 = 0xE8;
+const TDT_ID: u8 = 0xF0;
+const DDW0: u8 = 0xE4;
+// Flavor 0 will have no padding - other than the usual 6 bytes with 0x0
+// Flavor 1 will have padding if last word does not fill all 16 bytes
+#[inline]
+pub fn do_v7_payload_checks(rdh: &RdhCRUv7, payload: &Vec<u8>) {
+    // PAYLOAD CHECK: Check if payload is empty
+    if payload.is_empty() {
+        eprintln!("Payload is empty!");
+        return;
+    } else {
+        //eprintln!("Payload size: {}", payload.len());
+    }
+    let gbt_word_slice = payload.as_slice();
+
+    debug_assert!(payload.len() % 16 == 0);
+
+    const ID_IDX: usize = 9;
+    // Take 10 byte slices from the payload and check if they are valid GBT words
+    for i in 0..(payload.len() / 10) {
+        let start_idx = i * 10;
+        let end_idx = (i + 1) * 10;
+
+        let gbt_word = &gbt_word_slice[start_idx..end_idx];
+        let gbt_word_id = gbt_word[ID_IDX];
+
+        // Check if the first word is IHW or DDW0
+        if i == 0 {
+            match rdh.rdh2.stop_bit {
+                0 => {
+                    // Check if the first word is IHW
+                    let ihw = Ihw::load(&mut gbt_word.clone()).unwrap();
+                    let check = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw);
+                    if check.is_err() {
+                        println!("IHW sanity check failed: {}", check.err().unwrap());
+                        println!("IHW: {:02X?}", gbt_word);
+                    }
+                }
+                1 => {
+                    // Check if the first word is DDW0
+                    let ddw0 = Ddw0::load(&mut gbt_word.clone()).unwrap();
+                    let check = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0);
+                    if check.is_err() {
+                        println!("DDW0 sanity check failed: {}", check.err().unwrap());
+                        println!("DDW0: {:02X?}", gbt_word);
+                    }
+                }
+                _ => panic!("Stop bit is not 0 or 1"),
+            }
+        } else if i == 1 && rdh.rdh2.stop_bit == 0 {
+            // Check if the second word is TDH
+            let tdh = Tdh::load(&mut gbt_word.clone()).unwrap();
+            let check = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh);
+            if check.is_err() {
+                println!("TDH sanity check failed: {}", check.err().unwrap());
+                println!("TDH: {:02X?}", gbt_word);
+            }
+        }
+    }
 }
