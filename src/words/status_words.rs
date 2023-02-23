@@ -51,10 +51,14 @@ impl StatusWord for Ihw {
     where
         Self: Sized,
     {
+        let active_lanes = reader.read_u32::<LittleEndian>()?;
+        let reserved = reader.read_u32::<LittleEndian>()?;
+        let id = reader.read_u16::<LittleEndian>()?;
+        assert!((id >> 8) as u8 == 0xE0, "IHW ID is not 0xE0");
         Ok(Ihw {
-            active_lanes: reader.read_u32::<LittleEndian>().unwrap(),
-            reserved: reader.read_u32::<LittleEndian>().unwrap(),
-            id: reader.read_u16::<LittleEndian>().unwrap(),
+            active_lanes,
+            reserved,
+            id,
         })
     }
     fn is_reserved_0(&self) -> bool {
@@ -160,13 +164,18 @@ impl StatusWord for Tdh {
     where
         Self: Sized,
     {
+        let trigger_type_internal_trigger_no_data_continuation_reserved2 =
+            reader.read_u16::<LittleEndian>()?;
+        let trigger_bc_reserved1 = reader.read_u16::<LittleEndian>()?;
+        let trigger_orbit = reader.read_u32::<LittleEndian>()?;
+        let reserved0_id = reader.read_u16::<LittleEndian>()?;
+        assert!((reserved0_id >> 8) as u8 == 0xE8, "TDH ID is not 0xE8");
+
         Ok(Tdh {
-            trigger_type_internal_trigger_no_data_continuation_reserved2: reader
-                .read_u16::<LittleEndian>()
-                .unwrap(),
-            trigger_bc_reserved1: reader.read_u16::<LittleEndian>().unwrap(),
-            trigger_orbit: reader.read_u32::<LittleEndian>().unwrap(),
-            reserved0_id: reader.read_u16::<LittleEndian>().unwrap(),
+            trigger_type_internal_trigger_no_data_continuation_reserved2,
+            trigger_bc_reserved1,
+            trigger_orbit,
+            reserved0_id,
         })
     }
     fn is_reserved_0(&self) -> bool {
@@ -280,7 +289,7 @@ impl StatusWord for Tdt {
 
     fn print(&self) {
         println!(
-            "TDT: {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x}",
+            "TDT: {:x} {:x} packet_done={:x} {:x} {:x} {:x} {:x} {:x} {:x}",
             self.lane_starts_violation() as u8,
             self.transmission_timeout() as u8,
             self.packet_done() as u8,
@@ -297,13 +306,21 @@ impl StatusWord for Tdt {
     where
         Self: Sized,
     {
+        let lane_status_15_0 = reader.read_u32::<LittleEndian>()?;
+        let lane_status_23_16 = reader.read_u16::<LittleEndian>()?;
+        let lane_status_27_24 = reader.read_u8()?;
+        let timeout_to_start_timeout_start_stop_timeout_in_idle_res2 = reader.read_u8()?;
+        let res0_lane_starts_violation_res1_transmission_timeout_packet_done = reader.read_u8()?;
+        let id = reader.read_u8()?;
+        assert!(id == 0xf0, "TDT ID is not 0xf0: {:x}", id);
+
         Ok(Self {
-            lane_status_15_0: reader.read_u32::<LittleEndian>()?,
-            lane_status_23_16: reader.read_u16::<LittleEndian>()?,
-            lane_status_27_24: reader.read_u8()?,
-            timeout_to_start_timeout_start_stop_timeout_in_idle_res2: reader.read_u8()?,
-            res0_lane_starts_violation_res1_transmission_timeout_packet_done: reader.read_u8()?,
-            id: reader.read_u8()?,
+            lane_status_15_0,
+            lane_status_23_16,
+            lane_status_27_24,
+            timeout_to_start_timeout_start_stop_timeout_in_idle_res2,
+            res0_lane_starts_violation_res1_transmission_timeout_packet_done,
+            id,
         })
     }
     fn is_reserved_0(&self) -> bool {
@@ -409,10 +426,14 @@ impl StatusWord for Ddw0 {
     where
         Self: Sized,
     {
+        let res3_lane_status = reader.read_u64::<LittleEndian>()?;
+        let index = reader.read_u8()?;
+        let id = reader.read_u8()?;
+        assert!(id == 0xe4, "DDW0 ID is not 0xe4: {:x}", id);
         Ok(Self {
-            res3_lane_status: reader.read_u64::<LittleEndian>()?,
-            index: reader.read_u8()?,
-            id: reader.read_u8()?,
+            res3_lane_status,
+            index,
+            id,
         })
     }
     fn is_reserved_0(&self) -> bool {
@@ -484,11 +505,15 @@ impl StatusWord for Cdw {
     where
         Self: Sized,
     {
+        let calibration_word_index_lsb_calibration_user_fields =
+            reader.read_u64::<LittleEndian>()?;
+        let calibration_word_index_msb = reader.read_u8()?;
+        let id = reader.read_u8()?;
+        assert!(id == 0xf8, "CDW ID is not 0xf8: {:x}", id);
         Ok(Self {
-            calibration_word_index_lsb_calibration_user_fields: reader
-                .read_u64::<LittleEndian>()?,
-            calibration_word_index_msb: reader.read_u8()?,
-            id: reader.read_u8()?,
+            calibration_word_index_lsb_calibration_user_fields,
+            calibration_word_index_msb,
+            id,
         })
     }
     fn is_reserved_0(&self) -> bool {
