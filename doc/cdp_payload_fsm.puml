@@ -1,0 +1,88 @@
+@startuml CDP_payload_StateMachine (continuous mode)
+<style>
+title {
+  HorizontalAlignment right
+  FontSize 50
+  BackGroundColor lightgrey
+  Margin 1
+  Padding 0
+}
+
+header {
+  HorizontalAlignment center
+  FontSize 20
+  FontColor purple
+}
+
+footer {
+  HorizontalAlignment left
+  FontSize 28
+  FontColor red
+}
+
+legend {
+  FontSize 30
+  BackGroundColor yellow
+  Margin 30
+  Padding 50
+}
+
+caption {
+  FontSize 32
+}
+</style>
+Title **CDP payload fsm** (continuous mode)
+hide empty description
+
+state after_TDH <<choice>>
+state after_TDH_no_data <<choice>>
+state after_TDT <<choice>>
+state after_Data <<choice>>
+
+
+[*] -> IHW : **RDH:** [stop_bit == 0\n&& Page == 0]
+
+IHW -> TDH
+
+TDH -down-> after_TDH
+TDH: continuation == 0
+TDH: no_data
+
+after_TDH --> Data : [no_data == 0]
+after_TDH --> after_TDH_no_data : [no_data == 1]
+
+note left of after_TDH_no_data : Both TDH and DDW0\nAre legal next words
+
+after_TDH_no_data -left-> TDH : [next word is TDH]
+after_TDH_no_data --> DDW0 : [next word is DDW0]
+
+
+Data --> after_Data
+
+note left of after_Data : Both Data and TDT\nAre legal next words
+
+after_Data -left-> Data : [next word is Data Word]
+after_Data --> TDT : [next word is TDT]
+TDT: packet_done
+
+TDT --> after_TDT
+after_TDT -up-> TDH : [packet_done == 1\n&& Internal Trigger]
+after_TDT --> Continuation : [packet_done == 0\n&& event page full]
+after_TDT -left-> DDW0 : [packet_done == 1\n&& HBa]
+
+
+state Continuation {
+    [*] -> c_IHW
+    c_IHW -> c_TDH : [stop_bit == 0\n&& Page >= 1]
+    c_TDH: continuation == 1
+    c_TDH --> c_Data
+    c_Data --> c_Data : [next word is Data Word]
+    c_Data -left-> c_TDT : [next word is TDT]
+    c_TDT: packet_done == 1
+    c_TDT -left-> DDW0
+}
+
+DDW0 -left-> [*]
+DDW0: **RDH:**\nstop_bit == 1\nPage >= 1
+
+@enduml

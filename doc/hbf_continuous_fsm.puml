@@ -50,7 +50,7 @@ after_RDH -> DDW0 : [stop_bit == 1\nPage >= 1]
 
 
 IHW --> after_IHW
-after_IHW -right-> RDH : [No trigger message]
+after_IHW -right-> RDH : [No trigger message]\n**WARNING!**\n**Unexpected**\n**No Trigger in**\n** Continuous Mode**
 after_IHW --> TDH_no_continuation : [RDH stop_bit == 0\nPage == 0]
 after_IHW --> TDH_continuation : [RDH stop_bit == 0\nPage >= 1]
 
