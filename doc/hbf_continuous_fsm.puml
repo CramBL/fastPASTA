@@ -1,0 +1,85 @@
+@startuml HBFStateMachine (continuous mode)
+<style>
+title {
+  HorizontalAlignment right
+  FontSize 50
+  BackGroundColor lightgrey
+  Margin 1
+  Padding 0
+}
+
+header {
+  HorizontalAlignment center
+  FontSize 20
+  FontColor purple
+}
+
+footer {
+  HorizontalAlignment left
+  FontSize 28
+  FontColor red
+}
+
+legend {
+  FontSize 30
+  BackGroundColor yellow
+  Margin 30
+  Padding 50
+}
+
+caption {
+  FontSize 32
+}
+</style>
+Title **HBF** (continuous mode)
+hide empty description
+
+state after_RDH <<choice>>
+state after_IHW <<choice>>
+state after_TDH <<choice>>
+state after_TDT <<choice>>
+
+
+[*] --> RDH
+RDH : pages_counter
+RDH : stop_bit
+RDH --> after_RDH
+
+after_RDH --> IHW : [stop_bit == 0]
+after_RDH -left-> DDW0 : [stop_bit == 1\nPage >= 1]
+
+
+
+IHW --> after_IHW
+after_IHW -right-> RDH : [No trigger message]
+after_IHW --> TDH_no_continuation : [RDH stop_bit == 0\nPage == 0]
+after_IHW --> TDH_continuation : [RDH stop_bit == 0\nPage >= 1]
+
+TDH_continuation --> Data
+TDH_continuation: continuation == 1
+TDH_continuation: no_data
+
+
+TDH_no_continuation --> after_TDH
+TDH_no_continuation: continuation == 0
+TDH_no_continuation: no_data
+
+after_TDH --> Data : [no_data == 0]
+after_TDH -right-> RDH : [no_data == 1]
+
+Data -> Data
+Data: **While:**
+Data:   1. There is more data
+Data:   2. Event page is not full
+
+Data --> TDT
+TDT: packet_done
+
+TDT --> after_TDT
+
+after_TDT -up-> RDH : [packet_done == 0\n&& event page full]\nOR\n[packet_done == 1\n&& HBa]
+after_TDT -> after_IHW : [packet_done == 1\n&& Internal Trigger]
+
+DDW0 -> RDH
+
+@enduml
