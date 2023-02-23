@@ -9,7 +9,7 @@ use std::fmt::Write;
 ///
 /// Each validator is aggregated by the `StatusWordSanityChecker` struct.
 
-const STATUS_WORD_SANITY_CHECKER: StatusWordSanityChecker = StatusWordSanityChecker::new();
+pub const STATUS_WORD_SANITY_CHECKER: StatusWordSanityChecker = StatusWordSanityChecker::new();
 pub struct StatusWordSanityChecker {
     ihw_validator: IhwValidator,
     tdh_validator: TdhValidator,
@@ -87,9 +87,9 @@ impl StatusWordValidator<Tdh> for TdhValidator {
 
         // Trigger Type check (12 lowest bits of trigger type received from CTP)
         // All values are valid except 0x0
-        if tdh.trigger_type() == 0 {
+        if tdh.trigger_type() == 0 && tdh.internal_trigger() == 0 {
             err_cnt += 1;
-            write!(err_str, "trigger type is 0").unwrap();
+            write!(err_str, "trigger type and internal trigger both 0").unwrap();
         }
 
         if err_cnt > 0 {
