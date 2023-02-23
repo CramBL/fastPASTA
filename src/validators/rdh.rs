@@ -97,7 +97,7 @@ impl FeeIdSanityValidator {
     }
 }
 
-const FEE_ID_SANITY_VALIDATOR: FeeIdSanityValidator = FeeIdSanityValidator::new((0, 6), (0, 3));
+const FEE_ID_SANITY_VALIDATOR: FeeIdSanityValidator = FeeIdSanityValidator::new((0, 6), (0, 47));
 
 pub struct Rdh0Validator {
     pub header_id: u8,
