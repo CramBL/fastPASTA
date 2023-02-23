@@ -31,7 +31,7 @@ caption {
   FontSize 32
 }
 </style>
-Title **HBF** (continuous mode)
+Title **HBF fsm** (continuous mode)
 hide empty description
 
 state after_RDH <<choice>>
@@ -40,14 +40,13 @@ state after_TDH <<choice>>
 state after_TDT <<choice>>
 
 
-[*] --> RDH
+[*] --> RDH : SoC or HBa
 RDH : pages_counter
 RDH : stop_bit
 RDH --> after_RDH
 
 after_RDH --> IHW : [stop_bit == 0]
-after_RDH -left-> DDW0 : [stop_bit == 1\nPage >= 1]
-
+after_RDH -> DDW0 : [stop_bit == 1\nPage >= 1]
 
 
 IHW --> after_IHW
@@ -80,6 +79,6 @@ TDT --> after_TDT
 after_TDT -up-> RDH : [packet_done == 0\n&& event page full]\nOR\n[packet_done == 1\n&& HBa]
 after_TDT -> after_IHW : [packet_done == 1\n&& Internal Trigger]
 
-DDW0 -> RDH
+DDW0 -> [*]
 
 @enduml
