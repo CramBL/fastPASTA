@@ -54,7 +54,6 @@ impl StatusWord for Ihw {
         let active_lanes = reader.read_u32::<LittleEndian>()?;
         let reserved = reader.read_u32::<LittleEndian>()?;
         let id = reader.read_u16::<LittleEndian>()?;
-        assert!((id >> 8) as u8 == 0xE0, "IHW ID is not 0xE0");
         Ok(Ihw {
             active_lanes,
             reserved,
@@ -169,7 +168,6 @@ impl StatusWord for Tdh {
         let trigger_bc_reserved1 = reader.read_u16::<LittleEndian>()?;
         let trigger_orbit = reader.read_u32::<LittleEndian>()?;
         let reserved0_id = reader.read_u16::<LittleEndian>()?;
-        assert!((reserved0_id >> 8) as u8 == 0xE8, "TDH ID is not 0xE8");
 
         Ok(Tdh {
             trigger_type_internal_trigger_no_data_continuation_reserved2,
