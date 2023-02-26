@@ -124,6 +124,9 @@ pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
                 if cfg.sanity_checks() {
                     sanity_validation(&rdh);
                 }
+
+                // Flavor 0 will have no padding - other than the usual 6 bytes with 0x0
+                // Flavor 1 will have padding if last word does not fill all 16 bytes
                 let gbt_word_chunks = payload.as_slice().chunks_exact(10);
                 // Asserts that the payload is padded to 16 bytes at the end
                 // Fails for data_ols_ul.raw as it is old from when the padding logic was bugged
@@ -140,7 +143,6 @@ pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
                 });
 
                 do_rdh_v7_running_checks(&rdh, &mut running_rdh_checker);
-                //do_v7_payload_checks(&rdh, payload);
             }
             // Checks are done, send chunk to writer
             sender_checker.send((rdh_chunk, payload_chunk)).unwrap();
@@ -188,11 +190,8 @@ pub fn process_rdh_v6(config: Arc<Opt>) -> std::io::Result<()> {
 
 pub fn sanity_validation(rdh: &RdhCRUv7) {
     let rdh_validator = fastpasta::validators::rdh::RDH_CRU_V7_VALIDATOR;
-    match rdh_validator.sanity_check(&rdh) {
-        Ok(_) => (),
-        Err(e) => {
-            println!("Sanity check failed: {}", e);
-        }
+    if let Err(e) = rdh_validator.sanity_check(&rdh) {
+        println!("Sanity check failed: {}", e);
     }
 }
 
@@ -240,68 +239,5 @@ pub fn do_rdh_v7_running_checks(rdh: &RdhCRUv7, running_rdh_checker: &mut RdhCru
         running_rdh_checker.last_rdh2.unwrap().print();
         eprintln!("Current RDH:");
         rdh.print();
-    }
-}
-
-const IHW_ID: u8 = 0xE0;
-const TDH_ID: u8 = 0xE8;
-const TDT_ID: u8 = 0xF0;
-const DDW0: u8 = 0xE4;
-// Flavor 0 will have no padding - other than the usual 6 bytes with 0x0
-// Flavor 1 will have padding if last word does not fill all 16 bytes
-#[inline]
-pub fn do_v7_payload_checks(rdh: &RdhCRUv7, payload: &Vec<u8>) {
-    // PAYLOAD CHECK: Check if payload is empty
-    if payload.is_empty() {
-        eprintln!("Payload is empty!");
-        return;
-    } else {
-        //eprintln!("Payload size: {}", payload.len());
-    }
-    let gbt_word_slice = payload.as_slice();
-
-    debug_assert!(payload.len() % 16 == 0);
-
-    const ID_IDX: usize = 9;
-    // Take 10 byte slices from the payload and check if they are valid GBT words
-    for i in 0..(payload.len() / 10) {
-        let start_idx = i * 10;
-        let end_idx = (i + 1) * 10;
-
-        let gbt_word = &gbt_word_slice[start_idx..end_idx];
-        let gbt_word_id = gbt_word[ID_IDX];
-
-        // Check if the first word is IHW or DDW0
-        if i == 0 {
-            match rdh.rdh2.stop_bit {
-                0 => {
-                    // Check if the first word is IHW
-                    let ihw = Ihw::load(&mut gbt_word.clone()).unwrap();
-                    let check = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw);
-                    if check.is_err() {
-                        println!("IHW sanity check failed: {}", check.err().unwrap());
-                        println!("IHW: {:02X?}", gbt_word);
-                    }
-                }
-                1 => {
-                    // Check if the first word is DDW0
-                    let ddw0 = Ddw0::load(&mut gbt_word.clone()).unwrap();
-                    let check = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0);
-                    if check.is_err() {
-                        println!("DDW0 sanity check failed: {}", check.err().unwrap());
-                        println!("DDW0: {:02X?}", gbt_word);
-                    }
-                }
-                _ => panic!("Stop bit is not 0 or 1"),
-            }
-        } else if i == 1 && rdh.rdh2.stop_bit == 0 {
-            // Check if the second word is TDH
-            let tdh = Tdh::load(&mut gbt_word.clone()).unwrap();
-            let check = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh);
-            if check.is_err() {
-                println!("TDH sanity check failed: {}", check.err().unwrap());
-                println!("TDH: {:02X?}", gbt_word);
-            }
-        }
     }
 }
