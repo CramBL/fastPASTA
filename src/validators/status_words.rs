@@ -44,15 +44,22 @@ pub trait StatusWordValidator<T: StatusWord> {
     fn sanity_check(&self, status_word: &T) -> Result<(), String>;
 }
 
-const IHW_VALIDATOR: IhwValidator = IhwValidator {};
-pub struct IhwValidator {}
+const IHW_VALIDATOR: IhwValidator = IhwValidator { valid_id: 0xE0 };
+pub struct IhwValidator {
+    valid_id: u8,
+}
 impl StatusWordValidator<Ihw> for IhwValidator {
     fn sanity_check(&self, ihw: &Ihw) -> Result<(), String> {
         let mut err_str = String::new();
         let mut err_cnt: u8 = 0;
+        if ihw.id() != self.valid_id {
+            err_cnt += 1;
+            write!(err_str, "ID is not 0xE0:  {:b } ", ihw.id()).unwrap();
+        }
+
         if ihw.is_reserved_0() == false {
             err_cnt += 1;
-            write!(err_str, "reserved bits are not 0:  {:b}", ihw.reserved()).unwrap();
+            write!(err_str, "reserved bits are not 0:  {:b} ", ihw.reserved()).unwrap();
         }
         if err_cnt > 0 {
             Err(err_str)
@@ -62,17 +69,25 @@ impl StatusWordValidator<Ihw> for IhwValidator {
     }
 }
 
-const TDH_VALIDATOR: TdhValidator = TdhValidator {};
-pub struct TdhValidator {}
+const TDH_VALIDATOR: TdhValidator = TdhValidator { valid_id: 0xE8 };
+pub struct TdhValidator {
+    valid_id: u8,
+}
 impl StatusWordValidator<Tdh> for TdhValidator {
     fn sanity_check(&self, tdh: &Tdh) -> Result<(), String> {
         let mut err_str = String::new();
         let mut err_cnt: u8 = 0;
+
+        if tdh.id() != self.valid_id {
+            err_cnt += 1;
+            write!(err_str, "ID is not 0xE8:  {:b} ", tdh.id()).unwrap();
+        }
+
         if tdh.is_reserved_0() == false {
             err_cnt += 1;
             write!(
                 err_str,
-                "reserved bits are not 0:  {:b} {:b} {:b}",
+                "reserved bits are not 0:  {:b} {:b} {:b} ",
                 tdh.reserved0(),
                 tdh.reserved1(),
                 tdh.reserved2()
@@ -100,17 +115,23 @@ impl StatusWordValidator<Tdh> for TdhValidator {
     }
 }
 
-const TDT_VALIDATOR: TdtValidator = TdtValidator {};
-pub struct TdtValidator {}
+const TDT_VALIDATOR: TdtValidator = TdtValidator { valid_id: 0xF0 };
+pub struct TdtValidator {
+    valid_id: u8,
+}
 impl StatusWordValidator<Tdt> for TdtValidator {
     fn sanity_check(&self, tdt: &Tdt) -> Result<(), String> {
         let mut err_str = String::new();
         let mut err_cnt: u8 = 0;
+        if tdt.id() != self.valid_id {
+            err_cnt += 1;
+            write!(err_str, "ID is not 0xF0:  {:b} ", tdt.id()).unwrap();
+        }
         if tdt.is_reserved_0() == false {
             err_cnt += 1;
             write!(
                 err_str,
-                "reserved bits are not 0:  {:b} {:b} {:b}",
+                "reserved bits are not 0:  {:b} {:b} {:b} ",
                 tdt.reserved0(),
                 tdt.reserved1(),
                 tdt.reserved2()
@@ -126,17 +147,25 @@ impl StatusWordValidator<Tdt> for TdtValidator {
     }
 }
 
-const DDW0_VALIDATOR: Ddw0Validator = Ddw0Validator {}; // Used in the final StatusWord sanity checker
-pub struct Ddw0Validator {}
+const DDW0_VALIDATOR: Ddw0Validator = Ddw0Validator { valid_id: 0xE4 }; // Used in the final StatusWord sanity checker
+pub struct Ddw0Validator {
+    valid_id: u8,
+}
 impl StatusWordValidator<Ddw0> for Ddw0Validator {
     fn sanity_check(&self, ddw0: &Ddw0) -> Result<(), String> {
         let mut err_str = String::new();
         let mut err_cnt: u8 = 0;
+
+        if ddw0.id() != self.valid_id {
+            err_cnt += 1;
+            write!(err_str, "ID is not 0xE4:  {:b} ", ddw0.id()).unwrap();
+        }
+
         if ddw0.is_reserved_0() == false {
             err_cnt += 1;
             write!(
                 err_str,
-                "reserved bits are not 0:  {:b} {:b}",
+                "reserved bits are not 0:  {:b} {:b} ",
                 ddw0.reserved0_1(),
                 ddw0.reserved2(),
             )
@@ -145,7 +174,7 @@ impl StatusWordValidator<Ddw0> for Ddw0Validator {
 
         if ddw0.index() != 0 {
             err_cnt += 1;
-            write!(err_str, "index is not 0:  {:b}", ddw0.index()).unwrap();
+            write!(err_str, "index is not 0:  {:b} ", ddw0.index()).unwrap();
         }
 
         if err_cnt > 0 {
@@ -225,7 +254,7 @@ mod tests {
             LANE_24_AND_25_IN_ERROR,
             RESERVED0,
             TRANSMISSION_TO_LANE_STARTS_VIOLATION_SET,
-            0xE4,
+            VALID_ID,
         ];
 
         let ddw0 = Ddw0::load(&mut raw_data_ddw0.as_slice()).unwrap();
