@@ -124,25 +124,23 @@ pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
                 if cfg.sanity_checks() {
                     sanity_validation(&rdh);
                 }
-                let gbt_word_slice = payload.as_slice();
-                debug_assert!(payload.len() % 16 == 0);
+                let gbt_word_chunks = payload.as_slice().chunks_exact(10);
+                // Asserts that the payload is padded to 16 bytes at the end
+                // Fails for data_ols_ul.raw as it is old from when the padding logic was bugged
+                debug_assert!(gbt_word_chunks.remainder().len() == 6);
+                debug_assert!(gbt_word_chunks.remainder().iter().all(|&x| x == 0xFF)); // Asserts that the payload padding is 0xFF
 
-                const ID_IDX: usize = 9;
-                // Take 10 byte slices from the payload and check if they are valid GBT words
-                for i in 0..(payload.len() / 10) {
-                    let start_idx = i * 10;
-                    let end_idx = (i + 1) * 10;
-
-                    let gbt_word = &gbt_word_slice[start_idx..end_idx];
-                    //let gbt_word_id = gbt_word[ID_IDX];
-                    let check = cdp_payload_running_validator.check(rdh, gbt_word);
-                    if check.is_err() {
-                        eprintln!("GBT word check failed: {:?}", gbt_word);
+                gbt_word_chunks.for_each(|gbt_word| {
+                    if let Err(e) = cdp_payload_running_validator.check(rdh, gbt_word) {
+                        eprintln!(
+                            "Payload check failed for: {:?} \nWith error:{}",
+                            gbt_word, e
+                        );
                     }
-                }
+                });
 
                 do_rdh_v7_running_checks(&rdh, &mut running_rdh_checker);
-                do_v7_payload_checks(&rdh, payload);
+                //do_v7_payload_checks(&rdh, payload);
             }
             // Checks are done, send chunk to writer
             sender_checker.send((rdh_chunk, payload_chunk)).unwrap();
@@ -235,16 +233,13 @@ pub fn get_chunk<T: RDH>(
 
 pub fn do_rdh_v7_running_checks(rdh: &RdhCRUv7, running_rdh_checker: &mut RdhCruv7RunningChecker) {
     // RDH CHECK: There is always page 0 + minimum page 1 + stop flag
-    match running_rdh_checker.check(&rdh) {
-        Ok(_) => (),
-        Err(e) => {
-            eprintln!("RDH check failed: {}", e);
-            RdhCRUv7::print_header_text();
-            eprintln!("Last RDH:");
-            running_rdh_checker.last_rdh2.unwrap().print();
-            eprintln!("Current RDH:");
-            rdh.print();
-        }
+    if let Err(e) = running_rdh_checker.check(&rdh) {
+        eprintln!("RDH check failed: {}", e);
+        RdhCRUv7::print_header_text();
+        eprintln!("Last RDH:");
+        running_rdh_checker.last_rdh2.unwrap().print();
+        eprintln!("Current RDH:");
+        rdh.print();
     }
 }
 
