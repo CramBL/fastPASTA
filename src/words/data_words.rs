@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::ByteSlice;
 
 pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice {

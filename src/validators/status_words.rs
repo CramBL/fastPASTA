@@ -1,4 +1,4 @@
-use crate::words::status_words::{Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt};
+use crate::words::status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt};
 use std::fmt::Write;
 
 /// Validators for status words: `IHW`, `TDH`, `TDT`, `DDW0`

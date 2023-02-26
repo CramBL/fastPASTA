@@ -1,8 +1,7 @@
-use std::sync::Arc;
-use std::{thread, vec};
-
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unreachable_code)]
 use crossbeam_channel::{bounded, Receiver, RecvError, Sender};
-use fastpasta::macros::print;
 use fastpasta::util::config::Opt;
 use fastpasta::util::file_pos_tracker::FilePosTracker;
 use fastpasta::util::file_scanner::{FileScanner, ScanCDP};
@@ -10,12 +9,12 @@ use fastpasta::util::stats;
 use fastpasta::util::writer::{BufferedWriter, Writer};
 use fastpasta::validators::cdp_running::CdpRunningValidator;
 use fastpasta::validators::rdh::RdhCruv7RunningChecker;
-use fastpasta::validators::status_words::STATUS_WORD_SANITY_CHECKER;
 use fastpasta::words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7};
-use fastpasta::words::status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt};
 use fastpasta::{
     buf_reader_with_capacity, file_open_read_only, setup_buffered_reading, GbtWord, RDH,
 };
+use std::sync::Arc;
+use std::{thread, vec};
 use structopt::StructOpt;
 
 pub fn main() -> std::io::Result<()> {
@@ -176,10 +175,10 @@ pub fn process_rdh_v6(config: Arc<Opt>) -> std::io::Result<()> {
     // Automatically extracts link to filter if one is supplied
     let mut file_scanner = FileScanner::default(&config, &mut stats);
 
-    let (rdh_chunk, payload_chunk) =
+    let (rdh_chunk, _payload_chunk) =
         get_chunk::<RdhCRUv6>(&mut file_scanner, 10).expect("Error reading CDP chunks");
 
-    for rdh in rdh_chunk {
+    for _rdh in rdh_chunk {
         if config.sanity_checks() {
             todo!("Sanity check for RDH v6")
         }
