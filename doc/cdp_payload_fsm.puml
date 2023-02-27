@@ -40,9 +40,9 @@ state after_TDT <<choice>>
 state after_Data <<choice>>
 
 
-[*] -> IHW : **RDH:** [stop_bit == 0\n&& Page == 0]
+[*] -left-> IHW : **RDH:** [stop_bit == 0\n&& Page == 0]
 
-IHW -> TDH
+IHW -left-> TDH
 
 TDH -down-> after_TDH
 TDH: continuation == 0
@@ -66,10 +66,11 @@ after_Data --> TDT : [next word is TDT]
 TDT: packet_done
 
 TDT --> after_TDT
-after_TDT -up-> TDH : [packet_done == 1\n&& Internal Trigger]
+after_TDT -up-> TDH : [packet_done == 1\n&&\n next TDH: Internal Trigger]
 after_TDT --> Continuation : [packet_done == 0\n&& event page full]
 after_TDT -left-> DDW0 : [packet_done == 1]
-note right of after_TDT : Both TDH and DDW0\nare legal next words\nwhen **packet_done == 1**
+after_TDT -left-> IHW : [packet_done == 1]
+note right of after_TDT : IHW, TDH and DDW0\nare legal next words\nwhen **packet_done == 1**
 
 
 state Continuation {
