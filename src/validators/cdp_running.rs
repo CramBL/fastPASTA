@@ -94,6 +94,11 @@ impl CdpRunningValidator {
         }
     }
 
+    pub fn reset_fsm(&mut self) {
+        eprintln!("WARNING: Resetting CDP Payload FSM");
+        self.sm = CDP_PAYLOAD_FSM_Continuous::Machine::new(IhwSt).as_enum();
+    }
+
     /// Takes a slice of bytes wrapped in an enum of the expected status word then:
     /// 1. Deserializes the slice as the expected status word and checks it for sanity.
     /// 2. If the sanity check fails, the error is printed to stderr and returned as an error.
