@@ -51,7 +51,7 @@ TDH: no_data
 after_TDH --> Data : [no_data == 0]
 after_TDH --> after_TDH_no_data : [no_data == 1]
 
-note left of after_TDH_no_data : Both TDH and DDW0\nAre legal next words
+note left of after_TDH_no_data : Both TDH and DDW0\nare legal next words
 
 after_TDH_no_data -left-> TDH : [next word is TDH]
 after_TDH_no_data --> DDW0 : [next word is DDW0]
@@ -59,7 +59,7 @@ after_TDH_no_data --> DDW0 : [next word is DDW0]
 
 Data --> after_Data
 
-note left of after_Data : Both Data and TDT\nAre legal next words
+note left of after_Data : Both Data and TDT\nare legal next words
 
 after_Data -left-> Data : [next word is Data Word]
 after_Data --> TDT : [next word is TDT]
@@ -68,19 +68,28 @@ TDT: packet_done
 TDT --> after_TDT
 after_TDT -up-> TDH : [packet_done == 1\n&& Internal Trigger]
 after_TDT --> Continuation : [packet_done == 0\n&& event page full]
-after_TDT -left-> DDW0 : [packet_done == 1\n&& HBa]
+after_TDT -left-> DDW0 : [packet_done == 1]
+note right of after_TDT : Both TDH and DDW0\nare legal next words\nwhen **packet_done == 1**
 
 
 state Continuation {
+  state after_c_Data <<choice>>
     [*] -> c_IHW
     c_IHW -> c_TDH : [stop_bit == 0\n&& Page >= 1]
     c_TDH: continuation == 1
     c_TDH --> c_Data
-    c_Data --> c_Data : [next word is Data Word]
-    c_Data -left-> c_TDT : [next word is TDT]
+    c_Data -left-> after_c_Data
+
+    after_c_Data -right-> c_Data : [next word is Data Word]
+    after_c_Data -up-> c_TDT : [next word is TDT]
+    after_c_Data -up-> c_IHW : [event page full]
     c_TDT: packet_done == 1
     c_TDT -left-> DDW0
+
+    note left of after_c_Data : Both Data and TDT\nare legal next words\nif event page is not full
 }
+
+
 
 DDW0 -left-> [*]
 DDW0: **RDH:**\nstop_bit == 1\nPage >= 1
