@@ -15,6 +15,10 @@ pub struct Opt {
     #[structopt(short = "s", long = "sanity-checks")]
     sanity_checks: bool,
 
+    /// Verbosity level
+    #[structopt(short = "v", long = "verbosity", default_value = "0")]
+    verbosity: u8,
+
     /// links to filter
     #[structopt(short = "f", long)]
     filter_link: Option<u8>,
@@ -43,5 +47,8 @@ impl Opt {
     }
     pub fn output(&self) -> &Option<PathBuf> {
         &self.output
+    }
+    pub fn verbosity(&self) -> u8 {
+        self.verbosity
     }
 }
