@@ -123,14 +123,41 @@ pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
                 if cfg.sanity_checks() {
                     sanity_validation(&rdh);
                 }
+                do_rdh_v7_running_checks(&rdh, &mut running_rdh_checker);
 
-                // Flavor 0 will have no padding - other than the usual 6 bytes with 0x0
-                // Flavor 1 will have padding if last word does not fill all 16 bytes
-                let gbt_word_chunks = payload.as_slice().chunks_exact(10);
-                // Asserts that the payload is padded to 16 bytes at the end
-                // Fails for data_ols_ul.raw as it is old from when the padding logic was bugged
-                debug_assert!(gbt_word_chunks.remainder().len() == 6);
-                debug_assert!(gbt_word_chunks.remainder().iter().all(|&x| x == 0xFF)); // Asserts that the payload padding is 0xFF
+                // Check padding:
+                //  - Flavor 0 will have no padding - other than the usual 6 bytes with 0x0
+                //  - Flavor 1 will have padding if last word does not fill all 16 bytes
+                // Asserts that the payload is padded to 16 bytes at the end (Fails for data_ols_ul.raw as it is old from when the padding logic was bugged)
+                let ff_padding = payload
+                    .iter()
+                    .rev()
+                    .take_while(|&x| *x == 0xFF)
+                    .collect::<Vec<_>>();
+
+                if ff_padding.len() > 15 {
+                    eprintln!(
+                        "ERROR: End of payload 0xFF padding is {} bytes, exceeding max of 15 bytes\nSkipping current payload",
+                        ff_padding.len()
+                    );
+                    cdp_payload_running_validator.reset_fsm();
+                    continue;
+                }
+
+                // Split payload into GBT words sized slices, using chunks_exact to allow more compiler optimizations,
+                //   and to cut off any padding less than 10 bytes. More than 9 bytes of padding will be removed in the statement below
+                let gbt_word_chunks = if ff_padding.len() > 9 {
+                    // If the padding is more than 9 bytes, it will be processed as a GBT word, therefor exclude it from the slice
+                    let last_idx = payload.len(); // Not (len-1) because of how rust slice indexing work
+                    let last_idx_before_padding = last_idx - ff_padding.len();
+                    let chunks = payload[..last_idx_before_padding].chunks_exact(10);
+                    debug_assert!(chunks.remainder().len() == 0);
+                    chunks
+                } else {
+                    let chunks = payload.as_slice().chunks_exact(10);
+                    debug_assert!(chunks.remainder().iter().all(|&x| x == 0xFF)); // Asserts that the payload padding is 0xFF
+                    chunks
+                };
 
                 gbt_word_chunks.for_each(|gbt_word| {
                     if let Err(e) = cdp_payload_running_validator.check(rdh, gbt_word) {
@@ -140,8 +167,6 @@ pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
                         );
                     }
                 });
-
-                do_rdh_v7_running_checks(&rdh, &mut running_rdh_checker);
             }
             // Checks are done, send chunk to writer
             sender_checker.send((rdh_chunk, payload_chunk)).unwrap();
