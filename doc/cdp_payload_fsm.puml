@@ -74,19 +74,23 @@ note right of after_TDT : Both TDH and DDW0\nare legal next words\nwhen **packet
 
 state Continuation {
   state after_c_Data <<choice>>
-    [*] -> c_IHW
-    c_IHW -> c_TDH : [stop_bit == 0\n&& Page >= 1]
+  state after_c_TDT <<choice>>
+    [*] -right-> c_IHW
+    c_IHW -right-> c_TDH : [stop_bit == 0\n&& Page >= 1]
     c_TDH: continuation == 1
-    c_TDH --> c_Data
-    c_Data -left-> after_c_Data
+    c_TDH -right-> c_Data
+    c_Data --> after_c_Data
 
-    after_c_Data -right-> c_Data : [next word is Data Word]
-    after_c_Data -up-> c_TDT : [next word is TDT]
-    after_c_Data -up-> c_IHW : [event page full]
-    c_TDT: packet_done == 1
-    c_TDT -left-> DDW0
+    after_c_Data -up-> c_Data : [next word is Data Word]
+    after_c_Data -left-> c_TDT : [next word is TDT]
 
-    note left of after_c_Data : Both Data and TDT\nare legal next words\nif event page is not full
+    c_TDT: packet_done
+    c_TDT -up-> after_c_TDT
+
+    after_c_TDT -up-> c_IHW : [packet_done == 0\n&& event page full]
+    after_c_TDT -left-> DDW0 : [packet_done == 1]
+
+    note right of after_c_Data : Both Data and TDT\nare legal next words\nif event page is not full
 }
 
 
