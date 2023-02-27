@@ -310,7 +310,6 @@ impl StatusWord for Tdt {
         let timeout_to_start_timeout_start_stop_timeout_in_idle_res2 = reader.read_u8()?;
         let res0_lane_starts_violation_res1_transmission_timeout_packet_done = reader.read_u8()?;
         let id = reader.read_u8()?;
-        assert!(id == 0xf0, "TDT ID is not 0xf0: {:x}", id);
 
         Ok(Self {
             lane_status_15_0,
@@ -427,7 +426,6 @@ impl StatusWord for Ddw0 {
         let res3_lane_status = reader.read_u64::<LittleEndian>()?;
         let index = reader.read_u8()?;
         let id = reader.read_u8()?;
-        assert!(id == 0xe4, "DDW0 ID is not 0xe4: {:x}", id);
         Ok(Self {
             res3_lane_status,
             index,
@@ -507,7 +505,6 @@ impl StatusWord for Cdw {
             reader.read_u64::<LittleEndian>()?;
         let calibration_word_index_msb = reader.read_u8()?;
         let id = reader.read_u8()?;
-        assert!(id == 0xf8, "CDW ID is not 0xf8: {:x}", id);
         Ok(Self {
             calibration_word_index_lsb_calibration_user_fields,
             calibration_word_index_msb,
