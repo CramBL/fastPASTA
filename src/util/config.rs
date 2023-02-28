@@ -19,6 +19,11 @@ pub struct Opt {
     #[structopt(short = "v", long = "verbosity", default_value = "0")]
     verbosity: u8,
 
+    /// Max tolerate errors before ending processing
+    /// if set to 0 -> no limit to errors
+    #[structopt(short = "e", long = "tolerate-max-errors", default_value = "50")]
+    max_tolerate_errors: u32,
+
     /// links to filter
     #[structopt(short = "f", long)]
     filter_link: Option<u8>,
@@ -50,5 +55,8 @@ impl Opt {
     }
     pub fn verbosity(&self) -> u8 {
         self.verbosity
+    }
+    pub fn max_tolerate_errors(&self) -> u32 {
+        self.max_tolerate_errors
     }
 }
