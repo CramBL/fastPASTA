@@ -1,24 +1,26 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
-use crossbeam_channel::{bounded, Receiver, RecvError, Sender};
+use crossbeam_channel::{bounded, Receiver, RecvError, SendError, Sender};
 use fastpasta::util::config::Opt;
 use fastpasta::util::file_pos_tracker::FilePosTracker;
 use fastpasta::util::file_scanner::{FileScanner, ScanCDP};
-use fastpasta::util::stats;
+use fastpasta::util::stats::{self, StatType};
 use fastpasta::util::writer::{BufferedWriter, Writer};
 use fastpasta::validators::cdp_running::CdpRunningValidator;
 use fastpasta::validators::rdh::RdhCruv7RunningChecker;
 use fastpasta::words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7};
 use fastpasta::{
-    buf_reader_with_capacity, file_open_read_only, setup_buffered_reading, GbtWord, RDH,
+    buf_reader_with_capacity, file_open_read_only, setup_buffered_reading, ByteSlice, GbtWord, RDH,
 };
-use log::{debug, error, info};
+use log::{debug, info, trace};
+use std::ops::Deref;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::{thread, vec};
 use structopt::StructOpt;
 
-pub fn main() -> std::io::Result<()> {
+pub fn main() {
     let opt: Opt = StructOpt::from_args();
 
     stderrlog::new()
@@ -40,39 +42,62 @@ pub fn main() -> std::io::Result<()> {
     // ]);
 
     let config: Arc<Opt> = Arc::new(config);
+    let cfg_stats = config.clone();
+    {
+        // Launch statistics thread
+        let (send_stats_channel, recv_stats_channel): (
+            std::sync::mpsc::Sender<stats::StatType>,
+            std::sync::mpsc::Receiver<stats::StatType>,
+        ) = std::sync::mpsc::channel();
 
-    // Determine RDH version
-    let file = file_open_read_only(config.file())?;
-    let mut reader = buf_reader_with_capacity(file, 256);
-    let rdh0 = Rdh0::load(&mut reader)?;
-    // Choose the rest of the execution based on the RDH version
-    // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
-    match rdh0.header_id {
-        6 => process_rdh_v6(config).unwrap(),
-        7 => process_rdh_v7(config).unwrap(),
-        _ => panic!("Unknown RDH version: {}", rdh0.header_id),
+        // If max allowed errors is reached, stop the processing from the stats thread
+        let thread_stopper = Arc::new(AtomicBool::new(false));
+
+        let stats_thread = thread::spawn({
+            let end_processing = thread_stopper.clone();
+            move || {
+                let mut stats =
+                    stats::Stats::new(cfg_stats.deref(), recv_stats_channel, end_processing);
+                stats.run();
+            }
+        });
+
+        // Determine RDH version
+        let file = file_open_read_only(config.file()).expect("Failed to open file");
+        let mut reader = buf_reader_with_capacity(file, 256);
+        let rdh0 = Rdh0::load(&mut reader).expect("Failed to first read RDH0");
+        // Choose the rest of the execution based on the RDH version
+        // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
+        match rdh0.header_id {
+            6 => process_rdh_v6(config, send_stats_channel, thread_stopper.clone()).unwrap(),
+            7 => process_rdh_v7(config, send_stats_channel, thread_stopper.clone()).unwrap(),
+            _ => panic!("Unknown RDH version: {}", rdh0.header_id),
+        }
+
+        // 1. Create reader: FileScanner (contains FilePosTracker and borrows Stats)
+        //      - Open file in read only mode
+        //      - Wrap in BufReader
+        //      - Track file position (FilePosTracker)
+        //      - reads data through struct interface + buffer
+        //      - collects stats (Stats)
+        // 2. Read into a reasonably sized buffer
+        // 3. Pass buffer to checker and read another chunk
+        // 4. Checker verifies received buffered chunk (big checks -> multi-threading)
+        //                Not valid -> Print error and abort
+        //                Valid     -> Pass chunk to writer
+        // 5. Writer writes chunk to file OR stdout
+        stats_thread.join().expect("Failed to join stats thread");
     }
-
-    // 1. Create reader: FileScanner (contains FilePosTracker and borrows Stats)
-    //      - Open file in read only mode
-    //      - Wrap in BufReader
-    //      - Track file position (FilePosTracker)
-    //      - reads data through struct interface + buffer
-    //      - collects stats (Stats)
-    // 2. Read into a reasonably sized buffer
-    // 3. Pass buffer to checker and read another chunk
-    // 4. Checker verifies received buffered chunk (big checks -> multi-threading)
-    //                Not valid -> Print error and abort
-    //                Valid     -> Pass chunk to writer
-    // 5. Writer writes chunk to file OR stdout
-
-    Ok(())
 }
 
 // 1. Setup reading (file or stdin) // TODO: stdin support
 // 2. Do checks on read data
 // 3. Write data out (file or stdout)
-pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
+pub fn process_rdh_v7(
+    config: Arc<Opt>,
+    send_stats_ch: std::sync::mpsc::Sender<stats::StatType>,
+    thread_stopper: Arc<AtomicBool>,
+) -> std::io::Result<()> {
     // Types specific for RDH v7
     type V7 = RdhCRUv7;
     type Cdp = (Vec<V7>, Vec<Vec<u8>>);
@@ -83,106 +108,173 @@ pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
 
     // Setup reader, checker, writer, stats
     let mut running_rdh_checker = RdhCruv7RunningChecker::new();
-    let mut stats = stats::Stats::new();
     let mut writer = BufferedWriter::<V7>::new(&config, 1024 * 1024); // 1MB buffer
 
     // 1. Read data from file
     let cfg = Arc::clone(&config);
-    let reader_thread = thread::spawn(move || {
-        let reader = setup_buffered_reading(&cfg);
-        // Automatically extracts link to filter if one is supplied
-        let mut file_scanner = FileScanner::new(&cfg, reader, FilePosTracker::new(), &mut stats);
+    let stats_sender_ch_reader = send_stats_ch.clone();
+    let reader_thread = thread::spawn({
+        let stop_flag = thread_stopper.clone();
+        move || {
+            let reader = setup_buffered_reading(&cfg);
+            // Automatically extracts link to filter if one is supplied
+            let mut file_scanner =
+                FileScanner::new(cfg, reader, FilePosTracker::new(), stats_sender_ch_reader);
 
-        loop {
-            let (rdh_chunk, payload_chunk) = match get_chunk::<V7>(&mut file_scanner, 100) {
-                Ok(cdp) => cdp,
-                Err(e) => {
-                    if e.kind() == std::io::ErrorKind::UnexpectedEof {
-                        break;
+            loop {
+                if stop_flag.load(Ordering::SeqCst) {
+                    trace!("Stopping reader thread");
+                    break;
+                }
+                let (rdh_chunk, payload_chunk) = match get_chunk::<V7>(&mut file_scanner, 100) {
+                    Ok(cdp) => cdp,
+                    Err(e) => {
+                        if e.kind() == std::io::ErrorKind::UnexpectedEof {
+                            break;
+                        } else {
+                            panic!("Error reading CDP chunks: {}", e);
+                        }
+                    }
+                };
+
+                // Send a chunk to the checker
+                if let Err(e) = sender_reader.try_send((rdh_chunk, payload_chunk)) {
+                    if e.is_full() {
+                        log::trace!("Checker is too slow");
+                        if let Err(_) = sender_reader.send(e.into_inner()) {
+                            if stop_flag.load(Ordering::SeqCst) == false {
+                                log::trace!("Unexpected error while sending data to checker");
+                                break;
+                            }
+                        }
                     } else {
-                        panic!("Error reading CDP chunks: {}", e);
+                        if stop_flag.load(Ordering::SeqCst) {
+                            log::trace!("Stopping reader thread");
+                            break;
+                        }
                     }
                 }
-            };
-            // Send a chunk to the checker
-            sender_reader.send((rdh_chunk, payload_chunk)).unwrap();
+            }
         }
-        stats.print();
     });
 
     // 2. Do checks on a received chunk of data
-    let cfg = config.clone();
-    let checker_thread = thread::spawn(move || {
-        let mut cdp_payload_running_validator = CdpRunningValidator::new();
 
-        loop {
-            // Receive chunk from reader
-            let (rdh_chunk, payload_chunk) = match receiver_checker.recv() {
+    let checker_thread = thread::spawn({
+        let stop_flag = thread_stopper.clone();
+        let cfg = config.clone();
+        let stats_sender_ch_checker = send_stats_ch.clone();
+        move || {
+            let stats_sender_ch_validator = stats_sender_ch_checker.clone();
+            let mut cdp_payload_running_validator =
+                CdpRunningValidator::new(stats_sender_ch_validator);
+
+            loop {
+                // Receive chunk from reader
+                let (rdh_chunk, payload_chunk) = match receiver_checker.recv() {
+                    Ok(cdp) => cdp,
+                    Err(e) => {
+                        debug_assert_eq!(e, RecvError);
+                        break;
+                    }
+                };
+                if stop_flag.load(Ordering::SeqCst) {
+                    trace!("Stopping checker thread");
+                    break;
+                }
+
+                // Do checks one each pair of RDH and payload in the chunk
+                for (rdh, payload) in rdh_chunk.iter().zip(payload_chunk.iter()) {
+                    info!("{rdh}");
+                    // Check RDH
+                    if cfg.sanity_checks() {
+                        if let Err(e) = sanity_validation(&rdh) {
+                            stats_sender_ch_checker
+                                .send(stats::StatType::Error(format!(
+                                    "Sanity check failed: {}",
+                                    e
+                                )))
+                                .unwrap();
+                        }
+                    }
+                    do_rdh_v7_running_checks(
+                        &rdh,
+                        &mut running_rdh_checker,
+                        &stats_sender_ch_checker,
+                    );
+
+                    // Check padding:
+                    //  - Flavor 0 will have no padding - other than the usual 6 bytes with 0x0
+                    //  - Flavor 1 will have padding if last word does not fill all 16 bytes
+                    // Asserts that the payload is padded to 16 bytes at the end (Fails for data_ols_ul.raw as it is old from when the padding logic was bugged)
+                    cdp_payload_running_validator.current_rdh =
+                        Some(RdhCRUv7::load(&mut rdh.to_byte_slice()).unwrap());
+                    match preprocess_payload(payload) {
+                        Ok(gbt_word_chunks) => {
+                            gbt_word_chunks.for_each(|gbt_word| {
+                                if let Err(e) = cdp_payload_running_validator.check(rdh, gbt_word) {
+                                    stats_sender_ch_checker
+                                        .send(StatType::Error(format!(
+                                            "Payload check failed for: {:?} - With error:{}",
+                                            gbt_word, e
+                                        )))
+                                        .unwrap();
+                                }
+                            });
+                        }
+                        Err(e) => {
+                            stats_sender_ch_checker.send(StatType::Error(e)).unwrap();
+                            cdp_payload_running_validator.reset_fsm();
+                        }
+                    }
+                }
+
+                // Checks are done, send chunk to writer
+                if let Err(_) = sender_checker.send((rdh_chunk, payload_chunk)) {
+                    if stop_flag.load(Ordering::SeqCst) == false {
+                        log::trace!("Unexpected error while sending data to writer");
+                        break;
+                    }
+                }
+            }
+        }
+    });
+
+    // 3. Write data out
+    let writer_thread = thread::spawn({
+        let stop_flag = thread_stopper.clone();
+        move || loop {
+            // Receive chunk from checker
+            let (rdh_chunk, payload_chunk) = match receiver_writer.recv() {
                 Ok(cdp) => cdp,
                 Err(e) => {
                     debug_assert_eq!(e, RecvError);
                     break;
                 }
             };
-
-            // Do checks one each pair of RDH and payload in the chunk
-            for (rdh, payload) in rdh_chunk.iter().zip(payload_chunk.iter()) {
-                info!("{rdh}");
-                // Check RDH
-                if cfg.sanity_checks() {
-                    sanity_validation(&rdh);
-                }
-                do_rdh_v7_running_checks(&rdh, &mut running_rdh_checker);
-
-                // Check padding:
-                //  - Flavor 0 will have no padding - other than the usual 6 bytes with 0x0
-                //  - Flavor 1 will have padding if last word does not fill all 16 bytes
-                // Asserts that the payload is padded to 16 bytes at the end (Fails for data_ols_ul.raw as it is old from when the padding logic was bugged)
-                if let Ok(gbt_word_chunks) = preprocess_payload(payload) {
-                    gbt_word_chunks.for_each(|gbt_word| {
-                        if let Err(e) = cdp_payload_running_validator.check(rdh, gbt_word) {
-                            error!(
-                                "Payload check failed for: {:?} - With error:{}",
-                                gbt_word, e
-                            );
-                        }
-                    });
-                } else {
-                    cdp_payload_running_validator.reset_fsm();
-                    continue;
-                }
+            if stop_flag.load(Ordering::SeqCst) {
+                trace!("Stopping writer thread");
+                break;
             }
-            // Checks are done, send chunk to writer
-            sender_checker.send((rdh_chunk, payload_chunk)).unwrap();
+            // Push data onto the writer's buffer, which will flush it when the buffer is full or when the writer is dropped
+            writer.push_cdps_raw((rdh_chunk, payload_chunk));
         }
     });
 
-    // 3. Write data out
-    let writer_thread = thread::spawn(move || loop {
-        // Receive chunk from checker
-        let (rdh_chunk, payload_chunk) = match receiver_writer.recv() {
-            Ok(cdp) => cdp,
-            Err(e) => {
-                debug_assert_eq!(e, RecvError);
-                break;
-            }
-        };
-        // Push data onto the writer's buffer, which will flush it when the buffer is full or when the writer is dropped
-        writer.push_cdps_raw((rdh_chunk, payload_chunk));
-    });
-
-    reader_thread.join().unwrap();
-    checker_thread.join().unwrap();
-    writer_thread.join().unwrap();
-
+    reader_thread.join().expect("Error joining reader thread");
+    checker_thread.join().expect("Error joining checker thread");
+    writer_thread.join().expect("Error joining writer thread");
     Ok(())
 }
 
-pub fn process_rdh_v6(config: Arc<Opt>) -> std::io::Result<()> {
+pub fn process_rdh_v6(
+    config: Arc<Opt>,
+    send_stats_ch: std::sync::mpsc::Sender<stats::StatType>,
+    thread_stopper: Arc<AtomicBool>,
+) -> std::io::Result<()> {
     todo!("RDH v6 not implemented yet");
-    let mut stats = stats::Stats::new();
     // Automatically extracts link to filter if one is supplied
-    let mut file_scanner = FileScanner::default(&config, &mut stats);
+    let mut file_scanner = FileScanner::default(&config, send_stats_ch);
 
     let (rdh_chunk, _payload_chunk) =
         get_chunk::<RdhCRUv6>(&mut file_scanner, 10).expect("Error reading CDP chunks");
@@ -196,16 +288,9 @@ pub fn process_rdh_v6(config: Arc<Opt>) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn sanity_validation(rdh: &RdhCRUv7) {
+pub fn sanity_validation(rdh: &RdhCRUv7) -> Result<(), fastpasta::validators::rdh::GbtError> {
     let rdh_validator = fastpasta::validators::rdh::RDH_CRU_V7_VALIDATOR;
-    if let Err(e) = rdh_validator.sanity_check(&rdh) {
-        error!("Sanity check failed: {}", e);
-    }
-}
-
-pub fn setup_file_ops<'a>(opt: &'a Opt, stats: &'a mut stats::Stats) -> FileScanner<'a> {
-    let file_scanner = FileScanner::default(&opt, stats);
-    file_scanner
+    rdh_validator.sanity_check(&rdh)
 }
 
 pub fn get_chunk<T: RDH>(
@@ -238,17 +323,23 @@ pub fn get_chunk<T: RDH>(
     Ok((rdhs, payloads))
 }
 
-pub fn do_rdh_v7_running_checks(rdh: &RdhCRUv7, running_rdh_checker: &mut RdhCruv7RunningChecker) {
+pub fn do_rdh_v7_running_checks(
+    rdh: &RdhCRUv7,
+    running_rdh_checker: &mut RdhCruv7RunningChecker,
+    stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
+) {
     // RDH CHECK: There is always page 0 + minimum page 1 + stop flag
     if let Err(e) = running_rdh_checker.check(&rdh) {
-        error!("RDH check failed: {}", e);
+        stats_sender_ch_checker
+            .send(StatType::Error(format!("RDH check failed: {}", e)))
+            .unwrap();
         let tmp_last_rdh = running_rdh_checker.last_rdh2.unwrap();
         info!("Last RDH: {tmp_last_rdh}");
         info!("Current RDH: {rdh}");
     }
 }
 
-pub fn preprocess_payload(payload: &Vec<u8>) -> Result<impl Iterator<Item = &[u8]>, ()> {
+pub fn preprocess_payload(payload: &Vec<u8>) -> Result<impl Iterator<Item = &[u8]>, String> {
     // Retrieve padding from payload
     let ff_padding = payload
         .iter()
@@ -257,9 +348,8 @@ pub fn preprocess_payload(payload: &Vec<u8>) -> Result<impl Iterator<Item = &[u8
         .collect::<Vec<_>>();
 
     if ff_padding.len() > 15 {
-        error!("End of payload 0xFF padding is {} bytes, exceeding max of 15 bytes: Skipping current payload",
-        ff_padding.len());
-        return Err(());
+        return Err(format!("End of payload 0xFF padding is {} bytes, exceeding max of 15 bytes: Skipping current payload",
+        ff_padding.len()));
     }
 
     // Split payload into GBT words sized slices, using chunks_exact to allow more compiler optimizations,

@@ -1,6 +1,6 @@
 use crate::RDH;
 
-use super::{config::Opt, file_pos_tracker::FilePosTracker, stats::Stats};
+use super::{config::Opt, file_pos_tracker::FilePosTracker};
 
 pub trait ScanCDP {
     fn load_rdh_cru<T: RDH>(&mut self) -> Result<T, std::io::Error>;
@@ -16,39 +16,45 @@ pub trait ScanCDP {
 /// Allows reading an RDH from a file
 /// Optionally, the RDH can be filtered by link ID
 /// # Example
-pub struct FileScanner<'a> {
+pub struct FileScanner {
     pub reader: std::io::BufReader<std::fs::File>,
     pub tracker: FilePosTracker,
-    pub stats: &'a mut Stats,
+    pub stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
     pub link_to_filter: Option<u8>,
+    unique_links_observed: Vec<u8>,
 }
 
-impl<'a> FileScanner<'a> {
+impl FileScanner {
     pub fn new(
-        config: &'a std::sync::Arc<Opt>,
+        config: std::sync::Arc<Opt>,
         reader: std::io::BufReader<std::fs::File>,
         tracker: FilePosTracker,
-        stats: &'a mut Stats,
+        stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
     ) -> Self {
         FileScanner {
             reader,
             tracker,
-            stats,
+            stats_sender_ch,
             link_to_filter: config.filter_link(),
+            unique_links_observed: vec![],
         }
     }
-    pub fn default(config: &'a Opt, stats: &'a mut Stats) -> Self {
+    pub fn default(
+        config: &Opt,
+        stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
+    ) -> Self {
         let reader = crate::setup_buffered_reading(&config);
         FileScanner {
             reader,
-            stats,
+            stats_sender_ch,
             tracker: FilePosTracker::new(),
             link_to_filter: config.filter_link(),
+            unique_links_observed: vec![],
         }
     }
 }
 
-impl ScanCDP for FileScanner<'_> {
+impl ScanCDP for FileScanner {
     /// Reads the next RDH from file
     /// If a link filter is set, it checks if the RDH matches the chosen link and returns it if it does.
     /// If it doesn't match, it jumps to the next RDH and tries again.
@@ -56,15 +62,22 @@ impl ScanCDP for FileScanner<'_> {
     fn load_rdh_cru<T: RDH>(&mut self) -> Result<T, std::io::Error> {
         let rdh: T = RDH::load(&mut self.reader)?;
         let current_link_id = rdh.get_link_id();
-        self.stats.rdhs_seen += 1;
-        if self.stats.links_observed.contains(&current_link_id) == false {
-            self.stats.links_observed.push(current_link_id);
+        self.stats_sender_ch
+            .send(super::stats::StatType::RDHsSeen(1))
+            .unwrap();
+        if self.unique_links_observed.contains(&current_link_id) == false {
+            self.unique_links_observed.push(current_link_id);
+            self.stats_sender_ch
+                .send(super::stats::StatType::LinksObserved(current_link_id))
+                .unwrap();
         }
 
         match self.link_to_filter {
             // Matches if a link is set and it is the same as the current RDH
             Some(x) if x == current_link_id => {
-                self.stats.rdhs_filtered += 1;
+                self.stats_sender_ch
+                    .send(super::stats::StatType::RDHsFiltered(1))
+                    .unwrap();
                 // no jump. current pos -> start of payload
                 return Ok(rdh);
             }
@@ -89,7 +102,9 @@ impl ScanCDP for FileScanner<'_> {
         let mut payload = vec![0; payload_size];
         std::io::Read::read_exact(&mut self.reader, &mut payload)?;
         debug_assert!(payload.len() == payload_size);
-        self.stats.payload_size += payload_size as u64;
+        self.stats_sender_ch
+            .send(super::stats::StatType::PayloadSize(payload_size as u32))
+            .unwrap();
         Ok(payload)
     }
     /// Reads the next CDP from file
@@ -102,7 +117,10 @@ impl ScanCDP for FileScanner<'_> {
 #[cfg(test)]
 mod tests {
 
-    use crate::words::rdh::RdhCRUv7;
+    use crate::{
+        util::stats::{self, Stats},
+        words::rdh::RdhCRUv7,
+    };
 
     use super::*;
     #[test]
@@ -117,9 +135,19 @@ mod tests {
             "-o test_filter_link.raw",
         ]);
         println!("{:#?}", config);
+        let (send_stats_channel, recv_stats_channel): (
+            std::sync::mpsc::Sender<stats::StatType>,
+            std::sync::mpsc::Receiver<stats::StatType>,
+        ) = std::sync::mpsc::channel();
 
-        let mut stats = Stats::new();
-        let mut scanner = FileScanner::default(&config, &mut stats);
+        let thread_stopper = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+
+        let mut stats = Stats::new(&config, recv_stats_channel, thread_stopper.clone());
+        let stats_thread = std::thread::spawn(move || {
+            stats.run();
+        });
+
+        let mut scanner = FileScanner::default(&config, send_stats_channel);
 
         let mut link0_rdh_data: Vec<RdhCRUv7> = vec![];
         let mut link0_payload_data: Vec<Vec<u8>> = vec![];
@@ -173,8 +201,10 @@ mod tests {
             link0_payload_data.len()
         );
 
-        link0_rdh_data.iter().enumerate().for_each(|(i, rdh)| {
+        link0_rdh_data.iter().for_each(|rdh| {
             println!("{rdh}");
         });
+
+        stats_thread.join().unwrap();
     }
 }
