@@ -16,13 +16,13 @@ impl Stats {
         }
     }
     pub fn print(&self) {
-        println!("Total RDHs: {}", self.rdhs_seen);
-        println!("Total RDHs filtered: {}", self.rdhs_filtered);
-        println!("Total payload size: {}", self.payload_size);
-        println!("Links observed: {:?}", self.links_observed);
-        println!("Processing time: {:?}", self.processing_time.elapsed());
+        info!("Total RDHs: {}", self.rdhs_seen);
+        info!("Total RDHs filtered: {}", self.rdhs_filtered);
+        info!("Total payload size: {}", self.payload_size);
+        info!("Links observed: {:?}", self.links_observed);
+        info!("Processing time: {:?}", self.processing_time.elapsed());
     }
     pub fn print_time(&self) {
-        println!("Processing time: {:?}", self.processing_time.elapsed());
+        info!("Processing time: {:?}", self.processing_time.elapsed());
     }
 }

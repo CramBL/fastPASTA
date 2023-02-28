@@ -2,8 +2,6 @@ use std::{fmt::Display, fs::File, io::Write, path::PathBuf};
 
 use util::config::Opt;
 use words::rdh::RdhCRUv7;
-
-pub mod macros;
 pub mod util;
 pub mod validators;
 pub mod words;
@@ -167,7 +165,7 @@ impl FilterLink {
         Ok(())
     }
     pub fn print_stats(&self) {
-        println!("Total filtered RDHs: {}", self.total_filtered);
+        log::info!("Total filtered RDHs: {}", self.total_filtered);
     }
 }
 

@@ -13,7 +13,7 @@ use fastpasta::words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7};
 use fastpasta::{
     buf_reader_with_capacity, file_open_read_only, setup_buffered_reading, GbtWord, RDH,
 };
-use log::{error, info};
+use log::{debug, error, info};
 use std::sync::Arc;
 use std::{thread, vec};
 use structopt::StructOpt;
@@ -27,9 +27,8 @@ pub fn main() -> std::io::Result<()> {
         .init()
         .unwrap();
 
-    if opt.verbosity() > 0 {
-        eprintln!("{:#?}", opt);
-    }
+    debug!("{:#?}", opt);
+
     let config = opt;
     // let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
     //     "fastpasta",
@@ -142,8 +141,8 @@ pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
                 if let Ok(gbt_word_chunks) = preprocess_payload(payload) {
                     gbt_word_chunks.for_each(|gbt_word| {
                         if let Err(e) = cdp_payload_running_validator.check(rdh, gbt_word) {
-                            eprintln!(
-                                "Payload check failed for: {:?} \nWith error:{}",
+                            error!(
+                                "Payload check failed for: {:?} - With error:{}",
                                 gbt_word, e
                             );
                         }
@@ -200,8 +199,7 @@ pub fn process_rdh_v6(config: Arc<Opt>) -> std::io::Result<()> {
 pub fn sanity_validation(rdh: &RdhCRUv7) {
     let rdh_validator = fastpasta::validators::rdh::RDH_CRU_V7_VALIDATOR;
     if let Err(e) = rdh_validator.sanity_check(&rdh) {
-        //error!("Sanity check failed: {}", e);
-        println!("Sanity check failed: {}", e);
+        error!("Sanity check failed: {}", e);
     }
 }
 
@@ -221,7 +219,7 @@ pub fn get_chunk<T: RDH>(
         let (rdh, payload) = match file_scanner.load_cdp() {
             Ok(cdp) => cdp,
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                eprintln!("EOF reached! ");
+                info!("EOF reached! ");
                 break;
             }
             Err(e) => return Err(e),
