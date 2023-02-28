@@ -1,3 +1,5 @@
+use log::info;
+
 pub struct Stats {
     pub rdhs_seen: u64,
     pub rdhs_filtered: u64,
