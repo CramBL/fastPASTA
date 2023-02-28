@@ -13,6 +13,7 @@ use fastpasta::words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7};
 use fastpasta::{
     buf_reader_with_capacity, file_open_read_only, setup_buffered_reading, GbtWord, RDH,
 };
+use log::{error, info};
 use std::sync::Arc;
 use std::{thread, vec};
 use structopt::StructOpt;
@@ -29,14 +30,15 @@ pub fn main() -> std::io::Result<()> {
     if opt.verbosity() > 0 {
         eprintln!("{:#?}", opt);
     }
-    let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
-        "fastpasta",
-        "-s",
-        "-f",
-        "0",
-        "../fastpasta_test_files/data_ols_ul.raw",
-        "-o test_filter_link.raw",
-    ]);
+    let config = opt;
+    // let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
+    //     "fastpasta",
+    //     "-s",
+    //     "-f",
+    //     "0",
+    //     "../fastpasta_test_files/data_ols_ul.raw",
+    //     "-o test_filter_link.raw",
+    // ]);
 
     let config: Arc<Opt> = Arc::new(config);
 
@@ -126,8 +128,7 @@ pub fn process_rdh_v7(config: Arc<Opt>) -> std::io::Result<()> {
 
             // Do checks one each pair of RDH and payload in the chunk
             for (rdh, payload) in rdh_chunk.iter().zip(payload_chunk.iter()) {
-                RdhCRUv7::print_header_text();
-                rdh.print();
+                info!("{rdh}");
                 // Check RDH
                 if cfg.sanity_checks() {
                     sanity_validation(&rdh);
@@ -199,6 +200,7 @@ pub fn process_rdh_v6(config: Arc<Opt>) -> std::io::Result<()> {
 pub fn sanity_validation(rdh: &RdhCRUv7) {
     let rdh_validator = fastpasta::validators::rdh::RDH_CRU_V7_VALIDATOR;
     if let Err(e) = rdh_validator.sanity_check(&rdh) {
+        //error!("Sanity check failed: {}", e);
         println!("Sanity check failed: {}", e);
     }
 }
@@ -241,12 +243,10 @@ pub fn get_chunk<T: RDH>(
 pub fn do_rdh_v7_running_checks(rdh: &RdhCRUv7, running_rdh_checker: &mut RdhCruv7RunningChecker) {
     // RDH CHECK: There is always page 0 + minimum page 1 + stop flag
     if let Err(e) = running_rdh_checker.check(&rdh) {
-        eprintln!("RDH check failed: {}", e);
-        RdhCRUv7::print_header_text();
-        eprintln!("Last RDH:");
-        running_rdh_checker.last_rdh2.unwrap().print();
-        eprintln!("Current RDH:");
-        rdh.print();
+        error!("RDH check failed: {}", e);
+        let tmp_last_rdh = running_rdh_checker.last_rdh2.unwrap();
+        info!("Last RDH: {tmp_last_rdh}");
+        info!("Current RDH: {rdh}");
     }
 }
 
@@ -259,10 +259,8 @@ pub fn preprocess_payload(payload: &Vec<u8>) -> Result<impl Iterator<Item = &[u8
         .collect::<Vec<_>>();
 
     if ff_padding.len() > 15 {
-        eprintln!(
-            "ERROR: End of payload 0xFF padding is {} bytes, exceeding max of 15 bytes\nSkipping current payload",
-            ff_padding.len()
-        );
+        error!("End of payload 0xFF padding is {} bytes, exceeding max of 15 bytes: Skipping current payload",
+        ff_padding.len());
         return Err(());
     }
 

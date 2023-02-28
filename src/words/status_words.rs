@@ -1,13 +1,12 @@
 use crate::ByteSlice;
 use byteorder::{LittleEndian, ReadBytesExt};
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 /// Definitions for status words
 /// `IHW`, `TDH`, `TDT`, `DDW0`, `CDW`
 
-pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice {
+pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display {
     fn id(&self) -> u8;
-    fn print(&self);
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
     where
         Self: Sized;
@@ -34,17 +33,17 @@ impl Ihw {
     }
 }
 
+impl Display for Ihw {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let id = self.id();
+        let active_lanes = self.active_lanes();
+        write!(f, "IHW: ID: {:X} active_lanes: {:#X}", id, active_lanes)
+    }
+}
+
 impl StatusWord for Ihw {
     fn id(&self) -> u8 {
         (self.id >> 8) as u8
-    }
-    fn print(&self) {
-        println!(
-            "IHW: {:x} {:x} {:x}",
-            self.id(),
-            self.reserved(),
-            self.active_lanes()
-        );
     }
 
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
@@ -140,23 +139,23 @@ impl Tdh {
     }
 }
 
+impl Display for Tdh {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let id = self.id();
+        let trigger_orbit = self.trigger_orbit;
+        let trigger_bc = self.trigger_bc();
+        let trigger_type = self.trigger_type();
+        let internal_trigger = self.internal_trigger();
+        let no_data = self.no_data();
+        let continuation = self.continuation();
+        write!(f, "TDH: ID: {:X} trigger_orbit:{:#X} trigger_bc:{:#X} continuation:{:#X} no_data:{:#X} internal_trigger:{:#X} trigger_type:{:#X}",
+               id, trigger_orbit, trigger_bc, continuation, no_data, internal_trigger,trigger_type )
+    }
+}
+
 impl StatusWord for Tdh {
     fn id(&self) -> u8 {
         (self.reserved0_id >> 8) as u8
-    }
-
-    fn print(&self) {
-        let tmp_trigger_orbit = self.trigger_orbit;
-        println!("TDH: reserved0: {:x}, trigger_orbit: {:x}, reserved1: {:x}, trigger_bc: {:x}, reserved2: {:x}, continuation: {:x}, no_data: {:x}, internal_trigger: {:x}, trigger_type: {:x}",
-                 self.reserved0(),
-                 tmp_trigger_orbit,
-                 self.reserved1(),
-                 self.trigger_bc(),
-                 self.reserved2(),
-                 self.continuation(),
-                 self.no_data(),
-                 self.internal_trigger(),
-                 self.trigger_type());
     }
 
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
@@ -201,7 +200,7 @@ impl Debug for Tdh {
         let trigger_type = self.trigger_type();
         write!(
             f,
-            "{:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x}",
+            "TDH: {:X} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x}",
             id,
             reserved0,
             trigger_orbit,
@@ -280,14 +279,12 @@ impl Tdt {
     }
 }
 
-impl StatusWord for Tdt {
-    fn id(&self) -> u8 {
-        self.id
-    }
-
-    fn print(&self) {
-        println!(
-            "TDT: {:x} {:x} packet_done={:x} {:x} {:x} {:x} {:x} {:x} {:x}",
+impl Display for Tdt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "TDT: ID: {:X} lane_starts_violation:{:x} transmission_TO:{:x} packet_done={:x} TO_to_start:{:x} TO_start_stop:{:x} TO_in_idle:{:x} lane_status: [27:23]={:#X} [23:16]={:#X} [15:0]={:#X}",
+            self.id(),
             self.lane_starts_violation() as u8,
             self.transmission_timeout() as u8,
             self.packet_done() as u8,
@@ -297,7 +294,12 @@ impl StatusWord for Tdt {
             self.lane_status_27_24(),
             self.lane_status_23_16(),
             self.lane_status_15_0()
-        );
+        )
+    }
+}
+impl StatusWord for Tdt {
+    fn id(&self) -> u8 {
+        self.id
     }
 
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
@@ -403,20 +405,23 @@ impl Ddw0 {
     }
 }
 
-impl StatusWord for Ddw0 {
-    fn id(&self) -> u8 {
-        self.id
-    }
-
-    fn print(&self) {
-        println!(
-            "DDW0: {:x} {:x} {:x} {:x} {:x}",
+impl Display for Ddw0 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "DDW0: ID: {:X} Index:{:#X} lane_starts_violation:{:x} transmission_TO:{:x} lane_status:{:#X}",
             self.id,
             self.index(),
             self.lane_starts_violation() as u8,
             self.transmission_timeout() as u8,
             self.lane_status()
-        );
+        )
+    }
+}
+
+impl StatusWord for Ddw0 {
+    fn id(&self) -> u8 {
+        self.id
     }
 
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
@@ -483,18 +488,21 @@ impl Cdw {
     }
 }
 
-impl StatusWord for Cdw {
-    fn id(&self) -> u8 {
-        self.id
-    }
-
-    fn print(&self) {
-        println!(
-            "CDW: {:x} {:x} {:x}",
+impl Display for Cdw {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "CDW: ID:{:X} calibration_word_index:{:#X} calibration_user_fields:{:#X}",
             self.id,
             self.calibration_word_index(),
             self.calibration_user_fields()
-        );
+        )
+    }
+}
+
+impl StatusWord for Cdw {
+    fn id(&self) -> u8 {
+        self.id
     }
 
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
@@ -560,9 +568,9 @@ mod tests {
         assert_eq!(ihw.id(), VALID_ID);
         assert!(ihw.is_reserved_0());
         assert_eq!(ihw.active_lanes(), ACTIVE_LANES_14_ACTIVE);
-        ihw.print();
+        println!("{ihw}");
         let loaded_ihw = Ihw::load(&mut ihw.to_byte_slice()).unwrap();
-        loaded_ihw.print();
+        println!("{loaded_ihw}");
         assert_eq!(ihw, loaded_ihw);
     }
 
@@ -580,7 +588,7 @@ mod tests {
             panic!("Invalid ID");
         }
         let tdh = Tdh::load(&mut raw_data_tdh.as_slice()).unwrap();
-        tdh.print();
+        println!("{tdh}");
         assert_eq!(tdh.id(), VALID_ID);
         assert!(tdh.is_reserved_0());
         assert_eq!(tdh.trigger_type(), TRIGGER_TYPE);
@@ -601,7 +609,7 @@ mod tests {
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF0];
         assert!(raw_data_tdt[9] == VALID_ID);
         let tdt = Tdt::load(&mut raw_data_tdt.as_slice()).unwrap();
-        tdt.print();
+        println!("{tdt}");
         assert_eq!(tdt.id(), VALID_ID);
         assert!(tdt.is_reserved_0());
         assert!(tdt.packet_done());
@@ -637,7 +645,7 @@ mod tests {
         ];
         assert!(raw_data_tdt[9] == VALID_ID);
         let tdt = Tdt::load(&mut raw_data_tdt.as_slice()).unwrap();
-        tdt.print();
+        println!("{tdt}");
         assert_eq!(tdt.id(), VALID_ID);
         println!("tdt.is_reserved_0() = {}", tdt.is_reserved_0());
         println!(
@@ -711,7 +719,7 @@ mod tests {
         ];
         assert!(raw_data_ddw0[9] == VALID_ID);
         let ddw0 = Ddw0::load(&mut raw_data_ddw0.as_slice()).unwrap();
-        ddw0.print();
+        println!("{ddw0}");
         assert_eq!(ddw0.id(), VALID_ID);
 
         assert!(ddw0.index() == 0);

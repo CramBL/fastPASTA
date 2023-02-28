@@ -9,7 +9,7 @@ use crate::{
     ByteSlice, GbtWord, RDH,
 };
 
-use log::{error, info};
+use log::{debug, error, info};
 use sm::sm;
 
 use self::CDP_PAYLOAD_FSM_Continuous::{
@@ -130,7 +130,7 @@ impl CdpRunningValidator {
         match status_word {
             StatusWordKind::Ihw(ihw) => {
                 let ihw = Ihw::load(&mut ihw.clone()).unwrap();
-                ihw.print();
+                info!("{ihw}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
                     error!("IHW sanity check failed: {}", &e);
                     info!("IHW: {:X?}", ihw.to_byte_slice());
@@ -141,7 +141,7 @@ impl CdpRunningValidator {
             }
             StatusWordKind::Tdh(tdh) => {
                 let tdh = Tdh::load(&mut tdh.clone()).unwrap();
-                tdh.print();
+                info!("{tdh}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
                     error!("TDH sanity check failed: {}", &e);
                     info!("TDH: {:X?}", tdh.to_byte_slice());
@@ -151,7 +151,7 @@ impl CdpRunningValidator {
             }
             StatusWordKind::Tdt(tdt) => {
                 let tdt = Tdt::load(&mut tdt.clone()).unwrap();
-                tdt.print();
+                info!("{tdt}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
                     error!("TDT sanity check failed: {}", &e);
                     info!("TDT: {:X?}", tdt.to_byte_slice());
@@ -161,7 +161,7 @@ impl CdpRunningValidator {
             }
             StatusWordKind::Ddw0(ddw0) => {
                 let ddw0 = Ddw0::load(&mut ddw0.clone()).unwrap();
-                ddw0.print();
+                info!("{ddw0}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0) {
                     error!("DDW0 sanity check failed: {}", &e);
                     info!("DDW0: {:X?}", ddw0.to_byte_slice());
@@ -371,8 +371,9 @@ impl CdpRunningValidator {
                     }
                     if self.current_tdh.as_ref().unwrap().internal_trigger() != 1 {
                         error!("TDH internal trigger is not 1: {:02X?}", gbt_word);
-                        RdhCRUv7::print_header_text();
-                        self.current_rdh.as_ref().unwrap().print();
+
+                        let tmp_rdh = self.current_rdh.as_ref().unwrap();
+                        debug!("{tmp_rdh}");
                     }
                     debug_assert!(self.current_tdh.as_ref().unwrap().continuation() == 0);
                     match self.current_tdh.as_ref().unwrap().no_data() {
