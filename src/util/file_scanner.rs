@@ -101,6 +101,7 @@ impl ScanCDP for FileScanner<'_> {
 }
 #[cfg(test)]
 mod tests {
+
     use crate::words::rdh::RdhCRUv7;
 
     use super::*;
@@ -137,8 +138,8 @@ mod tests {
 
         let rdh_validator = crate::validators::rdh::RDH_CRU_V7_VALIDATOR;
 
-        RdhCRUv7::print_header_text();
-        link0_rdh_data.first().unwrap().print();
+        let tmp_rdh = link0_rdh_data.first().unwrap();
+        println!("RDH: {}", tmp_rdh);
         match rdh_validator.sanity_check(&link0_rdh_data.first().unwrap()) {
             Ok(_) => (),
             Err(e) => {
@@ -148,12 +149,9 @@ mod tests {
 
         let mut loop_count = 0;
         while let Ok(rdh) = scanner.load_rdh_cru::<RdhCRUv7>() {
-            rdh.print();
+            println!("{rdh}");
             loop_count += 1;
             print!("{} ", loop_count);
-            if loop_count % 30 == 0 {
-                RdhCRUv7::print_header_text();
-            }
             link0_payload_data.push(
                 scanner
                     .load_payload_raw(rdh.get_payload_size() as usize)
@@ -175,12 +173,8 @@ mod tests {
             link0_payload_data.len()
         );
 
-        RdhCRUv7::print_header_text();
         link0_rdh_data.iter().enumerate().for_each(|(i, rdh)| {
-            rdh.print();
-            if i % 30 == 0 {
-                RdhCRUv7::print_header_text();
-            }
+            println!("{rdh}");
         });
     }
 }

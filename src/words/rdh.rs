@@ -1,8 +1,8 @@
 use crate::{ByteSlice, RDH};
 // ITS data format: https://gitlab.cern.ch/alice-its-wp10-firmware/RU_mainFPGA/-/wikis/ITS%20Data%20Format#Introduction
-use crate::{pretty_print_hex_field, pretty_print_name_hex_fields, GbtWord};
+use crate::GbtWord;
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
-use std::fmt::{self, Debug};
+use std::fmt::{self, Debug, Display};
 // Newtype pattern used to enforce type safety on fields that are not byte-aligned
 #[derive(Debug, PartialEq, Clone, Copy)]
 #[repr(packed)]
@@ -49,26 +49,31 @@ impl RdhCRUv7 {
         // Get the reserved0 present in the 56 MSB
         (self.dataformat_reserved0.0 & 0xFFFFFFFFFFFFFF00) >> 8
     }
+}
 
-    pub fn print_header_text() {
-        println!("RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop");
+impl Display for RdhCRUv7 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop";
+        let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit";
         //Needed?  Memory   CRU   DW");
-        println!("ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit\n");
         //Needed?    size     ID    ID\n");
+        let tmp_offset = self.offset_new_packet;
+        let tmp_link = self.link_id;
+        let tmp_packet_cnt = self.packet_counter;
+        let rdhcru_fields0 = format!("{:<8}{:<6}{:<10}", tmp_offset, tmp_link, tmp_packet_cnt);
+        write!(
+            f,
+            "{header_text_top}\n       {header_text_bottom}\n       {}{}{}{:<11}{}",
+            self.rdh0,
+            rdhcru_fields0,
+            self.rdh1,
+            self.data_format(),
+            self.rdh2
+        )
     }
 }
 
 impl RDH for RdhCRUv7 {
-    fn print(&self) {
-        self.rdh0.print();
-        let tmp_offset = self.offset_new_packet;
-        let tmp_link = self.link_id;
-        let tmp_packet_cnt = self.packet_counter;
-        print!("{:<8}{:<6}{:<10}", tmp_offset, tmp_link, tmp_packet_cnt);
-        self.rdh1.print();
-        print!("{:<11}", self.data_format());
-        self.rdh2.print();
-    }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<RdhCRUv7, std::io::Error> {
         let rdh0 = match Rdh0::load(reader) {
             Ok(rdh0) => rdh0,
@@ -189,18 +194,25 @@ impl RdhCRUv6 {
     }
 }
 
-impl RDH for RdhCRUv6 {
-    fn print(&self) {
-        println!("RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Trigger   Pages    Stop"); //Needed?  Memory   CRU   DW");
-        println!("ver   size    ID    ID    next    ID    counter        counter     type      counter  bit\n"); //Needed?    size     ID    ID\n");
-        self.rdh0.print();
+impl Display for RdhCRUv6 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let header_text_top    = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Trigger   Pages    Stop";
+        let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     type      counter  bit";
+        //Needed?  Memory   CRU   DW");
+        //Needed?    size     ID    ID\n");
         let tmp_offset = self.offset_new_packet;
         let tmp_link = self.link_id;
         let tmp_packet_cnt = self.packet_counter;
-        print!("{:<8}{:<6}{:<10}", tmp_offset, tmp_link, tmp_packet_cnt);
-        self.rdh1.print();
-        self.rdh2.print();
+        let rdhcru_fields0 = format!("{:<8}{:<6}{:<10}", tmp_offset, tmp_link, tmp_packet_cnt);
+        write!(
+            f,
+            "{header_text_top}\n       {header_text_bottom}\n       {}{}{}{}",
+            self.rdh0, rdhcru_fields0, self.rdh1, self.rdh2
+        )
     }
+}
+
+impl RDH for RdhCRUv6 {
     fn load<T: std::io::Read>(reader: &mut T) -> Result<RdhCRUv6, std::io::Error> {
         let rdh0 = match Rdh0::load(reader) {
             Ok(rdh0) => rdh0,
@@ -300,15 +312,18 @@ pub struct Rdh0 {
     pub reserved0: u16,
 }
 
-impl GbtWord for Rdh0 {
-    fn print(&self) {
-        // {:0>5} {:[fill][align][width]}
+impl Display for Rdh0 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let tmp_fee = self.fee_id.0;
-        print!(
+        write!(
+            f,
             "{:<6}{:<7}{:<7}{:<6}",
             self.header_id, self.header_size, tmp_fee, self.system_id
-        );
+        )
     }
+}
+
+impl GbtWord for Rdh0 {
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh0, std::io::Error> {
         // Create a helper macro for loading an array of the given size from
         // the reader.
@@ -380,11 +395,6 @@ impl Rdh1 {
 }
 
 impl GbtWord for Rdh1 {
-    fn print(&self) {
-        let tmp_orbit = self.orbit;
-        let orbit_as_hex = format!("{:#x}", tmp_orbit);
-        print!("{:<5}{:<12}", self.bc(), orbit_as_hex);
-    }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh1, std::io::Error> {
         // Create a helper macro for loading an array of the given size from
         // the reader.
@@ -422,6 +432,14 @@ impl PartialEq for Rdh1 {
     }
 }
 
+impl Display for Rdh1 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let tmp_orbit = self.orbit;
+        let orbit_as_hex = format!("{:#x}", tmp_orbit);
+        write!(f, "{:<5}{:<12}", self.bc(), orbit_as_hex)
+    }
+}
+
 #[repr(packed)]
 #[derive(Clone, Copy)]
 pub struct Rdh2 {
@@ -432,15 +450,6 @@ pub struct Rdh2 {
 }
 
 impl GbtWord for Rdh2 {
-    fn print(&self) {
-        let tmp_trigger_type = self.trigger_type;
-        let tmp_pages_counter = self.pages_counter;
-        let trigger_type_as_hex = format!("{:#x}", tmp_trigger_type);
-        println!(
-            "{:<10}{:<9}{:<5}",
-            trigger_type_as_hex, tmp_pages_counter, self.stop_bit
-        );
-    }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh2, std::io::Error> {
         // Create a helper macro for loading an array of the given size from
         // the reader.
@@ -485,6 +494,19 @@ impl PartialEq for Rdh2 {
     }
 }
 
+impl Display for Rdh2 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let tmp_trigger_type = self.trigger_type;
+        let tmp_pages_counter = self.pages_counter;
+        let trigger_type_as_hex = format!("{:#x}", tmp_trigger_type);
+        write!(
+            f,
+            "{:<10}{:<9}{:<5}",
+            trigger_type_as_hex, tmp_pages_counter, self.stop_bit
+        )
+    }
+}
+
 #[repr(packed)]
 pub struct Rdh3 {
     pub detector_field: u32, // 23:4 is reserved
@@ -492,9 +514,6 @@ pub struct Rdh3 {
     pub reserved0: u16,
 }
 impl GbtWord for Rdh3 {
-    fn print(&self) {
-        pretty_print_name_hex_fields!(Rdh3, self, detector_field, par_bit, reserved0);
-    }
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh3, std::io::Error> {
         // Create a helper macro for loading an array of the given size from
         // the reader.
@@ -523,6 +542,20 @@ impl PartialEq for Rdh3 {
     }
 }
 impl Debug for Rdh3 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // To align the output, when printing a packed struct, temporary variables are needed
+        let tmp_df = self.detector_field;
+        let tmp_par = self.par_bit;
+        let tmp_res = self.reserved0;
+        write!(
+            f,
+            "Rdh3: detector_field: {:x?}, par_bit: {:x?}, reserved0: {:x?}",
+            tmp_df, tmp_par, tmp_res
+        )
+    }
+}
+
+impl Display for Rdh3 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // To align the output, when printing a packed struct, temporary variables are needed
         let tmp_df = self.detector_field;
@@ -596,8 +629,6 @@ mod tests {
         let file = file_open_read_only(&filepath).unwrap();
         let mut buf_reader = BufReader::new(file);
         let rdh_cru = RdhCRUv7::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
-
-        rdh_cru.print();
         //let rdh_cru_binrw = RdhCRUv7::read(&mut buf_reader).expect("Failed to load RdhCRUv7");
         // Assert that the two methods are equal
         assert_eq!(rdh_cru, correct_rdh_cru);
@@ -662,7 +693,6 @@ mod tests {
         let rdh_cru = RdhCRUv6::load(&mut buf_reader).expect("Failed to load RdhCRUv6");
         // Check that both the manual and binrw way of reading the file are correct
         assert_eq!(rdh_cru, correct_rdhcruv6);
-        rdh_cru.print();
 
         // This function currently corresponds to the unlink function on Unix and the DeleteFile function on Windows. Note that, this may change in the future.
         // More info: https://doc.rust-lang.org/std/fs/fn.remove_file.html
@@ -684,11 +714,10 @@ mod tests {
         )
         .unwrap();
         // Check that the fields are correct
-        RdhCRUv7::print_header_text();
-        rdhcruv7.print();
+        println!("{:#?}", rdhcruv7);
 
         let rdh_from_old = RdhCRUv7::load(&mut &rdhcruv7.to_byte_slice()[..]).unwrap();
-        rdh_from_old.print();
+        println!("{rdh_from_old}");
         assert_eq!(rdhcruv7, rdh_from_old);
     }
 }

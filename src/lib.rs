@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write, path::PathBuf};
+use std::{fmt::Display, fs::File, io::Write, path::PathBuf};
 
 use util::config::Opt;
 use words::rdh::RdhCRUv7;
@@ -12,15 +12,13 @@ pub mod words;
 /// It is used to:
 /// * pretty printing to stdout
 /// * deserialize the GBT words from the binary file
-pub trait GbtWord: std::fmt::Debug + PartialEq + Sized {
-    fn print(&self);
+pub trait GbtWord: std::fmt::Debug + PartialEq + Sized + Display {
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
     where
         Self: Sized;
 }
 
-pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice {
-    fn print(&self);
+pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display {
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
     where
         Self: Sized;
