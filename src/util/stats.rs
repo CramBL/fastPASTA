@@ -103,7 +103,25 @@ impl Stats {
         }
         eprintln!("Total RDHs: {}", self.rdhs_seen);
         eprintln!("Total RDHs filtered: {}", self.rdhs_filtered);
-        eprintln!("Total payload size: {}", self.payload_size);
+        match self.payload_size {
+            0..=1024 => eprintln!("Total payload size: {} B", self.payload_size),
+            1025..=1048576 => {
+                eprintln!(
+                    "Total payload size: {:.3} KB",
+                    self.payload_size as f64 / 1024 as f64
+                )
+            }
+            1048577..=1073741824 => {
+                eprintln!(
+                    "Total payload size: {:.3} MB",
+                    self.payload_size as f64 / 1048576 as f64
+                )
+            }
+            _ => eprintln!(
+                "Total payload size: {:.3} GB",
+                self.payload_size as f64 / 1073741824 as f64
+            ),
+        }
         eprintln!("Links observed: {:?}", self.links_observed);
         eprintln!("Processing time: {:?}", self.processing_time.elapsed());
     }
