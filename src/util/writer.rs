@@ -1,6 +1,5 @@
-use crate::RDH;
-
 use super::config::Opt;
+use crate::words::rdh::RDH;
 
 /// Receives data incrementally and once a certain amount is reached, it will
 /// write it to the file.

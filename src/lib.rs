@@ -16,17 +16,6 @@ pub trait GbtWord: std::fmt::Debug + PartialEq + Sized + Display {
         Self: Sized;
 }
 
-pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display {
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
-    where
-        Self: Sized;
-    fn get_link_id(&self) -> u8;
-    /// Returns the size of the payload in bytes
-    /// This is EXCLUDING the size of the RDH
-    fn get_payload_size(&self) -> u16;
-    fn get_offset_to_next(&self) -> u16;
-}
-
 /// This trait is used to convert a struct to a byte slice
 /// All structs that are used to represent a full GBT word (not sub RDH words) must implement this trait
 pub trait ByteSlice {
@@ -59,16 +48,17 @@ pub fn file_open_append(path: &PathBuf) -> std::io::Result<std::fs::File> {
 }
 
 #[inline(always)]
-pub fn buf_reader_with_capacity(
-    file: std::fs::File,
+pub fn buf_reader_with_capacity<R: std::io::Read>(
+    input: R,
     capacity: usize,
-) -> std::io::BufReader<std::fs::File> {
-    std::io::BufReader::with_capacity(capacity, file)
+) -> std::io::BufReader<R> {
+    std::io::BufReader::with_capacity(capacity, input)
 }
 
 pub fn setup_buffered_reading(config: &Opt) -> std::io::BufReader<std::fs::File> {
     const CAPACITY: usize = 1024 * 10; // 10 KB
-    let file = file_open_read_only(&config.file()).expect("Failed to open file");
+    let file = file_open_read_only(config.file().as_ref().expect("No file path in config"))
+        .expect("Failed to open file");
     buf_reader_with_capacity(file, CAPACITY)
 }
 

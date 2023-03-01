@@ -5,12 +5,13 @@ use crate::{
     validators::status_words::STATUS_WORD_SANITY_CHECKER,
     words::{
         rdh::RdhCRUv7,
+        rdh::RDH,
         status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt},
     },
-    ByteSlice, RDH,
+    ByteSlice,
 };
 
-use log::{debug, error, info};
+use log::debug;
 use sm::sm;
 
 use self::CDP_PAYLOAD_FSM_Continuous::{
