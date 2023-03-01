@@ -30,7 +30,7 @@ pub struct Opt {
 
     /// File to process
     #[structopt(name = "FILE", parse(from_os_str))]
-    file: PathBuf,
+    file: Option<PathBuf>,
 
     /// Output file
     #[structopt(short, long, parse(from_os_str))]
@@ -47,7 +47,7 @@ impl Opt {
     pub fn filter_link(&self) -> Option<u8> {
         self.filter_link
     }
-    pub fn file(&self) -> &PathBuf {
+    pub fn file(&self) -> &Option<PathBuf> {
         &self.file
     }
     pub fn output(&self) -> &Option<PathBuf> {

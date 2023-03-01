@@ -1,4 +1,6 @@
-use crate::RDH;
+use std::io::Seek;
+
+use crate::words::rdh::{Rdh0, RDH};
 
 use super::{config::Opt, file_pos_tracker::FilePosTracker};
 
@@ -16,18 +18,19 @@ pub trait ScanCDP {
 /// Allows reading an RDH from a file
 /// Optionally, the RDH can be filtered by link ID
 /// # Example
-pub struct FileScanner {
-    pub reader: std::io::BufReader<std::fs::File>,
+pub struct FileScanner<R: std::io::Read + Seek> {
+    pub reader: std::io::BufReader<R>,
     pub tracker: FilePosTracker,
     pub stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
     pub link_to_filter: Option<u8>,
     unique_links_observed: Vec<u8>,
+    initial_rdh0: Option<Rdh0>,
 }
 
-impl FileScanner {
+impl<R: std::io::Read + Seek> FileScanner<R> {
     pub fn new(
         config: std::sync::Arc<Opt>,
-        reader: std::io::BufReader<std::fs::File>,
+        reader: std::io::BufReader<R>,
         tracker: FilePosTracker,
         stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
     ) -> Self {
@@ -37,30 +40,40 @@ impl FileScanner {
             stats_sender_ch,
             link_to_filter: config.filter_link(),
             unique_links_observed: vec![],
+            initial_rdh0: None,
         }
     }
-    pub fn default(
-        config: &Opt,
+    pub fn new_from_rdh0(
+        config: std::sync::Arc<Opt>,
+        reader: std::io::BufReader<R>,
+        tracker: FilePosTracker,
         stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
+        rdh0: Rdh0,
     ) -> Self {
-        let reader = crate::setup_buffered_reading(&config);
         FileScanner {
             reader,
+            tracker,
             stats_sender_ch,
-            tracker: FilePosTracker::new(),
             link_to_filter: config.filter_link(),
             unique_links_observed: vec![],
+            initial_rdh0: Some(rdh0),
         }
     }
 }
 
-impl ScanCDP for FileScanner {
+impl<R: std::io::Read + Seek> ScanCDP for FileScanner<R> {
     /// Reads the next RDH from file
     /// If a link filter is set, it checks if the RDH matches the chosen link and returns it if it does.
     /// If it doesn't match, it jumps to the next RDH and tries again.
     /// If no link filter is set, it simply returns the RDH.
     fn load_rdh_cru<T: RDH>(&mut self) -> Result<T, std::io::Error> {
-        let rdh: T = RDH::load(&mut self.reader)?;
+        // If it is the first time we get an RDH, we would already have loaded the initial RDH0
+        //  from the input. If so, we use it to create the first RDH.
+        let rdh: T = match self.initial_rdh0.is_some() {
+            true => RDH::load_from_rdh0(&mut self.reader, self.initial_rdh0.take().unwrap())?,
+            false => RDH::load(&mut self.reader)?,
+        };
+
         let current_link_id = rdh.get_link_id();
         self.stats_sender_ch
             .send(super::stats::StatType::RDHsSeen(1))
@@ -116,7 +129,6 @@ impl ScanCDP for FileScanner {
 }
 #[cfg(test)]
 mod tests {
-
     use crate::{
         util::stats::{self, Stats},
         words::rdh::RdhCRUv7,
@@ -135,6 +147,7 @@ mod tests {
             "-o test_filter_link.raw",
         ]);
         println!("{:#?}", config);
+
         let (send_stats_channel, recv_stats_channel): (
             std::sync::mpsc::Sender<stats::StatType>,
             std::sync::mpsc::Receiver<stats::StatType>,
@@ -146,8 +159,19 @@ mod tests {
         let stats_thread = std::thread::spawn(move || {
             stats.run();
         });
+        let cfg = std::sync::Arc::new(config);
+        let reader = std::fs::OpenOptions::new()
+            .read(true)
+            .open(cfg.file().to_owned().unwrap())
+            .expect("File not found");
+        let bufreader = std::io::BufReader::new(reader);
 
-        let mut scanner = FileScanner::default(&config, send_stats_channel);
+        let mut scanner = FileScanner::new(
+            cfg.clone(),
+            bufreader,
+            FilePosTracker::new(),
+            send_stats_channel,
+        );
 
         let mut link0_rdh_data: Vec<RdhCRUv7> = vec![];
         let mut link0_payload_data: Vec<Vec<u8>> = vec![];

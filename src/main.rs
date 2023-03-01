@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
-use crossbeam_channel::{bounded, Receiver, RecvError, SendError, Sender};
+use crossbeam_channel::{bounded, Receiver, RecvError, Sender};
 use fastpasta::util::config::Opt;
 use fastpasta::util::file_pos_tracker::FilePosTracker;
 use fastpasta::util::file_scanner::{FileScanner, ScanCDP};
@@ -9,16 +9,21 @@ use fastpasta::util::stats::{self, StatType};
 use fastpasta::util::writer::{BufferedWriter, Writer};
 use fastpasta::validators::cdp_running::CdpRunningValidator;
 use fastpasta::validators::rdh::RdhCruv7RunningChecker;
+use fastpasta::words::rdh::RDH;
 use fastpasta::words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7};
 use fastpasta::{
-    buf_reader_with_capacity, file_open_read_only, setup_buffered_reading, ByteSlice, GbtWord, RDH,
+    buf_reader_with_capacity, file_open_read_only, setup_buffered_reading, ByteSlice, GbtWord,
 };
 use log::{debug, info, trace};
+use std::io::{BufReader, Read, Seek};
 use std::ops::Deref;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::{thread, vec};
 use structopt::StructOpt;
+
+trait SeekRead: Seek + Read {}
+impl<T: Seek + Read> SeekRead for T {}
 
 pub fn main() {
     let opt: Opt = StructOpt::from_args();
@@ -62,16 +67,57 @@ pub fn main() {
             }
         });
 
+        // On-stack dynamic dispatch (https://rust-unofficial.github.io/patterns/idioms/on-stack-dyn-dispatch.html)
+        // let (mut stdin_read, mut file_read);
+
+        // let cfg_reader = config.clone();
+        // // We need to ascribe the type to get dynamic dispatch.
+        // let mut readable: &mut dyn std::io::Read = if config.file().is_none() {
+        //     info!("Reading from stdin");
+        //     stdin_read = std::io::stdin();
+        //     &mut stdin_read
+        // } else {
+        //     info!("Reading from file: {:?}", &config.file());
+        //     file_read = std::fs::OpenOptions::new()
+        //         .read(true)
+        //         .open(cfg_reader.file().to_owned().unwrap())
+        //         .expect("File not found");
+        //     &mut file_read
+        // };
+
+        // // // Determine RDH version
+        // let rdh0 = Rdh0::load(&mut readable).expect("Failed to read first RDH0");
+
+        // let mut bufreader: BufReader<&mut dyn Read> =
+        //     std::io::BufReader::with_capacity(1024 * 50, readable);
+
         // Determine RDH version
-        let file = file_open_read_only(config.file()).expect("Failed to open file");
-        let mut reader = buf_reader_with_capacity(file, 256);
-        let rdh0 = Rdh0::load(&mut reader).expect("Failed to first read RDH0");
+        let file_cfg = config.clone();
+
+        let mut file = file_open_read_only(&file_cfg.file().as_ref().unwrap()).unwrap();
+        let mut bufreader = buf_reader_with_capacity(&mut file, 1024 * 50);
+        let rdh0 = Rdh0::load(&mut bufreader).expect("Failed to read first RDH0");
+
+        let rdh_version = rdh0.header_id;
+
+        let loader = FileScanner::new_from_rdh0(
+            config.clone(),
+            bufreader,
+            FilePosTracker::new(),
+            send_stats_channel.clone(),
+            rdh0,
+        );
+
         // Choose the rest of the execution based on the RDH version
         // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
-        match rdh0.header_id {
-            6 => process_rdh_v6(config, send_stats_channel, thread_stopper.clone()).unwrap(),
-            7 => process_rdh_v7(config, send_stats_channel, thread_stopper.clone()).unwrap(),
-            _ => panic!("Unknown RDH version: {}", rdh0.header_id),
+        match rdh_version {
+            6 => {
+                process_rdh_v6(config, loader, send_stats_channel, thread_stopper.clone()).unwrap()
+            }
+            7 => {
+                process_rdh_v7(config, loader, send_stats_channel, thread_stopper.clone()).unwrap()
+            }
+            _ => panic!("Unknown RDH version: {}", rdh_version),
         }
 
         // 1. Create reader: FileScanner (contains FilePosTracker and borrows Stats)
@@ -95,6 +141,7 @@ pub fn main() {
 // 3. Write data out (file or stdout)
 pub fn process_rdh_v7(
     config: Arc<Opt>,
+    loader: FileScanner<impl Read + Seek>,
     send_stats_ch: std::sync::mpsc::Sender<stats::StatType>,
     thread_stopper: Arc<AtomicBool>,
 ) -> std::io::Result<()> {
@@ -269,12 +316,13 @@ pub fn process_rdh_v7(
 
 pub fn process_rdh_v6(
     config: Arc<Opt>,
+    loader: FileScanner<impl Read + Seek>,
     send_stats_ch: std::sync::mpsc::Sender<stats::StatType>,
     thread_stopper: Arc<AtomicBool>,
 ) -> std::io::Result<()> {
     todo!("RDH v6 not implemented yet");
     // Automatically extracts link to filter if one is supplied
-    let mut file_scanner = FileScanner::default(&config, send_stats_ch);
+    let mut file_scanner = loader;
 
     let (rdh_chunk, _payload_chunk) =
         get_chunk::<RdhCRUv6>(&mut file_scanner, 10).expect("Error reading CDP chunks");
@@ -294,7 +342,7 @@ pub fn sanity_validation(rdh: &RdhCRUv7) -> Result<(), fastpasta::validators::rd
 }
 
 pub fn get_chunk<T: RDH>(
-    file_scanner: &mut FileScanner,
+    file_scanner: &mut FileScanner<impl Read + Seek>,
     chunk_size_cdps: usize,
 ) -> Result<(Vec<T>, Vec<Vec<u8>>), std::io::Error> {
     let mut rdhs: Vec<T> = vec![];
