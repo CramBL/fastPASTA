@@ -1,8 +1,22 @@
-use crate::{ByteSlice, RDH};
+use crate::ByteSlice;
 // ITS data format: https://gitlab.cern.ch/alice-its-wp10-firmware/RU_mainFPGA/-/wikis/ITS%20Data%20Format#Introduction
 use crate::GbtWord;
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use std::fmt::{self, Debug, Display};
+
+pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display {
+    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
+    where
+        Self: Sized;
+    fn load_from_rdh0<T: std::io::Read>(reader: &mut T, rdh0: Rdh0)
+        -> Result<Self, std::io::Error>;
+    fn get_link_id(&self) -> u8;
+    /// Returns the size of the payload in bytes
+    /// This is EXCLUDING the size of the RDH
+    fn get_payload_size(&self) -> u16;
+    fn get_offset_to_next(&self) -> u16;
+}
+
 // Newtype pattern used to enforce type safety on fields that are not byte-aligned
 #[derive(Debug, PartialEq, Clone, Copy)]
 #[repr(packed)]
@@ -82,6 +96,13 @@ impl RDH for RdhCRUv7 {
             }
             Err(e) => return Err(e),
         };
+        Self::load_from_rdh0(reader, rdh0)
+    }
+
+    fn load_from_rdh0<T: std::io::Read>(
+        reader: &mut T,
+        rdh0: Rdh0,
+    ) -> Result<Self, std::io::Error> {
         let offset_new_packet = reader.read_u16::<LittleEndian>().unwrap();
         let memory_size = reader.read_u16::<LittleEndian>().unwrap();
         let link_id = reader.read_u8().unwrap();
@@ -113,6 +134,7 @@ impl RDH for RdhCRUv7 {
             reserved2,
         })
     }
+
     fn get_link_id(&self) -> u8 {
         self.link_id
     }
@@ -218,6 +240,12 @@ impl RDH for RdhCRUv6 {
             Ok(rdh0) => rdh0,
             Err(e) => return Err(e),
         };
+        Self::load_from_rdh0(reader, rdh0)
+    }
+    fn load_from_rdh0<T: std::io::Read>(
+        reader: &mut T,
+        rdh0: Rdh0,
+    ) -> Result<Self, std::io::Error> {
         let offset_new_packet = reader.read_u16::<LittleEndian>().unwrap();
         let memory_size = reader.read_u16::<LittleEndian>().unwrap();
         let link_id = reader.read_u8().unwrap();
