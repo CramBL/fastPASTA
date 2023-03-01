@@ -1,8 +1,10 @@
-use std::io::Seek;
+use std::io::Read;
 
 use crate::words::rdh::{Rdh0, RDH};
 
-use super::{config::Opt, file_pos_tracker::FilePosTracker};
+use super::{
+    bufreader_wrapper::BufferedReaderWrapper, config::Opt, file_pos_tracker::FilePosTracker,
+};
 
 pub trait ScanCDP {
     fn load_rdh_cru<T: RDH>(&mut self) -> Result<T, std::io::Error>;
@@ -18,8 +20,8 @@ pub trait ScanCDP {
 /// Allows reading an RDH from a file
 /// Optionally, the RDH can be filtered by link ID
 /// # Example
-pub struct FileScanner<R: std::io::Read + Seek> {
-    pub reader: std::io::BufReader<R>,
+pub struct FileScanner<R: ?Sized + BufferedReaderWrapper> {
+    pub reader: Box<R>,
     pub tracker: FilePosTracker,
     pub stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
     pub link_to_filter: Option<u8>,
@@ -27,15 +29,15 @@ pub struct FileScanner<R: std::io::Read + Seek> {
     initial_rdh0: Option<Rdh0>,
 }
 
-impl<R: std::io::Read + Seek> FileScanner<R> {
+impl<R: ?Sized + BufferedReaderWrapper> FileScanner<R> {
     pub fn new(
         config: std::sync::Arc<Opt>,
-        reader: std::io::BufReader<R>,
+        reader: Box<R>,
         tracker: FilePosTracker,
         stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
     ) -> Self {
         FileScanner {
-            reader,
+            reader: reader,
             tracker,
             stats_sender_ch,
             link_to_filter: config.filter_link(),
@@ -45,13 +47,13 @@ impl<R: std::io::Read + Seek> FileScanner<R> {
     }
     pub fn new_from_rdh0(
         config: std::sync::Arc<Opt>,
-        reader: std::io::BufReader<R>,
+        reader: Box<R>,
         tracker: FilePosTracker,
         stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
         rdh0: Rdh0,
     ) -> Self {
         FileScanner {
-            reader,
+            reader: reader,
             tracker,
             stats_sender_ch,
             link_to_filter: config.filter_link(),
@@ -61,7 +63,10 @@ impl<R: std::io::Read + Seek> FileScanner<R> {
     }
 }
 
-impl<R: std::io::Read + Seek> ScanCDP for FileScanner<R> {
+impl<R> ScanCDP for FileScanner<R>
+where
+    R: ?Sized + BufferedReaderWrapper,
+{
     /// Reads the next RDH from file
     /// If a link filter is set, it checks if the RDH matches the chosen link and returns it if it does.
     /// If it doesn't match, it jumps to the next RDH and tries again.
@@ -113,7 +118,7 @@ impl<R: std::io::Read + Seek> ScanCDP for FileScanner<R> {
     /// Reads the next payload from file, using the payload size from the RDH
     fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error> {
         let mut payload = vec![0; payload_size];
-        std::io::Read::read_exact(&mut self.reader, &mut payload)?;
+        Read::read_exact(&mut self.reader, &mut payload)?;
         debug_assert!(payload.len() == payload_size);
         self.stats_sender_ch
             .send(super::stats::StatType::PayloadSize(payload_size as u32))
@@ -168,7 +173,7 @@ mod tests {
 
         let mut scanner = FileScanner::new(
             cfg.clone(),
-            bufreader,
+            Box::new(bufreader),
             FilePosTracker::new(),
             send_stats_channel,
         );
