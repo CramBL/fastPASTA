@@ -2,20 +2,20 @@
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
 use crossbeam_channel::{bounded, Receiver, RecvError, Sender};
+use fastpasta::util::bufreader_wrapper::BufferedReaderWrapper;
 use fastpasta::util::config::Opt;
 use fastpasta::util::file_pos_tracker::FilePosTracker;
 use fastpasta::util::file_scanner::{FileScanner, ScanCDP};
 use fastpasta::util::stats::{self, StatType};
+use fastpasta::util::stdin_reader::StdInReaderSeeker;
 use fastpasta::util::writer::{BufferedWriter, Writer};
 use fastpasta::validators::cdp_running::CdpRunningValidator;
 use fastpasta::validators::rdh::RdhCruv7RunningChecker;
 use fastpasta::words::rdh::RDH;
 use fastpasta::words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7};
-use fastpasta::{
-    buf_reader_with_capacity, file_open_read_only, setup_buffered_reading, ByteSlice, GbtWord,
-};
+use fastpasta::{buf_reader_with_capacity, ByteSlice, GbtWord};
 use log::{debug, info, trace};
-use std::io::{BufReader, Read, Seek};
+use std::io::{self, Read, Seek};
 use std::ops::Deref;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -67,42 +67,34 @@ pub fn main() {
             }
         });
 
-        // On-stack dynamic dispatch (https://rust-unofficial.github.io/patterns/idioms/on-stack-dyn-dispatch.html)
-        // let (mut stdin_read, mut file_read);
-
-        // let cfg_reader = config.clone();
-        // // We need to ascribe the type to get dynamic dispatch.
-        // let mut readable: &mut dyn std::io::Read = if config.file().is_none() {
-        //     info!("Reading from stdin");
-        //     stdin_read = std::io::stdin();
-        //     &mut stdin_read
-        // } else {
-        //     info!("Reading from file: {:?}", &config.file());
-        //     file_read = std::fs::OpenOptions::new()
-        //         .read(true)
-        //         .open(cfg_reader.file().to_owned().unwrap())
-        //         .expect("File not found");
-        //     &mut file_read
-        // };
-
-        // // // Determine RDH version
-        // let rdh0 = Rdh0::load(&mut readable).expect("Failed to read first RDH0");
-
-        // let mut bufreader: BufReader<&mut dyn Read> =
-        //     std::io::BufReader::with_capacity(1024 * 50, readable);
+        let cfg_reader = config.clone();
+        let mut readable: Box<dyn BufferedReaderWrapper> = if config.file().is_none() {
+            trace!("Reading from stdin");
+            if atty::is(atty::Stream::Stdin) {
+                trace!("stdin not redirected!");
+            }
+            Box::new(StdInReaderSeeker {
+                reader: io::stdin(),
+            })
+        } else {
+            trace!("Reading from file: {:?}", &config.file());
+            let f = std::fs::OpenOptions::new()
+                .read(true)
+                .open(cfg_reader.file().to_owned().unwrap())
+                .expect("File not found");
+            Box::new(buf_reader_with_capacity(f, 1024 * 50))
+        };
 
         // Determine RDH version
         let file_cfg = config.clone();
 
-        let mut file = file_open_read_only(&file_cfg.file().as_ref().unwrap()).unwrap();
-        let mut bufreader = buf_reader_with_capacity(&mut file, 1024 * 50);
-        let rdh0 = Rdh0::load(&mut bufreader).expect("Failed to read first RDH0");
+        let rdh0 = Rdh0::load(&mut readable).expect("Failed to read first RDH0");
 
         let rdh_version = rdh0.header_id;
 
         let loader = FileScanner::new_from_rdh0(
             config.clone(),
-            bufreader,
+            readable,
             FilePosTracker::new(),
             send_stats_channel.clone(),
             rdh0,
@@ -141,10 +133,10 @@ pub fn main() {
 // 3. Write data out (file or stdout)
 pub fn process_rdh_v7(
     config: Arc<Opt>,
-    loader: FileScanner<impl Read + Seek>,
+    loader: FileScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
     send_stats_ch: std::sync::mpsc::Sender<stats::StatType>,
     thread_stopper: Arc<AtomicBool>,
-) -> std::io::Result<()> {
+) -> io::Result<()> {
     // Types specific for RDH v7
     type V7 = RdhCRUv7;
     type Cdp = (Vec<V7>, Vec<Vec<u8>>);
@@ -163,10 +155,8 @@ pub fn process_rdh_v7(
     let reader_thread = thread::spawn({
         let stop_flag = thread_stopper.clone();
         move || {
-            let reader = setup_buffered_reading(&cfg);
             // Automatically extracts link to filter if one is supplied
-            let mut file_scanner =
-                FileScanner::new(cfg, reader, FilePosTracker::new(), stats_sender_ch_reader);
+            let mut file_scanner = loader;
 
             loop {
                 if stop_flag.load(Ordering::SeqCst) {
@@ -176,7 +166,7 @@ pub fn process_rdh_v7(
                 let (rdh_chunk, payload_chunk) = match get_chunk::<V7>(&mut file_scanner, 100) {
                     Ok(cdp) => cdp,
                     Err(e) => {
-                        if e.kind() == std::io::ErrorKind::UnexpectedEof {
+                        if e.kind() == io::ErrorKind::UnexpectedEof {
                             break;
                         } else {
                             panic!("Error reading CDP chunks: {}", e);
@@ -316,10 +306,10 @@ pub fn process_rdh_v7(
 
 pub fn process_rdh_v6(
     config: Arc<Opt>,
-    loader: FileScanner<impl Read + Seek>,
+    loader: FileScanner<impl BufferedReaderWrapper + ?Sized>,
     send_stats_ch: std::sync::mpsc::Sender<stats::StatType>,
     thread_stopper: Arc<AtomicBool>,
-) -> std::io::Result<()> {
+) -> io::Result<()> {
     todo!("RDH v6 not implemented yet");
     // Automatically extracts link to filter if one is supplied
     let mut file_scanner = loader;
@@ -342,16 +332,16 @@ pub fn sanity_validation(rdh: &RdhCRUv7) -> Result<(), fastpasta::validators::rd
 }
 
 pub fn get_chunk<T: RDH>(
-    file_scanner: &mut FileScanner<impl Read + Seek>,
+    file_scanner: &mut FileScanner<impl BufferedReaderWrapper + ?Sized>,
     chunk_size_cdps: usize,
-) -> Result<(Vec<T>, Vec<Vec<u8>>), std::io::Error> {
+) -> Result<(Vec<T>, Vec<Vec<u8>>), io::Error> {
     let mut rdhs: Vec<T> = vec![];
     let mut payloads: Vec<Vec<u8>> = vec![];
 
     for _ in 0..chunk_size_cdps {
         let (rdh, payload) = match file_scanner.load_cdp() {
             Ok(cdp) => cdp,
-            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+            Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {
                 info!("EOF reached! ");
                 break;
             }
@@ -362,8 +352,8 @@ pub fn get_chunk<T: RDH>(
     }
 
     if rdhs.is_empty() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::UnexpectedEof,
+        return Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
             "No CDPs found",
         ));
     }
