@@ -1,5 +1,5 @@
 @startuml
-Title **FileScanner 'Class' Diagram**
+Title **InputScanner 'Class' Diagram**
 
 hide empty members
 hide empty methods
@@ -22,7 +22,7 @@ interface ByteSlice {
 }
 
 
-struct FileScanner implements ScanCDP {
+struct InputScanner implements ScanCDP {
     - reader: BufReader<File>
     - link_to_filter: Option<u8>
     + load_rdh_cru<T: RDH>()) -> Result<T, Error>
@@ -73,11 +73,11 @@ struct Buffer
 BufReader *-- Buffer : contains
 BufReader o-- Reader : Aggregates
 
-FileScanner *-- BufReader : contains
-FileScanner *-- FilePosTracker : contains
-FileScanner o-- Stats : Aggregates
-FileScanner --> Config : uses
-FileScanner --> RDH : uses
+InputScanner *-- BufReader : contains
+InputScanner *-- FilePosTracker : contains
+InputScanner o-- Stats : Aggregates
+InputScanner --> Config : uses
+InputScanner --> RDH : uses
 
 ScanCDP --> RDH : uses
 
