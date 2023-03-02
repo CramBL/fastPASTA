@@ -42,9 +42,12 @@ pub fn init_stats_controller(
     ) = std::sync::mpsc::channel();
     let thread_stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let mut stats = Stats::new(&config, recv_stats_channel, thread_stop_flag.clone());
-    let stats_thread = std::thread::spawn(move || {
-        stats.run();
-    });
+    let stats_thread = std::thread::Builder::new()
+        .name("stats_thread".to_string())
+        .spawn(move || {
+            stats.run();
+        })
+        .expect("Failed to spawn stats thread");
     (stats_thread, send_stats_channel, thread_stop_flag)
 }
 

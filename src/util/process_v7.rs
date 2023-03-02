@@ -11,58 +11,63 @@ pub mod input {
     use super::*;
     use crate::get_chunk;
     use crate::util::bufreader_wrapper::BufferedReaderWrapper;
-    use crate::util::file_scanner::FileScanner;
+    use crate::util::input_scanner::InputScanner;
 
     pub fn spawn_reader(
         stop_flag: std::sync::Arc<AtomicBool>,
-        input_scanner: FileScanner<
+        input_scanner: InputScanner<
             impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static,
         >,
     ) -> (std::thread::JoinHandle<()>, Receiver<Cdp>) {
+        let reader_thread = std::thread::Builder::new().name("Reader".to_string());
         let (send_channel, rcv_channel): (Sender<Cdp>, Receiver<Cdp>) =
             bounded(CHANNEL_CDP_CAPACITY);
-        let thread_handle = std::thread::spawn({
-            move || {
-                let mut input_scanner = input_scanner;
+        let thread_handle = reader_thread
+            .spawn({
+                move || {
+                    let mut input_scanner = input_scanner;
 
-                // Automatically extracts link to filter if one is supplied
-                loop {
-                    if stop_flag.load(Ordering::SeqCst) {
-                        log::trace!("Stopping reader thread");
-                        break;
-                    }
-                    let (rdh_chunk, payload_chunk) = match get_chunk::<V7>(&mut input_scanner, 100)
-                    {
-                        Ok(cdp) => cdp,
-                        Err(e) => {
-                            if e.kind() == std::io::ErrorKind::UnexpectedEof {
-                                break;
-                            } else {
-                                panic!("Error reading CDP chunks: {}", e);
-                            }
+                    // Automatically extracts link to filter if one is supplied
+                    loop {
+                        if stop_flag.load(Ordering::SeqCst) {
+                            log::trace!("Stopping reader thread");
+                            break;
                         }
-                    };
+                        let (rdh_chunk, payload_chunk) =
+                            match get_chunk::<V7>(&mut input_scanner, 100) {
+                                Ok(cdp) => cdp,
+                                Err(e) => {
+                                    if e.kind() == std::io::ErrorKind::UnexpectedEof {
+                                        break;
+                                    } else {
+                                        panic!("Error reading CDP chunks: {}", e);
+                                    }
+                                }
+                            };
 
-                    // Send a chunk to the checker
-                    if let Err(e) = send_channel.try_send((rdh_chunk, payload_chunk)) {
-                        if e.is_full() {
-                            log::trace!("Checker is too slow");
-                            if let Err(_) = send_channel.send(e.into_inner()) {
-                                if stop_flag.load(Ordering::SeqCst) == false {
-                                    log::trace!("Unexpected error while sending data to checker");
+                        // Send a chunk to the checker
+                        if let Err(e) = send_channel.try_send((rdh_chunk, payload_chunk)) {
+                            if e.is_full() {
+                                log::trace!("Checker is too slow");
+                                if let Err(_) = send_channel.send(e.into_inner()) {
+                                    if stop_flag.load(Ordering::SeqCst) == false {
+                                        log::trace!(
+                                            "Unexpected error while sending data to checker"
+                                        );
+                                        break;
+                                    }
+                                }
+                            } else {
+                                if stop_flag.load(Ordering::SeqCst) {
+                                    log::trace!("Stopping reader thread");
                                     break;
                                 }
-                            }
-                        } else {
-                            if stop_flag.load(Ordering::SeqCst) {
-                                log::trace!("Stopping reader thread");
-                                break;
                             }
                         }
                     }
                 }
-            }
-        });
+            })
+            .expect("Failed to spawn reader thread");
         (thread_handle, rcv_channel)
     }
 }
@@ -90,51 +95,61 @@ pub mod validate {
         stop_flag: Arc<AtomicBool>,
         stats_sender_channel: mpsc::Sender<StatType>,
         data_channel: Receiver<Cdp>,
-    ) -> (JoinHandle<()>, Receiver<Cdp>) {
+    ) -> (JoinHandle<()>, Option<Receiver<Cdp>>) {
+        let checker_thread = std::thread::Builder::new().name("Checker".to_string());
         let (send_channel, rcv_channel): (crossbeam_channel::Sender<Cdp>, Receiver<Cdp>) =
             bounded(CHANNEL_CDP_CAPACITY);
+        let validator_handle = checker_thread
+            .spawn({
+                let config = config.clone();
+                move || {
+                    let mut cdp_payload_running_validator =
+                        CdpRunningValidator::new(stats_sender_channel.clone());
+                    let mut running_rdh_checker = RdhCruv7RunningChecker::new();
 
-        let validator_handle = thread::spawn({
-            let config = config.clone();
-            move || {
-                let mut cdp_payload_running_validator =
-                    CdpRunningValidator::new(stats_sender_channel.clone());
-                let mut running_rdh_checker = RdhCruv7RunningChecker::new();
+                    while stop_flag.load(Ordering::SeqCst) == false {
+                        // Receive chunk from reader
+                        let (rdh_chunk, payload_chunk) = match data_channel.recv() {
+                            Ok(cdp) => cdp,
+                            Err(e) => {
+                                debug_assert_eq!(e, RecvError);
+                                break;
+                            }
+                        };
 
-                while stop_flag.load(Ordering::SeqCst) == false {
-                    // Receive chunk from reader
-                    let (rdh_chunk, payload_chunk) = match data_channel.recv() {
-                        Ok(cdp) => cdp,
-                        Err(e) => {
-                            debug_assert_eq!(e, RecvError);
-                            break;
+                        if config.any_checks() {
+                            do_checks(
+                                &rdh_chunk,
+                                &payload_chunk,
+                                &stats_sender_channel,
+                                &mut running_rdh_checker,
+                                &mut cdp_payload_running_validator,
+                            );
                         }
-                    };
 
-                    if config.any_checks() {
-                        do_checks(
-                            &rdh_chunk,
-                            &payload_chunk,
-                            &stats_sender_channel,
-                            &mut running_rdh_checker,
-                            &mut cdp_payload_running_validator,
-                        );
-                    }
-
-                    // Send chunk to the checker
-                    if let Err(_) = send_channel.send((rdh_chunk, payload_chunk)) {
-                        if stop_flag.load(Ordering::SeqCst) == false {
-                            log::trace!("Unexpected error while sending data to writer");
-                            break;
+                        // Send chunk to the checker
+                        match config.output_mode() {
+                            crate::util::config::DataOutputMode::None => {} // Do nothing
+                            _ => {
+                                if let Err(_) = send_channel.send((rdh_chunk, payload_chunk)) {
+                                    if stop_flag.load(Ordering::SeqCst) == false {
+                                        log::trace!(
+                                            "Unexpected error while sending data to writer"
+                                        );
+                                        break;
+                                    }
+                                }
+                            }
                         }
                     }
                 }
-            }
-        });
+            })
+            .expect("Failed to spawn checker thread");
 
-        if config.any_checks() {}
-
-        (validator_handle, rcv_channel)
+        match config.output_mode() {
+            crate::util::config::DataOutputMode::None => (validator_handle, None),
+            _ => (validator_handle, Some(rcv_channel)),
+        }
     }
 
     #[inline]
@@ -252,24 +267,27 @@ pub mod output {
         stats_sender_channel: mpsc::Sender<StatType>,
         data_channel: Receiver<Cdp>,
     ) -> thread::JoinHandle<()> {
-        thread::spawn({
-            let mut writer = BufferedWriter::<V7>::new(&config, BUFFER_SIZE);
-            move || loop {
-                // Receive chunk from checker
-                let (rdh_chunk, payload_chunk) = match data_channel.recv() {
-                    Ok(cdp) => cdp,
-                    Err(e) => {
-                        debug_assert_eq!(e, crossbeam_channel::RecvError);
+        let writer_thread = thread::Builder::new().name("Writer".to_string());
+        writer_thread
+            .spawn({
+                let mut writer = BufferedWriter::<V7>::new(&config, BUFFER_SIZE);
+                move || loop {
+                    // Receive chunk from checker
+                    let (rdh_chunk, payload_chunk) = match data_channel.recv() {
+                        Ok(cdp) => cdp,
+                        Err(e) => {
+                            debug_assert_eq!(e, crossbeam_channel::RecvError);
+                            break;
+                        }
+                    };
+                    if stop_flag.load(Ordering::SeqCst) {
+                        log::trace!("Stopping writer thread");
                         break;
                     }
-                };
-                if stop_flag.load(Ordering::SeqCst) {
-                    log::trace!("Stopping writer thread");
-                    break;
+                    // Push data onto the writer's buffer, which will flush it when the buffer is full or when the writer is dropped
+                    writer.push_cdps_raw((rdh_chunk, payload_chunk));
                 }
-                // Push data onto the writer's buffer, which will flush it when the buffer is full or when the writer is dropped
-                writer.push_cdps_raw((rdh_chunk, payload_chunk));
-            }
-        })
+            })
+            .expect("Failed to spawn writer thread")
     }
 }
