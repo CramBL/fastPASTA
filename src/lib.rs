@@ -1,6 +1,6 @@
-use std::{fmt::Display, fs::File, io::Write, path::PathBuf};
+use std::{fmt::Display, fs::File, io::Write, path::PathBuf, sync::atomic::AtomicBool};
 
-use util::config::Opt;
+use util::{config::Opt, stats::Stats};
 use words::rdh::RdhCRUv7;
 pub mod util;
 pub mod validators;
@@ -29,6 +29,47 @@ pub trait ByteSlice {
 pub unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
     // Create read-only reference to T as a byte slice, safe as long as no padding bytes are read
     ::core::slice::from_raw_parts((p as *const T) as *const u8, ::core::mem::size_of::<T>())
+}
+
+pub fn init_stats_controller(
+    config: &Opt,
+) -> (
+    std::thread::JoinHandle<()>,
+    std::sync::mpsc::Sender<util::stats::StatType>,
+    std::sync::Arc<AtomicBool>,
+) {
+    let (send_stats_channel, recv_stats_channel): (
+        std::sync::mpsc::Sender<util::stats::StatType>,
+        std::sync::mpsc::Receiver<util::stats::StatType>,
+    ) = std::sync::mpsc::channel();
+    let thread_stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let mut stats = Stats::new(&config, recv_stats_channel, thread_stop_flag.clone());
+    let stats_thread = std::thread::spawn(move || {
+        stats.run();
+    });
+    (stats_thread, send_stats_channel, thread_stop_flag)
+}
+
+pub fn init_reader(config: &Opt) -> Box<dyn util::bufreader_wrapper::BufferedReaderWrapper> {
+    match config.file() {
+        Some(path) => {
+            log::trace!("Reading from file: {:?}", &path);
+            let f = std::fs::OpenOptions::new()
+                .read(true)
+                .open(path)
+                .expect("File not found");
+            Box::new(buf_reader_with_capacity(f, 1024 * 50))
+        }
+        None => {
+            log::trace!("Reading from stdin");
+            if atty::is(atty::Stream::Stdin) {
+                log::trace!("stdin not redirected!");
+            }
+            Box::new(util::stdin_reader::StdInReaderSeeker {
+                reader: std::io::stdin(),
+            })
+        }
+    }
 }
 
 #[inline]
@@ -63,7 +104,7 @@ pub fn setup_buffered_reading(config: &Opt) -> std::io::BufReader<std::fs::File>
 }
 
 pub struct FilterLink {
-    link_to_filter: u8,
+    links_to_filter: Vec<u8>,
     output: Option<File>, // If no file is specified -> write to stdout
     pub max_buffer_size: usize,
     pub filtered_rdhs_buffer: Vec<RdhCRUv7>,
@@ -84,7 +125,7 @@ impl FilterLink {
         };
 
         FilterLink {
-            link_to_filter: config.filter_link().expect("No link to filter specified"),
+            links_to_filter: config.filter_link().expect("No link to filter specified"),
             output: f,
             filtered_rdhs_buffer: vec![],
             max_buffer_size,
@@ -93,7 +134,7 @@ impl FilterLink {
         }
     }
     pub fn filter_link<T: std::io::Read>(&mut self, buf_reader: &mut T, rdh: RdhCRUv7) -> bool {
-        if rdh.link_id == self.link_to_filter {
+        if self.links_to_filter.contains(&rdh.link_id) {
             // Read the payload of the RDH
             self.read_payload(buf_reader, rdh.memory_size as usize)
                 .expect("Failed to read from buffer");

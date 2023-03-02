@@ -7,36 +7,33 @@ use fastpasta::util::config::Opt;
 use fastpasta::util::file_pos_tracker::FilePosTracker;
 use fastpasta::util::file_scanner::{FileScanner, ScanCDP};
 use fastpasta::util::stats::{self, StatType};
-use fastpasta::util::stdin_reader::StdInReaderSeeker;
 use fastpasta::util::writer::{BufferedWriter, Writer};
 use fastpasta::validators::cdp_running::CdpRunningValidator;
 use fastpasta::validators::rdh::RdhCruv7RunningChecker;
 use fastpasta::words::rdh::RDH;
 use fastpasta::words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7};
-use fastpasta::{buf_reader_with_capacity, ByteSlice, GbtWord};
+use fastpasta::{init_stats_controller, ByteSlice, GbtWord};
 use log::{debug, info, trace};
-use std::io::{self, Read, Seek};
-use std::ops::Deref;
+use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::{thread, vec};
 use structopt::StructOpt;
 
-trait SeekRead: Seek + Read {}
-impl<T: Seek + Read> SeekRead for T {}
+fn init_error_logger(cfg: &Opt) {
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(cfg.verbosity() as usize)
+        .init()
+        .expect("Failed to initialize logger");
+}
 
 pub fn main() {
     let opt: Opt = StructOpt::from_args();
+    trace!("{:#?}", opt);
+    let config: Arc<Opt> = Arc::new(opt);
 
-    stderrlog::new()
-        .module(module_path!())
-        .verbosity(opt.verbosity() as usize)
-        .init()
-        .unwrap();
-
-    debug!("{:#?}", opt);
-
-    let config = opt;
+    init_error_logger(&config.clone());
     // let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
     //     "fastpasta",
     //     "-s",
@@ -46,85 +43,33 @@ pub fn main() {
     //     "-o test_filter_link.raw",
     // ]);
 
-    let config: Arc<Opt> = Arc::new(config);
-    let cfg_stats = config.clone();
     {
         // Launch statistics thread
-        let (send_stats_channel, recv_stats_channel): (
-            std::sync::mpsc::Sender<stats::StatType>,
-            std::sync::mpsc::Receiver<stats::StatType>,
-        ) = std::sync::mpsc::channel();
-
         // If max allowed errors is reached, stop the processing from the stats thread
-        let thread_stopper = Arc::new(AtomicBool::new(false));
+        let (stat_controller, stat_send_channel, stop_flag) =
+            init_stats_controller(&config.clone());
 
-        let stats_thread = thread::spawn({
-            let end_processing = thread_stopper.clone();
-            move || {
-                let mut stats =
-                    stats::Stats::new(cfg_stats.deref(), recv_stats_channel, end_processing);
-                stats.run();
-            }
-        });
-
-        let cfg_reader = config.clone();
-        let mut readable: Box<dyn BufferedReaderWrapper> = if config.file().is_none() {
-            trace!("Reading from stdin");
-            if atty::is(atty::Stream::Stdin) {
-                trace!("stdin not redirected!");
-            }
-            Box::new(StdInReaderSeeker {
-                reader: io::stdin(),
-            })
-        } else {
-            trace!("Reading from file: {:?}", &config.file());
-            let f = std::fs::OpenOptions::new()
-                .read(true)
-                .open(cfg_reader.file().to_owned().unwrap())
-                .expect("File not found");
-            Box::new(buf_reader_with_capacity(f, 1024 * 50))
-        };
+        let mut readable = fastpasta::init_reader(&config.clone());
 
         // Determine RDH version
-        let file_cfg = config.clone();
-
         let rdh0 = Rdh0::load(&mut readable).expect("Failed to read first RDH0");
-
         let rdh_version = rdh0.header_id;
-
         let loader = FileScanner::new_from_rdh0(
             config.clone(),
             readable,
             FilePosTracker::new(),
-            send_stats_channel.clone(),
+            stat_send_channel.clone(),
             rdh0,
         );
 
         // Choose the rest of the execution based on the RDH version
         // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
         match rdh_version {
-            6 => {
-                process_rdh_v6(config, loader, send_stats_channel, thread_stopper.clone()).unwrap()
-            }
-            7 => {
-                process_rdh_v7(config, loader, send_stats_channel, thread_stopper.clone()).unwrap()
-            }
+            6 => process_rdh_v6(config, loader, stat_send_channel, stop_flag.clone()).unwrap(),
+            7 => process_rdh_v7(config, loader, stat_send_channel, stop_flag.clone()).unwrap(),
             _ => panic!("Unknown RDH version: {}", rdh_version),
         }
-
-        // 1. Create reader: FileScanner (contains FilePosTracker and borrows Stats)
-        //      - Open file in read only mode
-        //      - Wrap in BufReader
-        //      - Track file position (FilePosTracker)
-        //      - reads data through struct interface + buffer
-        //      - collects stats (Stats)
-        // 2. Read into a reasonably sized buffer
-        // 3. Pass buffer to checker and read another chunk
-        // 4. Checker verifies received buffered chunk (big checks -> multi-threading)
-        //                Not valid -> Print error and abort
-        //                Valid     -> Pass chunk to writer
-        // 5. Writer writes chunk to file OR stdout
-        stats_thread.join().expect("Failed to join stats thread");
+        stat_controller.join().expect("Failed to join stats thread");
     }
 }
 
