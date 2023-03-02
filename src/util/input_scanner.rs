@@ -16,11 +16,13 @@ pub trait ScanCDP {
         let payload = self.load_payload_raw(rdh.get_payload_size() as usize)?;
         Ok((rdh, payload))
     }
+
+    fn load_next_rdh_to_filter<T: RDH>(&mut self) -> Result<T, std::io::Error>;
 }
 /// Allows reading an RDH from a file
 /// Optionally, the RDH can be filtered by link ID
 /// # Example
-pub struct FileScanner<R: ?Sized + BufferedReaderWrapper> {
+pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     pub reader: Box<R>,
     pub tracker: FilePosTracker,
     pub stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
@@ -29,14 +31,14 @@ pub struct FileScanner<R: ?Sized + BufferedReaderWrapper> {
     initial_rdh0: Option<Rdh0>,
 }
 
-impl<R: ?Sized + BufferedReaderWrapper> FileScanner<R> {
+impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     pub fn new(
         config: std::sync::Arc<Opt>,
         reader: Box<R>,
         tracker: FilePosTracker,
         stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
     ) -> Self {
-        FileScanner {
+        InputScanner {
             reader: reader,
             tracker,
             stats_sender_ch,
@@ -52,7 +54,7 @@ impl<R: ?Sized + BufferedReaderWrapper> FileScanner<R> {
         stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
         rdh0: Rdh0,
     ) -> Self {
-        FileScanner {
+        InputScanner {
             reader: reader,
             tracker,
             stats_sender_ch,
@@ -63,7 +65,7 @@ impl<R: ?Sized + BufferedReaderWrapper> FileScanner<R> {
     }
 }
 
-impl<R> ScanCDP for FileScanner<R>
+impl<R> ScanCDP for InputScanner<R>
 where
     R: ?Sized + BufferedReaderWrapper,
 {
@@ -71,6 +73,7 @@ where
     /// If a link filter is set, it checks if the RDH matches the chosen link and returns it if it does.
     /// If it doesn't match, it jumps to the next RDH and tries again.
     /// If no link filter is set, it simply returns the RDH.
+    #[inline]
     fn load_rdh_cru<T: RDH>(&mut self) -> Result<T, std::io::Error> {
         // If it is the first time we get an RDH, we would already have loaded the initial RDH0
         //  from the input. If so, we use it to create the first RDH.
@@ -98,11 +101,10 @@ where
                 // no jump. current pos -> start of payload
                 return Ok(rdh);
             } else {
-                // Set tracker to jump to next RDH and try again
+                // Set tracker to jump to next RDH and try until we find a matching link or EOF
                 self.reader
                     .seek_relative(self.tracker.next(rdh.get_offset_to_next() as u64))?;
-
-                return self.load_rdh_cru();
+                self.load_next_rdh_to_filter()
             }
         } else {
             // No jump, current pos -> start of payload
@@ -111,6 +113,7 @@ where
     }
 
     /// Reads the next payload from file, using the payload size from the RDH
+    #[inline]
     fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error> {
         let mut payload = vec![0; payload_size];
         Read::read_exact(&mut self.reader, &mut payload)?;
@@ -121,10 +124,33 @@ where
         Ok(payload)
     }
     /// Reads the next CDP from file
+    #[inline]
     fn load_cdp<T: RDH>(&mut self) -> Result<(T, Vec<u8>), std::io::Error> {
         let rdh: T = self.load_rdh_cru()?;
         let payload = self.load_payload_raw(rdh.get_payload_size() as usize)?;
         Ok((rdh, payload))
+    }
+
+    fn load_next_rdh_to_filter<T: RDH>(&mut self) -> Result<T, std::io::Error> {
+        let links_to_filter = self.link_to_filter.as_ref().unwrap();
+        loop {
+            let rdh: T = RDH::load(&mut self.reader)?;
+            let current_link_id = rdh.get_link_id();
+            self.stats_sender_ch
+                .send(super::stats::StatType::RDHsSeen(1))
+                .unwrap();
+            if self.unique_links_observed.contains(&current_link_id) == false {
+                self.unique_links_observed.push(current_link_id);
+                self.stats_sender_ch
+                    .send(super::stats::StatType::LinksObserved(current_link_id))
+                    .unwrap();
+            }
+            if links_to_filter.contains(&current_link_id) {
+                return Ok(rdh);
+            }
+            self.reader
+                .seek_relative(self.tracker.next(rdh.get_offset_to_next() as u64))?;
+        }
     }
 }
 #[cfg(test)]
@@ -166,7 +192,7 @@ mod tests {
             .expect("File not found");
         let bufreader = std::io::BufReader::new(reader);
 
-        let mut scanner = FileScanner::new(
+        let mut scanner = InputScanner::new(
             cfg.clone(),
             Box::new(bufreader),
             FilePosTracker::new(),

@@ -4,7 +4,7 @@
 use fastpasta::util::bufreader_wrapper::BufferedReaderWrapper;
 use fastpasta::util::config::Opt;
 use fastpasta::util::file_pos_tracker::FilePosTracker;
-use fastpasta::util::file_scanner::InputScanner;
+use fastpasta::util::input_scanner::InputScanner;
 use fastpasta::util::process_v7;
 use fastpasta::util::stats::{self};
 use fastpasta::words::rdh::{Rdh0, RdhCRUv6};

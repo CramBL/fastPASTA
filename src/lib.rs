@@ -1,5 +1,5 @@
 use std::{fmt::Display, fs::File, path::PathBuf, sync::atomic::AtomicBool};
-use util::{config::Opt, file_scanner::FileScanner, stats::Stats};
+use util::{config::Opt, input_scanner::InputScanner, stats::Stats};
 pub mod util;
 pub mod validators;
 pub mod words;
@@ -86,13 +86,13 @@ pub fn buf_reader_with_capacity<R: std::io::Read>(
 }
 
 pub fn get_chunk<T: words::rdh::RDH>(
-    file_scanner: &mut FileScanner<impl util::bufreader_wrapper::BufferedReaderWrapper + ?Sized>,
+    file_scanner: &mut InputScanner<impl util::bufreader_wrapper::BufferedReaderWrapper + ?Sized>,
     chunk_size_cdps: usize,
 ) -> Result<(Vec<T>, Vec<Vec<u8>>), std::io::Error> {
     let mut rdhs: Vec<T> = vec![];
     let mut payloads: Vec<Vec<u8>> = vec![];
 
-    use crate::util::file_scanner::ScanCDP;
+    use crate::util::input_scanner::ScanCDP;
 
     for _ in 0..chunk_size_cdps {
         let (rdh, payload) = match file_scanner.load_cdp() {
