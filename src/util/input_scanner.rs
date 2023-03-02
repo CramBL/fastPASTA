@@ -127,6 +127,12 @@ where
     #[inline]
     fn load_cdp<T: RDH>(&mut self) -> Result<(T, Vec<u8>), std::io::Error> {
         let rdh: T = self.load_rdh_cru()?;
+        self.tracker.memory_address_bytes += rdh.get_offset_to_next() as u64;
+        log::trace!(
+            "Current memory offset: {}, rdh memory offset: {}",
+            self.tracker.memory_address_bytes,
+            rdh.get_offset_to_next()
+        );
         let payload = self.load_payload_raw(rdh.get_payload_size() as usize)?;
         Ok((rdh, payload))
     }
