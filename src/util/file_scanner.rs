@@ -24,7 +24,7 @@ pub struct FileScanner<R: ?Sized + BufferedReaderWrapper> {
     pub reader: Box<R>,
     pub tracker: FilePosTracker,
     pub stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
-    pub link_to_filter: Option<u8>,
+    pub link_to_filter: Option<Vec<u8>>,
     unique_links_observed: Vec<u8>,
     initial_rdh0: Option<Rdh0>,
 }
@@ -90,28 +90,23 @@ where
                 .unwrap();
         }
 
-        match self.link_to_filter {
-            // Matches if a link is set and it is the same as the current RDH
-            Some(x) if x == current_link_id => {
+        if let Some(x) = self.link_to_filter.as_ref() {
+            if x.contains(&current_link_id) {
                 self.stats_sender_ch
                     .send(super::stats::StatType::RDHsFiltered(1))
                     .unwrap();
                 // no jump. current pos -> start of payload
                 return Ok(rdh);
-            }
-            // Matches if no link is set
-            None => {
-                // No jump, current pos -> start of payload
-                return Ok(rdh);
-            }
-            // Matches all remaining cases (link set, but not the same as the current RDH)
-            _ => {
+            } else {
                 // Set tracker to jump to next RDH and try again
                 self.reader
                     .seek_relative(self.tracker.next(rdh.get_offset_to_next() as u64))?;
 
                 return self.load_rdh_cru();
             }
+        } else {
+            // No jump, current pos -> start of payload
+            return Ok(rdh);
         }
     }
 
