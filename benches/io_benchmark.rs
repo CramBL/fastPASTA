@@ -4,9 +4,7 @@ use std::{
 };
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use fastpasta::{
-    buf_reader_with_capacity, file_open_read_only, words::rdh::RdhCRUv7, ByteSlice, RDH,
-};
+use fastpasta::{buf_reader_with_capacity, words::rdh::RdhCRUv7, words::rdh::RDH, ByteSlice};
 pub struct RelativeOffset(i64);
 impl RelativeOffset {
     fn new(byte_offset: u64) -> Self {
@@ -18,7 +16,10 @@ impl RelativeOffset {
 #[inline]
 fn buffered_read_custom_capacity(n: usize) {
     let path = std::path::PathBuf::from("../fastpasta_test_files/data_ols_ul.raw");
-    let file = file_open_read_only(&path).unwrap();
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .open(&path)
+        .expect("File not found");
     let mut buf_reader = buf_reader_with_capacity(file, n);
     let mut ten_mb_vec = vec![0; 1024 * 1024 * 10];
     Read::read_exact(&mut buf_reader, &mut ten_mb_vec).unwrap();
@@ -61,7 +62,10 @@ fn bench_buffer_capacity(c: &mut Criterion) {
 #[inline]
 fn parse_rdh_manual(rdh_cru_size_bytes: u64, filename: &str, iterations: usize) {
     let filepath = std::path::PathBuf::from(filename);
-    let file = file_open_read_only(&filepath).unwrap();
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .open(&filepath)
+        .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
     for _i in 1..iterations {
         let rdh_tmp = RdhCRUv7::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
@@ -99,7 +103,10 @@ fn write_rdh_manual(fileout: &str) {
     let filename = "../fastpasta_test_files/data_ols_ul.raw";
     const RDH_CRU_SIZE_BYTES: u64 = 64;
     let filepath = std::path::PathBuf::from(filename);
-    let file = file_open_read_only(&filepath).unwrap();
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .open(&filepath)
+        .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
     let rdhs: Vec<RdhCRUv7> = (0..50000)
         .map(|_| {
@@ -144,7 +151,10 @@ fn bench_serialization_write(c: &mut Criterion) {
 #[inline]
 fn sanity_check_rdhs(rdh_cru_size_bytes: u64, filename: &str, iterations: usize) {
     let filepath = std::path::PathBuf::from(filename);
-    let file = file_open_read_only(&filepath).unwrap();
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .open(&filepath)
+        .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
     let rdh_validator = fastpasta::validators::rdh::RDH_CRU_V7_VALIDATOR;
     let mut rdhs = 0;
