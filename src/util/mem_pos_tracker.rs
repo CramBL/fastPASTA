@@ -1,11 +1,11 @@
-pub struct FilePosTracker {
+pub struct MemPosTracker {
     pub offset_next: i64,
     pub memory_address_bytes: u64,
     rdh_cru_size_bytes: u64,
 }
-impl FilePosTracker {
+impl MemPosTracker {
     pub fn new() -> Self {
-        FilePosTracker {
+        MemPosTracker {
             offset_next: 0,
             memory_address_bytes: 0,
             rdh_cru_size_bytes: 64, // RDH size in bytes
@@ -22,7 +22,7 @@ mod tests {
     use super::*;
     #[test]
     fn test_file_tracker() {
-        let mut file_tracker = FilePosTracker::new();
+        let mut file_tracker = MemPosTracker::new();
         assert_eq!(file_tracker.offset_next, 0);
         assert_eq!(file_tracker.memory_address_bytes, 0);
         assert_eq!(file_tracker.next(64), 0);

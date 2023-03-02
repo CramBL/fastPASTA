@@ -3,7 +3,7 @@
 #![allow(unreachable_code)]
 use fastpasta::util::bufreader_wrapper::BufferedReaderWrapper;
 use fastpasta::util::config::Opt;
-use fastpasta::util::file_pos_tracker::FilePosTracker;
+
 use fastpasta::util::input_scanner::InputScanner;
 use fastpasta::util::process_v7;
 use fastpasta::util::stats::{self};
@@ -60,7 +60,7 @@ pub fn main() {
     let loader = InputScanner::new_from_rdh0(
         config.clone(),
         readable,
-        FilePosTracker::new(),
+        fastpasta::util::mem_pos_tracker::MemPosTracker::new(),
         stat_send_channel.clone(),
         rdh0,
     );

@@ -3,7 +3,7 @@ use std::io::Read;
 use crate::words::rdh::{Rdh0, RDH};
 
 use super::{
-    bufreader_wrapper::BufferedReaderWrapper, config::Opt, file_pos_tracker::FilePosTracker,
+    bufreader_wrapper::BufferedReaderWrapper, config::Opt, mem_pos_tracker::MemPosTracker,
 };
 
 pub trait ScanCDP {
@@ -24,7 +24,7 @@ pub trait ScanCDP {
 /// # Example
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     pub reader: Box<R>,
-    pub tracker: FilePosTracker,
+    pub tracker: MemPosTracker,
     pub stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
     pub link_to_filter: Option<Vec<u8>>,
     unique_links_observed: Vec<u8>,
@@ -35,7 +35,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     pub fn new(
         config: std::sync::Arc<Opt>,
         reader: Box<R>,
-        tracker: FilePosTracker,
+        tracker: MemPosTracker,
         stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
     ) -> Self {
         InputScanner {
@@ -50,7 +50,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     pub fn new_from_rdh0(
         config: std::sync::Arc<Opt>,
         reader: Box<R>,
-        tracker: FilePosTracker,
+        tracker: MemPosTracker,
         stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
         rdh0: Rdh0,
     ) -> Self {
@@ -201,7 +201,7 @@ mod tests {
         let mut scanner = InputScanner::new(
             cfg.clone(),
             Box::new(bufreader),
-            FilePosTracker::new(),
+            MemPosTracker::new(),
             send_stats_channel,
         );
 
