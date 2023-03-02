@@ -27,6 +27,7 @@ pub struct Stats {
     max_tolerate_errors: u32,
     recv_stats_channel: std::sync::mpsc::Receiver<StatType>,
     end_processing_flag: Arc<AtomicBool>,
+    links_to_filter: Vec<u8>,
 }
 impl Stats {
     pub fn new(
@@ -45,6 +46,11 @@ impl Stats {
             non_atomic_total_errors: 0,
             recv_stats_channel,
             end_processing_flag,
+            links_to_filter: if let Some(links) = config.filter_link() {
+                links.clone()
+            } else {
+                Vec::new()
+            },
         }
     }
 
@@ -102,27 +108,30 @@ impl Stats {
             );
         }
         eprintln!("Total RDHs: {}", self.rdhs_seen);
-        eprintln!("Total RDHs filtered: {}", self.rdhs_filtered);
+        eprintln!("Filtered:");
+
+        let filter_links: String = self
+            .links_to_filter
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        eprintln!("{}", format!("   {:<3}{:>6}", "Links: ", filter_links));
+        eprintln!("{}", format!("   {:<3}{:>7}", "RDHs: ", self.rdhs_filtered));
+        eprint!("{}: ", format!("   {:<3}", "Payload "));
         match self.payload_size {
-            0..=1024 => eprintln!("Total payload size: {} B", self.payload_size),
+            0..=1024 => eprintln!("{} B", self.payload_size),
             1025..=1048576 => {
-                eprintln!(
-                    "Total payload size: {:.3} KB",
-                    self.payload_size as f64 / 1024 as f64
-                )
+                eprintln!("{:.3} KB", self.payload_size as f64 / 1024 as f64)
             }
             1048577..=1073741824 => {
-                eprintln!(
-                    "Total payload size: {:.3} MB",
-                    self.payload_size as f64 / 1048576 as f64
-                )
+                eprintln!("{:.3} MB", self.payload_size as f64 / 1048576 as f64)
             }
-            _ => eprintln!(
-                "Total payload size: {:.3} GB",
-                self.payload_size as f64 / 1073741824 as f64
-            ),
+            _ => eprintln!("{:.3} GB", self.payload_size as f64 / 1073741824 as f64),
         }
-        eprintln!("Links observed: {:?}", self.links_observed);
+        let mut observed_links = self.links_observed.clone();
+        observed_links.sort();
+        eprintln!("Links observed: {:?}", observed_links);
         eprintln!("Processing time: {:?}", self.processing_time.elapsed());
     }
     pub fn print_time(&self) {

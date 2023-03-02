@@ -125,4 +125,10 @@ impl Opt {
             return Ok(());
         }
     }
+    #[inline]
+    pub fn sort_link_args(&mut self) {
+        if let Some(filter_links) = &mut self.filter_link {
+            filter_links.sort();
+        }
+    }
 }
