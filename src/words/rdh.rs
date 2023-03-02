@@ -599,7 +599,6 @@ impl Display for Rdh3 {
 
 #[cfg(test)]
 mod tests {
-    use crate::file_open_read_only;
 
     use super::*;
     use std::fs::{self, File, OpenOptions};
@@ -654,7 +653,11 @@ mod tests {
         file.write_all(serialized_rdh).unwrap();
         //correct_rdh_cru.write(&mut file).unwrap();
         // Open and read with the manual serialization method
-        let file = file_open_read_only(&filepath).unwrap();
+
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .open(&filepath)
+            .expect("File not found");
         let mut buf_reader = BufReader::new(file);
         let rdh_cru = RdhCRUv7::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
         //let rdh_cru_binrw = RdhCRUv7::read(&mut buf_reader).expect("Failed to load RdhCRUv7");
