@@ -57,7 +57,7 @@ sm! {
         }
 
         _WasTDTpacketDoneFalse {
-            // Event Page Should be full
+            // Event Page Should be full (not strictly full to 512 GBT words apparently...)
             DATA_ => c_IHW_,
             c_DATA_ => c_IHW_
         }
@@ -268,18 +268,7 @@ impl CdpRunningValidator {
                     // Next word is decided by if packet_done is 0 or 1
                     // `current_tdt` is used as processing the status words overrides the previous tdt
                     match self.current_tdt.as_ref().unwrap().packet_done() {
-                        false => {
-                            if self.gbt_word_counter != MAX_WORDS_PAYLOAD {
-                                self.error_count += 1;
-                                self.stats_send_ch
-                                    .send(StatType::Error(format!(
-                                        "TDT packet_done is 0 but words in payload is {}",
-                                        self.gbt_word_counter
-                                    )))
-                                    .unwrap();
-                            }
-                            m.transition(_WasTDTpacketDoneFalse).as_enum()
-                        }
+                        false => m.transition(_WasTDTpacketDoneFalse).as_enum(),
                         true => m.transition(_WasTDTpacketDoneTrue).as_enum(),
                     }
                 } else {
@@ -297,18 +286,7 @@ impl CdpRunningValidator {
                     // Next word is decided by if packet_done is 0 or 1
                     // `current_tdt` is used as processing the status words overrides the previous tdt
                     match self.current_tdt.as_ref().unwrap().packet_done() {
-                        false => {
-                            if self.gbt_word_counter != MAX_WORDS_PAYLOAD {
-                                self.error_count += 1;
-                                self.stats_send_ch
-                                    .send(StatType::Error(format!(
-                                        "TDT packet_done is 0 but words in payload is {}",
-                                        self.gbt_word_counter
-                                    )))
-                                    .unwrap();
-                            }
-                            m.transition(_WasTDTpacketDoneFalse).as_enum()
-                        }
+                        false => m.transition(_WasTDTpacketDoneFalse).as_enum(),
                         true => m.transition(_WasTDTpacketDoneTrue).as_enum(),
                     }
                 } else {
@@ -344,18 +322,7 @@ impl CdpRunningValidator {
                         self.error_count += 1;
                     }
                     match self.current_tdt.as_ref().unwrap().packet_done() {
-                        false => {
-                            if self.gbt_word_counter != MAX_WORDS_PAYLOAD {
-                                self.error_count += 1;
-                                self.stats_send_ch
-                                    .send(StatType::Error(format!(
-                                        "TDT packet_done is 0 but words in payload is {}",
-                                        self.gbt_word_counter
-                                    )))
-                                    .unwrap();
-                            }
-                            m.transition(_WasTDTpacketDoneFalse).as_enum()
-                        }
+                        false => m.transition(_WasTDTpacketDoneFalse).as_enum(),
                         true => m.transition(_WasTDTpacketDoneTrue).as_enum(),
                     }
                 } else {
@@ -371,18 +338,7 @@ impl CdpRunningValidator {
                         self.error_count += 1;
                     }
                     match self.current_tdt.as_ref().unwrap().packet_done() {
-                        false => {
-                            if self.gbt_word_counter != MAX_WORDS_PAYLOAD {
-                                self.error_count += 1;
-                                self.stats_send_ch
-                                    .send(StatType::Error(format!(
-                                        "TDT packet_done is 0 but words in payload is {}",
-                                        self.gbt_word_counter
-                                    )))
-                                    .unwrap();
-                            }
-                            m.transition(_WasTDTpacketDoneFalse).as_enum()
-                        }
+                        false => m.transition(_WasTDTpacketDoneFalse).as_enum(),
                         true => m.transition(_WasTDTpacketDoneTrue).as_enum(),
                     }
                 } else {
