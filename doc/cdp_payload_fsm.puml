@@ -53,23 +53,23 @@ after_TDH --> after_TDH_no_data : [no_data == 1]
 
 note left of after_TDH_no_data : Both TDH and DDW0\nare legal next words
 
-after_TDH_no_data -left-> TDH : [next word is TDH]
-after_TDH_no_data --> DDW0 : [next word is DDW0]
+after_TDH_no_data -left-> TDH : [TDH]
+after_TDH_no_data --> DDW0 : [DDW0]
 
 
 Data --> after_Data
 
 note left of after_Data : Both Data and TDT\nare legal next words
 
-after_Data -left-> Data : [next word is Data Word]
-after_Data --> TDT : [next word is TDT]
+after_Data -left-> Data : [Data Word]
+after_Data --> TDT : [TDT]
 TDT: packet_done
 
 TDT --> after_TDT
-after_TDT -up-> TDH : [packet_done == 1\n&&\n next TDH: Internal Trigger]
+after_TDT -up-> TDH : [packet_done == 1\n&&\n TDH: Internal Trigger]
 after_TDT --> Continuation : [packet_done == 0\n&& event page full]
-after_TDT -left-> DDW0 : [packet_done == 1]
-after_TDT -left-> IHW : [packet_done == 1]
+after_TDT -left-> DDW0 : [packet_done == 1 && DDW0]
+after_TDT -left-> IHW : [packet_done == 1 && IHW]
 note right of after_TDT : IHW, TDH and DDW0\nare legal next words\nwhen **packet_done == 1**
 
 
@@ -82,8 +82,8 @@ state Continuation {
     c_TDH -right-> c_Data
     c_Data --> after_c_Data
 
-    after_c_Data -up-> c_Data : [next word is Data Word]
-    after_c_Data -left-> c_TDT : [next word is TDT]
+    after_c_Data -up-> c_Data : [Data Word]
+    after_c_Data -left-> c_TDT : [TDT]
 
     c_TDT: packet_done
     c_TDT -up-> after_c_TDT
