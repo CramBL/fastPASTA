@@ -1,8 +1,9 @@
 use super::config::Opt;
 use crate::words::rdh::RDH;
-
+/// Writes data to file/stdout
+/// Uses a buffer to minimize syscalls.
 /// Receives data incrementally and once a certain amount is reached, it will
-/// write it to the file.
+/// write it out to file/stdout.
 /// Implements drop to flush the remaining data to the file once processing is done.
 pub trait Writer<T> {
     fn write(&mut self, data: &[u8]) -> std::io::Result<()>;
