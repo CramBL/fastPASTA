@@ -22,6 +22,11 @@ fn init_error_logger(cfg: &Opt) {
         .verbosity(cfg.verbosity() as usize)
         .init()
         .expect("Failed to initialize logger");
+    match cfg.output_mode() {
+        fastpasta::util::config::DataOutputMode::Stdout => trace!("Data ouput set to stdout"),
+        fastpasta::util::config::DataOutputMode::File => trace!("Data ouput set to file"),
+        fastpasta::util::config::DataOutputMode::None => trace!("Data ouput set to suppressed"),
+    }
 }
 
 fn get_config() -> Arc<Opt> {
@@ -33,12 +38,6 @@ fn get_config() -> Arc<Opt> {
     }
 
     cfg.sort_link_args();
-
-    match cfg.output_mode() {
-        fastpasta::util::config::DataOutputMode::Stdout => trace!("Data ouput set to stdout"),
-        fastpasta::util::config::DataOutputMode::File => trace!("Data ouput set to file"),
-        fastpasta::util::config::DataOutputMode::None => trace!("Data ouput set to suppressed"),
-    }
 
     Arc::new(cfg)
 }
