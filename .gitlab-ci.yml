@@ -40,8 +40,9 @@ test-code:
   stage: test
   script:
     - cargo test
-    - cargo install cargo-tarpaulin
+    - cargo install cargo-tarpaulin -f
     - cargo tarpaulin --ignore-tests
+  coverage: '/^\d+.\d+% coverage/'
 
 lint-code:
   stage: test
