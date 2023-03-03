@@ -1,6 +1,9 @@
 include:
   remote: "https://gitlab.com/yesolutions/gitlab-ci-templates/raw/main/templates/pre-commit-autofix.yaml"
 
-test:
+stable:cargo:
+  image: rustdocker/rust:stable
+  stage: test
   script:
     - echo "Running tests..."
+    - cargo test --verbose --jobs 1
