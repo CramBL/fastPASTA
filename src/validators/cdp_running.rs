@@ -66,7 +66,7 @@ sm! {
             DATA_ => DDW0_or_TDH_or_IHW_, // If TDH: should have internal trigger set
                                           // If DDW0: RDH: stop_bit == 1 and Page > 0_
                                           // If IHW: Page > 0 && stop_bit == 0
-            c_DATA_ => DDW0_ // RDH: stop_bit == 1 and Page > 0_
+            c_DATA_ => DDW0_or_TDH_or_IHW_ // RDH: stop_bit == 1 and Page > 0_
         }
 
         _WasIhw {
@@ -208,7 +208,6 @@ impl CdpRunningValidator {
         debug_assert!(gbt_word.len() == 10);
         self.gbt_word_counter += 1; // Tracks the number of GBT words seen in the current CDP
 
-        debug!("GBT word counter: {}", self.gbt_word_counter);
         use CDP_PAYLOAD_FSM_Continuous::Variant::*;
         use CDP_PAYLOAD_FSM_Continuous::*;
 
@@ -391,12 +390,6 @@ impl CdpRunningValidator {
                     self.error_count += 1;
                 }
                 m.transition(_WasIhw).as_enum()
-            }
-            DDW0_By_WasTDTpacketDoneTrue(m) => {
-                if let Err(_) = self.process_status_word(StatusWordKind::Ddw0(gbt_word)) {
-                    self.error_count += 1;
-                }
-                m.transition(_WasDdw0).as_enum()
             }
         };
 
