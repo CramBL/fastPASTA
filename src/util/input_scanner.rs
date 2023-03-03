@@ -39,7 +39,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
     ) -> Self {
         InputScanner {
-            reader: reader,
+            reader,
             tracker,
             stats_sender_ch,
             link_to_filter: config.filter_link(),
@@ -55,7 +55,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         rdh0: Rdh0,
     ) -> Self {
         InputScanner {
-            reader: reader,
+            reader,
             tracker,
             stats_sender_ch,
             link_to_filter: config.filter_link(),
@@ -86,7 +86,7 @@ where
         self.stats_sender_ch
             .send(super::stats::StatType::RDHsSeen(1))
             .unwrap();
-        if self.unique_links_observed.contains(&current_link_id) == false {
+        if !self.unique_links_observed.contains(&current_link_id) {
             self.unique_links_observed.push(current_link_id);
             self.stats_sender_ch
                 .send(super::stats::StatType::LinksObserved(current_link_id))
@@ -99,7 +99,7 @@ where
                     .send(super::stats::StatType::RDHsFiltered(1))
                     .unwrap();
                 // no jump. current pos -> start of payload
-                return Ok(rdh);
+                Ok(rdh)
             } else {
                 // Set tracker to jump to next RDH and try until we find a matching link or EOF
                 self.reader
@@ -108,7 +108,7 @@ where
             }
         } else {
             // No jump, current pos -> start of payload
-            return Ok(rdh);
+            Ok(rdh)
         }
     }
 
@@ -145,7 +145,7 @@ where
             self.stats_sender_ch
                 .send(super::stats::StatType::RDHsSeen(1))
                 .unwrap();
-            if self.unique_links_observed.contains(&current_link_id) == false {
+            if !self.unique_links_observed.contains(&current_link_id) {
                 self.unique_links_observed.push(current_link_id);
                 self.stats_sender_ch
                     .send(super::stats::StatType::LinksObserved(current_link_id))

@@ -47,7 +47,7 @@ impl Stats {
             recv_stats_channel,
             end_processing_flag,
             links_to_filter: if let Some(links) = config.filter_link() {
-                links.clone()
+                links
             } else {
                 Vec::new()
             },
@@ -116,18 +116,18 @@ impl Stats {
             .map(|x| x.to_string())
             .collect::<Vec<String>>()
             .join(", ");
-        eprintln!("{}", format!("   {:<3}{:>6}", "Links: ", filter_links));
-        eprintln!("{}", format!("   {:<3}{:>7}", "RDHs: ", self.rdhs_filtered));
-        eprint!("{}: ", format!("   {:<3}", "Payload "));
+        eprintln!("   {:<3}{:>6}", "Links: ", filter_links);
+        eprintln!("   {:<3}{:>7}", "RDHs: ", self.rdhs_filtered);
+        eprint!("   {:<3}", "Payload ");
         match self.payload_size {
             0..=1024 => eprintln!("{} B", self.payload_size),
             1025..=1048576 => {
-                eprintln!("{:.3} KB", self.payload_size as f64 / 1024 as f64)
+                eprintln!("{:.3} KB", self.payload_size as f64 / 1024_f64)
             }
             1048577..=1073741824 => {
-                eprintln!("{:.3} MB", self.payload_size as f64 / 1048576 as f64)
+                eprintln!("{:.3} MB", self.payload_size as f64 / 1048576_f64)
             }
-            _ => eprintln!("{:.3} GB", self.payload_size as f64 / 1073741824 as f64),
+            _ => eprintln!("{:.3} GB", self.payload_size as f64 / 1073741824_f64),
         }
         let mut observed_links = self.links_observed.clone();
         observed_links.sort();

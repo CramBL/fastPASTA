@@ -44,14 +44,14 @@ fn get_config() -> Arc<Opt> {
 
 pub fn main() {
     let config = get_config();
-    init_error_logger(&config.clone());
+    init_error_logger(&config);
     trace!("Starting fastpasta with args: {:#?}", config);
 
     // Launch statistics thread
     // If max allowed errors is reached, stop the processing from the stats thread
-    let (stat_controller, stat_send_channel, stop_flag) = init_stats_controller(&config.clone());
+    let (stat_controller, stat_send_channel, stop_flag) = init_stats_controller(&config);
 
-    let mut readable = fastpasta::init_reader(&config.clone());
+    let mut readable = fastpasta::init_reader(&config);
 
     // Determine RDH version
     let rdh0 = Rdh0::load(&mut readable).expect("Failed to read first RDH0");
@@ -67,8 +67,8 @@ pub fn main() {
     // Choose the rest of the execution based on the RDH version
     // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
     match rdh_version {
-        6 => process_rdh_v6(config, loader, stat_send_channel, stop_flag.clone()).unwrap(),
-        7 => process_rdh_v7(config, loader, stat_send_channel, stop_flag.clone()).unwrap(),
+        6 => process_rdh_v6(config, loader, stat_send_channel, stop_flag).unwrap(),
+        7 => process_rdh_v7(config, loader, stat_send_channel, stop_flag).unwrap(),
         _ => panic!("Unknown RDH version: {}", rdh_version),
     }
     stat_controller.join().expect("Failed to join stats thread");
@@ -91,7 +91,7 @@ pub fn process_rdh_v7(
     let (validator_handle, checker_rcv_channel) = process_v7::validate::spawn_checker(
         config.clone(),
         thread_stopper.clone(),
-        send_stats_ch.clone(),
+        send_stats_ch,
         reader_rcv_channel,
     );
 
@@ -100,8 +100,7 @@ pub fn process_rdh_v7(
         fastpasta::util::config::DataOutputMode::None => None,
         _ => Some(process_v7::output::spawn_writer(
             config.clone(),
-            thread_stopper.clone(),
-            send_stats_ch,
+            thread_stopper,
             checker_rcv_channel.expect("Checker receiver channel not initialized"),
         )),
     };

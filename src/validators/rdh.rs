@@ -482,6 +482,13 @@ pub struct RdhCruv7RunningChecker {
     pub expect_pages_counter: u16,
     pub last_rdh2: Option<Rdh2>,
 }
+
+impl Default for RdhCruv7RunningChecker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RdhCruv7RunningChecker {
     pub fn new() -> Self {
         Self {
@@ -507,7 +514,7 @@ impl RdhCruv7RunningChecker {
             rdh_errors.into_iter().for_each(|e| {
                 err_str.push_str(&e);
             });
-            return Err(GbtError::InvalidWord(err_str.to_owned()));
+            return Err(GbtError::InvalidWord(err_str));
         }
 
         self.last_rdh2 = Some(rdh.rdh2);

@@ -49,19 +49,15 @@ pub mod input {
                         if let Err(e) = send_channel.try_send((rdh_chunk, payload_chunk)) {
                             if e.is_full() {
                                 log::trace!("Checker is too slow");
-                                if let Err(_) = send_channel.send(e.into_inner()) {
-                                    if stop_flag.load(Ordering::SeqCst) == false {
-                                        log::trace!(
-                                            "Unexpected error while sending data to checker"
-                                        );
-                                        break;
-                                    }
-                                }
-                            } else {
-                                if stop_flag.load(Ordering::SeqCst) {
-                                    log::trace!("Stopping reader thread");
+                                if send_channel.send(e.into_inner()).is_err()
+                                    && !stop_flag.load(Ordering::SeqCst)
+                                {
+                                    log::trace!("Unexpected error while sending data to checker");
                                     break;
                                 }
+                            } else if stop_flag.load(Ordering::SeqCst) {
+                                log::trace!("Stopping reader thread");
+                                break;
                             }
                         }
                     }
@@ -79,12 +75,11 @@ pub mod validate {
     use crate::util::stats::StatType;
     use crate::validators::cdp_running::CdpRunningValidator;
     use crate::validators::rdh::RdhCruv7RunningChecker;
-    use crate::words::rdh::{RdhCRUv7, RDH};
-    use crate::ByteSlice;
+    use crate::words::rdh::RdhCRUv7;
     use crossbeam_channel::{bounded, Receiver, RecvError};
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{mpsc, Arc};
-    use std::thread::{self, JoinHandle};
+    use std::thread::JoinHandle;
     // Larger capacity means less overhead, but more memory usage
     // Too small capacity will cause the checker thread to block
     // Too large capacity will cause down stream consumers to block
@@ -108,7 +103,7 @@ pub mod validate {
                         CdpRunningValidator::new(stats_sender_channel.clone());
                     let mut running_rdh_checker = RdhCruv7RunningChecker::new();
 
-                    while stop_flag.load(Ordering::SeqCst) == false {
+                    while !stop_flag.load(Ordering::SeqCst) {
                         // Receive chunk from reader
                         let (rdh_chunk, payload_chunk) = match data_channel.recv() {
                             Ok(cdp) => cdp,
@@ -139,13 +134,11 @@ pub mod validate {
                         match config.output_mode() {
                             crate::util::config::DataOutputMode::None => {} // Do nothing
                             _ => {
-                                if let Err(_) = send_channel.send((rdh_chunk, payload_chunk)) {
-                                    if stop_flag.load(Ordering::SeqCst) == false {
-                                        log::trace!(
-                                            "Unexpected error while sending data to writer"
-                                        );
-                                        break;
-                                    }
+                                if send_channel.send((rdh_chunk, payload_chunk)).is_err()
+                                    && !stop_flag.load(Ordering::SeqCst)
+                                {
+                                    log::trace!("Unexpected error while sending data to writer");
+                                    break;
                                 }
                             }
                         }
@@ -174,7 +167,7 @@ pub mod validate {
             do_rdh_checks(rdh, rdh_running, stats_sender_ch_checker);
             tmp_mem_pos_tracker += 512;
             payload_running.set_current_rdh(rdh, tmp_mem_pos_tracker);
-            do_payload_checks(rdh, payload, payload_running, stats_sender_ch_checker);
+            do_payload_checks(payload, payload_running, stats_sender_ch_checker);
             tmp_mem_pos_tracker += payload.len() as u64 * 8;
         }
     }
@@ -190,7 +183,6 @@ pub mod validate {
 
     #[inline]
     fn do_payload_checks(
-        rdh: &V7,
         payload: &[u8],
         payload_running: &mut CdpRunningValidator,
         stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
@@ -213,7 +205,7 @@ pub mod validate {
         stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
     ) {
         // RDH CHECK: There is always page 0 + minimum page 1 + stop flag
-        if let Err(e) = running_rdh_checker.check(&rdh) {
+        if let Err(e) = running_rdh_checker.check(rdh) {
             stats_sender_ch_checker
                 .send(StatType::Error(format!("RDH check failed: {}", e)))
                 .unwrap();
@@ -240,7 +232,7 @@ pub mod validate {
             // If the padding is more than 9 bytes, it will be processed as a GBT word, therefor exclude it from the slice
             let last_idx_before_padding = payload.len() - ff_padding.len();
             let chunks = payload[..last_idx_before_padding].chunks_exact(10);
-            debug_assert!(chunks.remainder().len() == 0);
+            debug_assert!(chunks.remainder().is_empty());
             chunks
         } else {
             let chunks = payload.chunks_exact(10);
@@ -255,11 +247,11 @@ pub mod validate {
 pub mod output {
     use super::*;
 
-    use crate::util::{config::Opt, stats::StatType, writer::BufferedWriter, writer::Writer};
+    use crate::util::{config::Opt, writer::BufferedWriter, writer::Writer};
     use std::{
         sync::{
             atomic::{AtomicBool, Ordering},
-            mpsc, Arc,
+            Arc,
         },
         thread,
     };
@@ -267,7 +259,6 @@ pub mod output {
     pub fn spawn_writer(
         config: Arc<Opt>,
         stop_flag: Arc<AtomicBool>,
-        stats_sender_channel: mpsc::Sender<StatType>,
         data_channel: Receiver<Cdp>,
     ) -> thread::JoinHandle<()> {
         let writer_thread = thread::Builder::new().name("Writer".to_string());

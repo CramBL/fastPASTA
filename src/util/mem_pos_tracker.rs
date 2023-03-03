@@ -3,6 +3,13 @@ pub struct MemPosTracker {
     pub memory_address_bytes: u64,
     rdh_cru_size_bytes: u64,
 }
+
+impl Default for MemPosTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MemPosTracker {
     pub fn new() -> Self {
         MemPosTracker {

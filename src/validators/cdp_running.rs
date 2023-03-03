@@ -14,9 +14,7 @@ use crate::{
 use log::debug;
 use sm::sm;
 
-use self::CDP_PAYLOAD_FSM_Continuous::{
-    c_DATA_, c_IHW_, c_TDH_, DDW0_or_TDH_, DATA_, DDW0_, IHW_, TDH_,
-};
+use self::CDP_PAYLOAD_FSM_Continuous::IHW_;
 sm! {
     // All states have the '_' suffix and events have '_' prefix so they show up as `STATE_BY_EVENT` in the generated code
     // The statemachine macro notation goes like this:
@@ -89,11 +87,6 @@ pub struct CdpRunningValidator {
     current_tdh: Option<Tdh>,
     current_tdt: Option<Tdt>,
     current_ddw0: Option<Ddw0>,
-    last_rdh: Option<RdhCRUv7>,
-    last_ihw: Option<Ihw>,
-    last_tdh: Option<Tdh>,
-    last_tdt: Option<Tdt>,
-    last_ddw0: Option<Ddw0>,
     error_count: u8,
     gbt_word_counter: u16,
     stats_send_ch: std::sync::mpsc::Sender<StatType>,
@@ -108,11 +101,6 @@ impl CdpRunningValidator {
             current_tdh: None,
             current_tdt: None,
             current_ddw0: None,
-            last_rdh: None,
-            last_ihw: None,
-            last_tdh: None,
-            last_tdt: None,
-            last_ddw0: None,
             error_count: 0,
             gbt_word_counter: 0,
             stats_send_ch,
@@ -139,7 +127,7 @@ impl CdpRunningValidator {
         let mut result = Ok(());
         match status_word {
             StatusWordKind::Ihw(ihw) => {
-                let ihw = Ihw::load(&mut ihw.clone()).unwrap();
+                let ihw = Ihw::load(&mut <&[u8]>::clone(&ihw)).unwrap();
                 debug!("{ihw}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
                     let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
@@ -152,7 +140,7 @@ impl CdpRunningValidator {
                 self.current_ihw = Some(ihw);
             }
             StatusWordKind::Tdh(tdh) => {
-                let tdh = Tdh::load(&mut tdh.clone()).unwrap();
+                let tdh = Tdh::load(&mut <&[u8]>::clone(&tdh)).unwrap();
                 debug!("{tdh}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
                     let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
@@ -165,7 +153,7 @@ impl CdpRunningValidator {
                 self.current_tdh = Some(tdh);
             }
             StatusWordKind::Tdt(tdt) => {
-                let tdt = Tdt::load(&mut tdt.clone()).unwrap();
+                let tdt = Tdt::load(&mut <&[u8]>::clone(&tdt)).unwrap();
                 debug!("{tdt}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
                     let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
@@ -179,7 +167,7 @@ impl CdpRunningValidator {
                 self.current_tdt = Some(tdt);
             }
             StatusWordKind::Ddw0(ddw0) => {
-                let ddw0 = Ddw0::load(&mut ddw0.clone()).unwrap();
+                let ddw0 = Ddw0::load(&mut <&[u8]>::clone(&ddw0)).unwrap();
                 debug!("{ddw0}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0) {
                     let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
@@ -226,14 +214,20 @@ impl CdpRunningValidator {
             InitialIHW_(m) => {
                 debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.stop_bit == 0);
                 debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.pages_counter == 0);
-                if let Err(_) = self.process_status_word(StatusWordKind::Ihw(gbt_word)) {
+                if self
+                    .process_status_word(StatusWordKind::Ihw(gbt_word))
+                    .is_err()
+                {
                     self.error_count += 1;
                 }
                 m.transition(_WasIhw).as_enum()
             }
 
             TDH_By_WasIhw(m) => {
-                if let Err(_) = self.process_status_word(StatusWordKind::Tdh(gbt_word)) {
+                if self
+                    .process_status_word(StatusWordKind::Tdh(gbt_word))
+                    .is_err()
+                {
                     self.error_count += 1;
                 }
                 debug_assert!(self.current_tdh.as_ref().unwrap().continuation() == 0);
@@ -247,7 +241,10 @@ impl CdpRunningValidator {
             DDW0_or_TDH_By_NoDataTrue(m) => {
                 if gbt_word[9] == 0xE8 {
                     // TDH
-                    if let Err(_) = self.process_status_word(StatusWordKind::Tdh(gbt_word)) {
+                    if self
+                        .process_status_word(StatusWordKind::Tdh(gbt_word))
+                        .is_err()
+                    {
                         self.error_count += 1;
                     }
                     debug_assert!(self.current_tdh.as_ref().unwrap().no_data() == 0);
@@ -255,7 +252,10 @@ impl CdpRunningValidator {
                 } else {
                     debug_assert!(gbt_word[9] == 0xE4);
                     // DDW0
-                    if let Err(_) = self.process_status_word(StatusWordKind::Ddw0(gbt_word)) {
+                    if self
+                        .process_status_word(StatusWordKind::Ddw0(gbt_word))
+                        .is_err()
+                    {
                         self.error_count += 1;
                     }
                     m.transition(_WasDdw0).as_enum()
@@ -265,7 +265,10 @@ impl CdpRunningValidator {
             DATA_By_NoDataFalse(m) => {
                 if gbt_word[9] == 0xF0 {
                     // TDT ID
-                    if let Err(_) = self.process_status_word(StatusWordKind::Tdt(gbt_word)) {
+                    if self
+                        .process_status_word(StatusWordKind::Tdt(gbt_word))
+                        .is_err()
+                    {
                         self.error_count += 1;
                     }
                     // Next word is decided by if packet_done is 0 or 1
@@ -283,7 +286,10 @@ impl CdpRunningValidator {
             DATA_By_WasData(m) => {
                 if gbt_word[9] == 0xF0 {
                     // TDT ID
-                    if let Err(_) = self.process_status_word(StatusWordKind::Tdt(gbt_word)) {
+                    if self
+                        .process_status_word(StatusWordKind::Tdt(gbt_word))
+                        .is_err()
+                    {
                         self.error_count += 1;
                     }
                     // Next word is decided by if packet_done is 0 or 1
@@ -299,14 +305,20 @@ impl CdpRunningValidator {
             }
 
             c_IHW_By_WasTDTpacketDoneFalse(m) => {
-                if let Err(_) = self.process_status_word(StatusWordKind::Ihw(gbt_word)) {
+                if self
+                    .process_status_word(StatusWordKind::Ihw(gbt_word))
+                    .is_err()
+                {
                     self.error_count += 1;
                 }
                 m.transition(_Next).as_enum()
             }
 
             c_TDH_By_Next(m) => {
-                if let Err(_) = self.process_status_word(StatusWordKind::Tdh(gbt_word)) {
+                if self
+                    .process_status_word(StatusWordKind::Tdh(gbt_word))
+                    .is_err()
+                {
                     self.error_count += 1;
                 }
                 if self.current_tdh.as_ref().unwrap().continuation() != 1 {
@@ -321,7 +333,10 @@ impl CdpRunningValidator {
             c_DATA_By_Next(m) => {
                 if gbt_word[9] == 0xF0 {
                     // TDT ID
-                    if let Err(_) = self.process_status_word(StatusWordKind::Tdt(gbt_word)) {
+                    if self
+                        .process_status_word(StatusWordKind::Tdt(gbt_word))
+                        .is_err()
+                    {
                         self.error_count += 1;
                     }
                     match self.current_tdt.as_ref().unwrap().packet_done() {
@@ -337,7 +352,10 @@ impl CdpRunningValidator {
             c_DATA_By_WasData(m) => {
                 if gbt_word[9] == 0xF0 {
                     // TDT ID
-                    if let Err(_) = self.process_status_word(StatusWordKind::Tdt(gbt_word)) {
+                    if self
+                        .process_status_word(StatusWordKind::Tdt(gbt_word))
+                        .is_err()
+                    {
                         self.error_count += 1;
                     }
                     match self.current_tdt.as_ref().unwrap().packet_done() {
@@ -353,7 +371,10 @@ impl CdpRunningValidator {
             DDW0_or_TDH_or_IHW_By_WasTDTpacketDoneTrue(m) => {
                 if gbt_word[9] == 0xE8 {
                     // TDH
-                    if let Err(_) = self.process_status_word(StatusWordKind::Tdh(gbt_word)) {
+                    if self
+                        .process_status_word(StatusWordKind::Tdh(gbt_word))
+                        .is_err()
+                    {
                         self.error_count += 1;
                     }
                     if self.current_tdh.as_ref().unwrap().internal_trigger() != 1 {
@@ -375,13 +396,19 @@ impl CdpRunningValidator {
                     }
                 } else if gbt_word[9] == 0xE4 {
                     // DDW0
-                    if let Err(_) = self.process_status_word(StatusWordKind::Ddw0(gbt_word)) {
+                    if self
+                        .process_status_word(StatusWordKind::Ddw0(gbt_word))
+                        .is_err()
+                    {
                         self.error_count += 1;
                     }
                     m.transition(_WasDdw0).as_enum()
                 } else {
                     // IHW
-                    if let Err(_) = self.process_status_word(StatusWordKind::Ihw(gbt_word)) {
+                    if self
+                        .process_status_word(StatusWordKind::Ihw(gbt_word))
+                        .is_err()
+                    {
                         self.error_count += 1;
                     }
                     m.transition(_WasIhw).as_enum()
@@ -390,7 +417,10 @@ impl CdpRunningValidator {
             IHW_By_WasDdw0(m) => {
                 debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.stop_bit == 0);
                 debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.pages_counter == 0);
-                if let Err(_) = self.process_status_word(StatusWordKind::Ihw(gbt_word)) {
+                if self
+                    .process_status_word(StatusWordKind::Ihw(gbt_word))
+                    .is_err()
+                {
                     self.error_count += 1;
                 }
                 m.transition(_WasIhw).as_enum()
@@ -488,7 +518,7 @@ mod tests {
 
     #[test]
     fn test_expect_ihw_invalidate_tdh() {
-        const VALID_ID: u8 = 0xF0;
+        const _VALID_ID: u8 = 0xF0;
         // Boring but very typical TDT, everything is 0 except for packet_done
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
 

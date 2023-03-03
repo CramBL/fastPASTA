@@ -92,20 +92,20 @@ impl Opt {
         if self.output().is_some() {
             // if output is set to "stdout" output to stdout
             if self.output().as_ref().unwrap().to_str() == Some("stdout") {
-                return DataOutputMode::Stdout;
+                DataOutputMode::Stdout
             }
             // if output is set and a file path is given, output to file
             else {
-                return DataOutputMode::File;
+                DataOutputMode::File
             }
         }
         // if output is not set, but checks are enabled, suppress output
         else if self.any_checks() {
-            return DataOutputMode::None;
+            DataOutputMode::None
         }
         // if output is not set and no checks are enabled, output to stdout
         else {
-            return DataOutputMode::Stdout;
+            DataOutputMode::Stdout
         }
     }
 
@@ -120,9 +120,9 @@ impl Opt {
         }
 
         if err_str.len() > 20 {
-            return Err(err_str);
+            Err(err_str)
         } else {
-            return Ok(());
+            Ok(())
         }
     }
     #[inline]

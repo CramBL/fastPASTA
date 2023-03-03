@@ -59,7 +59,7 @@ impl StatusWordValidator<Ihw> for IhwValidator {
         }
 
         let mut err_cnt: u8 = 0;
-        if ihw.is_reserved_0() == false {
+        if !ihw.is_reserved_0() {
             err_cnt += 1;
             write!(err_str, "reserved bits are not 0: {:2X} ", ihw.reserved()).unwrap();
         }
@@ -86,7 +86,7 @@ impl StatusWordValidator<Tdh> for TdhValidator {
         }
 
         let mut err_cnt: u8 = 0;
-        if tdh.is_reserved_0() == false {
+        if !tdh.is_reserved_0() {
             err_cnt += 1;
             write!(
                 err_str,
@@ -131,7 +131,7 @@ impl StatusWordValidator<Tdt> for TdtValidator {
         }
 
         let mut err_cnt: u8 = 0;
-        if tdt.is_reserved_0() == false {
+        if !tdt.is_reserved_0() {
             err_cnt += 1;
             write!(
                 err_str,
@@ -166,7 +166,7 @@ impl StatusWordValidator<Ddw0> for Ddw0Validator {
         }
 
         let mut err_cnt: u8 = 0;
-        if ddw0.is_reserved_0() == false {
+        if !ddw0.is_reserved_0() {
             err_cnt += 1;
             write!(
                 err_str,
@@ -282,9 +282,8 @@ mod tests {
         let raw_ddw0_bad_index = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0xE4];
 
         let ddw0_bad = Ddw0::load(&mut raw_ddw0_bad_index.as_slice()).unwrap();
-        match STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0_bad) {
-            Ok(_) => assert!(false),
-            Err(e) => println!("DDW0 sanity check failed with: {}", e),
-        }
+        assert!(STATUS_WORD_SANITY_CHECKER
+            .sanity_check_ddw0(&ddw0_bad)
+            .is_err());
     }
 }

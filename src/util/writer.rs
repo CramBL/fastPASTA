@@ -26,8 +26,7 @@ impl<T: RDH> BufferedWriter<T> {
             Some(path) => {
                 let path: std::path::PathBuf = path.to_owned();
                 // Likely better to use File::create_new() but it's not stable yet
-                let mut _f =
-                    std::fs::File::create(path.to_owned()).expect("Failed to create output file");
+                let mut _f = std::fs::File::create(&path).expect("Failed to create output file");
                 let file = crate::file_open_append(&path).expect("Failed to open output file");
                 let buf_writer = std::io::BufWriter::new(file);
                 Some(buf_writer)

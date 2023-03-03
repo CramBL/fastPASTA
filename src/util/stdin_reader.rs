@@ -9,7 +9,7 @@ impl BufferedReaderWrapper for StdInReaderSeeker {
     fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
         // Seeking is not supported in stdin, so we have to read the bytes and discard them
         let mut buf = vec![0; offset as usize];
-        let _ = std::io::stdin().lock().read_exact(&mut buf)?;
+        std::io::stdin().lock().read_exact(&mut buf)?;
         Ok(())
     }
 }
