@@ -5,18 +5,14 @@ default:
     - rustc --version
     - cargo --version
 
-artifacts:
-  paths:
-    - $CI_PROJECT_DIR
-  expire_in: 1 week
-
 # Setup a cache to cache job parts between jobs to ensure faster builds
 cache:
   key: "$CI_JOB_NAME"
   untracked: true
+  artifacts:
   paths:
-    - $HOME/.cargo/
-    - target/
+    - $CI_PROJECT_DIR
+  expire_in: 1 week
 
 # Set any required environment variables here
 variables:
