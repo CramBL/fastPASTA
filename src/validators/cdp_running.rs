@@ -146,7 +146,7 @@ impl CdpRunningValidator {
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {}", e)))
                         .unwrap();
-                    debug!("IHW: {:X?}", ihw.to_byte_slice());
+                    debug!("IHW: {ihw}");
                     result = Err(());
                 }
                 self.current_ihw = Some(ihw);
@@ -155,10 +155,11 @@ impl CdpRunningValidator {
                 let tdh = Tdh::load(&mut tdh.clone()).unwrap();
                 debug!("{tdh}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
+                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
                     self.stats_send_ch
-                        .send(StatType::Error(format!("TDH sanity check failed: {}", e)))
+                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {}", e)))
                         .unwrap();
-                    debug!("TDH: {:X?}", tdh.to_byte_slice());
+                    debug!("TDH: {tdh}");
                     result = Err(());
                 }
                 self.current_tdh = Some(tdh);
@@ -167,11 +168,12 @@ impl CdpRunningValidator {
                 let tdt = Tdt::load(&mut tdt.clone()).unwrap();
                 debug!("{tdt}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
+                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
                     self.stats_send_ch
-                        .send(StatType::Error(format!("TDT sanity check failed: {}", e)))
+                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {}", e)))
                         .unwrap();
                     print!("{}", e);
-                    debug!("TDT: {:X?}", tdt.to_byte_slice());
+                    debug!("TDT: {tdt}");
                     result = Err(());
                 }
                 self.current_tdt = Some(tdt);
@@ -180,25 +182,28 @@ impl CdpRunningValidator {
                 let ddw0 = Ddw0::load(&mut ddw0.clone()).unwrap();
                 debug!("{ddw0}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0) {
+                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
                     self.stats_send_ch
-                        .send(StatType::Error(format!("DDW0 sanity check failed: {}", e)))
+                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {}", e)))
                         .unwrap();
-                    debug!("DDW0: {:X?}", ddw0.to_byte_slice());
+                    debug!("DDW0: {ddw0}");
                     result = Err(());
                 }
                 if self.current_rdh.as_ref().unwrap().rdh2.stop_bit != 1 {
+                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
                     self.stats_send_ch
-                        .send(StatType::Error(
-                            "DDW0 found but RDH stop bit is not set".to_string(),
-                        ))
+                        .send(StatType::Error(format!(
+                            "{mem_pos:#X}: [E10] DDW0 received but RDH stop bit is not 1"
+                        )))
                         .unwrap();
                     debug!("DDW0: {:X?}", ddw0.to_byte_slice());
                 }
                 if self.current_rdh.as_ref().unwrap().rdh2.pages_counter == 0 {
+                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
                     self.stats_send_ch
-                        .send(StatType::Error(
-                            "DDW0 found but RDH page counter is 0".to_string(),
-                        ))
+                        .send(StatType::Error(format!(
+                            "{mem_pos:#X}: DDW0 found but RDH page counter is 0"
+                        )))
                         .unwrap();
                     debug!("DDW0: {:X?}", ddw0.to_byte_slice());
                 }
@@ -474,6 +479,31 @@ mod tests {
                 assert_eq!(
                     msg,
                     "0x250: [E00] ID is not 0xE0: 0xE1 Full Word: E1 00 00 00 00 00 00 00 3F FF [79:0]"
+                );
+                println!("{}", msg);
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn test_expect_ihw_invalidate_tdh() {
+        const VALID_ID: u8 = 0xF0;
+        // Boring but very typical TDT, everything is 0 except for packet_done
+        let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
+
+        let (send, stats_recv_ch) = std::sync::mpsc::channel();
+        let mut validator = CdpRunningValidator::new(send);
+        let payload_mem_pos = 512;
+
+        validator.set_current_rdh(&CORRECT_RDH_CRU, payload_mem_pos);
+        validator.check(&raw_data_tdt);
+
+        match stats_recv_ch.recv() {
+            Ok(StatType::Error(msg)) => {
+                assert_eq!(
+                    msg,
+                    "0x250: [E00] ID is not 0xE0: 0xF1 Full Word: F1 01 00 00 00 00 00 00 00 00 [79:0]"
                 );
                 println!("{}", msg);
             }

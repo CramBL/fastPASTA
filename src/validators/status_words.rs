@@ -51,12 +51,14 @@ pub struct IhwValidator {
 impl StatusWordValidator<Ihw> for IhwValidator {
     fn sanity_check(&self, ihw: &Ihw) -> Result<(), String> {
         let mut err_str = String::new();
-        let mut err_cnt: u8 = 0;
+
         if ihw.id() != self.valid_id {
-            err_cnt += 1;
             write!(err_str, "ID is not 0xE0: {:#2X } ", ihw.id()).unwrap();
+            // Early return if ID is wrong
+            return Err(err_str + "Full Word: " + &ihw.to_string());
         }
 
+        let mut err_cnt: u8 = 0;
         if ihw.is_reserved_0() == false {
             err_cnt += 1;
             write!(err_str, "reserved bits are not 0: {:2X} ", ihw.reserved()).unwrap();
@@ -76,13 +78,14 @@ pub struct TdhValidator {
 impl StatusWordValidator<Tdh> for TdhValidator {
     fn sanity_check(&self, tdh: &Tdh) -> Result<(), String> {
         let mut err_str = String::new();
-        let mut err_cnt: u8 = 0;
 
         if tdh.id() != self.valid_id {
-            err_cnt += 1;
             write!(err_str, "ID is not 0xE8:  {:b} ", tdh.id()).unwrap();
+            // Early return if ID is wrong
+            return Err(err_str + "Full Word: " + &tdh.to_string());
         }
 
+        let mut err_cnt: u8 = 0;
         if tdh.is_reserved_0() == false {
             err_cnt += 1;
             write!(
@@ -108,7 +111,7 @@ impl StatusWordValidator<Tdh> for TdhValidator {
         }
 
         if err_cnt > 0 {
-            Err(err_str)
+            Err(err_str + "Full Word: " + &tdh.to_string())
         } else {
             Ok(())
         }
@@ -122,11 +125,12 @@ pub struct TdtValidator {
 impl StatusWordValidator<Tdt> for TdtValidator {
     fn sanity_check(&self, tdt: &Tdt) -> Result<(), String> {
         let mut err_str = String::new();
-        let mut err_cnt: u8 = 0;
         if tdt.id() != self.valid_id {
-            err_cnt += 1;
-            write!(err_str, "ID is not 0xF0:  {:b} ", tdt.id()).unwrap();
+            // Early return if ID is wrong
+            return Err(err_str + "Full Word: " + &tdt.to_string());
         }
+
+        let mut err_cnt: u8 = 0;
         if tdt.is_reserved_0() == false {
             err_cnt += 1;
             write!(
@@ -140,7 +144,7 @@ impl StatusWordValidator<Tdt> for TdtValidator {
         }
 
         if err_cnt > 0 {
-            Err(err_str)
+            Err(err_str + "Full Word: " + &tdt.to_string())
         } else {
             Ok(())
         }
@@ -154,13 +158,14 @@ pub struct Ddw0Validator {
 impl StatusWordValidator<Ddw0> for Ddw0Validator {
     fn sanity_check(&self, ddw0: &Ddw0) -> Result<(), String> {
         let mut err_str = String::new();
-        let mut err_cnt: u8 = 0;
 
         if ddw0.id() != self.valid_id {
-            err_cnt += 1;
             write!(err_str, "ID is not 0xE4:  {:b} ", ddw0.id()).unwrap();
+            // Early return if ID is wrong
+            return Err(err_str + "Full Word: " + &ddw0.to_string());
         }
 
+        let mut err_cnt: u8 = 0;
         if ddw0.is_reserved_0() == false {
             err_cnt += 1;
             write!(
@@ -178,7 +183,7 @@ impl StatusWordValidator<Ddw0> for Ddw0Validator {
         }
 
         if err_cnt > 0 {
-            Err(err_str)
+            Err(err_str + "Full Word: " + &ddw0.to_string())
         } else {
             Ok(())
         }
