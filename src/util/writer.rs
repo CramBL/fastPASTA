@@ -22,6 +22,7 @@ impl<T: RDH> BufferedWriter<T> {
     pub fn new(config: &Opt, max_buffer_size: usize) -> Self {
         // Create output file, and buf writer if specified
         let buf_writer = match config.output() {
+            Some(path) if "stdout".eq(path.to_str().unwrap()) => None,
             Some(path) => {
                 let path: std::path::PathBuf = path.to_owned();
                 // Likely better to use File::create_new() but it's not stable yet
