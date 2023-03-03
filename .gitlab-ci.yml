@@ -5,6 +5,11 @@ default:
     - rustc --version
     - cargo --version
 
+artifacts:
+  paths:
+    - $CI_PROJECT_DIR
+  expire_in: 1 week
+
 # Setup a cache to cache job parts between jobs to ensure faster builds
 cache:
   key: "$CI_JOB_NAME"
@@ -40,9 +45,11 @@ test-code:
   stage: test
   script:
     - cargo test
-    - cargo install cargo-tarpaulin -f
-    - cargo tarpaulin --ignore-tests
-  coverage: '/^\d+.\d+% coverage/'
+# Generate coverage with tarpaulin, unfortunately breaks due to gitlab security policy
+# Could relax the permissions a bit?
+#     - cargo install cargo-tarpaulin -f
+#     - cargo tarpaulin --ignore-tests
+#   coverage: '/^\d+.\d+% coverage/'
 
 lint-code:
   stage: test
