@@ -9,10 +9,8 @@ default:
 cache:
   - key: "$CI_JOB_NAME"
     untracked: true
-    artifacts:
-      paths:
-        - $CI_PROJECT_DIR
-      expire_in: 1 week
+    paths:
+      - $CI_PROJECT_DIR
 
 # Set any required environment variables here
 variables:
