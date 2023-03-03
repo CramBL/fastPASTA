@@ -1,0 +1,6 @@
+include:
+  remote: "https://gitlab.com/yesolutions/gitlab-ci-templates/raw/main/templates/pre-commit-autofix.yaml"
+
+test:
+  script:
+    - echo "Running tests..."
