@@ -1,3 +1,10 @@
+image: "rust:latest"
+
+default:
+  before_script:
+    - rustc --version
+    - cargo --version
+
 # Setup a cache to cache job parts between jobs to ensure faster builds
 cache:
   key: "$CI_JOB_NAME"
@@ -6,46 +13,50 @@ cache:
     - $HOME/.cargo/
     - target/
 
-# Define a yaml template for running a build and then running tests
-.cargo_test_template: &cargo_test
-  script:
-    - rustc --version && cargo --version
-    - cargo build
-    - cargo test --verbose
-
 # Set any required environment variables here
 variables:
   RUST_BACKTRACE: "FULL"
 
-# Do any pre-flight requirements here, such as updating $PATH installing dependencies
-before_script:
-  - export PATH="/root/.cargo/bin:$PATH"
+stages:
+  - build
+  - test
 
-# The following test: stages inherit from the test template above and
-# configure the image used for the various Rust release trains
-test:stable:
-  image: "rustdocker/rust:stable"
-  <<: *cargo_test
-
-test:beta:
-  image: "rustdocker/rust:beta"
-  <<: *cargo_test
-
-test:nightly:
-  image: "rustdocker/rust:nightly"
-  allow_failure: true
-  <<: *cargo_test
-
-# Always want to run rustfmt and clippy against our tests, to ensure that
-# we aren't using any anti-patterns or failing to follow our style guide
-lint:rustfmt:
-  image: "guangie88/rustfmt-clippy"
-  # allow_failure: true
+rust-latest:
+  stage: build
+  image: rust:latest
   script:
-    - cargo fmt -- --write-mode=diff
+    - cargo build --verbose
+    - cargo test --verbose
 
-lint:clippy:
-  image: "guangie88/rustfmt-clippy"
-  allow_failure: true
+rust-nightly:
+  stage: build
+  image: rustlang/rust:nightly
   script:
-    - cargo clippy -- -D warnings # Turn all warnings into errors
+    - cargo build --verbose
+    - cargo test --verbose
+  allow_failure: true
+
+test-code:
+  stage: test
+  script:
+    - cargo test
+    - cargo install cargo-tarpaulin
+    - cargo tarpaulin --ignore-tests
+
+lint-code:
+  stage: test
+  script:
+    - rustup component add clippy
+    - cargo clippy -- -D warnings
+
+format-code:
+  stage: test
+  script:
+    - rustup component add rustfmt
+    - cargo fmt -- --check
+
+audit-code:
+  stage: test
+  script:
+    - cargo install cargo-audit
+    - cargo audit
