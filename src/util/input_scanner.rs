@@ -187,7 +187,7 @@ mod tests {
 
         let thread_stopper = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
-        let mut stats = Stats::new(&config, recv_stats_channel, thread_stopper.clone());
+        let mut stats = Stats::new(&config, recv_stats_channel, thread_stopper);
         let stats_thread = std::thread::spawn(move || {
             stats.run();
         });
@@ -199,7 +199,7 @@ mod tests {
         let bufreader = std::io::BufReader::new(reader);
 
         let mut scanner = InputScanner::new(
-            cfg.clone(),
+            cfg,
             Box::new(bufreader),
             MemPosTracker::new(),
             send_stats_channel,
@@ -224,7 +224,7 @@ mod tests {
 
         let tmp_rdh = link0_rdh_data.first().unwrap();
         println!("RDH: {}", tmp_rdh);
-        match rdh_validator.sanity_check(&link0_rdh_data.first().unwrap()) {
+        match rdh_validator.sanity_check(link0_rdh_data.first().unwrap()) {
             Ok(_) => (),
             Err(e) => {
                 println!("Sanity check failed: {}", e);
@@ -243,7 +243,7 @@ mod tests {
             );
             link0_rdh_data.push(rdh);
 
-            match rdh_validator.sanity_check(&link0_rdh_data.last().unwrap()) {
+            match rdh_validator.sanity_check(link0_rdh_data.last().unwrap()) {
                 Ok(_) => (),
                 Err(e) => {
                     println!("Sanity check failed: {}", e);

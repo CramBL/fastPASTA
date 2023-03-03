@@ -643,7 +643,7 @@ mod tests {
             tdt.reserved2()
         );
         assert!(tdt.is_reserved_0());
-        assert!(tdt.packet_done() == false);
+        assert!(!tdt.packet_done());
         assert!(tdt.transmission_timeout());
         assert!(tdt.lane_starts_violation());
         assert!(tdt.timeout_to_start());
@@ -672,8 +672,8 @@ mod tests {
 
         assert_eq!(ddw0.id(), VALID_ID);
         assert!(ddw0.is_reserved_0());
-        assert!(ddw0.transmission_timeout() == false);
-        assert!(ddw0.lane_starts_violation() == false);
+        assert!(!ddw0.transmission_timeout());
+        assert!(!ddw0.lane_starts_violation());
         assert_eq!(ddw0.lane_status(), 0);
         let loaded_ddw0 = Ddw0::load(&mut ddw0.to_byte_slice()).unwrap();
         assert_eq!(ddw0, loaded_ddw0);

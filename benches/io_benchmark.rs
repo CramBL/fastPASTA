@@ -39,12 +39,12 @@ fn bench_buffer_capacity(c: &mut Criterion) {
     static DEFAULT_8KB: usize = 8 * KB; // As of 12.02.2023 the default is 8 KB, and may change in the future
 
     for i in [
-        1 * KB,
+        KB,
         DEFAULT_8KB,
         10 * KB,
         50 * KB,
         100 * KB,
-        1 * MB,
+        MB,
         10 * MB,
         50 * MB,
     ]
@@ -105,7 +105,7 @@ fn write_rdh_manual(fileout: &str) {
     let filepath = std::path::PathBuf::from(filename);
     let file = std::fs::OpenOptions::new()
         .read(true)
-        .open(&filepath)
+        .open(filepath)
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
     let rdhs: Vec<RdhCRUv7> = (0..50000)
@@ -124,7 +124,7 @@ fn write_rdh_manual(fileout: &str) {
     let file = std::fs::File::options()
         .write(true)
         .create(true)
-        .open(&filepath)
+        .open(filepath)
         .unwrap();
     let mut buf_writer = std::io::BufWriter::new(file);
     rdhs.into_iter().for_each(|rdh| {
@@ -142,7 +142,7 @@ fn bench_serialization_write(c: &mut Criterion) {
     });
     // cleanup
     let filepath = std::path::PathBuf::from(filename_manual);
-    std::fs::remove_file(&filepath).unwrap();
+    std::fs::remove_file(filepath).unwrap();
 
     group.finish();
 }
