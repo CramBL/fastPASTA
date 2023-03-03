@@ -82,11 +82,9 @@ enum StatusWordKind<'a> {
     Ddw0(&'a [u8]),
 }
 
-const MAX_WORDS_PAYLOAD: u16 = 508; // 512 GBT word - 4 from RDH
-
 pub struct CdpRunningValidator {
     sm: CDP_PAYLOAD_FSM_Continuous::Variant,
-    pub current_rdh: Option<RdhCRUv7>,
+    current_rdh: Option<RdhCRUv7>,
     current_ihw: Option<Ihw>,
     current_tdh: Option<Tdh>,
     current_tdt: Option<Tdt>,
@@ -99,6 +97,7 @@ pub struct CdpRunningValidator {
     error_count: u8,
     gbt_word_counter: u16,
     stats_send_ch: std::sync::mpsc::Sender<StatType>,
+    payload_mem_pos: u64,
 }
 impl CdpRunningValidator {
     pub fn new(stats_send_ch: std::sync::mpsc::Sender<StatType>) -> Self {
@@ -117,12 +116,19 @@ impl CdpRunningValidator {
             error_count: 0,
             gbt_word_counter: 0,
             stats_send_ch,
+            payload_mem_pos: 0,
         }
     }
 
     pub fn reset_fsm(&mut self) {
         log::warn!("Resetting CDP Payload FSM");
         self.sm = CDP_PAYLOAD_FSM_Continuous::Machine::new(IHW_).as_enum();
+    }
+
+    pub fn set_current_rdh(&mut self, rdh: &RdhCRUv7, payload_mem_pos: u64) {
+        self.current_rdh = Some(RdhCRUv7::load(&mut rdh.to_byte_slice()).unwrap());
+        self.gbt_word_counter = 0;
+        self.payload_mem_pos = payload_mem_pos;
     }
 
     /// Takes a slice of bytes wrapped in an enum of the expected status word then:
@@ -136,15 +142,13 @@ impl CdpRunningValidator {
                 let ihw = Ihw::load(&mut ihw.clone()).unwrap();
                 debug!("{ihw}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
+                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
                     self.stats_send_ch
-                        .send(StatType::Error(
-                            String::from("IHW sanity check failed:") + &e,
-                        ))
+                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {}", e)))
                         .unwrap();
                     debug!("IHW: {:X?}", ihw.to_byte_slice());
                     result = Err(());
                 }
-                self.gbt_word_counter = 1; // Reset the GBT word counter
                 self.current_ihw = Some(ihw);
             }
             StatusWordKind::Tdh(tdh) => {
@@ -204,24 +208,19 @@ impl CdpRunningValidator {
         result
     }
 
-    pub fn check(&mut self, rdh: &RdhCRUv7, gbt_word: &[u8]) -> Result<(), String> {
+    pub fn check(&mut self, gbt_word: &[u8]) {
         debug_assert!(gbt_word.len() == 10);
         self.gbt_word_counter += 1; // Tracks the number of GBT words seen in the current CDP
 
         use CDP_PAYLOAD_FSM_Continuous::Variant::*;
         use CDP_PAYLOAD_FSM_Continuous::*;
 
-        if self.current_rdh.is_none() {
-            let tmp_rdh = RdhCRUv7::load(&mut rdh.to_byte_slice()).unwrap();
-            self.current_rdh = Some(tmp_rdh);
-        }
-
         let current_st = self.sm.clone();
 
         let nxt_st = match current_st {
             InitialIHW_(m) => {
-                debug_assert!(rdh.rdh2.stop_bit == 0);
-                debug_assert!(rdh.rdh2.pages_counter == 0);
+                debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.stop_bit == 0);
+                debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.pages_counter == 0);
                 if let Err(_) = self.process_status_word(StatusWordKind::Ihw(gbt_word)) {
                     self.error_count += 1;
                 }
@@ -384,8 +383,8 @@ impl CdpRunningValidator {
                 }
             }
             IHW_By_WasDdw0(m) => {
-                debug_assert!(rdh.rdh2.stop_bit == 0);
-                debug_assert!(rdh.rdh2.pages_counter == 0);
+                debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.stop_bit == 0);
+                debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.pages_counter == 0);
                 if let Err(_) = self.process_status_word(StatusWordKind::Ihw(gbt_word)) {
                     self.error_count += 1;
                 }
@@ -394,6 +393,91 @@ impl CdpRunningValidator {
         };
 
         self.sm = nxt_st;
-        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::words::rdh::*;
+    // RDH-CRU v7 sanity check
+    // Data for use in tests:
+    const CORRECT_RDH_CRU: RdhCRUv7 = RdhCRUv7 {
+        rdh0: Rdh0 {
+            header_id: 0x7,
+            header_size: 0x40,
+            fee_id: FeeId(0x502A),
+            priority_bit: 0x0,
+            system_id: 0x20,
+            reserved0: 0,
+        },
+        offset_new_packet: 0x13E0,
+        memory_size: 0x13E0,
+        link_id: 0x0,
+        packet_counter: 0x0,
+        cruid_dw: CruidDw(0x0018),
+        rdh1: Rdh1 {
+            bc_reserved0: BcReserved(0x0),
+            orbit: 0x0b7dd575,
+        },
+        dataformat_reserved0: DataformatReserved(0x2),
+        rdh2: Rdh2 {
+            trigger_type: 0x00006a03,
+            pages_counter: 0x0,
+            stop_bit: 0x0,
+            reserved0: 0x0,
+        },
+        reserved1: 0x0,
+        rdh3: Rdh3 {
+            detector_field: 0x0,
+            par_bit: 0x0,
+            reserved0: 0x0,
+        },
+        reserved2: 0x0,
+    };
+
+    #[test]
+    fn test_validate_ihw() {
+        const VALID_ID: u8 = 0xE0;
+        const _ACTIVE_LANES_14_ACTIVE: u32 = 0x3F_FF;
+        let raw_data_ihw = [
+            0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, VALID_ID,
+        ];
+
+        let (send, stats_recv_ch) = std::sync::mpsc::channel();
+        let mut validator = CdpRunningValidator::new(send);
+        let payload_mem_pos = 512;
+
+        validator.set_current_rdh(&CORRECT_RDH_CRU, payload_mem_pos);
+        validator.check(&raw_data_ihw);
+
+        assert!(stats_recv_ch.try_recv().is_err()); // Checks that no error was received (nothing received)
+    }
+
+    #[test]
+    fn test_invalidate_ihw() {
+        const INVALID_ID: u8 = 0xE1;
+        const _ACTIVE_LANES_14_ACTIVE: u32 = 0x3F_FF;
+        let raw_data_ihw = [
+            0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, INVALID_ID,
+        ];
+
+        let (send, stats_recv_ch) = std::sync::mpsc::channel();
+        let mut validator = CdpRunningValidator::new(send);
+        let payload_mem_pos = 512;
+
+        validator.set_current_rdh(&CORRECT_RDH_CRU, payload_mem_pos);
+        validator.check(&raw_data_ihw);
+
+        match stats_recv_ch.recv() {
+            Ok(StatType::Error(msg)) => {
+                assert_eq!(
+                    msg,
+                    "0x250: [E00] ID is not 0xE0: 0xE1 Full Word: E1 00 00 00 00 00 00 00 3F FF [79:0]"
+                );
+                println!("{}", msg);
+            }
+            _ => unreachable!(),
+        }
     }
 }

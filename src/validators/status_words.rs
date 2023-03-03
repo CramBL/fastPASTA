@@ -54,15 +54,15 @@ impl StatusWordValidator<Ihw> for IhwValidator {
         let mut err_cnt: u8 = 0;
         if ihw.id() != self.valid_id {
             err_cnt += 1;
-            write!(err_str, "ID is not 0xE0:  {:b } ", ihw.id()).unwrap();
+            write!(err_str, "ID is not 0xE0: {:#2X } ", ihw.id()).unwrap();
         }
 
         if ihw.is_reserved_0() == false {
             err_cnt += 1;
-            write!(err_str, "reserved bits are not 0:  {:b} ", ihw.reserved()).unwrap();
+            write!(err_str, "reserved bits are not 0: {:2X} ", ihw.reserved()).unwrap();
         }
         if err_cnt > 0 {
-            Err(err_str)
+            Err(err_str + "Full Word: " + &ihw.to_string())
         } else {
             Ok(())
         }

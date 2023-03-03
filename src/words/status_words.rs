@@ -13,6 +13,29 @@ pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display 
     fn is_reserved_0(&self) -> bool;
 }
 
+// Helper to display all the status words in a similar way, without dynamic dispatch
+#[inline]
+fn display_byte_slice<T: StatusWord>(
+    status_word: &T,
+    f: &mut std::fmt::Formatter<'_>,
+) -> std::fmt::Result {
+    let slice = status_word.to_byte_slice();
+    write!(
+        f,
+        "{:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} [79:0]",
+        slice[9],
+        slice[8],
+        slice[7],
+        slice[6],
+        slice[5],
+        slice[4],
+        slice[3],
+        slice[2],
+        slice[1],
+        slice[0],
+    )
+}
+
 #[repr(packed)]
 pub struct Ihw {
     // Total of 80 bits
@@ -35,9 +58,7 @@ impl Ihw {
 
 impl Display for Ihw {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let id = self.id();
-        let active_lanes = self.active_lanes();
-        write!(f, "IHW: ID: {:X} active_lanes: {:#X}", id, active_lanes)
+        display_byte_slice(self, f)
     }
 }
 
@@ -141,15 +162,7 @@ impl Tdh {
 
 impl Display for Tdh {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let id = self.id();
-        let trigger_orbit = self.trigger_orbit;
-        let trigger_bc = self.trigger_bc();
-        let trigger_type = self.trigger_type();
-        let internal_trigger = self.internal_trigger();
-        let no_data = self.no_data();
-        let continuation = self.continuation();
-        write!(f, "TDH: ID: {:X} trigger_orbit:{:#X} trigger_bc:{:#X} continuation:{:#X} no_data:{:#X} internal_trigger:{:#X} trigger_type:{:#X}",
-               id, trigger_orbit, trigger_bc, continuation, no_data, internal_trigger,trigger_type )
+        display_byte_slice(self, f)
     }
 }
 
@@ -281,20 +294,7 @@ impl Tdt {
 
 impl Display for Tdt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "TDT: ID: {:X} lane_starts_violation:{:x} transmission_TO:{:x} packet_done={:x} TO_to_start:{:x} TO_start_stop:{:x} TO_in_idle:{:x} lane_status: [27:23]={:#X} [23:16]={:#X} [15:0]={:#X}",
-            self.id(),
-            self.lane_starts_violation() as u8,
-            self.transmission_timeout() as u8,
-            self.packet_done() as u8,
-            self.timeout_to_start() as u8,
-            self.timeout_start_stop() as u8,
-            self.timeout_in_idle() as u8,
-            self.lane_status_27_24(),
-            self.lane_status_23_16(),
-            self.lane_status_15_0()
-        )
+        display_byte_slice(self, f)
     }
 }
 impl StatusWord for Tdt {
@@ -373,6 +373,7 @@ impl PartialEq for Tdt {
             && self.lane_status_15_0 == other.lane_status_15_0
     }
 }
+#[repr(packed)]
 
 pub struct Ddw0 {
     // 64:56 reserved0, 55:0 lane_status
@@ -407,15 +408,7 @@ impl Ddw0 {
 
 impl Display for Ddw0 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "DDW0: ID: {:X} Index:{:#X} lane_starts_violation:{:x} transmission_TO:{:x} lane_status:{:#X}",
-            self.id,
-            self.index(),
-            self.lane_starts_violation() as u8,
-            self.transmission_timeout() as u8,
-            self.lane_status()
-        )
+        display_byte_slice(self, f)
     }
 }
 
@@ -470,6 +463,7 @@ impl PartialEq for Ddw0 {
             && self.res3_lane_status == other.res3_lane_status
     }
 }
+#[repr(packed)]
 
 pub struct Cdw {
     calibration_word_index_lsb_calibration_user_fields: u64, // 63:48 calibration_word_index_LSB 47:0 calibration_user_fields
@@ -490,13 +484,7 @@ impl Cdw {
 
 impl Display for Cdw {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "CDW: ID:{:X} calibration_word_index:{:#X} calibration_user_fields:{:#X}",
-            self.id,
-            self.calibration_word_index(),
-            self.calibration_user_fields()
-        )
+        display_byte_slice(self, f)
     }
 }
 

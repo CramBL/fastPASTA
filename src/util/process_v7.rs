@@ -102,6 +102,7 @@ pub mod validate {
         let validator_handle = checker_thread
             .spawn({
                 let config = config.clone();
+                let mut current_mem_pos: u64 = 0;
                 move || {
                     let mut cdp_payload_running_validator =
                         CdpRunningValidator::new(stats_sender_channel.clone());
@@ -124,8 +125,15 @@ pub mod validate {
                                 &stats_sender_channel,
                                 &mut running_rdh_checker,
                                 &mut cdp_payload_running_validator,
+                                current_mem_pos,
                             );
                         }
+
+                        // Increment the current memory position based on RDH and payload sizes
+                        current_mem_pos += rdh_chunk.len() as u64 * 512;
+                        payload_chunk.iter().for_each(|v| {
+                            current_mem_pos += v.len() as u64 * 8;
+                        });
 
                         // Send chunk to the checker
                         match config.output_mode() {
@@ -159,11 +167,15 @@ pub mod validate {
         stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
         rdh_running: &mut RdhCruv7RunningChecker,
         payload_running: &mut CdpRunningValidator,
+        current_mem_pos: u64,
     ) {
+        let mut tmp_mem_pos_tracker = current_mem_pos;
         for (rdh, payload) in rdh_slices.iter().zip(payload_slices.iter()) {
             do_rdh_checks(rdh, rdh_running, stats_sender_ch_checker);
-            payload_running.current_rdh = Some(RdhCRUv7::load(&mut rdh.to_byte_slice()).unwrap());
+            tmp_mem_pos_tracker += 512;
+            payload_running.set_current_rdh(rdh, tmp_mem_pos_tracker);
             do_payload_checks(rdh, payload, payload_running, stats_sender_ch_checker);
+            tmp_mem_pos_tracker += payload.len() as u64 * 8;
         }
     }
 
@@ -184,18 +196,9 @@ pub mod validate {
         stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
     ) {
         match preprocess_payload(payload) {
-            Ok(gbt_word_chunks) => {
-                gbt_word_chunks.for_each(|gbt_word| {
-                    if let Err(e) = payload_running.check(rdh, gbt_word) {
-                        stats_sender_ch_checker
-                            .send(StatType::Error(format!(
-                                "Payload check failed for: {:?} - With error:{}",
-                                gbt_word, e
-                            )))
-                            .expect("Failed to send error to stats channel");
-                    }
-                });
-            }
+            Ok(gbt_word_chunks) => gbt_word_chunks.for_each(|gbt_word| {
+                payload_running.check(gbt_word);
+            }),
             Err(e) => {
                 stats_sender_ch_checker.send(StatType::Error(e)).unwrap();
                 payload_running.reset_fsm();
