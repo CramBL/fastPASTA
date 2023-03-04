@@ -1,6 +1,7 @@
 type V7 = crate::words::rdh::RdhCRUv7;
-type Cdp = (Vec<V7>, Vec<Vec<u8>>);
-use crossbeam_channel::{bounded, Receiver, Sender};
+type Payload = Vec<Vec<u8>>;
+type Cdp = (Vec<V7>, Payload);
+use crossbeam_channel::{bounded, Receiver};
 use std::sync::atomic::{AtomicBool, Ordering};
 // Larger capacity means less overhead, but more memory usage
 // Too small capacity will cause the producer thread to block
@@ -12,16 +13,18 @@ pub mod input {
     use crate::get_chunk;
     use crate::util::bufreader_wrapper::BufferedReaderWrapper;
     use crate::util::input_scanner::InputScanner;
+    use crate::words::rdh::RDH;
 
-    pub fn spawn_reader(
+    type Payload = Vec<Vec<u8>>;
+
+    pub fn spawn_reader<T: RDH + 'static>(
         stop_flag: std::sync::Arc<AtomicBool>,
         input_scanner: InputScanner<
             impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static,
         >,
-    ) -> (std::thread::JoinHandle<()>, Receiver<Cdp>) {
+    ) -> (std::thread::JoinHandle<()>, Receiver<(Vec<T>, Payload)>) {
         let reader_thread = std::thread::Builder::new().name("Reader".to_string());
-        let (send_channel, rcv_channel): (Sender<Cdp>, Receiver<Cdp>) =
-            bounded(CHANNEL_CDP_CAPACITY);
+        let (send_channel, rcv_channel) = bounded(CHANNEL_CDP_CAPACITY);
         let thread_handle = reader_thread
             .spawn({
                 move || {
@@ -34,7 +37,7 @@ pub mod input {
                             break;
                         }
                         let (rdh_chunk, payload_chunk) =
-                            match get_chunk::<V7>(&mut input_scanner, 100) {
+                            match get_chunk::<T>(&mut input_scanner, 100) {
                                 Ok(cdp) => cdp,
                                 Err(e) => {
                                     if e.kind() == std::io::ErrorKind::UnexpectedEof {

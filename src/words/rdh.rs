@@ -4,7 +4,7 @@ use crate::GbtWord;
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use std::fmt::{self, Debug, Display};
 
-pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display {
+pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display + Sync + Send {
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
     where
         Self: Sized;

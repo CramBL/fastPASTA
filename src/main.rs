@@ -74,7 +74,7 @@ pub fn main() {
     stat_controller.join().expect("Failed to join stats thread");
 }
 
-// 1. Setup reading (file or stdin) // TODO: stdin support
+// 1. Setup reading (file or stdin)
 // 2. Do checks on read data
 // 3. Write data out (file or stdout)
 pub fn process_rdh_v7(
