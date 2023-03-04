@@ -17,48 +17,48 @@ variables:
   RUST_BACKTRACE: "FULL"
 
 stages:
-  - build
-  - test
+  - build-and-test
+  - code-quality
 
 rust-latest:
-  stage: build
+  stage: build-and-test
   image: rust:latest
   script:
     - cargo build --verbose
     - cargo test --verbose
 
 rust-nightly:
-  stage: build
+  stage: build-and-test
   image: rustlang/rust:nightly
   script:
     - cargo build --verbose
     - cargo test --verbose
   allow_failure: true
 
-test-code:
-  stage: test
-  script:
-    - cargo test
+# test-code:
+#   stage: test
+#   script:
+#    - cargo test
 # Generate coverage with tarpaulin, unfortunately breaks due to gitlab security policy
 # Could relax the permissions a bit?
 #     - cargo install cargo-tarpaulin -f
 #     - cargo tarpaulin --ignore-tests
 #   coverage: '/^\d+.\d+% coverage/'
 
-lint-code:
-  stage: test
+lint:
+  stage: code-quality
   script:
     - rustup component add clippy
     - cargo clippy -- -D warnings
 
-format-code:
-  stage: test
+format:
+  stage: code-quality
   script:
     - rustup component add rustfmt
     - cargo fmt -- --check
 
-audit-code:
-  stage: test
+audit:
+  stage: code-quality
   script:
     - cargo install cargo-audit
     - cargo audit
