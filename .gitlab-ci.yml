@@ -10,7 +10,7 @@ cache:
   - key: "$CI_JOB_NAME"
     untracked: true
     paths:
-      - $CI_PROJECT_DIR/.cache/
+      - $CI_PROJECT_DIR/target/
 
 # Set any required environment variables here
 variables:
