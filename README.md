@@ -51,7 +51,7 @@ $ ./fastpasta -s -f 0 -v 3 ../fastpasta_test_files/file_to_process 2>&1 | sed -n
 - [x] Parse RDH + Payload
 - [x] Parse HBF with multiple CDPs
 - [x] Parse CDP in UL flavor 1
-- [ ] Parse CDP in UL flavor 0
+- [x] Parse CDP in UL flavor 0
 - [x] Validate CDPs are in am HBF pattern (First is page counter 0, stop bit 0, page counter then increments and only last CDP has stop bit 1)
 - [ ] Validate all 80-bit GBT words with sanity checks on IDs
   - [x] Status Words
