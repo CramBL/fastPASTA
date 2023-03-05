@@ -192,7 +192,7 @@ pub mod validate {
     ) {
         match preprocess_payload(payload) {
             Ok(gbt_word_chunks) => gbt_word_chunks.for_each(|gbt_word| {
-                payload_running.check(gbt_word);
+                payload_running.check(&gbt_word[..10]); // Take 10 bytes as flavor 0 would have additional 6 bytes of padding
             }),
             Err(e) => {
                 stats_sender_ch_checker.send(StatType::Error(e)).unwrap();
@@ -217,27 +217,52 @@ pub mod validate {
 
     #[inline]
     fn preprocess_payload(payload: &[u8]) -> Result<impl Iterator<Item = &[u8]>, String> {
-        // Retrieve padding from payload
+        // Retrieve end of payload padding from payload
         let ff_padding = payload
             .iter()
             .rev()
             .take_while(|&x| *x == 0xFF)
             .collect::<Vec<_>>();
 
+        // Exceeds the maximum padding of 15 bytes that is required to pad to 16 bytes
         if ff_padding.len() > 15 {
             return Err(format!("End of payload 0xFF padding is {} bytes, exceeding max of 15 bytes: Skipping current payload",
             ff_padding.len()));
         }
 
-        // Split payload into GBT words sized slices, using chunks_exact to allow more compiler optimizations,
-        //   and to cut off any padding less than 10 bytes. More than 9 bytes of padding will be removed in the statement below
-        let gbt_word_chunks = if ff_padding.len() > 9 {
-            // If the padding is more than 9 bytes, it will be processed as a GBT word, therefor exclude it from the slice
+        // Determine if padding is flavor 0 (6 bytes of 0x00 padding following GBT words) or flavor 1 (no padding)
+        // Using an iterator approach instead of indexing also supports the case where the payload is smaller than 16 bytes or even empty
+        let ul_flavor = if payload
+            .iter() // Create an iterator over the payload
+            .take(16) // Take the first 16 bytes
+            .rev() // Now reverse the iterator
+            .take_while(|&x| *x == 0x00) // Take bytes while they are equal to 0x00
+            .count() // Count them and check if they are equal to 6
+            == 6
+        {
+            log::trace!("UL Flavor 0 detected");
+            0
+        } else {
+            log::trace!("UL Flavor 1 detected");
+            1
+        };
+
+        // Split payload into GBT words sized slices, using chunks_exact to allow more compiler optimizations
+        let gbt_word_chunks = if ul_flavor == 0 {
+            // If flavor 0, dividing into 16 byte chunks should cut the payload up with no remainder
+            let chunks = payload.chunks_exact(16);
+            debug_assert!(chunks.remainder().is_empty());
+            chunks
+        }
+        // If flavor 1, and the padding is more than 9 bytes, padding will be processed as a GBT word, therefor exclude it from the slice
+        //    Before calling chunks_exact
+        else if ff_padding.len() > 9 {
             let last_idx_before_padding = payload.len() - ff_padding.len();
             let chunks = payload[..last_idx_before_padding].chunks_exact(10);
             debug_assert!(chunks.remainder().is_empty());
             chunks
         } else {
+            // Simply divide into 10 byte chunks and assert that the remainder is padding bytes
             let chunks = payload.chunks_exact(10);
             debug_assert!(chunks.remainder().iter().all(|&x| x == 0xFF)); // Asserts that the payload padding is 0xFF
             chunks
