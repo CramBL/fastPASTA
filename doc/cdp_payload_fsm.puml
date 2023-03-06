@@ -40,11 +40,12 @@ state after_TDT <<choice>>
 state after_Data <<choice>>
 
 
-[*] -left-> IHW : **RDH:** [stop_bit == 0\n&& Page == 0]
 
-IHW -left-> TDH
+[*] -right-----> IHW : **RDH:** [stop_bit == 0\n&& Page == 0]
 
-TDH -down-> after_TDH
+IHW --> TDH
+
+TDH --> after_TDH
 TDH: continuation == 0
 TDH: no_data
 
@@ -53,7 +54,7 @@ after_TDH --> after_TDH_no_data : [no_data == 1]
 
 note left of after_TDH_no_data : Both TDH and DDW0\nare legal next words
 
-after_TDH_no_data -left-> TDH : [TDH]
+after_TDH_no_data --> TDH : [TDH]
 after_TDH_no_data --> DDW0 : [DDW0]
 
 
@@ -61,42 +62,40 @@ Data --> after_Data
 
 note left of after_Data : Both Data and TDT\nare legal next words
 
-after_Data -left-> Data : [Data Word]
+after_Data --> Data : [Data Word]
 after_Data --> TDT : [TDT]
 TDT: packet_done
 
 TDT --> after_TDT
-after_TDT -up-> TDH : [packet_done == 1\n&&\n TDH: Internal Trigger]
+after_TDT --> TDH : [packet_done == 1\n&& TDH]
+after_TDT --> DDW0 : [packet_done == 1\n&& DDW0]
+after_TDT --> IHW : [packet_done == 1\n&& IHW]
 after_TDT --> Continuation : [packet_done == 0\n&& event page full]
-after_TDT -left-> DDW0 : [packet_done == 1 && DDW0]
-after_TDT -left-> IHW : [packet_done == 1 && IHW]
 note right of after_TDT : IHW, TDH and DDW0\nare legal next words\nwhen **packet_done == 1**
 
-
-state Continuation {
+state Continuation #orange {
   state after_c_Data <<choice>>
-  state after_c_TDT <<choice>>
-    [*] -right-> c_IHW
-    c_IHW -right-> c_TDH : [stop_bit == 0\n&& Page >= 1]
+    [*] -left---> c_IHW
+    c_IHW --> c_TDH : [stop_bit == 0\n&& Page >= 1]
     c_TDH: continuation == 1
-    c_TDH -right-> c_Data
-    c_Data --> after_c_Data
 
-    after_c_Data -up-> c_Data : [Data Word]
-    after_c_Data -left-> c_TDT : [TDT]
+
+    c_TDH --> c_Data
+    c_Data -> after_c_Data
+
+    after_c_Data -> c_Data : [Data Word]
+    after_c_Data -up-> c_TDT : [TDT]
 
     c_TDT: packet_done
-    c_TDT -up-> after_c_TDT
+    c_TDT -down-> after_TDT
 
-    after_c_TDT -up-> c_IHW : [packet_done == 0\n&& event page full]
-    after_c_TDT -left-> DDW0 : [packet_done == 1]
+    note top of after_c_Data : Both Data and TDT\nare legal next words\nif event page is not full
 
-    note right of after_c_Data : Both Data and TDT\nare legal next words\nif event page is not full
 }
 
 
 
-DDW0 -left-> [*]
+DDW0 -----right-----> [*]
 DDW0: **RDH:**\nstop_bit == 1\nPage >= 1
 
 @enduml
