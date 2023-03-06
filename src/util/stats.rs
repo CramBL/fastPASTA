@@ -131,7 +131,7 @@ impl Stats {
         }
         let mut observed_links = self.links_observed.clone();
         observed_links.sort();
-        eprintln!("Links observed: {:?}", observed_links);
+        eprintln!("Links observed: {observed_links:?}");
         eprintln!("Processing time: {:?}", self.processing_time.elapsed());
     }
     pub fn print_time(&self) {

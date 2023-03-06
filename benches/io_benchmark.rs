@@ -167,7 +167,7 @@ fn sanity_check_rdhs(rdh_cru_size_bytes: u64, filename: &str, iterations: usize)
                 break;
             }
             Err(e) => {
-                println!("Error: {}", e);
+                println!("Error: {e}");
                 break;
             }
         };
@@ -179,7 +179,7 @@ fn sanity_check_rdhs(rdh_cru_size_bytes: u64, filename: &str, iterations: usize)
         match rdh_validator.sanity_check(&tmp_rdh) {
             Ok(_) => (),
             Err(e) => {
-                println!("Error: {}", e);
+                println!("Error: {e}");
             }
         }
         rdhs += 1;

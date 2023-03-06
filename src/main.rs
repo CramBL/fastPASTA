@@ -33,7 +33,7 @@ fn get_config() -> Arc<Opt> {
     let mut cfg = Opt::from_args();
 
     if let Err(e) = cfg.arg_validate() {
-        eprintln!("{}", e);
+        eprintln!("{e}");
         std::process::exit(1);
     }
 
@@ -69,7 +69,7 @@ pub fn main() {
     match rdh_version {
         6 => process_rdh_v6(config, loader, stat_send_channel, stop_flag).unwrap(),
         7 => process_rdh_v7(config, loader, stat_send_channel, stop_flag).unwrap(),
-        _ => panic!("Unknown RDH version: {}", rdh_version),
+        _ => panic!("Unknown RDH version: {rdh_version}"),
     }
     stat_controller.join().expect("Failed to join stats thread");
 }

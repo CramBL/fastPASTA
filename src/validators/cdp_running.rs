@@ -132,7 +132,7 @@ impl CdpRunningValidator {
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
                     let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
                     self.stats_send_ch
-                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {}", e)))
+                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
                     debug!("IHW: {ihw}");
                     result = Err(());
@@ -145,7 +145,7 @@ impl CdpRunningValidator {
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
                     let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
                     self.stats_send_ch
-                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {}", e)))
+                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
                     debug!("TDH: {tdh}");
                     result = Err(());
@@ -158,7 +158,7 @@ impl CdpRunningValidator {
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
                     let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
                     self.stats_send_ch
-                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {}", e)))
+                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
                     print!("{e}");
                     debug!("TDT: {tdt}");
@@ -172,7 +172,7 @@ impl CdpRunningValidator {
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0) {
                     let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
                     self.stats_send_ch
-                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {}", e)))
+                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
                     debug!("DDW0: {ddw0}");
                     result = Err(());
@@ -381,8 +381,7 @@ impl CdpRunningValidator {
                         self.error_count += 1;
                         self.stats_send_ch
                             .send(StatType::Error(format!(
-                                "TDH internal trigger is not 1, got: {:02X?}",
-                                gbt_word
+                                "TDH internal trigger is not 1, got: {gbt_word:02X?}"
                             )))
                             .unwrap();
                         let tmp_rdh = self.current_rdh.as_ref().unwrap();
@@ -510,7 +509,7 @@ mod tests {
                     msg,
                     "0x250: [E00] ID is not 0xE0: 0xE1 Full Word: E1 00 00 00 00 00 00 00 3F FF [79:0]"
                 );
-                println!("{}", msg);
+                println!("{msg}");
             }
             _ => unreachable!(),
         }
@@ -535,7 +534,7 @@ mod tests {
                     msg,
                     "0x250: [E00] ID is not 0xE0: 0xF1 Full Word: F1 01 00 00 00 00 00 00 00 00 [79:0]"
                 );
-                println!("{}", msg);
+                println!("{msg}");
             }
             _ => unreachable!(),
         }

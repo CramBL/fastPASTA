@@ -178,7 +178,7 @@ mod tests {
             "../fastpasta_test_files/data_ols_ul.raw",
             "-o test_filter_link.raw",
         ]);
-        println!("{:#?}", config);
+        println!("{config:#?}");
 
         let (send_stats_channel, recv_stats_channel): (
             std::sync::mpsc::Sender<stats::StatType>,
@@ -223,11 +223,11 @@ mod tests {
         let rdh_validator = crate::validators::rdh::RDH_CRU_V7_VALIDATOR;
 
         let tmp_rdh = link0_rdh_data.first().unwrap();
-        println!("RDH: {}", tmp_rdh);
+        println!("RDH: {tmp_rdh}");
         match rdh_validator.sanity_check(link0_rdh_data.first().unwrap()) {
             Ok(_) => (),
             Err(e) => {
-                println!("Sanity check failed: {}", e);
+                println!("Sanity check failed: {e}");
             }
         }
 
@@ -235,7 +235,7 @@ mod tests {
         while let Ok(rdh) = scanner.load_rdh_cru::<RdhCRUv7>() {
             println!("{rdh}");
             loop_count += 1;
-            print!("{} ", loop_count);
+            print!("{loop_count} ");
             link0_payload_data.push(
                 scanner
                     .load_payload_raw(rdh.get_payload_size() as usize)
@@ -246,7 +246,7 @@ mod tests {
             match rdh_validator.sanity_check(link0_rdh_data.last().unwrap()) {
                 Ok(_) => (),
                 Err(e) => {
-                    println!("Sanity check failed: {}", e);
+                    println!("Sanity check failed: {e}");
                 }
             }
         }

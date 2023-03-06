@@ -74,7 +74,7 @@ impl Display for RdhCRUv7 {
         let tmp_offset = self.offset_new_packet;
         let tmp_link = self.link_id;
         let tmp_packet_cnt = self.packet_counter;
-        let rdhcru_fields0 = format!("{:<8}{:<6}{:<10}", tmp_offset, tmp_link, tmp_packet_cnt);
+        let rdhcru_fields0 = format!("{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}");
         write!(
             f,
             "{header_text_top}\n       {header_text_bottom}\n       {}{}{}{:<11}{}",
@@ -168,8 +168,7 @@ impl Debug for RdhCRUv7 {
         let tmp_rdh3 = &self.rdh3;
         let tmp_reserved2 = self.reserved2;
 
-        write!(f, "RdhCRUv7: rdh0: {:?}, offset_new_packet: {:x?}, memory_size: {:x?}, link_id: {:x?}, packet_counter: {:x?}, cruid: {:x?}, dw: {:x?}, rdh1: {:?}, data_format: {:x?}, reserved0: {:x?}, rdh2: {:?}, reserved1: {:x?}, rdh3: {:?}, reserved2: {:x?}",
-               tmp_rdh0, tmp_offset_new_packet, tmp_memory_size, tmp_link_id, tmp_packet_counter, tmp_cruid, tmp_dw, tmp_rdh1, tmp_data_format, tmp_reserved0, tmp_rdh2, tmp_reserved1, tmp_rdh3, tmp_reserved2)
+        write!(f, "RdhCRUv7: rdh0: {tmp_rdh0:?}, offset_new_packet: {tmp_offset_new_packet:x?}, memory_size: {tmp_memory_size:x?}, link_id: {tmp_link_id:x?}, packet_counter: {tmp_packet_counter:x?}, cruid: {tmp_cruid:x?}, dw: {tmp_dw:x?}, rdh1: {tmp_rdh1:?}, data_format: {tmp_data_format:x?}, reserved0: {tmp_reserved0:x?}, rdh2: {tmp_rdh2:?}, reserved1: {tmp_reserved1:x?}, rdh3: {tmp_rdh3:?}, reserved2: {tmp_reserved2:x?}")
     }
 }
 
@@ -225,7 +224,7 @@ impl Display for RdhCRUv6 {
         let tmp_offset = self.offset_new_packet;
         let tmp_link = self.link_id;
         let tmp_packet_cnt = self.packet_counter;
-        let rdhcru_fields0 = format!("{:<8}{:<6}{:<10}", tmp_offset, tmp_link, tmp_packet_cnt);
+        let rdhcru_fields0 = format!("{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}");
         write!(
             f,
             "{header_text_top}\n       {header_text_bottom}\n       {}{}{}{}",
@@ -307,8 +306,7 @@ impl Debug for RdhCRUv6 {
         let tmp_rdh3 = &self.rdh3;
         let tmp_reserved2 = self.reserved2;
 
-        write!(f, "RdhCRUv7: rdh0: {:?}, offset_new_packet: {:x?}, memory_size: {:x?}, link_id: {:x?}, packet_counter: {:x?}, cruid: {:x?}, dw: {:x?}, rdh1: {:?}, reserved0: {:x?}, rdh2: {:?}, reserved1: {:x?}, rdh3: {:?}, reserved2: {:x?}",
-               tmp_rdh0, tmp_offset_new_packet, tmp_memory_size, tmp_link_id, tmp_packet_counter, tmp_cruid, tmp_dw, tmp_rdh1, tmp_reserved0, tmp_rdh2, tmp_reserved1, tmp_rdh3, tmp_reserved2)
+        write!(f, "RdhCRUv7: rdh0: {tmp_rdh0:?}, offset_new_packet: {tmp_offset_new_packet:x?}, memory_size: {tmp_memory_size:x?}, link_id: {tmp_link_id:x?}, packet_counter: {tmp_packet_counter:x?}, cruid: {tmp_cruid:x?}, dw: {tmp_dw:x?}, rdh1: {tmp_rdh1:?}, reserved0: {tmp_reserved0:x?}, rdh2: {tmp_rdh2:?}, reserved1: {tmp_reserved1:x?}, rdh3: {tmp_rdh3:?}, reserved2: {tmp_reserved2:x?}")
     }
 }
 
@@ -383,8 +381,7 @@ impl Debug for Rdh0 {
         let tmp_system_id = self.system_id;
         let tmp_reserved0 = self.reserved0;
 
-        write!(f, "Rdh0: header_id: {:x?}, header_size: {:x?}, fee_id: {:x?}, priority_bit: {:x?}, system_id: {:x?}, reserved0: {:x?}",
-               tmp_header_id, tmp_header_size, tmp_fee_id, tmp_priority_bit, tmp_system_id, tmp_reserved0)
+        write!(f, "Rdh0: header_id: {tmp_header_id:x?}, header_size: {tmp_header_size:x?}, fee_id: {tmp_fee_id:x?}, priority_bit: {tmp_priority_bit:x?}, system_id: {tmp_system_id:x?}, reserved0: {tmp_reserved0:x?}")
     }
 }
 impl PartialEq for Rdh0 {
@@ -449,8 +446,7 @@ impl Debug for Rdh1 {
         let tmp_orbit = self.orbit;
         write!(
             f,
-            "Rdh1: bc: {:x?}, reserved0: {:x?}, orbit: {:x?}",
-            tmp_bc, tmp_reserved0, tmp_orbit
+            "Rdh1: bc: {tmp_bc:x?}, reserved0: {tmp_reserved0:x?}, orbit: {tmp_orbit:x?}"
         )
     }
 }
@@ -463,7 +459,7 @@ impl PartialEq for Rdh1 {
 impl Display for Rdh1 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let tmp_orbit = self.orbit;
-        let orbit_as_hex = format!("{:#x}", tmp_orbit);
+        let orbit_as_hex = format!("{tmp_orbit:#x}");
         write!(f, "{:<5}{:<12}", self.bc(), orbit_as_hex)
     }
 }
@@ -507,8 +503,7 @@ impl Debug for Rdh2 {
         let tmp_reserved0 = self.reserved0;
         write!(
             f,
-            "Rdh2: trigger_type: {:x?}, pages_counter: {:x?}, stop_bit: {:x?}, reserved0: {:x?}",
-            tmp_trigger_type, tmp_pages_counter, tmp_stop_bit, tmp_reserved0
+            "Rdh2: trigger_type: {tmp_trigger_type:x?}, pages_counter: {tmp_pages_counter:x?}, stop_bit: {tmp_stop_bit:x?}, reserved0: {tmp_reserved0:x?}"
         )
     }
 }
@@ -526,7 +521,7 @@ impl Display for Rdh2 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let tmp_trigger_type = self.trigger_type;
         let tmp_pages_counter = self.pages_counter;
-        let trigger_type_as_hex = format!("{:#x}", tmp_trigger_type);
+        let trigger_type_as_hex = format!("{tmp_trigger_type:#x}");
         write!(
             f,
             "{:<10}{:<9}{:<5}",
@@ -577,8 +572,7 @@ impl Debug for Rdh3 {
         let tmp_res = self.reserved0;
         write!(
             f,
-            "Rdh3: detector_field: {:x?}, par_bit: {:x?}, reserved0: {:x?}",
-            tmp_df, tmp_par, tmp_res
+            "Rdh3: detector_field: {tmp_df:x?}, par_bit: {tmp_par:x?}, reserved0: {tmp_res:x?}"
         )
     }
 }
@@ -746,7 +740,7 @@ mod tests {
         )
         .unwrap();
         // Check that the fields are correct
-        println!("{:#?}", rdhcruv7);
+        println!("{rdhcruv7:#?}");
 
         let rdh_from_old = RdhCRUv7::load(&mut &rdhcruv7.to_byte_slice()[..]).unwrap();
         println!("{rdh_from_old}");

@@ -213,17 +213,7 @@ impl Debug for Tdh {
         let trigger_type = self.trigger_type();
         write!(
             f,
-            "TDH: {:X} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x}",
-            id,
-            reserved0,
-            trigger_orbit,
-            reserved1,
-            trigger_bc,
-            reserved2,
-            continuation,
-            no_data,
-            internal_trigger,
-            trigger_type
+            "TDH: {id:X} {reserved0:x} {trigger_orbit:x} {reserved1:x} {trigger_bc:x} {reserved2:x} {continuation:x} {no_data:x} {internal_trigger:x} {trigger_type:x}"
         )
     }
 }
@@ -720,7 +710,7 @@ mod tests {
             | ((LANE_8_TO_11_IN_WARNING as u64) << 16)
             | ((LANE_4_TO_7_IN_FATAL as u64) << 8)
             | (LANE_0_AND_3_IN_WARNING as u64);
-        println!("{:x}", combined_lane_status);
+        println!("{combined_lane_status:x}");
         assert_eq!(ddw0.lane_status(), combined_lane_status);
         let loaded_ddw0 = Ddw0::load(&mut ddw0.to_byte_slice()).unwrap();
         assert_eq!(ddw0, loaded_ddw0);

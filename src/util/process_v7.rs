@@ -43,7 +43,7 @@ pub mod input {
                                     if e.kind() == std::io::ErrorKind::UnexpectedEof {
                                         break;
                                     } else {
-                                        panic!("Error reading CDP chunks: {}", e);
+                                        panic!("Error reading CDP chunks: {e}");
                                     }
                                 }
                             };
@@ -210,7 +210,7 @@ pub mod validate {
         // RDH CHECK: There is always page 0 + minimum page 1 + stop flag
         if let Err(e) = running_rdh_checker.check(rdh) {
             stats_sender_ch_checker
-                .send(StatType::Error(format!("RDH check failed: {}", e)))
+                .send(StatType::Error(format!("RDH check failed: {e}")))
                 .unwrap();
         }
     }

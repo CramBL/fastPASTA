@@ -8,7 +8,7 @@ pub enum GbtError {
 }
 impl std::fmt::Display for GbtError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -587,11 +587,11 @@ mod tests {
         let fee_id_bad_reserved1 = FeeId(0b0000_0100_0000_0000);
         let fee_id_bad_reserved2 = FeeId(0b0000_0000_0100_0000);
         let res = validator.sanity_check(fee_id_bad_reserved0);
-        println!("{:?} ", res);
+        println!("{res:?} ");
         let res = validator.sanity_check(fee_id_bad_reserved1);
-        println!("{:?} ", res);
+        println!("{res:?} ");
         let res = validator.sanity_check(fee_id_bad_reserved2);
-        println!("{:?} `", res);
+        println!("{res:?} `");
         assert!(validator.sanity_check(fee_id_bad_reserved0).is_err());
         assert!(validator.sanity_check(fee_id_bad_reserved1).is_err());
         assert!(validator.sanity_check(fee_id_bad_reserved2).is_err());
@@ -601,7 +601,7 @@ mod tests {
         let validator = FEE_ID_SANITY_VALIDATOR;
         let fee_id_invalid_layer_is_7 = FeeId(0b0111_0000_0000_0000);
         let res = validator.sanity_check(fee_id_invalid_layer_is_7);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(validator.sanity_check(fee_id_invalid_layer_is_7).is_err());
     }
 
@@ -619,7 +619,7 @@ mod tests {
         let validator = FEE_ID_SANITY_VALIDATOR;
         let fee_id_bad_stave_number_is_48 = FeeId(0x30);
         let res = validator.sanity_check(fee_id_bad_stave_number_is_48);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
     // RDH0 sanity check
@@ -649,7 +649,7 @@ mod tests {
             reserved0: 0,
         };
         let res = validator.sanity_check(&rdh0);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
     #[test]
@@ -664,7 +664,7 @@ mod tests {
             reserved0: 0,
         };
         let res = validator.sanity_check(&rdh0);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
     #[test]
@@ -680,7 +680,7 @@ mod tests {
             reserved0: 0,
         };
         let res = validator.sanity_check(&rdh0);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
     #[test]
@@ -695,7 +695,7 @@ mod tests {
             reserved0: 0,
         };
         let res = validator.sanity_check(&rdh0);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
     #[test]
@@ -710,7 +710,7 @@ mod tests {
             reserved0: 0x3,
         };
         let res = validator.sanity_check(&rdh0);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
 
@@ -727,7 +727,7 @@ mod tests {
         let validator = RDH1_VALIDATOR;
         let rdh1 = Rdh1::test_new(0, 0, 1);
         let res = validator.sanity_check(&rdh1);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
 
@@ -754,7 +754,7 @@ mod tests {
             reserved0: 1,
         };
         let res = validator.sanity_check(&rdh2);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
     #[test]
@@ -767,7 +767,7 @@ mod tests {
             reserved0: 0,
         };
         let res = validator.sanity_check(&rdh2);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
     #[test]
@@ -780,7 +780,7 @@ mod tests {
             reserved0: 0,
         };
         let res = validator.sanity_check(&rdh2);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
 
@@ -805,7 +805,7 @@ mod tests {
             reserved0: 1,
         };
         let res = validator.sanity_check(&rdh3);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
     #[test]
@@ -819,7 +819,7 @@ mod tests {
             reserved0: 0,
         };
         let res = validator.sanity_check(&rdh3);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
 
@@ -871,7 +871,7 @@ mod tests {
         let mut rdh_cru = CORRECT_RDH_CRU;
         rdh_cru.rdh0.header_id = 0x0;
         let res = validator.sanity_check(&rdh_cru);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
     #[test]
@@ -887,7 +887,7 @@ mod tests {
         let fee_id_invalid_layer_is_7 = FeeId(0b0111_0000_0000_0000);
         rdh_cru.rdh0.fee_id = fee_id_invalid_layer_is_7;
         let res = validator.sanity_check(&rdh_cru);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
 
@@ -939,7 +939,7 @@ mod tests {
         let mut rdh_cru = CORRECT_RDH_CRU_V6;
         rdh_cru.rdh0.header_id = 0x0;
         let res = validator.sanity_check(&rdh_cru);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
     #[test]
@@ -955,7 +955,7 @@ mod tests {
         let fee_id_invalid_layer_is_7 = FeeId(0b0111_0000_0000_0000);
         rdh_cru.rdh0.fee_id = fee_id_invalid_layer_is_7;
         let res = validator.sanity_check(&rdh_cru);
-        println!("{:?}", res);
+        println!("{res:?}");
         assert!(res.is_err());
     }
 }
