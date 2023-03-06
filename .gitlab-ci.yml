@@ -28,7 +28,9 @@ lint:
   script:
     - rustup component add clippy
     - cargo clippy -- -D warnings
+    - python -m pip install -r requirements.txt
     - pre-commit run --all-files --show-diff-on-failure
+
 
 format:
   stage: code-quality
