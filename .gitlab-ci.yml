@@ -78,8 +78,6 @@ build-release-latest:
   stage: release
   rules:
     - if: $CI_COMMIT_TAG                 # Run this job when a tag is created
-  only:
-    - release
   image: rust:latest
   script:
     - echo "running release job"
