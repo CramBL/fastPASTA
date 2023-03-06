@@ -26,11 +26,16 @@ stages:
 lint:
   stage: code-quality
   script:
+    - python3 --version
+    - pip3 --version
+    - python3 -m venv $CI_PROJECT_DIR/venv/precom
+    - source $CI_PROJECT_DIR/venv/precom/bin/activate
+    - pip3 install pre-commit
+    - pre-commit --version
+    - pre-commit run --all-files --show-diff-on-failure
+    - deactivate
     - rustup component add clippy
     - cargo clippy -- -D warnings
-    - python -m pip install -r requirements.txt
-    - pre-commit run --all-files --show-diff-on-failure
-
 
 format:
   stage: code-quality
