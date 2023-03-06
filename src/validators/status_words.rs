@@ -208,6 +208,14 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn test_invalidate_ihw() {
+        let raw_data_ihw_bad_id = [0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xB0];
+        let ihw = Ihw::load(&mut raw_data_ihw_bad_id.as_slice()).unwrap();
+        IHW_VALIDATOR.sanity_check(&ihw).unwrap();
+    }
+
+    #[test]
     fn test_tdh_validator() {
         let raw_data_tdh = [0x03, 0x1A, 0x00, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x00, 0xE8];
         let tdh = Tdh::load(&mut raw_data_tdh.as_slice()).unwrap();
