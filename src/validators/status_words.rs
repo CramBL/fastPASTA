@@ -53,7 +53,7 @@ impl StatusWordValidator<Ihw> for IhwValidator {
         let mut err_str = String::new();
 
         if ihw.id() != self.valid_id {
-            write!(err_str, "ID is not 0xE0: {:#2X } ", ihw.id()).unwrap();
+            write!(err_str, "ID is not 0xE0: {:#2X} ", ihw.id()).unwrap();
             // Early return if ID is wrong
             return Err(err_str + "Full Word: " + &ihw.to_string());
         }
@@ -80,7 +80,7 @@ impl StatusWordValidator<Tdh> for TdhValidator {
         let mut err_str = String::new();
 
         if tdh.id() != self.valid_id {
-            write!(err_str, "ID is not 0xE8:  {:X} ", tdh.id()).unwrap();
+            write!(err_str, "ID is not 0xE8: {:#2X} ", tdh.id()).unwrap();
             // Early return if ID is wrong
             return Err(err_str + "Full Word: " + &tdh.to_string());
         }
@@ -126,6 +126,7 @@ impl StatusWordValidator<Tdt> for TdtValidator {
     fn sanity_check(&self, tdt: &Tdt) -> Result<(), String> {
         let mut err_str = String::new();
         if tdt.id() != self.valid_id {
+            write!(err_str, "ID is not 0xF0: {:#2X} ", tdt.id()).unwrap();
             // Early return if ID is wrong
             return Err(err_str + "Full Word: " + &tdt.to_string());
         }
@@ -160,7 +161,7 @@ impl StatusWordValidator<Ddw0> for Ddw0Validator {
         let mut err_str = String::new();
 
         if ddw0.id() != self.valid_id {
-            write!(err_str, "ID is not 0xE4:  {:b} ", ddw0.id()).unwrap();
+            write!(err_str, "ID is not 0xE4: {:#2X} ", ddw0.id()).unwrap();
             // Early return if ID is wrong
             return Err(err_str + "Full Word: " + &ddw0.to_string());
         }
@@ -208,11 +209,12 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_invalidate_ihw() {
         let raw_data_ihw_bad_id = [0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xB0];
         let ihw = Ihw::load(&mut raw_data_ihw_bad_id.as_slice()).unwrap();
-        IHW_VALIDATOR.sanity_check(&ihw).unwrap();
+        let err = IHW_VALIDATOR.sanity_check(&ihw).err();
+        assert!(err.is_some());
+        assert!(err.unwrap().contains("ID is not 0xE0: 0x"));
     }
 
     #[test]
@@ -235,6 +237,15 @@ mod tests {
     }
 
     #[test]
+    fn test_tdh_err_msg() {
+        let raw_data_tdh_bad_id = [0x03, 0x1A, 0x00, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x00, 0xE7];
+        let tdh = Tdh::load(&mut raw_data_tdh_bad_id.as_slice()).unwrap();
+        let err = TDH_VALIDATOR.sanity_check(&tdh).err();
+        println!("{err:?}");
+        assert!(err.unwrap().contains("ID is not 0xE8: 0x"));
+    }
+
+    #[test]
     fn test_tdt_validator() {
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF0];
         let tdt = Tdt::load(&mut raw_data_tdt.as_slice()).unwrap();
@@ -244,6 +255,23 @@ mod tests {
         let tdt_bad = Tdt::load(&mut raw_data_tdt_bad_reserved.as_slice()).unwrap();
 
         assert!(TDT_VALIDATOR.sanity_check(&tdt_bad).is_err());
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_invalidate_tdt() {
+        let raw_data_tdt_bad_id = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01];
+        let tdt = Tdt::load(&mut raw_data_tdt_bad_id.as_slice()).unwrap();
+        TDT_VALIDATOR.sanity_check(&tdt).unwrap();
+    }
+
+    #[test]
+    fn tdt_error_msg() {
+        let raw_data_tdt_bad_id = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01];
+        let tdt = Tdt::load(&mut raw_data_tdt_bad_id.as_slice()).unwrap();
+        let err = TDT_VALIDATOR.sanity_check(&tdt).err();
+        println!("{err:?}");
+        assert!(err.unwrap().contains("ID is not 0xF0: 0x"));
     }
 
     #[test]
@@ -301,5 +329,28 @@ mod tests {
         assert!(STATUS_WORD_SANITY_CHECKER
             .sanity_check_ddw0(&ddw0_bad)
             .is_err());
+    }
+
+    #[test]
+    fn test_ddw0_error_msg_bad_index() {
+        let raw_ddw0_bad_index = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0xE4];
+
+        let ddw0_bad = Ddw0::load(&mut raw_ddw0_bad_index.as_slice()).unwrap();
+        let err = STATUS_WORD_SANITY_CHECKER
+            .sanity_check_ddw0(&ddw0_bad)
+            .err();
+        eprintln!("{:?}", err);
+        assert!(err.unwrap().contains("index is not 0"));
+    }
+    #[test]
+    fn test_ddw0_error_msg_bad_id() {
+        let raw_data_ddw0_bad_id = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14];
+
+        let ddw0_bad = Ddw0::load(&mut raw_data_ddw0_bad_id.as_slice()).unwrap();
+        let err = STATUS_WORD_SANITY_CHECKER
+            .sanity_check_ddw0(&ddw0_bad)
+            .err();
+        eprintln!("{:?}", err);
+        assert!(err.unwrap().contains("ID is not 0xE4: 0x"));
     }
 }
