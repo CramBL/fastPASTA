@@ -21,7 +21,7 @@ variables:
 stages:
   - code-quality
   - build-and-test
-  - build-release
+  - release
 
 pre-commit:
   image: python:3.9
@@ -37,6 +37,8 @@ lint:
   stage: code-quality
   script:
     - rustup component add clippy
+    - cargo check
+    - cargo clean
     - cargo clippy -- -D warnings
 
 format:
@@ -58,7 +60,7 @@ rust-latest:
     - cargo build --verbose
     - cargo test --verbose
   artifacts:
-    name: "_d_${CI_COMMIT_SHA}"
+    name: "debug_${CI_COMMIT_SHA}"
     paths:
     - ./target
     expire_in: 3 mos
@@ -73,14 +75,17 @@ rust-nightly:
 
 ## For release build
 build-release-latest:
-  stage: build-release
+  stage: release
+  rules:
+    - if: $CI_COMMIT_TAG                 # Run this job when a tag is created
   only:
     - release
   image: rust:latest
   script:
+    - echo "running release job"
     - cargo build -r --verbose
   artifacts:
-    name: "$_r_{CI_COMMIT_SHA}"
+    name: "release_${CI_COMMIT_TAG}"
     paths:
     - ./target
-    expire_in: 5 mos
+
