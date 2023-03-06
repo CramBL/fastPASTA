@@ -109,6 +109,9 @@ impl Stats {
         }
         eprintln!("Total RDHs: {}", self.rdhs_seen);
         eprintln!("Filtered:");
+        for i in 0..=15 {
+            print!("Hi CI");
+        }
 
         let mut filter_links_res: String = self
             .links_to_filter
@@ -128,7 +131,7 @@ impl Stats {
             .collect::<Vec<String>>()
             .join(", ");
         if !not_filtered.is_empty() {
-            filter_links_res.push_str(&format!(" (not found: {})", not_filtered));
+            filter_links_res.push_str(&format!(" (not found: {not_filtered})"));
         }
         eprintln!("   {:<3}{:>6}", "Links selected: ", filter_links_res);
         eprintln!("   {:<3}{:>7}", "RDHs: ", self.rdhs_filtered);
