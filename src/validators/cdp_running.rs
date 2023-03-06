@@ -189,7 +189,7 @@ impl CdpRunningValidator {
                         true => m.transition(_WasTDTpacketDoneTrue).as_enum(),
                     }
                 } else {
-                    // TODO: Check if the data identifier is valid
+                    self.process_data_word(gbt_word);
                     m.transition(_WasData).as_enum()
                 }
             }
@@ -218,7 +218,7 @@ impl CdpRunningValidator {
                         true => m.transition(_WasTDTpacketDoneTrue).as_enum(),
                     }
                 } else {
-                    // TODO: Check if the data identifier is valid
+                    self.process_data_word(gbt_word);
                     m.transition(_WasData).as_enum()
                 }
             }
@@ -232,7 +232,7 @@ impl CdpRunningValidator {
                         true => m.transition(_WasTDTpacketDoneTrue).as_enum(),
                     }
                 } else {
-                    // TODO: Check if the data identifier is valid
+                    self.process_data_word(gbt_word);
                     m.transition(_WasData).as_enum()
                 }
             }
@@ -280,8 +280,9 @@ impl CdpRunningValidator {
 
     /// Takes a slice of bytes wrapped in an enum of the expected status word then:
     /// 1. Deserializes the slice as the expected status word and checks it for sanity.
-    /// 2. If the sanity check fails, the error is printed to stderr and returned as an error.
+    /// 2. If the sanity check fails, the error is sent to the stats channel
     /// 3. Stores the deserialized status word as the last status word of the same type.
+    #[inline(always)]
     fn process_status_word(&mut self, status_word: StatusWordKind) {
         match status_word {
             StatusWordKind::Ihw(ihw) => {
@@ -354,6 +355,8 @@ impl CdpRunningValidator {
         }
     }
 
+    /// Takes a slice of bytes expected to be a data word, and checks if it has a valid identifier.
+    #[inline(always)]
     fn process_data_word(&mut self, data_word: &[u8]) {
         if let Err(e) = DATA_WORD_SANITY_CHECKER.check_any(&data_word) {
             let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
