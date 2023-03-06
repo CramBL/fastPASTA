@@ -4,6 +4,8 @@ default:
   before_script:
     - hostname -I
     - whoami
+    - rustc --version
+    - cargo --version
 
 # Setup a cache to cache job parts between jobs to ensure faster builds
 cache:
@@ -24,6 +26,8 @@ stages:
 pre-commit:
   image: python:3.9
   stage: code-quality
+  before_script:
+    - pip install pre-commit
   script:
     - python3 --version
     - pre-commit --version
@@ -32,24 +36,18 @@ pre-commit:
 lint:
   stage: code-quality
   script:
-    - rustc --version
-    - cargo --version
     - rustup component add clippy
     - cargo clippy -- -D warnings
 
 format:
   stage: code-quality
   script:
-    - rustc --version
-    - cargo --version
     - rustup component add rustfmt
     - cargo fmt -- --check
 
 audit:
   stage: code-quality
   script:
-    - rustc --version
-    - cargo --version
     - cargo install cargo-audit
     - cargo audit
 
@@ -57,8 +55,6 @@ rust-latest:
   stage: build-and-test
   image: rust:latest
   script:
-    - rustc --version
-    - cargo --version
     - cargo build --verbose
     - cargo test --verbose
   artifacts:
@@ -71,8 +67,6 @@ rust-nightly:
   stage: build-and-test
   image: rustlang/rust:nightly
   script:
-    - rustc --version
-    - cargo --version
     - cargo build --verbose
     - cargo test --verbose
   allow_failure: true
@@ -84,8 +78,6 @@ build-release-latest:
     - release
   image: rust:latest
   script:
-    - rustc --version
-    - cargo --version
     - cargo build -r --verbose
   artifacts:
     name: "$_r_{CI_COMMIT_SHA}"
