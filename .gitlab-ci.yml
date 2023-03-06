@@ -2,6 +2,8 @@ image: "rust:latest"
 
 default:
   before_script:
+    - hostname -I
+    - whoami
     - rustc --version
     - cargo --version
 
@@ -17,39 +19,15 @@ variables:
   RUST_BACKTRACE: "FULL"
 
 stages:
-  - build-and-test
   - code-quality
-
-rust-latest:
-  stage: build-and-test
-  image: rust:latest
-  script:
-    - cargo build --verbose
-    - cargo test --verbose
-
-rust-nightly:
-  stage: build-and-test
-  image: rustlang/rust:nightly
-  script:
-    - cargo build --verbose
-    - cargo test --verbose
-  allow_failure: true
-
-# test-code:
-#   stage: test
-#   script:
-#    - cargo test
-# Generate coverage with tarpaulin, unfortunately breaks due to gitlab security policy
-# Could relax the permissions a bit?
-#     - cargo install cargo-tarpaulin -f
-#     - cargo tarpaulin --ignore-tests
-#   coverage: '/^\d+.\d+% coverage/'
+  - build-and-test
 
 lint:
   stage: code-quality
   script:
     - rustup component add clippy
     - cargo clippy -- -D warnings
+    - pre-commit run --all-files --show-diff-on-failure
 
 format:
   stage: code-quality
@@ -62,3 +40,37 @@ audit:
   script:
     - cargo install cargo-audit
     - cargo audit
+
+rust-latest:
+  stage: build-and-test
+  image: rust:latest
+  script:
+    - cargo build --verbose
+    - cargo test --verbose
+  artifacts:
+    name: "_d_${CI_COMMIT_SHA}"
+    paths:
+    - ./target
+    expire_in: 3 mos
+
+rust-nightly:
+  stage: build-and-test
+  image: rustlang/rust:nightly
+  script:
+    - cargo build --verbose
+    - cargo test --verbose
+  allow_failure: true
+
+## For release build
+build-release-latest:
+  stage: build-release
+  only:
+    - release
+  image: rust:latest
+  script:
+    - cargo build -r --verbose
+  artifacts:
+    name: "$_r_{CI_COMMIT_SHA}"
+    paths:
+    - ./target
+    expire_in: 5 mos
