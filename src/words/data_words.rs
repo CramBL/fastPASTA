@@ -25,19 +25,19 @@ pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice {
 //      [2:0] = input number on the connector
 //           * 0b000 - 0b111 (0-6 on the connector)
 // 9 lanes
-const VALID_IL_ID_MIN_MAX: (u8, u8) = (0x20, 0x28);
+pub const VALID_IL_ID_MIN_MAX: (u8, u8) = (0x20, 0x28);
 
 // 16 lanes
-const VALID_ML_CONNECT0_ID_MIN_MAX: (u8, u8) = (0x43, 0x46);
-const VALID_ML_CONNECT1_ID_MIN_MAX: (u8, u8) = (0x48, 0x4B);
-const VALID_ML_CONNECT2_ID_MIN_MAX: (u8, u8) = (0x53, 0x56);
-const VALID_ML_CONNECT3_ID_MIN_MAX: (u8, u8) = (0x58, 0x5B);
+pub const VALID_ML_CONNECT0_ID_MIN_MAX: (u8, u8) = (0x43, 0x46);
+pub const VALID_ML_CONNECT1_ID_MIN_MAX: (u8, u8) = (0x48, 0x4B);
+pub const VALID_ML_CONNECT2_ID_MIN_MAX: (u8, u8) = (0x53, 0x56);
+pub const VALID_ML_CONNECT3_ID_MIN_MAX: (u8, u8) = (0x58, 0x5B);
 
 // 28 lanes
-const VALID_OL_CONNECT0_ID_MIN_MAX: (u8, u8) = (0x40, 0x46);
-const VALID_OL_CONNECT1_ID_MIN_MAX: (u8, u8) = (0x48, 0x4E);
-const VALID_OL_CONNECT2_ID_MIN_MAX: (u8, u8) = (0x50, 0x56);
-const VALID_OL_CONNECT3_ID_MIN_MAX: (u8, u8) = (0x58, 0x5E);
+pub const VALID_OL_CONNECT0_ID_MIN_MAX: (u8, u8) = (0x40, 0x46);
+pub const VALID_OL_CONNECT1_ID_MIN_MAX: (u8, u8) = (0x48, 0x4E);
+pub const VALID_OL_CONNECT2_ID_MIN_MAX: (u8, u8) = (0x50, 0x56);
+pub const VALID_OL_CONNECT3_ID_MIN_MAX: (u8, u8) = (0x58, 0x5E);
 
 // Newtypes for the inner/outer barrel, to avoid comparing lanes from different barrels, with 0 runtime cost
 #[repr(transparent)]
