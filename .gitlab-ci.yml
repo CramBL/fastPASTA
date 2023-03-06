@@ -39,7 +39,7 @@ lint:
     - rustup component add clippy
     - cargo check
     - cargo clean
-    - cargo clippy -- -D warnings
+    - cargo clippy -- -D warnings --no-deps
 
 format:
   stage: code-quality
