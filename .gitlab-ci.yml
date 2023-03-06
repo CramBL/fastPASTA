@@ -21,6 +21,7 @@ variables:
 stages:
   - code-quality
   - build-and-test
+  - build-release
 
 lint:
   stage: code-quality
