@@ -96,7 +96,7 @@ impl Debug for Ihw {
         let id = self.id();
         let reserved = self.reserved();
         let active_lanes = self.active_lanes();
-        write!(f, "{:x} {:x} {:x}", id, reserved, active_lanes)
+        write!(f, "{id:x} {reserved:x} {active_lanes:x}")
     }
 }
 

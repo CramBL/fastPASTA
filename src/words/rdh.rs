@@ -591,8 +591,7 @@ impl Display for Rdh3 {
         let tmp_res = self.reserved0;
         write!(
             f,
-            "Rdh3: detector_field: {:x?}, par_bit: {:x?}, reserved0: {:x?}",
-            tmp_df, tmp_par, tmp_res
+            "Rdh3: detector_field: {tmp_df:x?}, par_bit: {tmp_par:x?}, reserved0: {tmp_res:x?}"
         )
     }
 }
