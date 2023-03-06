@@ -11,7 +11,6 @@ bench = false
 [dependencies]
 atty = "0.2.14"
 byteorder = "1.4.3"
-clippy = "0.0.302"
 criterion = "0.4.0"
 crossbeam-channel = "0.5.6"
 fmt = "0.1.0"
