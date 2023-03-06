@@ -110,13 +110,27 @@ impl Stats {
         eprintln!("Total RDHs: {}", self.rdhs_seen);
         eprintln!("Filtered:");
 
-        let filter_links: String = self
+        let mut filter_links_res: String = self
             .links_to_filter
             .iter()
+            .filter(|x| self.links_observed.contains(x))
             .map(|x| x.to_string())
             .collect::<Vec<String>>()
             .join(", ");
-        eprintln!("   {:<3}{:>6}", "Links: ", filter_links);
+        if filter_links_res.is_empty() {
+            filter_links_res = "<<all-links>>".to_string();
+        }
+        let not_filtered = self
+            .links_to_filter
+            .iter()
+            .filter(|x| !self.links_observed.contains(x))
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        if !not_filtered.is_empty() {
+            filter_links_res.push_str(&format!(" (not found: {})", not_filtered));
+        }
+        eprintln!("   {:<3}{:>6}", "Links selected: ", filter_links_res);
         eprintln!("   {:<3}{:>7}", "RDHs: ", self.rdhs_filtered);
         eprint!("   {:<3}", "Payload ");
         match self.payload_size {
@@ -131,7 +145,7 @@ impl Stats {
         }
         let mut observed_links = self.links_observed.clone();
         observed_links.sort();
-        eprintln!("Links observed: {observed_links:?}");
+        eprintln!("Links observed during scan: {observed_links:?}");
         eprintln!("Processing time: {:?}", self.processing_time.elapsed());
     }
     pub fn print_time(&self) {
