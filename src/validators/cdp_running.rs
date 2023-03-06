@@ -15,6 +15,8 @@ use log::debug;
 use sm::sm;
 
 use self::CDP_PAYLOAD_FSM_Continuous::IHW_;
+
+use super::data_words::DATA_WORD_SANITY_CHECKER;
 sm! {
     // All states have the '_' suffix and events have '_' prefix so they show up as `STATE_BY_EVENT` in the generated code
     // The statemachine macro notation goes like this:
@@ -87,7 +89,6 @@ pub struct CdpRunningValidator {
     current_tdh: Option<Tdh>,
     current_tdt: Option<Tdt>,
     current_ddw0: Option<Ddw0>,
-    error_count: u8,
     gbt_word_counter: u16,
     stats_send_ch: std::sync::mpsc::Sender<StatType>,
     payload_mem_pos: u64,
@@ -101,7 +102,6 @@ impl CdpRunningValidator {
             current_tdh: None,
             current_tdt: None,
             current_ddw0: None,
-            error_count: 0,
             gbt_word_counter: 0,
             stats_send_ch,
             payload_mem_pos: 0,
@@ -119,88 +119,6 @@ impl CdpRunningValidator {
         self.payload_mem_pos = payload_mem_pos;
     }
 
-    /// Takes a slice of bytes wrapped in an enum of the expected status word then:
-    /// 1. Deserializes the slice as the expected status word and checks it for sanity.
-    /// 2. If the sanity check fails, the error is printed to stderr and returned as an error.
-    /// 3. Stores the deserialized status word as the last status word of the same type.
-    fn process_status_word(&mut self, status_word: StatusWordKind) -> Result<(), ()> {
-        let mut result = Ok(());
-        match status_word {
-            StatusWordKind::Ihw(ihw) => {
-                let ihw = Ihw::load(&mut <&[u8]>::clone(&ihw)).unwrap();
-                debug!("{ihw}");
-                if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
-                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
-                    self.stats_send_ch
-                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
-                        .unwrap();
-                    debug!("IHW: {ihw}");
-                    result = Err(());
-                }
-                self.current_ihw = Some(ihw);
-            }
-            StatusWordKind::Tdh(tdh) => {
-                let tdh = Tdh::load(&mut <&[u8]>::clone(&tdh)).unwrap();
-                debug!("{tdh}");
-                if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
-                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
-                    self.stats_send_ch
-                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
-                        .unwrap();
-                    debug!("TDH: {tdh}");
-                    result = Err(());
-                }
-                self.current_tdh = Some(tdh);
-            }
-            StatusWordKind::Tdt(tdt) => {
-                let tdt = Tdt::load(&mut <&[u8]>::clone(&tdt)).unwrap();
-                debug!("{tdt}");
-                if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
-                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
-                    self.stats_send_ch
-                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
-                        .unwrap();
-                    print!("{e}");
-                    debug!("TDT: {tdt}");
-                    result = Err(());
-                }
-                self.current_tdt = Some(tdt);
-            }
-            StatusWordKind::Ddw0(ddw0) => {
-                let ddw0 = Ddw0::load(&mut <&[u8]>::clone(&ddw0)).unwrap();
-                debug!("{ddw0}");
-                if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0) {
-                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
-                    self.stats_send_ch
-                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
-                        .unwrap();
-                    debug!("DDW0: {ddw0}");
-                    result = Err(());
-                }
-                if self.current_rdh.as_ref().unwrap().rdh2.stop_bit != 1 {
-                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
-                    self.stats_send_ch
-                        .send(StatType::Error(format!(
-                            "{mem_pos:#X}: [E10] DDW0 received but RDH stop bit is not 1"
-                        )))
-                        .unwrap();
-                    debug!("DDW0: {:X?}", ddw0.to_byte_slice());
-                }
-                if self.current_rdh.as_ref().unwrap().rdh2.pages_counter == 0 {
-                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
-                    self.stats_send_ch
-                        .send(StatType::Error(format!(
-                            "{mem_pos:#X}: DDW0 found but RDH page counter is 0"
-                        )))
-                        .unwrap();
-                    debug!("DDW0: {:X?}", ddw0.to_byte_slice());
-                }
-                self.current_ddw0 = Some(ddw0);
-            }
-        }
-        result
-    }
-
     pub fn check(&mut self, gbt_word: &[u8]) {
         debug_assert!(gbt_word.len() == 10);
         self.gbt_word_counter += 1; // Tracks the number of GBT words seen in the current CDP
@@ -214,22 +132,12 @@ impl CdpRunningValidator {
             InitialIHW_(m) => {
                 debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.stop_bit == 0);
                 debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.pages_counter == 0);
-                if self
-                    .process_status_word(StatusWordKind::Ihw(gbt_word))
-                    .is_err()
-                {
-                    self.error_count += 1;
-                }
+                self.process_status_word(StatusWordKind::Ihw(gbt_word));
                 m.transition(_WasIhw).as_enum()
             }
 
             TDH_By_WasIhw(m) => {
-                if self
-                    .process_status_word(StatusWordKind::Tdh(gbt_word))
-                    .is_err()
-                {
-                    self.error_count += 1;
-                }
+                self.process_status_word(StatusWordKind::Tdh(gbt_word));
                 debug_assert!(self.current_tdh.as_ref().unwrap().continuation() == 0);
                 match self.current_tdh.as_ref().unwrap().no_data() {
                     0 => m.transition(_NoDataFalse).as_enum(),
@@ -241,23 +149,14 @@ impl CdpRunningValidator {
             DDW0_or_TDH_By_NoDataTrue(m) => {
                 if gbt_word[9] == 0xE8 {
                     // TDH
-                    if self
-                        .process_status_word(StatusWordKind::Tdh(gbt_word))
-                        .is_err()
-                    {
-                        self.error_count += 1;
-                    }
+                    self.process_status_word(StatusWordKind::Tdh(gbt_word));
                     debug_assert!(self.current_tdh.as_ref().unwrap().no_data() == 0);
                     m.transition(_NoDataFalse).as_enum()
                 } else {
                     debug_assert!(gbt_word[9] == 0xE4);
                     // DDW0
-                    if self
-                        .process_status_word(StatusWordKind::Ddw0(gbt_word))
-                        .is_err()
-                    {
-                        self.error_count += 1;
-                    }
+                    self.process_status_word(StatusWordKind::Ddw0(gbt_word));
+
                     m.transition(_WasDdw0).as_enum()
                 }
             }
@@ -265,12 +164,8 @@ impl CdpRunningValidator {
             DATA_By_NoDataFalse(m) => {
                 if gbt_word[9] == 0xF0 {
                     // TDT ID
-                    if self
-                        .process_status_word(StatusWordKind::Tdt(gbt_word))
-                        .is_err()
-                    {
-                        self.error_count += 1;
-                    }
+                    self.process_status_word(StatusWordKind::Tdt(gbt_word));
+
                     // Next word is decided by if packet_done is 0 or 1
                     // `current_tdt` is used as processing the status words overrides the previous tdt
                     match self.current_tdt.as_ref().unwrap().packet_done() {
@@ -278,7 +173,7 @@ impl CdpRunningValidator {
                         true => m.transition(_WasTDTpacketDoneTrue).as_enum(),
                     }
                 } else {
-                    // TODO: Check if the data identifier is valid
+                    self.process_data_word(gbt_word);
                     m.transition(_WasData).as_enum()
                 }
             }
@@ -286,12 +181,7 @@ impl CdpRunningValidator {
             DATA_By_WasData(m) => {
                 if gbt_word[9] == 0xF0 {
                     // TDT ID
-                    if self
-                        .process_status_word(StatusWordKind::Tdt(gbt_word))
-                        .is_err()
-                    {
-                        self.error_count += 1;
-                    }
+                    self.process_status_word(StatusWordKind::Tdt(gbt_word));
                     // Next word is decided by if packet_done is 0 or 1
                     // `current_tdt` is used as processing the status words overrides the previous tdt
                     match self.current_tdt.as_ref().unwrap().packet_done() {
@@ -305,24 +195,13 @@ impl CdpRunningValidator {
             }
 
             c_IHW_By_WasTDTpacketDoneFalse(m) => {
-                if self
-                    .process_status_word(StatusWordKind::Ihw(gbt_word))
-                    .is_err()
-                {
-                    self.error_count += 1;
-                }
+                self.process_status_word(StatusWordKind::Ihw(gbt_word));
                 m.transition(_Next).as_enum()
             }
 
             c_TDH_By_Next(m) => {
-                if self
-                    .process_status_word(StatusWordKind::Tdh(gbt_word))
-                    .is_err()
-                {
-                    self.error_count += 1;
-                }
+                self.process_status_word(StatusWordKind::Tdh(gbt_word));
                 if self.current_tdh.as_ref().unwrap().continuation() != 1 {
-                    self.error_count += 1;
                     self.stats_send_ch
                         .send(StatType::Error("Tdh continuation is not 1".to_string()))
                         .unwrap();
@@ -333,12 +212,7 @@ impl CdpRunningValidator {
             c_DATA_By_Next(m) => {
                 if gbt_word[9] == 0xF0 {
                     // TDT ID
-                    if self
-                        .process_status_word(StatusWordKind::Tdt(gbt_word))
-                        .is_err()
-                    {
-                        self.error_count += 1;
-                    }
+                    self.process_status_word(StatusWordKind::Tdt(gbt_word));
                     match self.current_tdt.as_ref().unwrap().packet_done() {
                         false => m.transition(_WasTDTpacketDoneFalse).as_enum(),
                         true => m.transition(_WasTDTpacketDoneTrue).as_enum(),
@@ -352,12 +226,7 @@ impl CdpRunningValidator {
             c_DATA_By_WasData(m) => {
                 if gbt_word[9] == 0xF0 {
                     // TDT ID
-                    if self
-                        .process_status_word(StatusWordKind::Tdt(gbt_word))
-                        .is_err()
-                    {
-                        self.error_count += 1;
-                    }
+                    self.process_status_word(StatusWordKind::Tdt(gbt_word));
                     match self.current_tdt.as_ref().unwrap().packet_done() {
                         false => m.transition(_WasTDTpacketDoneFalse).as_enum(),
                         true => m.transition(_WasTDTpacketDoneTrue).as_enum(),
@@ -371,14 +240,8 @@ impl CdpRunningValidator {
             DDW0_or_TDH_or_IHW_By_WasTDTpacketDoneTrue(m) => {
                 if gbt_word[9] == 0xE8 {
                     // TDH
-                    if self
-                        .process_status_word(StatusWordKind::Tdh(gbt_word))
-                        .is_err()
-                    {
-                        self.error_count += 1;
-                    }
+                    self.process_status_word(StatusWordKind::Tdh(gbt_word));
                     if self.current_tdh.as_ref().unwrap().internal_trigger() != 1 {
-                        self.error_count += 1;
                         self.stats_send_ch
                             .send(StatType::Error(format!(
                                 "TDH internal trigger is not 1, got: {gbt_word:02X?}"
@@ -395,38 +258,110 @@ impl CdpRunningValidator {
                     }
                 } else if gbt_word[9] == 0xE4 {
                     // DDW0
-                    if self
-                        .process_status_word(StatusWordKind::Ddw0(gbt_word))
-                        .is_err()
-                    {
-                        self.error_count += 1;
-                    }
+                    self.process_status_word(StatusWordKind::Ddw0(gbt_word));
                     m.transition(_WasDdw0).as_enum()
                 } else {
                     // IHW
-                    if self
-                        .process_status_word(StatusWordKind::Ihw(gbt_word))
-                        .is_err()
-                    {
-                        self.error_count += 1;
-                    }
+                    self.process_status_word(StatusWordKind::Ihw(gbt_word));
                     m.transition(_WasIhw).as_enum()
                 }
             }
             IHW_By_WasDdw0(m) => {
                 debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.stop_bit == 0);
                 debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.pages_counter == 0);
-                if self
-                    .process_status_word(StatusWordKind::Ihw(gbt_word))
-                    .is_err()
-                {
-                    self.error_count += 1;
-                }
+                self.process_status_word(StatusWordKind::Ihw(gbt_word));
+
                 m.transition(_WasIhw).as_enum()
             }
         };
 
         self.sm = nxt_st;
+    }
+
+    /// Takes a slice of bytes wrapped in an enum of the expected status word then:
+    /// 1. Deserializes the slice as the expected status word and checks it for sanity.
+    /// 2. If the sanity check fails, the error is printed to stderr and returned as an error.
+    /// 3. Stores the deserialized status word as the last status word of the same type.
+    fn process_status_word(&mut self, status_word: StatusWordKind) {
+        match status_word {
+            StatusWordKind::Ihw(ihw) => {
+                let ihw = Ihw::load(&mut <&[u8]>::clone(&ihw)).unwrap();
+                debug!("{ihw}");
+                if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
+                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
+                    self.stats_send_ch
+                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
+                        .unwrap();
+                    debug!("IHW: {ihw}");
+                }
+                self.current_ihw = Some(ihw);
+            }
+            StatusWordKind::Tdh(tdh) => {
+                let tdh = Tdh::load(&mut <&[u8]>::clone(&tdh)).unwrap();
+                debug!("{tdh}");
+                if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
+                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
+                    self.stats_send_ch
+                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
+                        .unwrap();
+                    debug!("TDH: {tdh}");
+                }
+                self.current_tdh = Some(tdh);
+            }
+            StatusWordKind::Tdt(tdt) => {
+                let tdt = Tdt::load(&mut <&[u8]>::clone(&tdt)).unwrap();
+                debug!("{tdt}");
+                if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
+                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
+                    self.stats_send_ch
+                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
+                        .unwrap();
+                    print!("{e}");
+                    debug!("TDT: {tdt}");
+                }
+                self.current_tdt = Some(tdt);
+            }
+            StatusWordKind::Ddw0(ddw0) => {
+                let ddw0 = Ddw0::load(&mut <&[u8]>::clone(&ddw0)).unwrap();
+                debug!("{ddw0}");
+                if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0) {
+                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
+                    self.stats_send_ch
+                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
+                        .unwrap();
+                    debug!("DDW0: {ddw0}");
+                }
+                if self.current_rdh.as_ref().unwrap().rdh2.stop_bit != 1 {
+                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
+                    self.stats_send_ch
+                        .send(StatType::Error(format!(
+                            "{mem_pos:#X}: [E10] DDW0 received but RDH stop bit is not 1"
+                        )))
+                        .unwrap();
+                    debug!("DDW0: {:X?}", ddw0.to_byte_slice());
+                }
+                if self.current_rdh.as_ref().unwrap().rdh2.pages_counter == 0 {
+                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
+                    self.stats_send_ch
+                        .send(StatType::Error(format!(
+                            "{mem_pos:#X}: [E11] DDW0 found but RDH page counter is 0"
+                        )))
+                        .unwrap();
+                    debug!("DDW0: {:X?}", ddw0.to_byte_slice());
+                }
+                self.current_ddw0 = Some(ddw0);
+            }
+        }
+    }
+
+    fn process_data_word(&mut self, data_word: &[u8]) {
+        if let Err(e) = DATA_WORD_SANITY_CHECKER.check_any(&data_word) {
+            let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
+            self.stats_send_ch
+                .send(StatType::Error(format!("{mem_pos:#X}: [E02] {e}")))
+                .unwrap();
+            debug!("Data word: {data_word:?}");
+        }
     }
 }
 
