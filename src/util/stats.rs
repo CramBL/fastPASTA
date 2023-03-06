@@ -109,9 +109,6 @@ impl Stats {
         }
         eprintln!("Total RDHs: {}", self.rdhs_seen);
         eprintln!("Filtered:");
-        for i in 0..=15 {
-            print!("Hi CI");
-        }
 
         let mut filter_links_res: String = self
             .links_to_filter
