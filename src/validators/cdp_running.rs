@@ -358,7 +358,7 @@ impl CdpRunningValidator {
     /// Takes a slice of bytes expected to be a data word, and checks if it has a valid identifier.
     #[inline(always)]
     fn process_data_word(&mut self, data_word: &[u8]) {
-        if let Err(e) = DATA_WORD_SANITY_CHECKER.check_any(&data_word) {
+        if let Err(e) = DATA_WORD_SANITY_CHECKER.check_any(data_word) {
             let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
             self.stats_send_ch
                 .send(StatType::Error(format!("{mem_pos:#X}: [E02] {e}")))
