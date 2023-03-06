@@ -160,7 +160,7 @@ impl CdpRunningValidator {
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {}", e)))
                         .unwrap();
-                    print!("{}", e);
+                    print!("{e}");
                     debug!("TDT: {tdt}");
                     result = Err(());
                 }
