@@ -27,10 +27,10 @@ lint:
   stage: code-quality
   script:
     - python3 --version
-    - pip3 --version
+    - python3-pip -m --version
     - python3 -m venv $CI_PROJECT_DIR/venv/precom
     - source $CI_PROJECT_DIR/venv/precom/bin/activate
-    - pip3 install pre-commit
+    - python3-pip install pre-commit
     - pre-commit --version
     - pre-commit run --all-files --show-diff-on-failure
     - deactivate
