@@ -525,8 +525,7 @@ impl Debug for Cdw {
         let calibration_user_fields = self.calibration_user_fields();
         write!(
             f,
-            "CDW: {:x} {:x} {:x}",
-            id, calibration_word_index, calibration_user_fields
+            "CDW: {id:x} {calibration_word_index:x} {calibration_user_fields:x}"
         )
     }
 }
