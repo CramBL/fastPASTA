@@ -86,4 +86,3 @@ build-release-latest:
     name: "release_${CI_COMMIT_TAG}"
     paths:
     - ./target
-
