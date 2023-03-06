@@ -80,7 +80,7 @@ impl StatusWordValidator<Tdh> for TdhValidator {
         let mut err_str = String::new();
 
         if tdh.id() != self.valid_id {
-            write!(err_str, "ID is not 0xE8:  {:b} ", tdh.id()).unwrap();
+            write!(err_str, "ID is not 0xE8:  {:X} ", tdh.id()).unwrap();
             // Early return if ID is wrong
             return Err(err_str + "Full Word: " + &tdh.to_string());
         }
@@ -90,7 +90,7 @@ impl StatusWordValidator<Tdh> for TdhValidator {
             err_cnt += 1;
             write!(
                 err_str,
-                "reserved bits are not 0:  {:b} {:b} {:b} ",
+                "reserved bits are not 0:  {:X} {:X} {:X} ",
                 tdh.reserved0(),
                 tdh.reserved1(),
                 tdh.reserved2()
@@ -216,6 +216,14 @@ mod tests {
             [0x03, 0x1A, 0x00, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x0F, 0xE8];
         let tdh_bad = Tdh::load(&mut raw_data_tdh_bad_reserved.as_slice()).unwrap();
         assert!(TDH_VALIDATOR.sanity_check(&tdh_bad).is_err());
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_tdh_validator_bad_id() {
+        let raw_data_tdh_bad_id = [0x03, 0x1A, 0x00, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x00, 0xE7];
+        let tdh = Tdh::load(&mut raw_data_tdh_bad_id.as_slice()).unwrap();
+        TDH_VALIDATOR.sanity_check(&tdh).unwrap();
     }
 
     #[test]
