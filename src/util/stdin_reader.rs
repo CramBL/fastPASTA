@@ -1,6 +1,9 @@
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use std::io::{self, Read, SeekFrom};
-
+/// Wrapper for std::io::Stdin, implements BufferedReaderWrapper.
+///
+/// Needed (wanted) because std::io::Stdin does not implement seek_relative.
+/// seek_relative is used to skip over unwanted bytes in the input stream, such as links unwanted by the user
 pub struct StdInReaderSeeker {
     pub reader: io::Stdin,
 }
