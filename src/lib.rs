@@ -1,4 +1,4 @@
-use std::{fmt::Display, fs::File, path::PathBuf, sync::atomic::AtomicBool};
+use std::{fmt::Display, sync::atomic::AtomicBool};
 use util::{config::Opt, input_scanner::InputScanner, stats::Stats};
 pub mod util;
 pub mod validators;
@@ -71,13 +71,6 @@ pub fn init_reader(config: &Opt) -> Box<dyn util::bufreader_wrapper::BufferedRea
             })
         }
     }
-}
-
-/// Only use
-#[inline]
-pub fn file_open_append(path: &PathBuf) -> std::io::Result<std::fs::File> {
-    let file = File::options().append(true).open(path)?;
-    Ok(file)
 }
 
 #[inline(always)]
