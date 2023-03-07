@@ -5,31 +5,29 @@
  [![coverage report](https://gitlab.cern.ch/mkonig/fastpasta/badges/master/coverage.svg)](https://gitlab.cern.ch/mkonig/fastpasta/-/commits/master)
 ## fast Protocol Analysis Scanner Tool for ALICE
 
-For extensive documentation, invoke ```cargo doc --open```
-
-`fastPASTA` follows the CLI guidelines for design https://clig.dev/.
-
-`fastPASTA` only uses stderr to print information for the user, and stdout is reserved for the output of processed data.
+For extensive documentation of source code, invoke ```cargo doc --open```
 
 ## Purpose
 
 To parse CRU Data Packets for protocol violations and report any errors
 
-## To start using fastPASTA, simply execute fastpasta from the compiled binary in ../target/debug/fastpasta
-### See help
+## To start using fastPASTA, build the binary with `cargo build -r` and find it in ../target/release/fastpasta, or download the latest release from the [releases page](https://gitlab.cern.ch/mkonig/fastpasta/-/releases).
+### See help, including examples of use
 
 ```shell
-$ ./target/debug/fastpasta -h
+$ ./fastpasta -h
 ```
 
-
-### Parse a file with sanity checks on RDH and ITS Status words, only take only link 2, only print errors and warnings, tolerate up to 10 errors before ending processing, and save it to test.raw
+### Examples
+1. Read from file -> filter by link 0 -> validate -> output to file
 ```shell
-$ ./target/release/fastpasta --sanity-checks --filter-link 2 --verbosity 1 --tolerate-max-errors 10 ../fastpasta_test_files/file_to_process --output test.raw
+$ ./fastpasta input.raw --filter-link 0 --sanity-checks -o link0_output.raw
 ```
-Equivelant to the following, using the short form of the arguments:
+2. Read decompressed data from stdin -> filter link 3 & 4 -> pipe to validation checks
 ```shell
-$ ./target/release/fastpasta -s -f 2 -v 1 -e 10 ../fastpasta_test_files/file_to_process -o test.raw
+$ lz4 -d input.raw | ./fastpasta --filter-link 3 4 | ./fastpasta --sanity-checks
+        ^^^^                   ^^^^                           ^^^^
+       INPUT    --->          FILTER             --->        VALIDATE
 ```
 ### Verbosity levels
 - 0: Errors
@@ -39,30 +37,18 @@ $ ./target/release/fastpasta -s -f 2 -v 1 -e 10 ../fastpasta_test_files/file_to_
 - 4: Errors, warnings, info, debug and trace
 
 
-## Parsing the printouts to stderror with `grep` or `sed`
-If you want to parse the output messages from fastPASTA, it is recommend to redirect the stderr to stdout and then parsing it with e.g. grep.
-
-**Example: Get all information about parsed RDHs from link 0**
-RDH info printouts are multi-line so match RDH and include the next 2 lines in the match.
-```shell
-$ ./fastpasta -s -f 0 -v 3 ../fastpasta_test_files/file_to_process 2>&1 | grep -A 2 RDH
-```
-Include also all the `TDH`'s, now using `sed`
-```shell
-$ ./fastpasta -s -f 0 -v 3 ../fastpasta_test_files/file_to_process 2>&1 | sed -n -e '/RDH/{N;N;p}' -e '/TDH/ p'
-```
 ## Roadmap
 - [x] Parse RDH + Payload
 - [x] Parse HBF with multiple CDPs
 - [x] Parse CDP in UL flavor 1
 - [x] Parse CDP in UL flavor 0
 - [x] Validate CDPs are in am HBF pattern (First is page counter 0, stop bit 0, page counter then increments and only last CDP has stop bit 1)
-- [ ] Validate all 80-bit GBT words with sanity checks on IDs
+- [x] Validate all 80-bit GBT words with sanity checks on IDs
   - [x] Status Words
-  - [ ] Data words
+  - [x] Data words
 - [x] Validate CDPs with a sanity check on the structure adhering to the CRU protocol
 - [x] Filter data by GBT link
-- [ ] Validate the CDP payload is following the ITS protocol
+- [x] Validate the CDP payload is following the ITS protocol
 - [ ] Filter data from individual ALPIDE chips
 - [ ] Advanced protocol checks in split HBFs (multiple CDPs)
 - [ ] Validate ALPIDE payload
@@ -73,7 +59,6 @@ $ ./fastpasta -s -f 0 -v 3 ../fastpasta_test_files/file_to_process 2>&1 | sed -n
 The validation follows the FSM below. For each state, sanity checks are performed on the GBT words before transition.
 Certain transitions are ambigious (marked by yellow notes), these are resolved based on the ID of the next received GBT word.
 ![CDP FSM for validation](doc/CDP_payload_StateMachine%20(continuous%20mode).png)
-
 
 ## License
 Apache or MIT at your option.
