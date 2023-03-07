@@ -78,7 +78,7 @@ pub mod validate {
     use crate::util::stats::StatType;
     use crate::validators::cdp_running::CdpRunningValidator;
     use crate::validators::rdh::RdhCruv7RunningChecker;
-    use crate::words::rdh::RdhCRUv7;
+    use crate::words::rdh::{RdhCRUv7, RDH};
     use crossbeam_channel::{bounded, Receiver, RecvError};
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{mpsc, Arc};
@@ -117,7 +117,7 @@ pub mod validate {
                         };
 
                         if config.any_checks() {
-                            do_checks(
+                            do_checks_v7(
                                 &rdh_chunk,
                                 &payload_chunk,
                                 &stats_sender_channel,
@@ -157,12 +157,12 @@ pub mod validate {
     }
 
     #[inline]
-    fn do_checks(
+    fn do_checks_v7(
         rdh_slices: &[RdhCRUv7],
         payload_slices: &[Vec<u8>],
         stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
         rdh_running: &mut RdhCruv7RunningChecker,
-        payload_running: &mut CdpRunningValidator,
+        payload_running: &mut CdpRunningValidator<RdhCRUv7>,
         current_mem_pos: u64,
     ) {
         let mut tmp_mem_pos_tracker = current_mem_pos;
@@ -185,9 +185,9 @@ pub mod validate {
     }
 
     #[inline]
-    fn do_payload_checks(
+    fn do_payload_checks<T: RDH>(
         payload: &[u8],
-        payload_running: &mut CdpRunningValidator,
+        payload_running: &mut CdpRunningValidator<T>,
         stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
     ) {
         match preprocess_payload(payload) {
