@@ -1,13 +1,36 @@
 #![allow(dead_code)]
+use std::fmt::Display;
+
 use crate::ByteSlice;
 
-pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice {
-    fn id(&self) -> u8;
+pub trait DataWord: std::fmt::Display + PartialEq + Sized + ByteSlice {
     fn lane(&self) -> u8;
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
     where
         Self: Sized;
-    fn is_reserved_0(&self) -> bool;
+}
+
+// Helper to display all the data words in a similar way, without dynamic dispatch
+#[inline]
+fn display_byte_slice<T: DataWord>(
+    data_word: &T,
+    f: &mut std::fmt::Formatter<'_>,
+) -> std::fmt::Result {
+    let slice = data_word.to_byte_slice();
+    write!(
+        f,
+        "{:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} [79:0]",
+        slice[9],
+        slice[8],
+        slice[7],
+        slice[6],
+        slice[5],
+        slice[4],
+        slice[3],
+        slice[2],
+        slice[1],
+        slice[0],
+    )
 }
 
 // IDs are defined as follows:
@@ -40,14 +63,9 @@ pub const VALID_OL_CONNECT2_ID_MIN_MAX: (u8, u8) = (0x50, 0x56);
 pub const VALID_OL_CONNECT3_ID_MIN_MAX: (u8, u8) = (0x58, 0x5E);
 
 // Newtypes for the inner/outer barrel, to avoid comparing lanes from different barrels, with 0 runtime cost
-#[repr(transparent)]
-#[derive(PartialEq, PartialOrd)]
-pub struct IbLane(u8);
 
-#[repr(transparent)]
-#[derive(PartialEq, PartialOrd)]
-pub struct ObLane(u8);
 #[repr(packed)]
+#[derive(PartialEq, PartialOrd)]
 pub struct ItsDataWordIb {
     pub dw0: u8,
     pub dw1: u8,
@@ -61,8 +79,11 @@ pub struct ItsDataWordIb {
     pub id: u8,
 }
 
-impl ItsDataWordIb {
-    pub fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
+impl DataWord for ItsDataWordIb {
+    fn lane(&self) -> u8 {
+        self.id & 0x1F
+    }
+    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
     where
         Self: Sized,
     {
@@ -81,11 +102,22 @@ impl ItsDataWordIb {
             id: data[9],
         })
     }
-    pub fn lane(&self) -> IbLane {
-        IbLane(self.id & 0x1F)
+}
+
+impl ByteSlice for ItsDataWordIb {
+    fn to_byte_slice(&self) -> &[u8] {
+        unsafe { crate::any_as_u8_slice(self) }
     }
 }
 
+impl Display for ItsDataWordIb {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        display_byte_slice(self, f)
+    }
+}
+
+#[repr(packed)]
+#[derive(PartialEq, PartialOrd)]
 pub struct ItsDataWordOb {
     pub dw0: u8,
     pub dw1: u8,
@@ -99,8 +131,20 @@ pub struct ItsDataWordOb {
     pub id: u8,
 }
 
-impl ItsDataWordOb {
-    pub fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
+impl Display for ItsDataWordOb {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        display_byte_slice(self, f)
+    }
+}
+
+impl ByteSlice for ItsDataWordOb {
+    fn to_byte_slice(&self) -> &[u8] {
+        unsafe { crate::any_as_u8_slice(self) }
+    }
+}
+
+impl DataWord for ItsDataWordOb {
+    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
     where
         Self: Sized,
     {
@@ -119,27 +163,114 @@ impl ItsDataWordOb {
             id: data[9],
         })
     }
-    pub fn lane(&self) -> ObLane {
+    fn lane(&self) -> u8 {
         let lane_id = self.id & 0x1F;
-        if lane_id < VALID_OL_CONNECT0_ID_MIN_MAX.1 {
-            // 0-6
-            ObLane(lane_id % VALID_OL_CONNECT0_ID_MIN_MAX.0)
-        } else if lane_id < VALID_OL_CONNECT1_ID_MIN_MAX.1 {
-            // 7-13
-            ObLane(7 + (lane_id % VALID_OL_CONNECT1_ID_MIN_MAX.0))
-        } else if lane_id < VALID_OL_CONNECT2_ID_MIN_MAX.1 {
-            // 14-20
-            ObLane(14 + (lane_id % VALID_OL_CONNECT2_ID_MIN_MAX.0))
-        } else {
-            // 21-27
-            ObLane(21 + (lane_id % VALID_OL_CONNECT3_ID_MIN_MAX.0))
-        }
+        ob_lane(ObLane(lane_id))
+    }
+}
+
+fn ob_lane(ob_id: ObLane) -> u8 {
+    let lane_id = ob_id.0;
+    if lane_id < VALID_OL_CONNECT0_ID_MIN_MAX.1 {
+        // 0-6
+        lane_id % VALID_OL_CONNECT0_ID_MIN_MAX.0
+    } else if lane_id < VALID_OL_CONNECT1_ID_MIN_MAX.1 {
+        // 7-13
+        7 + (lane_id % VALID_OL_CONNECT1_ID_MIN_MAX.0)
+    } else if lane_id < VALID_OL_CONNECT2_ID_MIN_MAX.1 {
+        // 14-20
+        14 + (lane_id % VALID_OL_CONNECT2_ID_MIN_MAX.0)
+    } else {
+        // 21-27
+        21 + (lane_id % VALID_OL_CONNECT3_ID_MIN_MAX.0)
+    }
+}
+
+// Newtypes for the inner/outer barrel, to avoid comparing lanes from different barrels, with 0 runtime cost
+#[repr(transparent)]
+#[derive(PartialEq, PartialOrd)]
+pub struct IbLane(u8);
+#[repr(transparent)]
+#[derive(PartialEq, PartialOrd)]
+pub struct ObLane(u8);
+
+/// Takes in an IB lane number and a byte slice (data word), returns an ItsDataWordIb if the lane number matches the data word
+pub fn data_word_lane_filter_ib(ib_lane: IbLane, data_word: &[u8]) -> Option<ItsDataWordIb> {
+    let lane_id = data_word[9] & 0x1F;
+    if ib_lane.0 == lane_id {
+        let data_word = ItsDataWordIb::load(&mut data_word.as_ref()).unwrap();
+        Some(data_word)
+    } else {
+        None
+    }
+}
+
+/// Takes in an OB lane number and a byte slice (data word), returns an ItsDataWordOb if the lane number matches the data word
+pub fn data_word_lane_filter_ob(ob_lane_num: ObLane, data_word: &[u8]) -> Option<ItsDataWordOb> {
+    let lane_id = data_word[9] & 0x1F;
+    let lane = ob_lane(ObLane(lane_id));
+    if ob_lane_num.0 == lane {
+        let data_word = ItsDataWordOb::load(&mut data_word.as_ref()).unwrap();
+        Some(data_word)
+    } else {
+        None
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const DATA_WORDS_OB: [u8; 64] = [
+        0xA8, 0x00, 0xC0, 0x01, 0xFE, 0x7F, 0x05, 0xFE, 0x7F, 0x46, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0xA0, 0x00, 0xC0, 0x01, 0xFE, 0x7F, 0x05, 0xFE, 0x7F, 0x48, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0xA0, 0x00, 0xC0, 0x01, 0xFE, 0x7F, 0x05, 0xFE, 0x7F, 0x49, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0xA0, 0x00, 0xC0, 0x01, 0xFE, 0x7F, 0x05, 0xFE, 0x7F, 0x4A, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+    ];
+
+    #[test]
+    fn test_filter_ob_lane_6_found() {
+        let lane = 6;
+        let ob_id_lane6 = 0x46;
+        let data_words: [u8; 64] = DATA_WORDS_OB;
+        let chunks = data_words.chunks_exact(16).collect::<Vec<_>>();
+
+        let first_data_word = chunks.first().unwrap();
+        assert_eq!(first_data_word[9], ob_id_lane6);
+        let data_word = data_word_lane_filter_ob(ObLane(lane), chunks.first().unwrap());
+        assert!(data_word.is_some());
+        match data_word {
+            Some(data_word) => {
+                println!("Data word found: {}", data_word);
+            }
+            None => {
+                println!("No data word found");
+            }
+        }
+    }
+
+    #[test]
+    fn test_filter_ib_lane_2_not_found() {
+        let lane = 6;
+
+        let ob_id_lane6 = 0x46;
+        let data_words: [u8; 64] = DATA_WORDS_OB;
+        let chunks = data_words.chunks_exact(16).collect::<Vec<_>>();
+
+        let first_data_word = chunks.first().unwrap();
+        assert_eq!(first_data_word[9], ob_id_lane6);
+        let data_word = data_word_lane_filter_ib(IbLane(lane), chunks.first().unwrap());
+        assert!(data_word.is_some());
+        match data_word {
+            Some(data_word) => {
+                println!("OB Lane {lane} Data word found: {}", data_word);
+            }
+            None => {
+                println!("No data word found");
+            }
+        }
+    }
 
     #[test]
     fn test_valid_valids() {
@@ -179,7 +310,7 @@ mod tests {
                 dw8: 0,
                 id: i,
             };
-            assert!(dw.lane().0 < 9);
+            assert!(dw.lane() < 9);
         }
     }
 
@@ -202,8 +333,8 @@ mod tests {
             let ib_lane = IbLane(i & 0x1F);
             let ib_lane_get = dw.lane();
             assert!(ib_lane == ib_lane);
-            assert!(ib_lane.0 == ib_lane_get.0);
-            assert!(ib_lane == dw.lane());
+            assert!(ib_lane.0 == ib_lane_get);
+            assert!(ib_lane == IbLane(dw.lane()));
         }
     }
 
@@ -223,7 +354,7 @@ mod tests {
                 dw8: 0,
                 id: i,
             };
-            assert!(dw.lane() < ObLane(7));
+            assert!(dw.lane() < 7);
         }
     }
 
@@ -243,9 +374,9 @@ mod tests {
                 dw8: 0,
                 id: i,
             };
-            println!("{}", dw.lane().0);
-            assert!(dw.lane() > ObLane(7));
-            assert!(dw.lane() < ObLane(15));
+            println!("{}", ObLane(dw.lane()).0);
+            assert!(dw.lane() > 7);
+            assert!(dw.lane() < 15);
         }
     }
 
@@ -265,9 +396,9 @@ mod tests {
                 dw8: 0,
                 id: i,
             };
-            println!("{}", dw.lane().0);
-            assert!(dw.lane() > ObLane(15));
-            assert!(dw.lane() < ObLane(23));
+            println!("{}", dw.lane());
+            assert!(dw.lane() > 15);
+            assert!(dw.lane() < 23);
         }
     }
 
@@ -287,9 +418,9 @@ mod tests {
                 dw8: 0,
                 id: i,
             };
-            println!("{}", dw.lane().0);
-            assert!(dw.lane() > ObLane(23));
-            assert!(dw.lane() < ObLane(31));
+            println!("{}", dw.lane());
+            assert!(dw.lane() > 23);
+            assert!(dw.lane() < 31);
         }
     }
 }
