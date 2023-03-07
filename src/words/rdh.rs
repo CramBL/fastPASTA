@@ -17,6 +17,7 @@ pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display + Sync 
     fn offset_to_next(&self) -> u16;
     fn stop_bit(&self) -> u8;
     fn pages_counter(&self) -> u16;
+    fn data_format(&self) -> u8;
 }
 
 // Newtype pattern used to enforce type safety on fields that are not byte-aligned
@@ -137,20 +138,29 @@ impl RDH for RdhCRUv7 {
         })
     }
 
+    #[inline]
     fn link_id(&self) -> u8 {
         self.link_id
     }
+    #[inline]
     fn payload_size(&self) -> u16 {
         self.memory_size - 64 // 64 bytes are the RDH size. Payload size is the memory size minus the RDH size.
     }
+    #[inline]
     fn offset_to_next(&self) -> u16 {
         self.offset_new_packet
     }
+    #[inline]
     fn stop_bit(&self) -> u8 {
         self.rdh2.stop_bit
     }
+    #[inline]
     fn pages_counter(&self) -> u16 {
         self.rdh2.pages_counter
+    }
+    #[inline]
+    fn data_format(&self) -> u8 {
+        self.data_format()
     }
 }
 impl ByteSlice for RdhCRUv7 {
@@ -297,6 +307,10 @@ impl RDH for RdhCRUv6 {
 
     fn pages_counter(&self) -> u16 {
         self.rdh2.pages_counter
+    }
+
+    fn data_format(&self) -> u8 {
+        0
     }
 }
 

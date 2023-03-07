@@ -170,7 +170,12 @@ pub mod validate {
             do_rdh_checks(rdh, rdh_running, stats_sender_ch_checker);
             tmp_mem_pos_tracker += 512;
             payload_running.set_current_rdh(rdh, tmp_mem_pos_tracker);
-            do_payload_checks(payload, payload_running, stats_sender_ch_checker);
+            do_payload_checks(
+                payload,
+                rdh.data_format(),
+                payload_running,
+                stats_sender_ch_checker,
+            );
             tmp_mem_pos_tracker += payload.len() as u64 * 8;
         }
     }
@@ -187,10 +192,11 @@ pub mod validate {
     #[inline]
     fn do_payload_checks<T: RDH>(
         payload: &[u8],
+        dataformat: u8,
         payload_running: &mut CdpRunningValidator<T>,
         stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
     ) {
-        match preprocess_payload(payload) {
+        match preprocess_payload(payload, dataformat) {
             Ok(gbt_word_chunks) => gbt_word_chunks.for_each(|gbt_word| {
                 payload_running.check(&gbt_word[..10]); // Take 10 bytes as flavor 0 would have additional 6 bytes of padding
             }),
@@ -216,7 +222,10 @@ pub mod validate {
     }
 
     #[inline]
-    fn preprocess_payload(payload: &[u8]) -> Result<impl Iterator<Item = &[u8]>, String> {
+    fn preprocess_payload(
+        payload: &[u8],
+        dataformat: u8,
+    ) -> Result<impl Iterator<Item = &[u8]>, String> {
         // Retrieve end of payload padding from payload
         let ff_padding = payload
             .iter()
@@ -232,7 +241,7 @@ pub mod validate {
 
         // Determine if padding is flavor 0 (6 bytes of 0x00 padding following GBT words) or flavor 1 (no padding)
         // Using an iterator approach instead of indexing also supports the case where the payload is smaller than 16 bytes or even empty
-        let ul_flavor = if payload
+        let detected_data_format = if payload
             .iter() // Create an iterator over the payload
             .take(16) // Take the first 16 bytes
             .rev() // Now reverse the iterator
@@ -240,18 +249,19 @@ pub mod validate {
             .count() // Count them and check if they are equal to 6
             == 6
         {
-            log::trace!("UL Flavor 0 detected");
+            log::trace!("Data format 0 detected");
             0
         } else {
-            log::trace!("UL Flavor 1 detected");
-            1
+            log::trace!("Data format 2 detected");
+            2
         };
 
         // Split payload into GBT words sized slices, using chunks_exact to allow more compiler optimizations
-        let gbt_word_chunks = if ul_flavor == 0 {
+        let gbt_word_chunks = if detected_data_format == 0 {
             // If flavor 0, dividing into 16 byte chunks should cut the payload up with no remainder
             let chunks = payload.chunks_exact(16);
             debug_assert!(chunks.remainder().is_empty());
+            debug_assert!(dataformat == 0);
             chunks
         }
         // If flavor 1, and the padding is more than 9 bytes, padding will be processed as a GBT word, therefor exclude it from the slice
@@ -260,11 +270,13 @@ pub mod validate {
             let last_idx_before_padding = payload.len() - ff_padding.len();
             let chunks = payload[..last_idx_before_padding].chunks_exact(10);
             debug_assert!(chunks.remainder().is_empty());
+            debug_assert!(dataformat == 2);
             chunks
         } else {
             // Simply divide into 10 byte chunks and assert that the remainder is padding bytes
             let chunks = payload.chunks_exact(10);
             debug_assert!(chunks.remainder().iter().all(|&x| x == 0xFF)); // Asserts that the payload padding is 0xFF
+            debug_assert!(dataformat == 2);
             chunks
         };
 

@@ -58,7 +58,6 @@ rust-latest:
   image: rust:latest
   script:
     - cargo build --verbose
-    - cargo test --verbose
   artifacts:
     name: "debug_${CI_COMMIT_SHA}"
     paths:
@@ -72,6 +71,36 @@ rust-nightly:
     - cargo build --verbose
     - cargo test --verbose
   allow_failure: true
+
+test-coverage:
+  image: rust:latest
+  stage: build-and-test
+  variables:
+    RUSTFLAGS: "-C instrument-coverage"
+    LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
+  script:
+    - rustup component add llvm-tools-preview
+    - cargo build
+    - cargo test
+    - cargo install grcov
+    # Generate HTML report which is available as an artifact
+    - grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing --ignore "*cargo*" -o ./coverage/
+    # Generate file for Gitlab coverage parsing (through the summary)
+    - grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "*cargo*" -o coverage.lcov
+    # directly generate cobertura file
+    - grcov . --binary-path ./target/debug/ -s . -t cobertura --branch --ignore-not-existing --ignore "*cargo*" -o coverage.xml
+    # Output coverage for Gitlab parser (uses regex in coverage key)
+    - apt-get update && apt-get install -y lcov
+    - lcov --summary coverage.lcov
+  coverage: /lines\.*:\s*([\d\.]+%)/
+  artifacts:
+    paths:
+      - 'coverage'
+    expire_in: 3 mos
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
 
 ## For release build
 build-release-latest:

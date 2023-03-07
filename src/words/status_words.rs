@@ -13,7 +13,7 @@ pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display 
     fn is_reserved_0(&self) -> bool;
 }
 
-// Helper to display all the status words in a similar way, without dynamic dispatch
+/// Helper to display all the status words in a similar way, without dynamic dispatch
 #[inline]
 fn display_byte_slice<T: StatusWord>(
     status_word: &T,

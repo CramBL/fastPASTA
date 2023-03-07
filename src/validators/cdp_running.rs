@@ -4,7 +4,6 @@ use crate::{
     util::stats::StatType,
     validators::status_words::STATUS_WORD_SANITY_CHECKER,
     words::{
-        rdh::RdhCRUv7,
         rdh::RDH,
         status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt},
     },
@@ -113,7 +112,7 @@ impl<T: RDH> CdpRunningValidator<T> {
         self.sm = CDP_PAYLOAD_FSM_Continuous::Machine::new(IHW_).as_enum();
     }
 
-    pub fn set_current_rdh(&mut self, rdh: &RdhCRUv7, payload_mem_pos: u64) {
+    pub fn set_current_rdh(&mut self, rdh: &T, payload_mem_pos: u64) {
         self.current_rdh = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
         self.gbt_word_counter = 0;
         self.payload_mem_pos = payload_mem_pos;
