@@ -58,11 +58,13 @@ rust-latest:
   image: rust:latest
   script:
     - cargo build --verbose
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
   artifacts:
     name: "debug_${CI_COMMIT_SHA}"
     paths:
     - ./target
-    expire_in: 3 mos
+    expire_in: 1 mos
 
 rust-nightly:
   stage: build-and-test
