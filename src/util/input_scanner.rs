@@ -1,11 +1,10 @@
-use std::io::Read;
-
-use crate::words::rdh::{Rdh0, RDH};
-
 use super::{
     bufreader_wrapper::BufferedReaderWrapper, config::Opt, mem_pos_tracker::MemPosTracker,
 };
+use crate::words::rdh::{Rdh0, RDH};
+use std::io::Read;
 
+/// Trait for a scanner that reads CDPs from a file or stdin
 pub trait ScanCDP {
     fn load_rdh_cru<T: RDH>(&mut self) -> Result<T, std::io::Error>;
 
@@ -19,9 +18,10 @@ pub trait ScanCDP {
 
     fn load_next_rdh_to_filter<T: RDH>(&mut self) -> Result<T, std::io::Error>;
 }
-/// Allows reading an RDH from a file
-/// Optionally, the RDH can be filtered by link ID
-/// # Example
+
+/// Scans data received through a BufferedReaderWrapper, tracks the position in memory and sends stats to the stats controller
+/// Uses the config to filter for user specified links
+/// Implements ScanCDP for a BufferedReaderWrapper
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     pub reader: Box<R>,
     pub tracker: MemPosTracker,
