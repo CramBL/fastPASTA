@@ -10,11 +10,11 @@ pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display + Sync 
         Self: Sized;
     fn load_from_rdh0<T: std::io::Read>(reader: &mut T, rdh0: Rdh0)
         -> Result<Self, std::io::Error>;
-    fn get_link_id(&self) -> u8;
+    fn link_id(&self) -> u8;
     /// Returns the size of the payload in bytes
     /// This is EXCLUDING the size of the RDH
-    fn get_payload_size(&self) -> u16;
-    fn get_offset_to_next(&self) -> u16;
+    fn payload_size(&self) -> u16;
+    fn offset_to_next(&self) -> u16;
 }
 
 // Newtype pattern used to enforce type safety on fields that are not byte-aligned
@@ -135,13 +135,13 @@ impl RDH for RdhCRUv7 {
         })
     }
 
-    fn get_link_id(&self) -> u8 {
+    fn link_id(&self) -> u8 {
         self.link_id
     }
-    fn get_payload_size(&self) -> u16 {
+    fn payload_size(&self) -> u16 {
         self.memory_size - 64 // 64 bytes are the RDH size. Payload size is the memory size minus the RDH size.
     }
-    fn get_offset_to_next(&self) -> u16 {
+    fn offset_to_next(&self) -> u16 {
         self.offset_new_packet
     }
 }
@@ -273,13 +273,13 @@ impl RDH for RdhCRUv6 {
             reserved2,
         })
     }
-    fn get_link_id(&self) -> u8 {
+    fn link_id(&self) -> u8 {
         self.link_id
     }
-    fn get_payload_size(&self) -> u16 {
+    fn payload_size(&self) -> u16 {
         self.memory_size - 64 // 64 bytes are the RDH size. Payload size is the memory size minus the RDH size.
     }
-    fn get_offset_to_next(&self) -> u16 {
+    fn offset_to_next(&self) -> u16 {
         self.offset_new_packet
     }
 }
