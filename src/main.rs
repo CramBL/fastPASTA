@@ -6,7 +6,7 @@ use fastpasta::util::config::Opt;
 
 use fastpasta::util::input_scanner::InputScanner;
 use fastpasta::util::process_v7;
-use fastpasta::util::stats::{self};
+use fastpasta::util::stats_controller;
 use fastpasta::words::rdh::{Rdh0, RdhCRUv6};
 use fastpasta::{init_stats_controller, GbtWord};
 use log::trace;
@@ -80,7 +80,7 @@ pub fn main() {
 pub fn process_rdh_v7(
     config: Arc<Opt>,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
-    send_stats_ch: std::sync::mpsc::Sender<stats::StatType>,
+    send_stats_ch: std::sync::mpsc::Sender<stats_controller::StatType>,
     thread_stopper: Arc<AtomicBool>,
 ) -> io::Result<()> {
     // 1. Read data from file
@@ -118,7 +118,7 @@ pub fn process_rdh_v7(
 pub fn process_rdh_v6(
     config: Arc<Opt>,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized>,
-    send_stats_ch: std::sync::mpsc::Sender<stats::StatType>,
+    send_stats_ch: std::sync::mpsc::Sender<stats_controller::StatType>,
     thread_stopper: Arc<AtomicBool>,
 ) -> io::Result<()> {
     todo!("RDH v6 not implemented yet");

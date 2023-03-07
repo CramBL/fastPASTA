@@ -35,7 +35,7 @@ pub(crate) struct DataformatReserved(pub(crate) u64); // 8 bit data_format, 56 b
 pub(crate) struct FeeId(pub(crate) u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
 
 #[repr(packed)]
-pub struct RdhCRUv7 {
+pub struct RdhStatsController {
     pub rdh0: Rdh0,
     pub offset_new_packet: u16,
     pub memory_size: u16,
@@ -49,7 +49,7 @@ pub struct RdhCRUv7 {
     pub rdh3: Rdh3,
     pub reserved2: u64,
 }
-impl RdhCRUv7 {
+impl RdhStatsController {
     pub fn cru_id(&self) -> u16 {
         // Get the cru_id present in the 12 LSB
         self.cruid_dw.0 & 0x0FFF
@@ -68,7 +68,7 @@ impl RdhCRUv7 {
     }
 }
 
-impl Display for RdhCRUv7 {
+impl Display for RdhStatsController {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop";
         let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit";
@@ -90,8 +90,8 @@ impl Display for RdhCRUv7 {
     }
 }
 
-impl RDH for RdhCRUv7 {
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<RdhCRUv7, std::io::Error> {
+impl RDH for RdhStatsController {
+    fn load<T: std::io::Read>(reader: &mut T) -> Result<RdhStatsController, std::io::Error> {
         let rdh0 = match Rdh0::load(reader) {
             Ok(rdh0) => rdh0,
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
@@ -122,7 +122,7 @@ impl RDH for RdhCRUv7 {
         let rdh3 = Rdh3::load(reader).expect("Error while loading Rdh3");
         let reserved2 = reader.read_u64::<LittleEndian>().unwrap();
         // Finally return the RdhCRU
-        Ok(RdhCRUv7 {
+        Ok(RdhStatsController {
             rdh0,
             offset_new_packet,
             memory_size,
@@ -163,13 +163,13 @@ impl RDH for RdhCRUv7 {
         self.data_format()
     }
 }
-impl ByteSlice for RdhCRUv7 {
+impl ByteSlice for RdhStatsController {
     fn to_byte_slice(&self) -> &[u8] {
         unsafe { crate::any_as_u8_slice(self) }
     }
 }
 
-impl Debug for RdhCRUv7 {
+impl Debug for RdhStatsController {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let tmp_rdh0 = &self.rdh0;
         let tmp_offset_new_packet = self.offset_new_packet;
@@ -186,11 +186,11 @@ impl Debug for RdhCRUv7 {
         let tmp_rdh3 = &self.rdh3;
         let tmp_reserved2 = self.reserved2;
 
-        write!(f, "RdhCRUv7: rdh0: {tmp_rdh0:?}, offset_new_packet: {tmp_offset_new_packet:x?}, memory_size: {tmp_memory_size:x?}, link_id: {tmp_link_id:x?}, packet_counter: {tmp_packet_counter:x?}, cruid: {tmp_cruid:x?}, dw: {tmp_dw:x?}, rdh1: {tmp_rdh1:?}, data_format: {tmp_data_format:x?}, reserved0: {tmp_reserved0:x?}, rdh2: {tmp_rdh2:?}, reserved1: {tmp_reserved1:x?}, rdh3: {tmp_rdh3:?}, reserved2: {tmp_reserved2:x?}")
+        write!(f, "RdhStatsController: rdh0: {tmp_rdh0:?}, offset_new_packet: {tmp_offset_new_packet:x?}, memory_size: {tmp_memory_size:x?}, link_id: {tmp_link_id:x?}, packet_counter: {tmp_packet_counter:x?}, cruid: {tmp_cruid:x?}, dw: {tmp_dw:x?}, rdh1: {tmp_rdh1:?}, data_format: {tmp_data_format:x?}, reserved0: {tmp_reserved0:x?}, rdh2: {tmp_rdh2:?}, reserved1: {tmp_reserved1:x?}, rdh3: {tmp_rdh3:?}, reserved2: {tmp_reserved2:x?}")
     }
 }
 
-impl PartialEq for RdhCRUv7 {
+impl PartialEq for RdhStatsController {
     fn eq(&self, other: &Self) -> bool {
         self.rdh0 == other.rdh0
             && self.offset_new_packet == other.offset_new_packet
@@ -336,7 +336,7 @@ impl Debug for RdhCRUv6 {
         let tmp_rdh3 = &self.rdh3;
         let tmp_reserved2 = self.reserved2;
 
-        write!(f, "RdhCRUv7: rdh0: {tmp_rdh0:?}, offset_new_packet: {tmp_offset_new_packet:x?}, memory_size: {tmp_memory_size:x?}, link_id: {tmp_link_id:x?}, packet_counter: {tmp_packet_counter:x?}, cruid: {tmp_cruid:x?}, dw: {tmp_dw:x?}, rdh1: {tmp_rdh1:?}, reserved0: {tmp_reserved0:x?}, rdh2: {tmp_rdh2:?}, reserved1: {tmp_reserved1:x?}, rdh3: {tmp_rdh3:?}, reserved2: {tmp_reserved2:x?}")
+        write!(f, "RdhStatsController: rdh0: {tmp_rdh0:?}, offset_new_packet: {tmp_offset_new_packet:x?}, memory_size: {tmp_memory_size:x?}, link_id: {tmp_link_id:x?}, packet_counter: {tmp_packet_counter:x?}, cruid: {tmp_cruid:x?}, dw: {tmp_dw:x?}, rdh1: {tmp_rdh1:?}, reserved0: {tmp_reserved0:x?}, rdh2: {tmp_rdh2:?}, reserved1: {tmp_reserved1:x?}, rdh3: {tmp_rdh3:?}, reserved2: {tmp_reserved2:x?}")
     }
 }
 
@@ -637,7 +637,7 @@ mod tests {
         // read it back
         // assert that they are equal
         let filename = "test_files/test_rdhcruv7.raw";
-        let correct_rdh_cru = RdhCRUv7 {
+        let correct_rdh_cru = RdhStatsController {
             rdh0: Rdh0 {
                 header_id: 0x7,
                 header_size: 0x40,
@@ -683,8 +683,9 @@ mod tests {
             .open(&filepath)
             .expect("File not found");
         let mut buf_reader = BufReader::new(file);
-        let rdh_cru = RdhCRUv7::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
-        //let rdh_cru_binrw = RdhCRUv7::read(&mut buf_reader).expect("Failed to load RdhCRUv7");
+        let rdh_cru =
+            RdhStatsController::load(&mut buf_reader).expect("Failed to load RdhStatsController");
+        //let rdh_cru_binrw = RdhStatsController::read(&mut buf_reader).expect("Failed to load RdhStatsController");
         // Assert that the two methods are equal
         assert_eq!(rdh_cru, correct_rdh_cru);
         //assert_eq!(rdh_cru_binrw, correct_rdh_cru);
@@ -759,7 +760,7 @@ mod tests {
     fn test_load_rdhcruv7_from_byte_slice() {
         // Create an instace of an RDH-CRU v7
         // byte slice values taken from a valid rdh from real data
-        let rdhcruv7 = RdhCRUv7::load(
+        let rdhcruv7 = RdhStatsController::load(
             &mut &[
                 0x07, 0x40, 0x2a, 0x50, 0x00, 0x20, 0x00, 0x00, 0xe0, 0x13, 0xe0, 0x13, 0x00, 0x00,
                 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x75, 0xd5, 0x7d, 0x0b, 0x02, 0x00, 0x00, 0x00,
@@ -772,7 +773,7 @@ mod tests {
         // Check that the fields are correct
         println!("{rdhcruv7:#?}");
 
-        let rdh_from_old = RdhCRUv7::load(&mut &rdhcruv7.to_byte_slice()[..]).unwrap();
+        let rdh_from_old = RdhStatsController::load(&mut &rdhcruv7.to_byte_slice()[..]).unwrap();
         println!("{rdh_from_old}");
         assert_eq!(rdhcruv7, rdh_from_old);
     }

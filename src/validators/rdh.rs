@@ -1,4 +1,4 @@
-use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3, RdhCRUv6, RdhCRUv7};
+use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3, RdhCRUv6, RdhStatsController};
 use std::fmt;
 use std::fmt::Write as _;
 
@@ -305,7 +305,7 @@ pub struct RdhCruv7Validator {
 
 impl RdhCruv7Validator {
     #[inline]
-    pub fn sanity_check(&self, rdh: &RdhCRUv7) -> Result<(), GbtError> {
+    pub fn sanity_check(&self, rdh: &RdhStatsController) -> Result<(), GbtError> {
         let mut err_str = String::from("RDH v7 sanity check failed: ");
         let mut err_cnt: u8 = 0;
         let mut rdh_errors: Vec<String> = vec![];
@@ -497,7 +497,7 @@ impl RdhCruv7RunningChecker {
         }
     }
     #[inline]
-    pub fn check(&mut self, rdh: &RdhCRUv7) -> Result<(), GbtError> {
+    pub fn check(&mut self, rdh: &RdhStatsController) -> Result<(), GbtError> {
         let mut err_str = String::from("RDH v7 running check failed: ");
         let mut rdh_errors: Vec<String> = vec![];
         let mut err_cnt: u8 = 0;
@@ -825,7 +825,7 @@ mod tests {
 
     // RDH-CRU v7 sanity check
     // Data for use in tests:
-    const CORRECT_RDH_CRU: RdhCRUv7 = RdhCRUv7 {
+    const CORRECT_RDH_CRU: RdhStatsController = RdhStatsController {
         rdh0: Rdh0 {
             header_id: 0x7,
             header_size: 0x40,

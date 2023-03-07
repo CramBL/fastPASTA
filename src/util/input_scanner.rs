@@ -25,7 +25,7 @@ pub trait ScanCDP {
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     pub reader: Box<R>,
     pub tracker: MemPosTracker,
-    pub stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
+    pub stats_controller_sender_ch: std::sync::mpsc::Sender<super::stats_controller::StatType>,
     pub link_to_filter: Option<Vec<u8>>,
     unique_links_observed: Vec<u8>,
     initial_rdh0: Option<Rdh0>,
@@ -36,12 +36,12 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         config: std::sync::Arc<Opt>,
         reader: Box<R>,
         tracker: MemPosTracker,
-        stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
+        stats_controller_sender_ch: std::sync::mpsc::Sender<super::stats_controller::StatType>,
     ) -> Self {
         InputScanner {
             reader,
             tracker,
-            stats_sender_ch,
+            stats_controller_sender_ch,
             link_to_filter: config.filter_link(),
             unique_links_observed: vec![],
             initial_rdh0: None,
@@ -51,13 +51,13 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         config: std::sync::Arc<Opt>,
         reader: Box<R>,
         tracker: MemPosTracker,
-        stats_sender_ch: std::sync::mpsc::Sender<super::stats::StatType>,
+        stats_controller_sender_ch: std::sync::mpsc::Sender<super::stats_controller::StatType>,
         rdh0: Rdh0,
     ) -> Self {
         InputScanner {
             reader,
             tracker,
-            stats_sender_ch,
+            stats_controller_sender_ch,
             link_to_filter: config.filter_link(),
             unique_links_observed: vec![],
             initial_rdh0: Some(rdh0),
@@ -83,20 +83,22 @@ where
         };
 
         let current_link_id = rdh.link_id();
-        self.stats_sender_ch
-            .send(super::stats::StatType::RDHsSeen(1))
+        self.stats_controller_sender_ch
+            .send(super::stats_controller::StatType::RDHsSeen(1))
             .unwrap();
         if !self.unique_links_observed.contains(&current_link_id) {
             self.unique_links_observed.push(current_link_id);
-            self.stats_sender_ch
-                .send(super::stats::StatType::LinksObserved(current_link_id))
+            self.stats_controller_sender_ch
+                .send(super::stats_controller::StatType::LinksObserved(
+                    current_link_id,
+                ))
                 .unwrap();
         }
 
         if let Some(x) = self.link_to_filter.as_ref() {
             if x.contains(&current_link_id) {
-                self.stats_sender_ch
-                    .send(super::stats::StatType::RDHsFiltered(1))
+                self.stats_controller_sender_ch
+                    .send(super::stats_controller::StatType::RDHsFiltered(1))
                     .unwrap();
                 // no jump. current pos -> start of payload
                 Ok(rdh)
@@ -118,8 +120,10 @@ where
         let mut payload = vec![0; payload_size];
         Read::read_exact(&mut self.reader, &mut payload)?;
         debug_assert!(payload.len() == payload_size);
-        self.stats_sender_ch
-            .send(super::stats::StatType::PayloadSize(payload_size as u32))
+        self.stats_controller_sender_ch
+            .send(super::stats_controller::StatType::PayloadSize(
+                payload_size as u32,
+            ))
             .unwrap();
         Ok(payload)
     }
@@ -142,13 +146,15 @@ where
         loop {
             let rdh: T = RDH::load(&mut self.reader)?;
             let current_link_id = rdh.link_id();
-            self.stats_sender_ch
-                .send(super::stats::StatType::RDHsSeen(1))
+            self.stats_controller_sender_ch
+                .send(super::stats_controller::StatType::RDHsSeen(1))
                 .unwrap();
             if !self.unique_links_observed.contains(&current_link_id) {
                 self.unique_links_observed.push(current_link_id);
-                self.stats_sender_ch
-                    .send(super::stats::StatType::LinksObserved(current_link_id))
+                self.stats_controller_sender_ch
+                    .send(super::stats_controller::StatType::LinksObserved(
+                        current_link_id,
+                    ))
                     .unwrap();
             }
             if links_to_filter.contains(&current_link_id) {
@@ -162,8 +168,8 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        util::stats::{self, Stats},
-        words::rdh::RdhCRUv7,
+        util::stats_controller::{self, Stats},
+        words::rdh::RdhStatsController,
     };
 
     use super::*;
@@ -180,16 +186,17 @@ mod tests {
         ]);
         println!("{config:#?}");
 
-        let (send_stats_channel, recv_stats_channel): (
-            std::sync::mpsc::Sender<stats::StatType>,
-            std::sync::mpsc::Receiver<stats::StatType>,
+        let (send_stats_controller_channel, recv_stats_controller_channel): (
+            std::sync::mpsc::Sender<stats_controller::StatType>,
+            std::sync::mpsc::Receiver<stats_controller::StatType>,
         ) = std::sync::mpsc::channel();
 
         let thread_stopper = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
-        let mut stats = Stats::new(&config, recv_stats_channel, thread_stopper);
-        let stats_thread = std::thread::spawn(move || {
-            stats.run();
+        let mut stats_controller =
+            Stats::new(&config, recv_stats_controller_channel, thread_stopper);
+        let stats_controller_thread = std::thread::spawn(move || {
+            stats_controller.run();
         });
         let cfg = std::sync::Arc::new(config);
         let reader = std::fs::OpenOptions::new()
@@ -202,13 +209,13 @@ mod tests {
             cfg,
             Box::new(bufreader),
             MemPosTracker::new(),
-            send_stats_channel,
+            send_stats_controller_channel,
         );
 
-        let mut link0_rdh_data: Vec<RdhCRUv7> = vec![];
+        let mut link0_rdh_data: Vec<RdhStatsController> = vec![];
         let mut link0_payload_data: Vec<Vec<u8>> = vec![];
 
-        let tmp_rdh: RdhCRUv7 = scanner.load_rdh_cru().unwrap();
+        let tmp_rdh: RdhStatsController = scanner.load_rdh_cru().unwrap();
         link0_payload_data.push(
             scanner
                 .load_payload_raw(tmp_rdh.payload_size() as usize)
@@ -232,7 +239,7 @@ mod tests {
         }
 
         let mut loop_count = 0;
-        while let Ok(rdh) = scanner.load_rdh_cru::<RdhCRUv7>() {
+        while let Ok(rdh) = scanner.load_rdh_cru::<RdhStatsController>() {
             println!("{rdh}");
             loop_count += 1;
             print!("{loop_count} ");
@@ -261,6 +268,6 @@ mod tests {
             println!("{rdh}");
         });
 
-        stats_thread.join().unwrap();
+        stats_controller_thread.join().unwrap();
     }
 }

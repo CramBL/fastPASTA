@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)] // An exception to the Rust naming convention, for the state machine macro types
 
 use crate::{
-    util::stats::StatType,
+    util::stats_controller::StatType,
     validators::status_words::STATUS_WORD_SANITY_CHECKER,
     words::{
         rdh::RDH,
@@ -373,7 +373,7 @@ mod tests {
     use crate::words::rdh::*;
     // RDH-CRU v7 sanity check
     // Data for use in tests:
-    const CORRECT_RDH_CRU: RdhCRUv7 = RdhCRUv7 {
+    const CORRECT_RDH_CRU: RdhStatsController = RdhStatsController {
         rdh0: Rdh0 {
             header_id: 0x7,
             header_size: 0x40,
@@ -416,7 +416,7 @@ mod tests {
         ];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
+        let mut validator = CdpRunningValidator::<RdhStatsController>::new(send);
         let payload_mem_pos = 512;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU, payload_mem_pos);
@@ -434,7 +434,7 @@ mod tests {
         ];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
+        let mut validator = CdpRunningValidator::<RdhStatsController>::new(send);
         let payload_mem_pos = 512;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU, payload_mem_pos);
@@ -459,7 +459,7 @@ mod tests {
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
+        let mut validator = CdpRunningValidator::<RdhStatsController>::new(send);
         let payload_mem_pos = 512;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU, payload_mem_pos);

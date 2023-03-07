@@ -1,4 +1,4 @@
-type V7 = crate::words::rdh::RdhCRUv7;
+type V7 = crate::words::rdh::RdhStatsController;
 type Payload = Vec<Vec<u8>>;
 type Cdp = (Vec<V7>, Payload);
 use crossbeam_channel::{bounded, Receiver};
@@ -75,10 +75,10 @@ pub mod validate {
     use super::*;
 
     use crate::util::config::Opt;
-    use crate::util::stats::StatType;
+    use crate::util::stats_controller::StatType;
     use crate::validators::cdp_running::CdpRunningValidator;
     use crate::validators::rdh::RdhCruv7RunningChecker;
-    use crate::words::rdh::{RdhCRUv7, RDH};
+    use crate::words::rdh::{RdhStatsController, RDH};
     use crossbeam_channel::{bounded, Receiver, RecvError};
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{mpsc, Arc};
@@ -158,11 +158,11 @@ pub mod validate {
 
     #[inline]
     fn do_checks_v7(
-        rdh_slices: &[RdhCRUv7],
+        rdh_slices: &[RdhStatsController],
         payload_slices: &[Vec<u8>],
         stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
         rdh_running: &mut RdhCruv7RunningChecker,
-        payload_running: &mut CdpRunningValidator<RdhCRUv7>,
+        payload_running: &mut CdpRunningValidator<RdhStatsController>,
         current_mem_pos: u64,
     ) {
         let mut tmp_mem_pos_tracker = current_mem_pos;
