@@ -10,15 +10,16 @@ pub enum DataOutputMode {
 #[structopt(
     name = "fastPASTA - fast Protocol Analysis Scanning Tool for ALICE",
     about = "\n\
-Usage flow:
-[INPUT] -> [FILTER] -> [VALIDATE] -> [OUTPUT]
-              ^^^         ^^^
-            Optional    Optional
+Usage flow:  [INPUT] -> [FILTER] -> [VALIDATE] -> [OUTPUT]
+                          ^^^          ^^^          ^^^
+                        Optional     Optional     Optional
 Examples:
-1. Read from file, filter by link 0, validate, output to file
-    $ ./fastpasta input.raw --filter-link 0 --sanity-checks -o output.raw
-2. Read from stdin, filter link 3 & 4, pipe to validation (prints errors to stderr)
-    $ cat input.raw | ./fastpasta --filter-link 3 4 | ./fastpasta --sanity-checks"
+    1. Read from file -> filter by link 0 -> validate -> output to file
+        $ ./fastpasta input.raw --filter-link 0 --sanity-checks -o output.raw
+    2. Read decompressed data from stdin -> filter link 3 & 4 -> pipe to validation checks
+        $ lz4 -d input.raw | ./fastpasta --filter-link 3 4 | ./fastpasta --sanity-checks
+                ^^^^                   ^^^^                           ^^^^
+                INPUT     ->          FILTER              ->         VALIDATE"
 )]
 pub struct Opt {
     /// Input file (default: stdin)
