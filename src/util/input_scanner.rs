@@ -13,7 +13,7 @@ pub trait ScanCDP {
 
     fn load_cdp<T: RDH>(&mut self) -> Result<(T, Vec<u8>), std::io::Error> {
         let rdh: T = self.load_rdh_cru()?;
-        let payload = self.load_payload_raw(rdh.get_payload_size() as usize)?;
+        let payload = self.load_payload_raw(rdh.payload_size() as usize)?;
         Ok((rdh, payload))
     }
 
@@ -82,7 +82,7 @@ where
             false => RDH::load(&mut self.reader)?,
         };
 
-        let current_link_id = rdh.get_link_id();
+        let current_link_id = rdh.link_id();
         self.stats_sender_ch
             .send(super::stats::StatType::RDHsSeen(1))
             .unwrap();
@@ -103,7 +103,7 @@ where
             } else {
                 // Set tracker to jump to next RDH and try until we find a matching link or EOF
                 self.reader
-                    .seek_relative(self.tracker.next(rdh.get_offset_to_next() as u64))?;
+                    .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
                 self.load_next_rdh_to_filter()
             }
         } else {
@@ -127,13 +127,13 @@ where
     #[inline]
     fn load_cdp<T: RDH>(&mut self) -> Result<(T, Vec<u8>), std::io::Error> {
         let rdh: T = self.load_rdh_cru()?;
-        self.tracker.memory_address_bytes += rdh.get_offset_to_next() as u64;
+        self.tracker.memory_address_bytes += rdh.offset_to_next() as u64;
         // log::trace!(
         //     "Current memory offset: {}, rdh memory offset: {}",
         //     self.tracker.memory_address_bytes,
-        //     rdh.get_offset_to_next()
+        //     rdh.offset_to_next()
         // );
-        let payload = self.load_payload_raw(rdh.get_payload_size() as usize)?;
+        let payload = self.load_payload_raw(rdh.payload_size() as usize)?;
         Ok((rdh, payload))
     }
 
@@ -141,7 +141,7 @@ where
         let links_to_filter = self.link_to_filter.as_ref().unwrap();
         loop {
             let rdh: T = RDH::load(&mut self.reader)?;
-            let current_link_id = rdh.get_link_id();
+            let current_link_id = rdh.link_id();
             self.stats_sender_ch
                 .send(super::stats::StatType::RDHsSeen(1))
                 .unwrap();
@@ -155,7 +155,7 @@ where
                 return Ok(rdh);
             }
             self.reader
-                .seek_relative(self.tracker.next(rdh.get_offset_to_next() as u64))?;
+                .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
         }
     }
 }
@@ -211,7 +211,7 @@ mod tests {
         let tmp_rdh: RdhCRUv7 = scanner.load_rdh_cru().unwrap();
         link0_payload_data.push(
             scanner
-                .load_payload_raw(tmp_rdh.get_payload_size() as usize)
+                .load_payload_raw(tmp_rdh.payload_size() as usize)
                 .unwrap(),
         );
         link0_rdh_data.push(tmp_rdh);
@@ -238,7 +238,7 @@ mod tests {
             print!("{loop_count} ");
             link0_payload_data.push(
                 scanner
-                    .load_payload_raw(rdh.get_payload_size() as usize)
+                    .load_payload_raw(rdh.payload_size() as usize)
                     .unwrap(),
             );
             link0_rdh_data.push(rdh);

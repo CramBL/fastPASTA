@@ -82,9 +82,9 @@ enum StatusWordKind<'a> {
     Ddw0(&'a [u8]),
 }
 
-pub struct CdpRunningValidator {
+pub struct CdpRunningValidator<T: RDH> {
     sm: CDP_PAYLOAD_FSM_Continuous::Variant,
-    current_rdh: Option<RdhCRUv7>,
+    current_rdh: Option<T>,
     current_ihw: Option<Ihw>,
     current_tdh: Option<Tdh>,
     current_tdt: Option<Tdt>,
@@ -93,7 +93,7 @@ pub struct CdpRunningValidator {
     stats_send_ch: std::sync::mpsc::Sender<StatType>,
     payload_mem_pos: u64,
 }
-impl CdpRunningValidator {
+impl<T: RDH> CdpRunningValidator<T> {
     pub fn new(stats_send_ch: std::sync::mpsc::Sender<StatType>) -> Self {
         Self {
             sm: CDP_PAYLOAD_FSM_Continuous::Machine::new(IHW_).as_enum(),
@@ -114,7 +114,7 @@ impl CdpRunningValidator {
     }
 
     pub fn set_current_rdh(&mut self, rdh: &RdhCRUv7, payload_mem_pos: u64) {
-        self.current_rdh = Some(RdhCRUv7::load(&mut rdh.to_byte_slice()).unwrap());
+        self.current_rdh = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
         self.gbt_word_counter = 0;
         self.payload_mem_pos = payload_mem_pos;
     }
@@ -130,8 +130,8 @@ impl CdpRunningValidator {
 
         let nxt_st = match current_st {
             InitialIHW_(m) => {
-                debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.stop_bit == 0);
-                debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.pages_counter == 0);
+                debug_assert!(self.current_rdh.as_ref().unwrap().stop_bit() == 0);
+                debug_assert!(self.current_rdh.as_ref().unwrap().pages_counter() == 0);
                 self.process_status_word(StatusWordKind::Ihw(gbt_word));
                 m.transition(_WasIhw).as_enum()
             }
@@ -267,8 +267,8 @@ impl CdpRunningValidator {
                 }
             }
             IHW_By_WasDdw0(m) => {
-                debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.stop_bit == 0);
-                debug_assert!(self.current_rdh.as_ref().unwrap().rdh2.pages_counter == 0);
+                debug_assert!(self.current_rdh.as_ref().unwrap().stop_bit() == 0);
+                debug_assert!(self.current_rdh.as_ref().unwrap().pages_counter() == 0);
                 self.process_status_word(StatusWordKind::Ihw(gbt_word));
 
                 m.transition(_WasIhw).as_enum()
@@ -332,7 +332,7 @@ impl CdpRunningValidator {
                         .unwrap();
                     debug!("DDW0: {ddw0}");
                 }
-                if self.current_rdh.as_ref().unwrap().rdh2.stop_bit != 1 {
+                if self.current_rdh.as_ref().unwrap().stop_bit() != 1 {
                     let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
                     self.stats_send_ch
                         .send(StatType::Error(format!(
@@ -341,7 +341,7 @@ impl CdpRunningValidator {
                         .unwrap();
                     debug!("DDW0: {:X?}", ddw0.to_byte_slice());
                 }
-                if self.current_rdh.as_ref().unwrap().rdh2.pages_counter == 0 {
+                if self.current_rdh.as_ref().unwrap().pages_counter() == 0 {
                     let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
                     self.stats_send_ch
                         .send(StatType::Error(format!(
@@ -417,7 +417,7 @@ mod tests {
         ];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::new(send);
+        let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
         let payload_mem_pos = 512;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU, payload_mem_pos);
@@ -435,7 +435,7 @@ mod tests {
         ];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::new(send);
+        let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
         let payload_mem_pos = 512;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU, payload_mem_pos);
@@ -460,7 +460,7 @@ mod tests {
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::new(send);
+        let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
         let payload_mem_pos = 512;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU, payload_mem_pos);
