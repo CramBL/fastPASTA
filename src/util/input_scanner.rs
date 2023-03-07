@@ -19,9 +19,10 @@ pub trait ScanCDP {
     fn load_next_rdh_to_filter<T: RDH>(&mut self) -> Result<T, std::io::Error>;
 }
 
-/// Scans data received through a BufferedReaderWrapper, tracks the position in memory and sends stats to the stats controller
-/// Uses the config to filter for user specified links
-/// Implements ScanCDP for a BufferedReaderWrapper
+/// Scans data received through a BufferedReaderWrapper, tracks the position in memory and sends stats to the stats controller.
+///
+/// Uses the config to filter for user specified links.
+/// Implements ScanCDP for a BufferedReaderWrapper.
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     pub reader: Box<R>,
     pub tracker: MemPosTracker,

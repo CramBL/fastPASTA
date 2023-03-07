@@ -1,6 +1,7 @@
+/// Tracks the position by the value of RDH offsets received in the next() function.
 pub struct MemPosTracker {
-    pub offset_next: i64,
     pub memory_address_bytes: u64,
+    offset_next: i64,
     rdh_cru_size_bytes: u64,
 }
 
