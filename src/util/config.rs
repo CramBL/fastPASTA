@@ -28,7 +28,7 @@ pub struct Opt {
 
     /// Print formatted RDHs to stdout or file
     #[structopt(short, long)]
-    print_rhds: bool,
+    print_rdhs: bool,
 
     /// Enable sanity checks
     #[structopt(short = "s", long = "sanity-checks")]
@@ -59,8 +59,12 @@ impl Opt {
         self.sanity_checks()
     }
     #[inline]
-    pub fn dump_rhds(&self) -> bool {
-        self.print_rhds
+    pub fn any_prints(&self) -> bool {
+        self.print_rdhs()
+    }
+    #[inline]
+    pub fn print_rdhs(&self) -> bool {
+        self.print_rdhs
     }
     #[inline]
     pub fn sanity_checks(&self) -> bool {
@@ -100,8 +104,8 @@ impl Opt {
                 DataOutputMode::File
             }
         }
-        // if output is not set, but checks are enabled, suppress output
-        else if self.any_checks() {
+        // if output is not set, but checks or prints are enabled, suppress output
+        else if self.any_checks() || self.any_prints() {
             DataOutputMode::None
         }
         // if output is not set and no checks are enabled, output to stdout
