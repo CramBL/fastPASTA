@@ -198,6 +198,7 @@ pub struct ObLane(u8);
 pub fn data_word_lane_filter_ib(ib_lane: IbLane, data_word: &[u8]) -> Option<ItsDataWordIb> {
     let lane_id = data_word[9] & 0x1F;
     if ib_lane.0 == lane_id {
+        #[allow(clippy::useless_asref)] // Actual false negative
         let data_word = ItsDataWordIb::load(&mut data_word.as_ref()).unwrap();
         Some(data_word)
     } else {
@@ -210,6 +211,7 @@ pub fn data_word_lane_filter_ob(ob_lane_num: ObLane, data_word: &[u8]) -> Option
     let lane_id = data_word[9] & 0x1F;
     let lane = ob_lane(ObLane(lane_id));
     if ob_lane_num.0 == lane {
+        #[allow(clippy::useless_asref)] // Actual false negative
         let data_word = ItsDataWordOb::load(&mut data_word.as_ref()).unwrap();
         Some(data_word)
     } else {
