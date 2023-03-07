@@ -29,6 +29,7 @@ $ lz4 -d input.raw | ./fastpasta --filter-link 3 4 | ./fastpasta --sanity-checks
         ^^^^                   ^^^^                           ^^^^
        INPUT    --->          FILTER             --->        VALIDATE
 ```
+
 ### Verbosity levels
 - 0: Errors
 - 1: Errors and warnings
