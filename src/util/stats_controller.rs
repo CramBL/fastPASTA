@@ -1,4 +1,5 @@
 use crate::stats::report::{Report, StatSummary};
+use itertools::Itertools;
 use log::{error, info};
 use std::sync::{
     atomic::{AtomicBool, AtomicU32},
@@ -18,7 +19,7 @@ pub enum StatType {
 pub struct Stats {
     pub rdhs_seen: u64,
     pub rdhs_filtered: u64,
-    pub payload_size: u64,
+    pub filtered_payload_size: u64,
     pub links_observed: Vec<u8>,
     pub processing_time: std::time::Instant,
     total_errors: AtomicU32,
@@ -37,7 +38,7 @@ impl Stats {
         Stats {
             rdhs_seen: 0,
             rdhs_filtered: 0,
-            payload_size: 0,
+            filtered_payload_size: 0,
             links_observed: Vec::new(),
             processing_time: std::time::Instant::now(),
             total_errors: AtomicU32::new(0),
@@ -91,7 +92,7 @@ impl Stats {
             }
             StatType::RDHsSeen(val) => self.rdhs_seen += val as u64,
             StatType::RDHsFiltered(val) => self.rdhs_filtered += val as u64,
-            StatType::PayloadSize(val) => self.payload_size += val as u64,
+            StatType::PayloadSize(size) => self.filtered_payload_size += size as u64,
             StatType::LinksObserved(val) => self.links_observed.push(val),
             StatType::ProcessingTime => info!("{:?}", self.processing_time.elapsed()),
         }
@@ -138,26 +139,29 @@ impl Stats {
             self.rdhs_filtered.to_string(),
             None,
         ));
+        let payload_string = match self.filtered_payload_size {
+            0..=1024 => format!("{} B", self.filtered_payload_size),
+            1025..=1048576 => {
+                format!("{:.3} KiB", self.filtered_payload_size as f64 / 1024_f64)
+            }
+            1048577..=1073741824 => {
+                format!("{:.3} MiB", self.filtered_payload_size as f64 / 1048576_f64)
+            }
+            _ => format!(
+                "{:.3} GiB",
+                self.filtered_payload_size as f64 / 1073741824_f64
+            ),
+        };
+        filtered_stats.push(StatSummary::new(
+            "Total Payload Size".to_string(),
+            payload_string,
+            None,
+        ));
         let filtered_links =
             summerize_filtered_links(&self.links_to_filter, self.links_observed.clone());
         filtered_stats.push(filtered_links);
         report.add_filter_stats(tabled::Table::new(filtered_stats));
 
-        let payload_string = match self.payload_size {
-            0..=1024 => format!("{} B", self.payload_size),
-            1025..=1048576 => {
-                format!("{:.3} KiB", self.payload_size as f64 / 1024_f64)
-            }
-            1048577..=1073741824 => {
-                format!("{:.3} MiB", self.payload_size as f64 / 1048576_f64)
-            }
-            _ => format!("{:.3} GiB", self.payload_size as f64 / 1073741824_f64),
-        };
-        report.add_stat(StatSummary::new(
-            "Payload Size".to_string(),
-            payload_string,
-            None,
-        ));
         report.print();
     }
     pub fn print_time(&self) {
@@ -171,6 +175,7 @@ fn summerize_filtered_links(links_to_filter: &Vec<u8>, links_observed: Vec<u8>) 
     // Format links that were filtered, separated by commas
     let filter_links_res: String = links_to_filter
         .iter()
+        .unique()
         .filter(|x| links_observed.contains(x))
         .map(|x| x.to_string())
         .collect::<Vec<String>>()
@@ -198,7 +203,7 @@ fn summerize_filtered_links(links_to_filter: &Vec<u8>, links_observed: Vec<u8>) 
         .join(", ");
 
     if !not_filtered.is_empty() {
-        let not_filtered_str = format!(" (not found: {not_filtered})");
+        let not_filtered_str = format!("not found: {not_filtered}");
         filtered_links_stat.notes = not_filtered_str;
     }
     filtered_links_stat

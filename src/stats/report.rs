@@ -134,7 +134,7 @@ fn format_global_stats_sub_table(global_stats_table: &Table) -> Table {
                 .with(Alignment::center())
                 .with(Format::new(|x| {
                     let x = x.to_uppercase();
-                    x.blue().to_string()
+                    x.bright_yellow().to_string()
                 })),
         );
     modded_table
