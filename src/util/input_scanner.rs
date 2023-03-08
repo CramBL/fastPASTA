@@ -64,6 +64,29 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             initial_rdh0: Some(rdh0),
         }
     }
+
+    fn report_rdh_seen(&self) {
+        self.stats_controller_sender_ch
+            .send(super::stats_controller::StatType::RDHsSeen(1))
+            .unwrap();
+    }
+    fn report_link_seen(&self, link_id: u8) {
+        self.stats_controller_sender_ch
+            .send(super::stats_controller::StatType::LinksObserved(link_id))
+            .unwrap();
+    }
+    fn report_payload_size(&self, payload_size: usize) {
+        self.stats_controller_sender_ch
+            .send(super::stats_controller::StatType::PayloadSize(
+                payload_size as u32,
+            ))
+            .unwrap();
+    }
+    fn report_rdh_filtered(&self) {
+        self.stats_controller_sender_ch
+            .send(super::stats_controller::StatType::RDHsFiltered(1))
+            .unwrap();
+    }
 }
 
 impl<R> ScanCDP for InputScanner<R>
@@ -83,34 +106,32 @@ where
             false => RDH::load(&mut self.reader)?,
         };
 
+        // Set the link ID and report another RDH seen
         let current_link_id = rdh.link_id();
-        self.stats_controller_sender_ch
-            .send(super::stats_controller::StatType::RDHsSeen(1))
-            .unwrap();
+        self.report_rdh_seen();
+
+        // If we haven't seen this link before, report it and add it to the list of unique links
         if !self.unique_links_observed.contains(&current_link_id) {
             self.unique_links_observed.push(current_link_id);
-            self.stats_controller_sender_ch
-                .send(super::stats_controller::StatType::LinksObserved(
-                    current_link_id,
-                ))
-                .unwrap();
+            self.report_link_seen(current_link_id);
         }
 
+        // If we have a link filter set, check if the current link matches the filter
         if let Some(x) = self.link_to_filter.as_ref() {
+            // If it matches, return the RDH
             if x.contains(&current_link_id) {
-                self.stats_controller_sender_ch
-                    .send(super::stats_controller::StatType::RDHsFiltered(1))
-                    .unwrap();
+                self.report_rdh_filtered();
                 // no jump. current pos -> start of payload
                 Ok(rdh)
             } else {
-                // Set tracker to jump to next RDH and try until we find a matching link or EOF
+                // If it doesn't match: Set tracker to jump to next RDH and try until we find a matching link or EOF
                 self.reader
                     .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
                 self.load_next_rdh_to_filter()
             }
         } else {
-            // No jump, current pos -> start of payload
+            // No filter set, return the RDH
+            // No jump, current position is start of payload
             Ok(rdh)
         }
     }
@@ -121,11 +142,7 @@ where
         let mut payload = vec![0; payload_size];
         Read::read_exact(&mut self.reader, &mut payload)?;
         debug_assert!(payload.len() == payload_size);
-        self.stats_controller_sender_ch
-            .send(super::stats_controller::StatType::PayloadSize(
-                payload_size as u32,
-            ))
-            .unwrap();
+        self.report_payload_size(payload_size);
         Ok(payload)
     }
     /// Reads the next CDP from file
@@ -147,16 +164,10 @@ where
         loop {
             let rdh: T = RDH::load(&mut self.reader)?;
             let current_link_id = rdh.link_id();
-            self.stats_controller_sender_ch
-                .send(super::stats_controller::StatType::RDHsSeen(1))
-                .unwrap();
+            self.report_rdh_seen();
             if !self.unique_links_observed.contains(&current_link_id) {
                 self.unique_links_observed.push(current_link_id);
-                self.stats_controller_sender_ch
-                    .send(super::stats_controller::StatType::LinksObserved(
-                        current_link_id,
-                    ))
-                    .unwrap();
+                self.report_link_seen(current_link_id);
             }
             if links_to_filter.contains(&current_link_id) {
                 return Ok(rdh);
@@ -166,6 +177,7 @@ where
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use crate::{
