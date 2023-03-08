@@ -17,8 +17,8 @@ pub enum StatType {
     RdhVersion(u8),
     // TimeFrameLength(u32),
     DataFormat(u8),
-    // HBFsSeen(u32),
-    // LayersSeen(u8),
+    HBFsSeen(u32),
+    // LayersSeen(u8), // make it a struct like LayerStavesSeen{ layer: u8, stave: u8}
     // StavesSeen(u8),
 }
 
@@ -36,6 +36,7 @@ pub struct Stats {
     links_to_filter: Vec<u8>,
     rdh_version: u8,
     data_formats_observed: Vec<u8>,
+    hbfs_seen: u32,
 }
 impl Stats {
     pub fn new(
@@ -61,6 +62,7 @@ impl Stats {
             },
             rdh_version: 0,
             data_formats_observed: Vec::new(),
+            hbfs_seen: 0,
         }
     }
 
@@ -111,6 +113,7 @@ impl Stats {
                     self.data_formats_observed.push(version);
                 }
             }
+            StatType::HBFsSeen(val) => self.hbfs_seen += val,
         }
     }
 
@@ -149,6 +152,15 @@ impl Stats {
             observed_links_string,
             None,
         ));
+        // If no filtering, the HBFs seen is from the total RDHs
+        if self.links_to_filter.is_empty() {
+            report.add_stat(StatSummary::new(
+                "Total HBFs".to_string(),
+                self.hbfs_seen.to_string(),
+                None,
+            ));
+        }
+
         // Add detected attributes
         report.add_detected_attribute("RDH Version".to_string(), self.rdh_version.to_string());
         let mut observed_data_formats = self.data_formats_observed.clone();
@@ -167,34 +179,41 @@ impl Stats {
         report.add_detected_attribute("Data Format".to_string(), observed_data_formats_string);
 
         // Filtered stats
-        let mut filtered_stats: Vec<StatSummary> = Vec::new();
-        filtered_stats.push(StatSummary::new(
-            "RDHs".to_string(),
-            self.rdhs_filtered.to_string(),
-            None,
-        ));
-        let payload_string = match self.filtered_payload_size {
-            0..=1024 => format!("{} B", self.filtered_payload_size),
-            1025..=1048576 => {
-                format!("{:.3} KiB", self.filtered_payload_size as f64 / 1024_f64)
-            }
-            1048577..=1073741824 => {
-                format!("{:.3} MiB", self.filtered_payload_size as f64 / 1048576_f64)
-            }
-            _ => format!(
-                "{:.3} GiB",
-                self.filtered_payload_size as f64 / 1073741824_f64
-            ),
-        };
-        filtered_stats.push(StatSummary::new(
-            "Total Payload Size".to_string(),
-            payload_string,
-            None,
-        ));
-        let filtered_links =
-            summerize_filtered_links(&self.links_to_filter, self.links_observed.clone());
-        filtered_stats.push(filtered_links);
-        report.add_filter_stats(tabled::Table::new(filtered_stats));
+        if !self.links_to_filter.is_empty() {
+            let mut filtered_stats: Vec<StatSummary> = Vec::new();
+            filtered_stats.push(StatSummary::new(
+                "RDHs".to_string(),
+                self.rdhs_filtered.to_string(),
+                None,
+            ));
+            filtered_stats.push(StatSummary::new(
+                "HBFs".to_string(),
+                self.hbfs_seen.to_string(),
+                None,
+            ));
+            let payload_string = match self.filtered_payload_size {
+                0..=1024 => format!("{} B", self.filtered_payload_size),
+                1025..=1048576 => {
+                    format!("{:.3} KiB", self.filtered_payload_size as f64 / 1024_f64)
+                }
+                1048577..=1073741824 => {
+                    format!("{:.3} MiB", self.filtered_payload_size as f64 / 1048576_f64)
+                }
+                _ => format!(
+                    "{:.3} GiB",
+                    self.filtered_payload_size as f64 / 1073741824_f64
+                ),
+            };
+            filtered_stats.push(StatSummary::new(
+                "Total Payload Size".to_string(),
+                payload_string,
+                None,
+            ));
+            let filtered_links =
+                summerize_filtered_links(&self.links_to_filter, self.links_observed.clone());
+            filtered_stats.push(filtered_links);
+            report.add_filter_stats(tabled::Table::new(filtered_stats));
+        }
 
         report.print();
     }

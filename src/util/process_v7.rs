@@ -116,6 +116,14 @@ pub mod validate {
                             }
                         };
 
+                        // Collect global stats
+                        // Send HBF seen if HBA is detected
+                        rdh_chunk.iter().for_each(|rdh| {
+                            if rdh.stop_bit() == 1 {
+                                stats_sender_channel.send(StatType::HBFsSeen(1)).unwrap();
+                            }
+                        });
+
                         if config.any_checks() {
                             do_checks_v7(
                                 &rdh_chunk,

@@ -18,6 +18,7 @@ pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display + Sync 
     fn stop_bit(&self) -> u8;
     fn pages_counter(&self) -> u16;
     fn data_format(&self) -> u8;
+    fn is_hba(&self) -> bool;
 }
 
 // Newtype pattern used to enforce type safety on fields that are not byte-aligned
@@ -161,6 +162,14 @@ impl RDH for RdhCRUv7 {
     #[inline]
     fn data_format(&self) -> u8 {
         self.data_format()
+    }
+
+    fn is_hba(&self) -> bool {
+        let trigger = self.rdh2.trigger_type;
+        // HBA is bit 1
+        log::info!("Trigger type: {:032b}", trigger);
+        log::info!("{self}");
+        trigger & 0b10 == 0b10
     }
 }
 impl ByteSlice for RdhCRUv7 {
@@ -311,6 +320,12 @@ impl RDH for RdhCRUv6 {
 
     fn data_format(&self) -> u8 {
         0
+    }
+
+    fn is_hba(&self) -> bool {
+        let trigger = self.rdh2.trigger_type;
+        // HBA is bit 1
+        trigger & 0b10 == 0b10
     }
 }
 
