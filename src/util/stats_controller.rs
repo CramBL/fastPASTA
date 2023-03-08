@@ -16,7 +16,7 @@ pub enum StatType {
     ProcessingTime,
     RdhVersion(u8),
     // TimeFrameLength(u32),
-    // DataFormat(u8),
+    DataFormat(u8),
     // HBFsSeen(u32),
     // LayersSeen(u8),
     // StavesSeen(u8),
@@ -35,6 +35,7 @@ pub struct Stats {
     end_processing_flag: Arc<AtomicBool>,
     links_to_filter: Vec<u8>,
     rdh_version: u8,
+    data_formats_observed: Vec<u8>,
 }
 impl Stats {
     pub fn new(
@@ -59,6 +60,7 @@ impl Stats {
                 Vec::new()
             },
             rdh_version: 0,
+            data_formats_observed: Vec::new(),
         }
     }
 
@@ -104,6 +106,11 @@ impl Stats {
             StatType::LinksObserved(val) => self.links_observed.push(val),
             StatType::ProcessingTime => info!("{:?}", self.processing_time.elapsed()),
             StatType::RdhVersion(version) => self.rdh_version = version,
+            StatType::DataFormat(version) => {
+                if !self.data_formats_observed.contains(&version) {
+                    self.data_formats_observed.push(version);
+                }
+            }
         }
     }
 
@@ -144,6 +151,21 @@ impl Stats {
         ));
         // Add detected attributes
         report.add_detected_attribute("RDH Version".to_string(), self.rdh_version.to_string());
+        let mut observed_data_formats = self.data_formats_observed.clone();
+        if observed_data_formats.len() > 1 {
+            observed_data_formats.sort();
+            log::error!(
+                "Multiple data formats observed: {:?}",
+                observed_data_formats
+            );
+        }
+        let observed_data_formats_string = observed_data_formats
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        report.add_detected_attribute("Data Format".to_string(), observed_data_formats_string);
+
         // Filtered stats
         let mut filtered_stats: Vec<StatSummary> = Vec::new();
         filtered_stats.push(StatSummary::new(

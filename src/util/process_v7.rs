@@ -167,6 +167,9 @@ pub mod validate {
     ) {
         let mut tmp_mem_pos_tracker = current_mem_pos;
         for (rdh, payload) in rdh_slices.iter().zip(payload_slices.iter()) {
+            stats_sender_ch_checker
+                .send(StatType::DataFormat(rdh.data_format()))
+                .unwrap();
             do_rdh_checks(rdh, rdh_running, stats_sender_ch_checker);
             tmp_mem_pos_tracker += 512;
             payload_running.set_current_rdh(rdh, tmp_mem_pos_tracker);
