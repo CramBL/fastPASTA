@@ -1,7 +1,7 @@
 use super::config::Opt;
 use crate::words::rdh::RDH;
-/// Writes data to file/stdout
-/// Uses a buffer to minimize syscalls.
+/// Writes data to file/stdout. Uses a buffer to minimize syscalls.
+///
 /// Receives data incrementally and once a certain amount is reached, it will
 /// write it out to file/stdout.
 /// Implements drop to flush the remaining data to the file once processing is done.
@@ -97,5 +97,34 @@ impl<T: RDH> Drop for BufferedWriter<T> {
         if std::mem::needs_drop::<Self>() {
             self.flush().expect("Failed to flush buffer");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::words::rdh::RdhCRUv6;
+
+    use super::*;
+
+    #[test]
+    fn test_buffered_writer() {
+        let output_file_str = " test_filter_link.raw";
+        let out_file_cmd = "-o test_filter_link.raw";
+        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
+            "fastpasta",
+            "-s",
+            "../fastpasta_test_files/data_ols_ul.raw",
+            out_file_cmd,
+        ]);
+        {
+            let writer = BufferedWriter::<RdhCRUv6>::new(&config, 10);
+
+            assert!(writer.buf_writer.is_some());
+        }
+
+        let filepath = std::path::PathBuf::from(output_file_str);
+
+        // delete output file
+        std::fs::remove_file(filepath).unwrap();
     }
 }

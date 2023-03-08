@@ -75,7 +75,7 @@ pub mod validate {
     use super::*;
 
     use crate::util::config::Opt;
-    use crate::util::stats::StatType;
+    use crate::util::stats_controller::StatType;
     use crate::validators::cdp_running::CdpRunningValidator;
     use crate::validators::rdh::RdhCruv7RunningChecker;
     use crate::words::rdh::{RdhCRUv7, RDH};

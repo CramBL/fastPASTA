@@ -1,5 +1,6 @@
 use std::{fmt::Display, sync::atomic::AtomicBool};
-use util::{config::Opt, input_scanner::InputScanner, stats::Stats};
+use util::{config::Opt, input_scanner::InputScanner, stats_controller::Stats};
+mod stats;
 pub mod util;
 pub mod validators;
 pub mod words;
@@ -33,12 +34,12 @@ pub fn init_stats_controller(
     config: &Opt,
 ) -> (
     std::thread::JoinHandle<()>,
-    std::sync::mpsc::Sender<util::stats::StatType>,
+    std::sync::mpsc::Sender<util::stats_controller::StatType>,
     std::sync::Arc<AtomicBool>,
 ) {
     let (send_stats_channel, recv_stats_channel): (
-        std::sync::mpsc::Sender<util::stats::StatType>,
-        std::sync::mpsc::Receiver<util::stats::StatType>,
+        std::sync::mpsc::Sender<util::stats_controller::StatType>,
+        std::sync::mpsc::Receiver<util::stats_controller::StatType>,
     ) = std::sync::mpsc::channel();
     let thread_stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let mut stats = Stats::new(config, recv_stats_channel, thread_stop_flag.clone());

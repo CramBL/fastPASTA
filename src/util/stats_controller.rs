@@ -1,12 +1,11 @@
+use crate::stats::report::{Report, StatSummary};
+use log::{error, info};
 use std::sync::{
     atomic::{AtomicBool, AtomicU32},
     Arc,
 };
 
-use log::{error, info};
-
 use super::config::Opt;
-
 pub enum StatType {
     Error(String),
     RDHsSeen(u8),
@@ -99,56 +98,108 @@ impl Stats {
     }
 
     pub fn print(&self) {
+        let mut report = Report::new(self.processing_time.elapsed());
         if self.max_tolerate_errors == 0 {
-            eprintln!("Total errors: {}", self.non_atomic_total_errors);
+            report.add_stat(StatSummary::new(
+                "Total Errors".to_string(),
+                self.non_atomic_total_errors.to_string(),
+                None,
+            ));
         } else {
-            eprintln!(
-                "Total errors: {}",
-                self.total_errors.load(std::sync::atomic::Ordering::SeqCst)
-            );
+            report.add_stat(StatSummary::new(
+                "Total Errors".to_string(),
+                self.total_errors
+                    .load(std::sync::atomic::Ordering::SeqCst)
+                    .to_string(),
+                None,
+            ));
         }
-        eprintln!("Total RDHs: {}", self.rdhs_seen);
-        eprintln!("Filtered:");
-
-        let mut filter_links_res: String = self
-            .links_to_filter
-            .iter()
-            .filter(|x| self.links_observed.contains(x))
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-        if filter_links_res.is_empty() {
-            filter_links_res = "<<all-links>>".to_string();
-        }
-        let not_filtered = self
-            .links_to_filter
-            .iter()
-            .filter(|x| !self.links_observed.contains(x))
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-        if !not_filtered.is_empty() {
-            filter_links_res.push_str(&format!(" (not found: {not_filtered})"));
-        }
-        eprintln!("   {:<3}{:>6}", "Links selected: ", filter_links_res);
-        eprintln!("   {:<3}{:>7}", "RDHs: ", self.rdhs_filtered);
-        eprint!("   {:<3}", "Payload ");
-        match self.payload_size {
-            0..=1024 => eprintln!("{} B", self.payload_size),
-            1025..=1048576 => {
-                eprintln!("{:.3} KB", self.payload_size as f64 / 1024_f64)
-            }
-            1048577..=1073741824 => {
-                eprintln!("{:.3} MB", self.payload_size as f64 / 1048576_f64)
-            }
-            _ => eprintln!("{:.3} GB", self.payload_size as f64 / 1073741824_f64),
-        }
+        report.add_stat(StatSummary::new(
+            "Total RDHs".to_string(),
+            self.rdhs_seen.to_string(),
+            None,
+        ));
         let mut observed_links = self.links_observed.clone();
         observed_links.sort();
-        eprintln!("Links observed during scan: {observed_links:?}");
-        eprintln!("Processing time: {:?}", self.processing_time.elapsed());
+        let observed_links_string = observed_links
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        report.add_stat(StatSummary::new(
+            "Links observed during scan".to_string(),
+            observed_links_string,
+            None,
+        ));
+        // Filtered stats
+        let mut filtered_stats: Vec<StatSummary> = Vec::new();
+        filtered_stats.push(StatSummary::new(
+            "RDHs".to_string(),
+            self.rdhs_filtered.to_string(),
+            None,
+        ));
+        let filtered_links =
+            summerize_filtered_links(&self.links_to_filter, self.links_observed.clone());
+        filtered_stats.push(filtered_links);
+        report.add_filter_stats(tabled::Table::new(filtered_stats));
+
+        let payload_string = match self.payload_size {
+            0..=1024 => format!("{} B", self.payload_size),
+            1025..=1048576 => {
+                format!("{:.3} KiB", self.payload_size as f64 / 1024_f64)
+            }
+            1048577..=1073741824 => {
+                format!("{:.3} MiB", self.payload_size as f64 / 1048576_f64)
+            }
+            _ => format!("{:.3} GiB", self.payload_size as f64 / 1073741824_f64),
+        };
+        report.add_stat(StatSummary::new(
+            "Payload Size".to_string(),
+            payload_string,
+            None,
+        ));
+        report.print();
     }
     pub fn print_time(&self) {
         eprintln!("Processing time: {:?}", self.processing_time.elapsed());
     }
+}
+
+/// Helper functions to format the summary
+fn summerize_filtered_links(links_to_filter: &Vec<u8>, links_observed: Vec<u8>) -> StatSummary {
+    let mut filtered_links_stat = StatSummary::new("Link IDs".to_string(), "".to_string(), None);
+    // Format links that were filtered, separated by commas
+    let filter_links_res: String = links_to_filter
+        .iter()
+        .filter(|x| links_observed.contains(x))
+        .map(|x| x.to_string())
+        .collect::<Vec<String>>()
+        .join(", ");
+
+    if filter_links_res.is_empty() {
+        // If no links specified by the user, all links were filtered
+        if links_to_filter.is_empty() {
+            filtered_links_stat.value = "<<all-links>>".to_string();
+        }
+        // If links were specified and none of those links were found, no links were filtered
+        else {
+            filtered_links_stat.value = "<<none>>".to_string();
+        }
+    } else {
+        filtered_links_stat.value = filter_links_res;
+    }
+
+    // Format links that were specified but not found
+    let not_filtered = links_to_filter
+        .iter()
+        .filter(|x| !links_observed.contains(x))
+        .map(|x| x.to_string())
+        .collect::<Vec<String>>()
+        .join(", ");
+
+    if !not_filtered.is_empty() {
+        let not_filtered_str = format!(" (not found: {not_filtered})");
+        filtered_links_stat.notes = not_filtered_str;
+    }
+    filtered_links_stat
 }
