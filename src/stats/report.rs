@@ -36,16 +36,23 @@ impl std::default::Default for StatSummary {
         }
     }
 }
+#[derive(Tabled)]
+struct DetectedAttribute {
+    pub attribute: String,
+    pub detected: String,
+}
 
 pub struct Report {
     pub(crate) stats: Vec<StatSummary>,
     filter_stats_table: Option<Table>,
+    detected_attributes: Vec<DetectedAttribute>,
     processing_time: std::time::Duration,
 }
 impl Report {
     pub fn new(processing_time: std::time::Duration) -> Self {
         Self {
             stats: Vec::new(),
+            detected_attributes: Vec::new(),
             processing_time,
             filter_stats_table: None,
         }
@@ -56,21 +63,40 @@ impl Report {
     pub fn add_stat(&mut self, stat: StatSummary) {
         self.stats.push(stat);
     }
+    pub fn add_detected_attribute(&mut self, attribute: String, detected: String) {
+        self.detected_attributes.push(DetectedAttribute {
+            attribute,
+            detected,
+        });
+    }
     pub fn print(&self) {
-        let table = Table::new(&self.stats);
-        let table = format_global_stats_sub_table(&table);
+        let mut global_stats_table = Table::new(&self.stats);
+        global_stats_table = format_global_stats_sub_table(&global_stats_table);
+        let mut detected_attributes_table = Table::new(&self.detected_attributes);
+        detected_attributes_table = format_sub_table(
+            &detected_attributes_table,
+            "Detected Attributes".to_string(),
+            SubtableColor::Yellow,
+        );
 
         if self.filter_stats_table.is_some() {
             let filter_stats_table = format_sub_table(
                 self.filter_stats_table.as_ref().unwrap(),
                 "Filter Stats".to_string(),
+                SubtableColor::Purple,
             );
 
-            let mut multi_table = tabled::col![table, filter_stats_table];
+            let mut multi_table = tabled::col![
+                global_stats_table,
+                tabled::row![detected_attributes_table, filter_stats_table]
+            ];
             multi_table = format_super_table(&multi_table, self.processing_time);
             eprintln!("{multi_table}");
         } else {
-            eprintln!("{table}");
+            let mut multi_table =
+                tabled::col![global_stats_table, tabled::row![detected_attributes_table]];
+            multi_table = format_super_table(&multi_table, self.processing_time);
+            eprintln!("{multi_table}");
         }
     }
 }
@@ -140,9 +166,17 @@ fn format_global_stats_sub_table(global_stats_table: &Table) -> Table {
     modded_table
 }
 
+#[allow(dead_code)]
+enum SubtableColor {
+    Purple,
+    Green,
+    Blue,
+    Yellow,
+    Red,
+}
 /// Formats a subtable to use the same style as the main table
 /// Adds a header to the subtable in all caps, purple, and aligned center
-fn format_sub_table(subtable: &Table, header: String) -> Table {
+fn format_sub_table(subtable: &Table, header: String, color: SubtableColor) -> Table {
     let mut modded_subtable = subtable.clone();
     let style = tabled::Style::modern()
         .off_left()
@@ -162,11 +196,24 @@ fn format_sub_table(subtable: &Table, header: String) -> Table {
             .with(Alignment::center())
             .with(Format::new(|x| {
                 let x = x.to_uppercase();
-                x.purple().to_string()
+                match color {
+                    SubtableColor::Purple => x.bright_purple().to_string(),
+                    SubtableColor::Green => x.green().to_string(),
+                    SubtableColor::Blue => x.blue().to_string(),
+                    SubtableColor::Yellow => x.yellow().to_string(),
+                    SubtableColor::Red => x.red().to_string(),
+                }
             })),
     );
-    modded_subtable
-        .with(Modify::new(Rows::single(1)).with(Format::new(|x| x.bright_purple().to_string())));
+    modded_subtable.with(
+        Modify::new(Rows::single(1)).with(Format::new(|x| match color {
+            SubtableColor::Purple => x.bright_purple().to_string(),
+            SubtableColor::Green => x.green().to_string(),
+            SubtableColor::Blue => x.blue().to_string(),
+            SubtableColor::Yellow => x.yellow().to_string(),
+            SubtableColor::Red => x.red().to_string(),
+        })),
+    );
 
     modded_subtable
 }
