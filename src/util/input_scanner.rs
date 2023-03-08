@@ -170,6 +170,7 @@ where
                 self.report_link_seen(current_link_id);
             }
             if links_to_filter.contains(&current_link_id) {
+                self.report_rdh_filtered();
                 return Ok(rdh);
             }
             self.reader
