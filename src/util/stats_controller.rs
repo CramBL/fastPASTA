@@ -14,6 +14,12 @@ pub enum StatType {
     PayloadSize(u32),
     LinksObserved(u8),
     ProcessingTime,
+    RdhVersion(u8),
+    // TimeFrameLength(u32),
+    // DataFormat(u8),
+    // HBFsSeen(u32),
+    // LayersSeen(u8),
+    // StavesSeen(u8),
 }
 
 pub struct Stats {
@@ -28,6 +34,7 @@ pub struct Stats {
     recv_stats_channel: std::sync::mpsc::Receiver<StatType>,
     end_processing_flag: Arc<AtomicBool>,
     links_to_filter: Vec<u8>,
+    rdh_version: u8,
 }
 impl Stats {
     pub fn new(
@@ -51,6 +58,7 @@ impl Stats {
             } else {
                 Vec::new()
             },
+            rdh_version: 0,
         }
     }
 
@@ -95,11 +103,13 @@ impl Stats {
             StatType::PayloadSize(size) => self.filtered_payload_size += size as u64,
             StatType::LinksObserved(val) => self.links_observed.push(val),
             StatType::ProcessingTime => info!("{:?}", self.processing_time.elapsed()),
+            StatType::RdhVersion(version) => self.rdh_version = version,
         }
     }
 
     pub fn print(&self) {
         let mut report = Report::new(self.processing_time.elapsed());
+        // Add global stats
         if self.max_tolerate_errors == 0 {
             report.add_stat(StatSummary::new(
                 "Total Errors".to_string(),
@@ -132,6 +142,8 @@ impl Stats {
             observed_links_string,
             None,
         ));
+        // Add detected attributes
+        report.add_detected_attribute("RDH Version".to_string(), self.rdh_version.to_string());
         // Filtered stats
         let mut filtered_stats: Vec<StatSummary> = Vec::new();
         filtered_stats.push(StatSummary::new(
