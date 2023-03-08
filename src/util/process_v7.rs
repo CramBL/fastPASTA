@@ -170,6 +170,10 @@ pub mod validate {
             do_rdh_checks(rdh, rdh_running, stats_sender_ch_checker);
             tmp_mem_pos_tracker += 512;
             payload_running.set_current_rdh(rdh, tmp_mem_pos_tracker);
+            if payload.len() == 0 {
+                log::debug!("Empty payload at {}", tmp_mem_pos_tracker);
+                continue;
+            }
             do_payload_checks(
                 payload,
                 rdh.data_format(),
@@ -226,6 +230,9 @@ pub mod validate {
         payload: &[u8],
         dataformat: u8,
     ) -> Result<impl Iterator<Item = &[u8]>, String> {
+        // Check payload size
+        log::trace!("Payload size is {}", payload.len());
+
         // Retrieve end of payload padding from payload
         let ff_padding = payload
             .iter()
