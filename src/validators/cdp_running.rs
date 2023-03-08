@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)] // An exception to the Rust naming convention, for the state machine macro types
 
 use crate::{
-    util::stats::StatType,
+    util::stats_controller::StatType,
     validators::status_words::STATUS_WORD_SANITY_CHECKER,
     words::{
         rdh::RDH,
