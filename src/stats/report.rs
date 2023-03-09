@@ -240,11 +240,6 @@ fn format_sub_table(subtable: &Table, header: String, color: SubtableColor) -> T
 #[cfg(test)]
 mod tests {
     use super::*;
-    use owo_colors::OwoColorize;
-    use tabled::{
-        format::Format,
-        object::{Columns, Rows},
-    };
 
     // macro_rules! assert_stdout_eq {
     //     ($test:expr, $expected:literal) => {{
