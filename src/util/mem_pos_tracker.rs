@@ -46,4 +46,31 @@ mod tests {
         assert_eq!(file_tracker.offset_next, 0);
         assert_eq!(file_tracker.memory_address_bytes, 128);
     }
+    #[test]
+    fn test_file_tracker_default() {
+        let mut file_tracker = MemPosTracker::default();
+        assert_eq!(file_tracker.offset_next, 0);
+        assert_eq!(file_tracker.memory_address_bytes, 0);
+        assert_eq!(file_tracker.next(64), 0);
+        assert_eq!(file_tracker.offset_next, 0);
+        assert_eq!(file_tracker.memory_address_bytes, 64);
+        assert_eq!(file_tracker.next(64), 0);
+        assert_eq!(file_tracker.offset_next, 0);
+        assert_eq!(file_tracker.memory_address_bytes, 128);
+    }
+    #[test]
+    #[should_panic]
+    fn test_panic_file_tracker_default() {
+        let mut file_tracker = MemPosTracker::default();
+        assert_eq!(file_tracker.offset_next, 0);
+        assert_eq!(file_tracker.memory_address_bytes, 0);
+        assert_eq!(file_tracker.next(64), 0);
+        assert_eq!(file_tracker.offset_next, 0);
+        assert_eq!(file_tracker.memory_address_bytes, 64);
+        assert_eq!(file_tracker.next(64), 0);
+        assert_eq!(file_tracker.offset_next, 0);
+        assert_eq!(file_tracker.memory_address_bytes, 128);
+        // This should panic
+        file_tracker.next(63);
+    }
 }
