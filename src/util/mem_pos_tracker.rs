@@ -20,6 +20,12 @@ impl MemPosTracker {
         }
     }
     pub fn next(&mut self, rdh_offset: u64) -> i64 {
+        debug_assert!(
+            rdh_offset >= self.rdh_cru_size_bytes,
+            "RDH offset is smaller than RDH size: {} < {}",
+            rdh_offset,
+            self.rdh_cru_size_bytes
+        );
         self.offset_next = (rdh_offset - self.rdh_cru_size_bytes) as i64;
         self.memory_address_bytes += rdh_offset;
         self.offset_next
