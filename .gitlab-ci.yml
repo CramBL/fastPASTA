@@ -71,7 +71,7 @@ rust-nightly:
   image: rustlang/rust:nightly
   script:
     - cargo build --verbose
-    - cargo test --verbose
+    - cargo test --verbose -- --test-threads=1 --nocapture
   allow_failure: true
 
 test-coverage:
@@ -83,7 +83,7 @@ test-coverage:
   script:
     - rustup component add llvm-tools-preview
     - cargo build
-    - cargo test
+    - cargo test -- --test-threads=1 --nocapture
     - cargo install grcov
     # Generate HTML report which is available as an artifact
     - grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing --ignore "*cargo*" -o ./coverage/

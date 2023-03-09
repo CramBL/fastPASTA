@@ -16,6 +16,41 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use structopt::StructOpt;
 
+pub fn main() {
+    let config = get_config();
+    init_error_logger(&config);
+    trace!("Starting fastpasta with args: {:#?}", config);
+
+    // Launch statistics thread
+    // If max allowed errors is reached, stop the processing from the stats thread
+    let (stat_controller, stat_send_channel, stop_flag) = init_stats_controller(&config);
+
+    let mut readable = fastpasta::init_reader(&config);
+
+    // Determine RDH version
+    let rdh0 = Rdh0::load(&mut readable).expect("Failed to read first RDH0");
+    let rdh_version = rdh0.header_id;
+    stat_send_channel
+        .send(stats_controller::StatType::RdhVersion(rdh_version))
+        .unwrap();
+    let loader = InputScanner::new_from_rdh0(
+        config.clone(),
+        readable,
+        fastpasta::util::mem_pos_tracker::MemPosTracker::new(),
+        stat_send_channel.clone(),
+        rdh0,
+    );
+
+    // Choose the rest of the execution based on the RDH version
+    // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
+    match rdh_version {
+        6 => process_rdh_v6(config, loader, stat_send_channel, stop_flag).unwrap(),
+        7 => process_rdh_v7(config, loader, stat_send_channel, stop_flag).unwrap(),
+        _ => panic!("Unknown RDH version: {rdh_version}"),
+    }
+    stat_controller.join().expect("Failed to join stats thread");
+}
+
 fn init_error_logger(cfg: &Opt) {
     stderrlog::new()
         .module(module_path!())
@@ -41,39 +76,6 @@ fn get_config() -> Arc<Opt> {
 
     Arc::new(cfg)
 }
-
-pub fn main() {
-    let config = get_config();
-    init_error_logger(&config);
-    trace!("Starting fastpasta with args: {:#?}", config);
-
-    // Launch statistics thread
-    // If max allowed errors is reached, stop the processing from the stats thread
-    let (stat_controller, stat_send_channel, stop_flag) = init_stats_controller(&config);
-
-    let mut readable = fastpasta::init_reader(&config);
-
-    // Determine RDH version
-    let rdh0 = Rdh0::load(&mut readable).expect("Failed to read first RDH0");
-    let rdh_version = rdh0.header_id;
-    let loader = InputScanner::new_from_rdh0(
-        config.clone(),
-        readable,
-        fastpasta::util::mem_pos_tracker::MemPosTracker::new(),
-        stat_send_channel.clone(),
-        rdh0,
-    );
-
-    // Choose the rest of the execution based on the RDH version
-    // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
-    match rdh_version {
-        6 => process_rdh_v6(config, loader, stat_send_channel, stop_flag).unwrap(),
-        7 => process_rdh_v7(config, loader, stat_send_channel, stop_flag).unwrap(),
-        _ => panic!("Unknown RDH version: {rdh_version}"),
-    }
-    stat_controller.join().expect("Failed to join stats thread");
-}
-
 // 1. Setup reading (file or stdin)
 // 2. Do checks on read data
 // 3. Write data out (file or stdout)

@@ -20,6 +20,12 @@ impl MemPosTracker {
         }
     }
     pub fn next(&mut self, rdh_offset: u64) -> i64 {
+        debug_assert!(
+            rdh_offset >= self.rdh_cru_size_bytes,
+            "RDH offset is smaller than RDH size: {} < {}",
+            rdh_offset,
+            self.rdh_cru_size_bytes
+        );
         self.offset_next = (rdh_offset - self.rdh_cru_size_bytes) as i64;
         self.memory_address_bytes += rdh_offset;
         self.offset_next
@@ -39,5 +45,32 @@ mod tests {
         assert_eq!(file_tracker.next(64), 0);
         assert_eq!(file_tracker.offset_next, 0);
         assert_eq!(file_tracker.memory_address_bytes, 128);
+    }
+    #[test]
+    fn test_file_tracker_default() {
+        let mut file_tracker = MemPosTracker::default();
+        assert_eq!(file_tracker.offset_next, 0);
+        assert_eq!(file_tracker.memory_address_bytes, 0);
+        assert_eq!(file_tracker.next(64), 0);
+        assert_eq!(file_tracker.offset_next, 0);
+        assert_eq!(file_tracker.memory_address_bytes, 64);
+        assert_eq!(file_tracker.next(64), 0);
+        assert_eq!(file_tracker.offset_next, 0);
+        assert_eq!(file_tracker.memory_address_bytes, 128);
+    }
+    #[test]
+    #[should_panic]
+    fn test_panic_file_tracker_default() {
+        let mut file_tracker = MemPosTracker::default();
+        assert_eq!(file_tracker.offset_next, 0);
+        assert_eq!(file_tracker.memory_address_bytes, 0);
+        assert_eq!(file_tracker.next(64), 0);
+        assert_eq!(file_tracker.offset_next, 0);
+        assert_eq!(file_tracker.memory_address_bytes, 64);
+        assert_eq!(file_tracker.next(64), 0);
+        assert_eq!(file_tracker.offset_next, 0);
+        assert_eq!(file_tracker.memory_address_bytes, 128);
+        // This should panic
+        file_tracker.next(63);
     }
 }

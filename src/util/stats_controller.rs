@@ -1,4 +1,5 @@
 use crate::stats::report::{Report, StatSummary};
+use itertools::Itertools;
 use log::{error, info};
 use std::sync::{
     atomic::{AtomicBool, AtomicU32},
@@ -7,18 +8,24 @@ use std::sync::{
 
 use super::config::Opt;
 pub enum StatType {
+    Fatal(String), // Fatal error, stop processing
     Error(String),
     RDHsSeen(u8),
     RDHsFiltered(u8),
     PayloadSize(u32),
     LinksObserved(u8),
     ProcessingTime,
+    RdhVersion(u8),
+    // TimeFrameLength(u32),
+    DataFormat(u8),
+    HBFsSeen(u32),
+    LayerStaveSeen { layer: u8, stave: u8 },
 }
 
 pub struct Stats {
     pub rdhs_seen: u64,
     pub rdhs_filtered: u64,
-    pub payload_size: u64,
+    pub filtered_payload_size: u64,
     pub links_observed: Vec<u8>,
     pub processing_time: std::time::Instant,
     total_errors: AtomicU32,
@@ -27,6 +34,11 @@ pub struct Stats {
     recv_stats_channel: std::sync::mpsc::Receiver<StatType>,
     end_processing_flag: Arc<AtomicBool>,
     links_to_filter: Vec<u8>,
+    rdh_version: u8,
+    data_formats_observed: Vec<u8>,
+    hbfs_seen: u32,
+    fatal_error: Option<String>,
+    layers_staves_seen: Vec<(u8, u8)>,
 }
 impl Stats {
     pub fn new(
@@ -37,7 +49,7 @@ impl Stats {
         Stats {
             rdhs_seen: 0,
             rdhs_filtered: 0,
-            payload_size: 0,
+            filtered_payload_size: 0,
             links_observed: Vec::new(),
             processing_time: std::time::Instant::now(),
             total_errors: AtomicU32::new(0),
@@ -50,6 +62,11 @@ impl Stats {
             } else {
                 Vec::new()
             },
+            rdh_version: 0,
+            data_formats_observed: Vec::new(),
+            hbfs_seen: 0,
+            fatal_error: None,
+            layers_staves_seen: Vec::new(),
         }
     }
 
@@ -91,14 +108,37 @@ impl Stats {
             }
             StatType::RDHsSeen(val) => self.rdhs_seen += val as u64,
             StatType::RDHsFiltered(val) => self.rdhs_filtered += val as u64,
-            StatType::PayloadSize(val) => self.payload_size += val as u64,
+            StatType::PayloadSize(size) => self.filtered_payload_size += size as u64,
             StatType::LinksObserved(val) => self.links_observed.push(val),
             StatType::ProcessingTime => info!("{:?}", self.processing_time.elapsed()),
+            StatType::RdhVersion(version) => self.rdh_version = version,
+            StatType::DataFormat(version) => {
+                if !self.data_formats_observed.contains(&version) {
+                    self.data_formats_observed.push(version);
+                }
+            }
+            StatType::HBFsSeen(val) => self.hbfs_seen += val,
+            StatType::Fatal(err) => {
+                self.end_processing_flag
+                    .store(true, std::sync::atomic::Ordering::SeqCst);
+                log::error!("Fatal error: {}\nShutting down...", err);
+                self.fatal_error = Some(err);
+            }
+            StatType::LayerStaveSeen { layer, stave } => {
+                // Only add if not already seen
+                if !self.layers_staves_seen.contains(&(layer, stave)) {
+                    self.layers_staves_seen.push((layer, stave));
+                }
+            }
         }
     }
 
     pub fn print(&self) {
         let mut report = Report::new(self.processing_time.elapsed());
+        if let Some(err) = &self.fatal_error {
+            report.add_fatal_error(err.clone());
+        }
+        // Add global stats
         if self.max_tolerate_errors == 0 {
             report.add_stat(StatSummary::new(
                 "Total Errors".to_string(),
@@ -119,6 +159,7 @@ impl Stats {
             self.rdhs_seen.to_string(),
             None,
         ));
+        // Sort and format links observed
         let mut observed_links = self.links_observed.clone();
         observed_links.sort();
         let observed_links_string = observed_links
@@ -131,33 +172,85 @@ impl Stats {
             observed_links_string,
             None,
         ));
-        // Filtered stats
-        let mut filtered_stats: Vec<StatSummary> = Vec::new();
-        filtered_stats.push(StatSummary::new(
-            "RDHs".to_string(),
-            self.rdhs_filtered.to_string(),
-            None,
-        ));
-        let filtered_links =
-            summerize_filtered_links(&self.links_to_filter, self.links_observed.clone());
-        filtered_stats.push(filtered_links);
-        report.add_filter_stats(tabled::Table::new(filtered_stats));
+        // Sort and format layers and staves seen
+        let mut layers_staves_seen = self.layers_staves_seen.clone();
+        layers_staves_seen.sort();
+        let layers_staves_seen_string = layers_staves_seen
+            .iter()
+            .map(|(layer, stave)| format!("L{layer}_{stave}"))
+            .collect::<Vec<String>>()
+            .join(", ");
+        // If no filtering, the HBFs seen is from the total RDHs
+        if self.links_to_filter.is_empty() {
+            report.add_stat(StatSummary::new(
+                "Total HBFs".to_string(),
+                self.hbfs_seen.to_string(),
+                None,
+            ));
+            // If no filtering, the layers and staves seen is from the total RDHs
+            report.add_stat(StatSummary::new(
+                "Layers and Staves seen".to_string(),
+                layers_staves_seen_string,
+                None,
+            ));
+        } else {
+            let mut filtered_stats: Vec<StatSummary> = Vec::new();
+            filtered_stats.push(StatSummary::new(
+                "RDHs".to_string(),
+                self.rdhs_filtered.to_string(),
+                None,
+            ));
+            filtered_stats.push(StatSummary::new(
+                "HBFs".to_string(),
+                self.hbfs_seen.to_string(),
+                None,
+            ));
+            let payload_string = match self.filtered_payload_size {
+                0..=1024 => format!("{} B", self.filtered_payload_size),
+                1025..=1048576 => {
+                    format!("{:.3} KiB", self.filtered_payload_size as f64 / 1024_f64)
+                }
+                1048577..=1073741824 => {
+                    format!("{:.3} MiB", self.filtered_payload_size as f64 / 1048576_f64)
+                }
+                _ => format!(
+                    "{:.3} GiB",
+                    self.filtered_payload_size as f64 / 1073741824_f64
+                ),
+            };
+            filtered_stats.push(StatSummary::new(
+                "Total Payload Size".to_string(),
+                payload_string,
+                None,
+            ));
+            let filtered_links =
+                summerize_filtered_links(&self.links_to_filter, self.links_observed.clone());
+            filtered_stats.push(filtered_links);
+            filtered_stats.push(StatSummary::new(
+                "Layers and Staves seen".to_string(),
+                layers_staves_seen_string,
+                None,
+            ));
+            report.add_filter_stats(tabled::Table::new(filtered_stats));
+        }
 
-        let payload_string = match self.payload_size {
-            0..=1024 => format!("{} B", self.payload_size),
-            1025..=1048576 => {
-                format!("{:.3} KiB", self.payload_size as f64 / 1024_f64)
-            }
-            1048577..=1073741824 => {
-                format!("{:.3} MiB", self.payload_size as f64 / 1048576_f64)
-            }
-            _ => format!("{:.3} GiB", self.payload_size as f64 / 1073741824_f64),
-        };
-        report.add_stat(StatSummary::new(
-            "Payload Size".to_string(),
-            payload_string,
-            None,
-        ));
+        // Add detected attributes
+        report.add_detected_attribute("RDH Version".to_string(), self.rdh_version.to_string());
+        let mut observed_data_formats = self.data_formats_observed.clone();
+        if observed_data_formats.len() > 1 {
+            observed_data_formats.sort();
+            log::error!(
+                "Multiple data formats observed: {:?}",
+                observed_data_formats
+            );
+        }
+        let observed_data_formats_string = observed_data_formats
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        report.add_detected_attribute("Data Format".to_string(), observed_data_formats_string);
+
         report.print();
     }
     pub fn print_time(&self) {
@@ -171,6 +264,7 @@ fn summerize_filtered_links(links_to_filter: &Vec<u8>, links_observed: Vec<u8>) 
     // Format links that were filtered, separated by commas
     let filter_links_res: String = links_to_filter
         .iter()
+        .unique()
         .filter(|x| links_observed.contains(x))
         .map(|x| x.to_string())
         .collect::<Vec<String>>()
@@ -198,7 +292,7 @@ fn summerize_filtered_links(links_to_filter: &Vec<u8>, links_observed: Vec<u8>) 
         .join(", ");
 
     if !not_filtered.is_empty() {
-        let not_filtered_str = format!(" (not found: {not_filtered})");
+        let not_filtered_str = format!("not found: {not_filtered}");
         filtered_links_stat.notes = not_filtered_str;
     }
     filtered_links_stat

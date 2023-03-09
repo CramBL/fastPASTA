@@ -42,8 +42,13 @@ pub mod input {
                                 Err(e) => {
                                     if e.kind() == std::io::ErrorKind::UnexpectedEof {
                                         break;
+                                    } else if e.kind() == std::io::ErrorKind::InvalidData {
+                                        log::trace!(
+                                            "Input scanner returned invalid data, exiting reader thread"
+                                        );
+                                        break;
                                     } else {
-                                        panic!("Error reading CDP chunks: {e}");
+                                        panic!("Unexpected Error reading CDP chunks: {e}");
                                     }
                                 }
                             };
@@ -78,7 +83,7 @@ pub mod validate {
     use crate::util::stats_controller::StatType;
     use crate::validators::cdp_running::CdpRunningValidator;
     use crate::validators::rdh::RdhCruv7RunningChecker;
-    use crate::words::rdh::{RdhCRUv7, RDH};
+    use crate::words::rdh::{layer_from_feeid, stave_number_from_feeid, RdhCRUv7, RDH};
     use crossbeam_channel::{bounded, Receiver, RecvError};
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{mpsc, Arc};
@@ -115,6 +120,19 @@ pub mod validate {
                                 break;
                             }
                         };
+
+                        // Collect global stats
+                        // Send HBF seen if HBA is detected
+                        rdh_chunk.iter().for_each(|rdh| {
+                            if rdh.stop_bit() == 1 {
+                                stats_sender_channel.send(StatType::HBFsSeen(1)).unwrap();
+                            }
+                            let layer = layer_from_feeid(rdh.fee_id());
+                            let stave = stave_number_from_feeid(rdh.fee_id());
+                            stats_sender_channel
+                                .send(StatType::LayerStaveSeen { layer, stave })
+                                .unwrap();
+                        });
 
                         if config.any_checks() {
                             do_checks_v7(
@@ -167,9 +185,16 @@ pub mod validate {
     ) {
         let mut tmp_mem_pos_tracker = current_mem_pos;
         for (rdh, payload) in rdh_slices.iter().zip(payload_slices.iter()) {
+            stats_sender_ch_checker
+                .send(StatType::DataFormat(rdh.data_format()))
+                .unwrap();
             do_rdh_checks(rdh, rdh_running, stats_sender_ch_checker);
             tmp_mem_pos_tracker += 512;
             payload_running.set_current_rdh(rdh, tmp_mem_pos_tracker);
+            if payload.is_empty() {
+                log::debug!("Empty payload at {}", tmp_mem_pos_tracker);
+                continue;
+            }
             do_payload_checks(
                 payload,
                 rdh.data_format(),
@@ -226,6 +251,9 @@ pub mod validate {
         payload: &[u8],
         dataformat: u8,
     ) -> Result<impl Iterator<Item = &[u8]>, String> {
+        // Check payload size
+        log::trace!("Payload size is {}", payload.len());
+
         // Retrieve end of payload padding from payload
         let ff_padding = payload
             .iter()
