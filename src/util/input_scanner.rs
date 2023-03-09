@@ -215,22 +215,17 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{util::stats_controller::Stats, words::rdh::RdhCRUv7};
+    use std::io::Write;
+    use std::{fs::File, io::BufReader, path::PathBuf, thread::JoinHandle};
 
-    use super::*;
-    #[test]
-    #[ignore] // Large test ignored in normal cases, useful for debugging
-    fn full_file_filter() {
-        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
-            "fastpasta",
-            "-s",
-            "-f",
-            "0",
-            "../fastpasta_test_files/data_ols_ul.raw",
-            "-o test_filter_link.raw",
-        ]);
-        println!("{config:#?}");
+    use crate::{util::stats_controller::Stats, words::rdh::RdhCRUv7, ByteSlice};
 
+    fn setup_scanner_for_file(
+        path: &str,
+    ) -> (InputScanner<BufReader<std::fs::File>>, JoinHandle<()>) {
+        use super::*;
+        let config: Opt =
+            <Opt as structopt::StructOpt>::from_iter(&["fastpasta", path, "-s", "-f", "0"]);
         let (send_stats_controller_channel, recv_stats_controller_channel): (
             std::sync::mpsc::Sender<StatType>,
             std::sync::mpsc::Receiver<StatType>,
@@ -250,69 +245,101 @@ mod tests {
             .expect("File not found");
         let bufreader = std::io::BufReader::new(reader);
 
-        let mut scanner = InputScanner::new(
-            cfg,
-            Box::new(bufreader),
-            MemPosTracker::new(),
-            send_stats_controller_channel,
-        );
+        (
+            InputScanner::new(
+                cfg,
+                Box::new(bufreader),
+                MemPosTracker::new(),
+                send_stats_controller_channel,
+            ),
+            stats_controller_thread,
+        )
+    }
 
-        let mut link0_rdh_data: Vec<RdhCRUv7> = vec![];
-        let mut link0_payload_data: Vec<Vec<u8>> = vec![];
+    use super::*;
+    use crate::words::rdh::{RdhCRUv6, CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
+    #[test]
+    fn test_load_rdhcruv7_test() {
+        let test_data = CORRECT_RDH_CRU_V7;
+        println!("Test data: \n       {test_data}");
+        let file_name = "test.raw";
+        let filepath = PathBuf::from(file_name);
+        let mut file = File::create(&filepath).unwrap();
+        // Write to file for testing
+        file.write_all(test_data.to_byte_slice()).unwrap();
 
-        let tmp_rdh: RdhCRUv7 = scanner.load_rdh_cru().unwrap();
-        link0_payload_data.push(
-            scanner
-                .load_payload_raw(tmp_rdh.payload_size() as usize)
-                .unwrap(),
-        );
-        link0_rdh_data.push(tmp_rdh);
-
-        assert!(link0_rdh_data.len() == 1);
-        assert!(link0_payload_data.len() == 1);
-        assert!(link0_payload_data.first().unwrap().len() > 1);
-
-        let rdh_validator = crate::validators::rdh::RDH_CRU_V7_VALIDATOR;
-
-        let tmp_rdh = link0_rdh_data.first().unwrap();
-        println!("RDH: {tmp_rdh}");
-        match rdh_validator.sanity_check(link0_rdh_data.first().unwrap()) {
-            Ok(_) => (),
-            Err(e) => {
-                println!("Sanity check failed: {e}");
-            }
+        let stats_handle_super: Option<JoinHandle<()>>;
+        {
+            let (mut scanner, stats_handle) = setup_scanner_for_file("test.raw");
+            stats_handle_super = Some(stats_handle);
+            let rdh = scanner.load_rdh_cru::<RdhCRUv7>().unwrap();
+            assert_eq!(test_data, rdh);
         }
+        stats_handle_super.unwrap().join().unwrap();
+    }
 
-        let mut loop_count = 0;
-        while let Ok(rdh) = scanner.load_rdh_cru::<RdhCRUv7>() {
-            println!("{rdh}");
-            loop_count += 1;
-            print!("{loop_count} ");
-            link0_payload_data.push(
-                scanner
-                    .load_payload_raw(rdh.payload_size() as usize)
-                    .unwrap(),
-            );
-            link0_rdh_data.push(rdh);
+    #[test]
+    fn test_load_rdhcruv7_test_unexp_eof() {
+        let mut test_data = CORRECT_RDH_CRU_V7;
+        test_data.link_id = 100; // Invalid link id
+        println!("Test data: \n       {test_data}");
+        let file_name = "test.raw";
+        let filepath = PathBuf::from(file_name);
+        let mut file = File::create(&filepath).unwrap();
+        // Write to file for testing
+        file.write_all(test_data.to_byte_slice()).unwrap();
 
-            match rdh_validator.sanity_check(link0_rdh_data.last().unwrap()) {
-                Ok(_) => (),
-                Err(e) => {
-                    println!("Sanity check failed: {e}");
-                }
-            }
+        let stats_handle_super: Option<JoinHandle<()>>;
+        {
+            let (mut scanner, stats_handle) = setup_scanner_for_file("test.raw");
+            stats_handle_super = Some(stats_handle);
+            let rdh = scanner.load_rdh_cru::<RdhCRUv7>();
+            assert!(rdh.is_err());
+            assert!(rdh.unwrap_err().kind() == std::io::ErrorKind::UnexpectedEof);
         }
+        stats_handle_super.unwrap().join().unwrap();
+    }
 
-        println!(
-            "Total RDHs: {}, Payloads: {}",
-            link0_rdh_data.len(),
-            link0_payload_data.len()
-        );
+    #[test]
+    fn test_load_rdhcruv6_test() {
+        let mut test_data = CORRECT_RDH_CRU_V6;
+        test_data.link_id = 0; // we are filtering for 0
+        println!("Test data: \n       {test_data}");
+        let file_name = "test.raw";
+        let filepath = PathBuf::from(file_name);
+        let mut file = File::create(&filepath).unwrap();
+        // Write to file for testing
+        file.write_all(test_data.to_byte_slice()).unwrap();
 
-        link0_rdh_data.iter().for_each(|rdh| {
-            println!("{rdh}");
-        });
+        let stats_handle_super: Option<JoinHandle<()>>;
+        {
+            let (mut scanner, stats_handle) = setup_scanner_for_file("test.raw");
+            stats_handle_super = Some(stats_handle);
+            let rdh = scanner.load_rdh_cru::<RdhCRUv6>().unwrap();
+            assert_eq!(test_data, rdh);
+        }
+        stats_handle_super.unwrap().join().unwrap();
+    }
 
-        stats_controller_thread.join().unwrap();
+    #[test]
+    fn test_load_rdhcruv6_test_unexp_eof() {
+        let mut test_data = CORRECT_RDH_CRU_V6;
+        test_data.link_id = 100; // Invalid link id
+        println!("Test data: \n       {test_data}");
+        let file_name = "test.raw";
+        let filepath = PathBuf::from(file_name);
+        let mut file = File::create(&filepath).unwrap();
+        // Write to file for testing
+        file.write_all(test_data.to_byte_slice()).unwrap();
+
+        let stats_handle_super: Option<JoinHandle<()>>;
+        {
+            let (mut scanner, stats_handle) = setup_scanner_for_file("test.raw");
+            stats_handle_super = Some(stats_handle);
+            let rdh = scanner.load_rdh_cru::<RdhCRUv6>();
+            assert!(rdh.is_err());
+            assert!(rdh.unwrap_err().kind() == std::io::ErrorKind::UnexpectedEof);
+        }
+        stats_handle_super.unwrap().join().unwrap();
     }
 }
