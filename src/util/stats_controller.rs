@@ -177,7 +177,7 @@ impl Stats {
         layers_staves_seen.sort();
         let layers_staves_seen_string = layers_staves_seen
             .iter()
-            .map(|(layer, stave)| format!("L{}_{}", layer, stave))
+            .map(|(layer, stave)| format!("L{layer}_{stave}"))
             .collect::<Vec<String>>()
             .join(", ");
         // If no filtering, the HBFs seen is from the total RDHs
