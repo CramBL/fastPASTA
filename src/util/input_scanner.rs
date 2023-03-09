@@ -1,3 +1,4 @@
+use super::stats_controller::StatType;
 use super::{
     bufreader_wrapper::BufferedReaderWrapper, config::Opt, mem_pos_tracker::MemPosTracker,
 };
@@ -26,7 +27,7 @@ pub trait ScanCDP {
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     pub reader: Box<R>,
     pub tracker: MemPosTracker,
-    pub stats_controller_sender_ch: std::sync::mpsc::Sender<super::stats_controller::StatType>,
+    pub stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
     pub link_to_filter: Option<Vec<u8>>,
     unique_links_observed: Vec<u8>,
     initial_rdh0: Option<Rdh0>,
@@ -37,7 +38,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         config: std::sync::Arc<Opt>,
         reader: Box<R>,
         tracker: MemPosTracker,
-        stats_controller_sender_ch: std::sync::mpsc::Sender<super::stats_controller::StatType>,
+        stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
     ) -> Self {
         InputScanner {
             reader,
@@ -52,7 +53,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         config: std::sync::Arc<Opt>,
         reader: Box<R>,
         tracker: MemPosTracker,
-        stats_controller_sender_ch: std::sync::mpsc::Sender<super::stats_controller::StatType>,
+        stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
         rdh0: Rdh0,
     ) -> Self {
         InputScanner {
@@ -64,27 +65,24 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             initial_rdh0: Some(rdh0),
         }
     }
-
     fn report_rdh_seen(&self) {
         self.stats_controller_sender_ch
-            .send(super::stats_controller::StatType::RDHsSeen(1))
+            .send(StatType::RDHsSeen(1))
             .unwrap();
     }
     fn report_link_seen(&self, link_id: u8) {
         self.stats_controller_sender_ch
-            .send(super::stats_controller::StatType::LinksObserved(link_id))
+            .send(StatType::LinksObserved(link_id))
             .unwrap();
     }
     fn report_payload_size(&self, payload_size: usize) {
         self.stats_controller_sender_ch
-            .send(super::stats_controller::StatType::PayloadSize(
-                payload_size as u32,
-            ))
+            .send(StatType::PayloadSize(payload_size as u32))
             .unwrap();
     }
     fn report_rdh_filtered(&self) {
         self.stats_controller_sender_ch
-            .send(super::stats_controller::StatType::RDHsFiltered(1))
+            .send(StatType::RDHsFiltered(1))
             .unwrap();
     }
 }
@@ -105,6 +103,11 @@ where
             true => RDH::load_from_rdh0(&mut self.reader, self.initial_rdh0.take().unwrap())?,
             false => RDH::load(&mut self.reader)?,
         };
+        log::debug!(
+            "Loaded RDH at [{:#X}]: \n      {rdh}",
+            self.tracker.memory_address_bytes,
+            rdh = rdh
+        );
 
         // Set the link ID and report another RDH seen
         let current_link_id = rdh.link_id();
@@ -125,6 +128,20 @@ where
                 Ok(rdh)
             } else {
                 // If it doesn't match: Set tracker to jump to next RDH and try until we find a matching link or EOF
+                log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
+                let next_rdh_memory_location = (rdh.offset_to_next() - 64) as i64;
+                if next_rdh_memory_location < 0 {
+                    self.stats_controller_sender_ch
+                        .send(StatType::Fatal(
+                            "RDH offset to next is smaller than 64 bytes. This is not possible."
+                                .to_string(),
+                        ))
+                        .unwrap();
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "RDH offset to next is smaller than 64 bytes. This is not possible.",
+                    ));
+                }
                 self.reader
                     .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
                 self.load_next_rdh_to_filter()
@@ -141,20 +158,22 @@ where
     fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error> {
         let mut payload = vec![0; payload_size];
         Read::read_exact(&mut self.reader, &mut payload)?;
-        debug_assert!(payload.len() == payload_size);
         self.report_payload_size(payload_size);
         Ok(payload)
     }
     /// Reads the next CDP from file
     #[inline]
     fn load_cdp<T: RDH>(&mut self) -> Result<(T, Vec<u8>), std::io::Error> {
+        log::trace!("Attempting to load CDP - 1. loading RDH");
         let rdh: T = self.load_rdh_cru()?;
+
         self.tracker.memory_address_bytes += rdh.offset_to_next() as u64;
         // log::trace!(
         //     "Current memory offset: {}, rdh memory offset: {}",
         //     self.tracker.memory_address_bytes,
         //     rdh.offset_to_next()
         // );
+        log::trace!("Attempting to load CDP - 2. loading Payload");
         let payload = self.load_payload_raw(rdh.payload_size() as usize)?;
         Ok((rdh, payload))
     }
@@ -163,6 +182,21 @@ where
         let links_to_filter = self.link_to_filter.as_ref().unwrap();
         loop {
             let rdh: T = RDH::load(&mut self.reader)?;
+            log::debug!("Loaded RDH: \n      {rdh}");
+            log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
+            let next_rdh_memory_location = rdh.offset_to_next() as i64 - 64;
+            if next_rdh_memory_location < 0 {
+                self.stats_controller_sender_ch
+                    .send(StatType::Fatal(
+                        "RDH offset to next is smaller than 64 bytes (size of RDH). This is not possible."
+                            .to_string(),
+                    ))
+                    .unwrap();
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "RDH offset to next is smaller than 64 bytes (size of RDH). This is not possible.",
+                ));
+            }
             let current_link_id = rdh.link_id();
             self.report_rdh_seen();
             if !self.unique_links_observed.contains(&current_link_id) {
@@ -181,10 +215,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        util::stats_controller::{self, Stats},
-        words::rdh::RdhCRUv7,
-    };
+    use crate::{util::stats_controller::Stats, words::rdh::RdhCRUv7};
 
     use super::*;
     #[test]
@@ -201,8 +232,8 @@ mod tests {
         println!("{config:#?}");
 
         let (send_stats_controller_channel, recv_stats_controller_channel): (
-            std::sync::mpsc::Sender<stats_controller::StatType>,
-            std::sync::mpsc::Receiver<stats_controller::StatType>,
+            std::sync::mpsc::Sender<StatType>,
+            std::sync::mpsc::Receiver<StatType>,
         ) = std::sync::mpsc::channel();
 
         let thread_stopper = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
