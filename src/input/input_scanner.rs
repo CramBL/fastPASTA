@@ -104,7 +104,7 @@ where
             false => RDH::load(&mut self.reader)?,
         };
         log::debug!(
-            "Loaded RDH at [{:#X}]: \n      {rdh}",
+            "Loaded RDH at [{:#X}]: \n       {rdh}",
             self.tracker.memory_address_bytes,
             rdh = rdh
         );
@@ -118,7 +118,11 @@ where
             self.unique_links_observed.push(current_link_id);
             self.report_link_seen(current_link_id);
         }
-
+        sanity_check_offset_next(
+            &rdh,
+            self.tracker.memory_address_bytes,
+            &self.stats_controller_sender_ch,
+        )?;
         // If we have a link filter set, check if the current link matches the filter
         if let Some(x) = self.link_to_filter.as_ref() {
             // If it matches, return the RDH
@@ -129,19 +133,7 @@ where
             } else {
                 // If it doesn't match: Set tracker to jump to next RDH and try until we find a matching link or EOF
                 log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
-                let next_rdh_memory_location = (rdh.offset_to_next() - 64) as i64;
-                if next_rdh_memory_location < 0 {
-                    self.stats_controller_sender_ch
-                        .send(StatType::Fatal(
-                            "RDH offset to next is smaller than 64 bytes. This is not possible."
-                                .to_string(),
-                        ))
-                        .unwrap();
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "RDH offset to next is smaller than 64 bytes. This is not possible.",
-                    ));
-                }
+
                 self.reader
                     .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
                 self.load_next_rdh_to_filter()
@@ -184,19 +176,11 @@ where
             let rdh: T = RDH::load(&mut self.reader)?;
             log::debug!("Loaded RDH: \n      {rdh}");
             log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
-            let next_rdh_memory_location = rdh.offset_to_next() as i64 - 64;
-            if next_rdh_memory_location < 0 {
-                self.stats_controller_sender_ch
-                    .send(StatType::Fatal(
-                        "RDH offset to next is smaller than 64 bytes (size of RDH). This is not possible."
-                            .to_string(),
-                    ))
-                    .unwrap();
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "RDH offset to next is smaller than 64 bytes (size of RDH). This is not possible.",
-                ));
-            }
+            sanity_check_offset_next(
+                &rdh,
+                self.tracker.memory_address_bytes,
+                &self.stats_controller_sender_ch,
+            )?;
             let current_link_id = rdh.link_id();
             self.report_rdh_seen();
             if !self.unique_links_observed.contains(&current_link_id) {
@@ -211,6 +195,35 @@ where
                 .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
         }
     }
+}
+
+fn sanity_check_offset_next<T: RDH>(
+    rdh: &T,
+    current_memory_address: u64,
+    stats_ch: &std::sync::mpsc::Sender<StatType>,
+) -> Result<(), std::io::Error> {
+    let next_rdh_memory_location = (rdh.offset_to_next() - 64) as i64;
+    if next_rdh_memory_location < 0 {
+        let error_string =
+            format!("Current Loaded RDH at [{current_memory_address:#X}]: \n       {rdh}");
+        let fatal_error_string = format!(
+            "RDH offset to next is {next_rdh_memory_location} (less than 64 bytes). This is not possible. {error_string}");
+        stats_ch
+            .send(StatType::Fatal(fatal_error_string.clone()))
+            .unwrap();
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            fatal_error_string,
+        ));
+    } else if next_rdh_memory_location > 0x4FFF {
+        // VERY HIGH OFFSET
+        let error_string =
+            format!("Current Loaded RDH at [{current_memory_address:#X}]: \n       {rdh}");
+        let fatal_error_string =
+            format!("RDH offset to next is larger than 20KB. This is not possible. {error_string}");
+        stats_ch.send(StatType::Fatal(fatal_error_string)).unwrap();
+    }
+    Ok(())
 }
 
 #[cfg(test)]
