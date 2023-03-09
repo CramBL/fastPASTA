@@ -42,8 +42,13 @@ pub mod input {
                                 Err(e) => {
                                     if e.kind() == std::io::ErrorKind::UnexpectedEof {
                                         break;
+                                    } else if e.kind() == std::io::ErrorKind::InvalidData {
+                                        log::trace!(
+                                            "Input scanner returned invalid data, exiting reader thread"
+                                        );
+                                        break;
                                     } else {
-                                        panic!("Error reading CDP chunks: {e}");
+                                        panic!("Unexpected Error reading CDP chunks: {e}");
                                     }
                                 }
                             };
