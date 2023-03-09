@@ -19,8 +19,7 @@ pub enum StatType {
     // TimeFrameLength(u32),
     DataFormat(u8),
     HBFsSeen(u32),
-    // LayersSeen(u8), // make it a struct like LayerStavesSeen{ layer: u8, stave: u8}
-    // StavesSeen(u8),
+    LayerStaveSeen { layer: u8, stave: u8 },
 }
 
 pub struct Stats {
@@ -39,6 +38,7 @@ pub struct Stats {
     data_formats_observed: Vec<u8>,
     hbfs_seen: u32,
     fatal_error: Option<String>,
+    layers_staves_seen: Vec<(u8, u8)>,
 }
 impl Stats {
     pub fn new(
@@ -66,6 +66,7 @@ impl Stats {
             data_formats_observed: Vec::new(),
             hbfs_seen: 0,
             fatal_error: None,
+            layers_staves_seen: Vec::new(),
         }
     }
 
@@ -123,6 +124,12 @@ impl Stats {
                 log::error!("Fatal error: {}\nShutting down...", err);
                 self.fatal_error = Some(err);
             }
+            StatType::LayerStaveSeen { layer, stave } => {
+                // Only add if not already seen
+                if !self.layers_staves_seen.contains(&(layer, stave)) {
+                    self.layers_staves_seen.push((layer, stave));
+                }
+            }
         }
     }
 
@@ -152,6 +159,7 @@ impl Stats {
             self.rdhs_seen.to_string(),
             None,
         ));
+        // Sort and format links observed
         let mut observed_links = self.links_observed.clone();
         observed_links.sort();
         let observed_links_string = observed_links
@@ -164,6 +172,14 @@ impl Stats {
             observed_links_string,
             None,
         ));
+        // Sort and format layers and staves seen
+        let mut layers_staves_seen = self.layers_staves_seen.clone();
+        layers_staves_seen.sort();
+        let layers_staves_seen_string = layers_staves_seen
+            .iter()
+            .map(|(layer, stave)| format!("L{}_{}", layer, stave))
+            .collect::<Vec<String>>()
+            .join(", ");
         // If no filtering, the HBFs seen is from the total RDHs
         if self.links_to_filter.is_empty() {
             report.add_stat(StatSummary::new(
@@ -171,27 +187,13 @@ impl Stats {
                 self.hbfs_seen.to_string(),
                 None,
             ));
-        }
-
-        // Add detected attributes
-        report.add_detected_attribute("RDH Version".to_string(), self.rdh_version.to_string());
-        let mut observed_data_formats = self.data_formats_observed.clone();
-        if observed_data_formats.len() > 1 {
-            observed_data_formats.sort();
-            log::error!(
-                "Multiple data formats observed: {:?}",
-                observed_data_formats
-            );
-        }
-        let observed_data_formats_string = observed_data_formats
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-        report.add_detected_attribute("Data Format".to_string(), observed_data_formats_string);
-
-        // Filtered stats
-        if !self.links_to_filter.is_empty() {
+            // If no filtering, the layers and staves seen is from the total RDHs
+            report.add_stat(StatSummary::new(
+                "Layers and Staves seen".to_string(),
+                layers_staves_seen_string,
+                None,
+            ));
+        } else {
             let mut filtered_stats: Vec<StatSummary> = Vec::new();
             filtered_stats.push(StatSummary::new(
                 "RDHs".to_string(),
@@ -224,8 +226,30 @@ impl Stats {
             let filtered_links =
                 summerize_filtered_links(&self.links_to_filter, self.links_observed.clone());
             filtered_stats.push(filtered_links);
+            filtered_stats.push(StatSummary::new(
+                "Layers and Staves seen".to_string(),
+                layers_staves_seen_string,
+                None,
+            ));
             report.add_filter_stats(tabled::Table::new(filtered_stats));
         }
+
+        // Add detected attributes
+        report.add_detected_attribute("RDH Version".to_string(), self.rdh_version.to_string());
+        let mut observed_data_formats = self.data_formats_observed.clone();
+        if observed_data_formats.len() > 1 {
+            observed_data_formats.sort();
+            log::error!(
+                "Multiple data formats observed: {:?}",
+                observed_data_formats
+            );
+        }
+        let observed_data_formats_string = observed_data_formats
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        report.add_detected_attribute("Data Format".to_string(), observed_data_formats_string);
 
         report.print();
     }
