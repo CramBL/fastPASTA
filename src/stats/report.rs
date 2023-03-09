@@ -301,8 +301,7 @@ mod tests {
 
         let filter_table = Table::new(vec![filtered_links, observed_links]);
         report.add_filter_stats(filter_table);
-
-        assert_stderr_contains!(report.print(), "Total errors");
+        assert_stderr_contains!(report.print(), "Filtered links");
         assert_stderr_contains!(report.print(), "Total RDHs");
         assert_stderr_contains!(report.print(), "725800");
     }
@@ -315,13 +314,5 @@ mod tests {
         report.add_fatal_error(fatal_error.to_string());
 
         assert_stderr_contains!(report.print(), "FATAL ERROR");
-    }
-
-    #[test]
-    fn test_fatal_error_report_panic() {
-        let processing_time = std::time::Instant::now();
-        let fatal_error = "Fatal Error happened";
-        let mut report = Report::new(processing_time.elapsed());
-        report.add_fatal_error(fatal_error.to_string());
     }
 }
