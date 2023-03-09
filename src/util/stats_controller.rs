@@ -8,6 +8,7 @@ use std::sync::{
 
 use super::config::Opt;
 pub enum StatType {
+    Fatal(String), // Fatal error, stop processing
     Error(String),
     RDHsSeen(u8),
     RDHsFiltered(u8),
@@ -37,6 +38,7 @@ pub struct Stats {
     rdh_version: u8,
     data_formats_observed: Vec<u8>,
     hbfs_seen: u32,
+    fatal_error: Option<String>,
 }
 impl Stats {
     pub fn new(
@@ -63,6 +65,7 @@ impl Stats {
             rdh_version: 0,
             data_formats_observed: Vec::new(),
             hbfs_seen: 0,
+            fatal_error: None,
         }
     }
 
@@ -114,11 +117,20 @@ impl Stats {
                 }
             }
             StatType::HBFsSeen(val) => self.hbfs_seen += val,
+            StatType::Fatal(err) => {
+                self.end_processing_flag
+                    .store(true, std::sync::atomic::Ordering::SeqCst);
+                log::error!("Fatal error: {}\nShutting down...", err);
+                self.fatal_error = Some(err);
+            }
         }
     }
 
     pub fn print(&self) {
         let mut report = Report::new(self.processing_time.elapsed());
+        if let Some(err) = &self.fatal_error {
+            report.add_fatal_error(err.clone());
+        }
         // Add global stats
         if self.max_tolerate_errors == 0 {
             report.add_stat(StatSummary::new(
