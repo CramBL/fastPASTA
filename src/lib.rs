@@ -1,5 +1,9 @@
+use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
 use std::{fmt::Display, sync::atomic::AtomicBool};
-use util::{config::Opt, input_scanner::InputScanner, stats_controller::Stats};
+use util::{config::Opt, stats_controller::Stats};
+
+use crate::input::stdin_reader::StdInReaderSeeker;
+pub mod input;
 mod stats;
 pub mod util;
 pub mod validators;
@@ -52,7 +56,7 @@ pub fn init_stats_controller(
     (stats_thread, send_stats_channel, thread_stop_flag)
 }
 
-pub fn init_reader(config: &Opt) -> Box<dyn util::bufreader_wrapper::BufferedReaderWrapper> {
+pub fn init_reader(config: &Opt) -> Box<dyn BufferedReaderWrapper> {
     match config.file() {
         Some(path) => {
             log::trace!("Reading from file: {:?}", &path);
@@ -67,7 +71,7 @@ pub fn init_reader(config: &Opt) -> Box<dyn util::bufreader_wrapper::BufferedRea
             if atty::is(atty::Stream::Stdin) {
                 log::trace!("stdin not redirected!");
             }
-            Box::new(util::stdin_reader::StdInReaderSeeker {
+            Box::new(StdInReaderSeeker {
                 reader: std::io::stdin(),
             })
         }
@@ -83,13 +87,13 @@ pub fn buf_reader_with_capacity<R: std::io::Read>(
 }
 
 pub fn get_chunk<T: words::rdh::RDH>(
-    file_scanner: &mut InputScanner<impl util::bufreader_wrapper::BufferedReaderWrapper + ?Sized>,
+    file_scanner: &mut InputScanner<impl BufferedReaderWrapper + ?Sized>,
     chunk_size_cdps: usize,
 ) -> Result<(Vec<T>, Vec<Vec<u8>>), std::io::Error> {
     let mut rdhs: Vec<T> = vec![];
     let mut payloads: Vec<Vec<u8>> = vec![];
 
-    use crate::util::input_scanner::ScanCDP;
+    use input::input_scanner::ScanCDP;
 
     for _ in 0..chunk_size_cdps {
         let (rdh, payload) = match file_scanner.load_cdp() {

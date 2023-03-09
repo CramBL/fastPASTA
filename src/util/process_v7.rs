@@ -11,8 +11,9 @@ const CHANNEL_CDP_CAPACITY: usize = 100;
 pub mod input {
     use super::*;
     use crate::get_chunk;
-    use crate::util::bufreader_wrapper::BufferedReaderWrapper;
-    use crate::util::input_scanner::InputScanner;
+    use crate::input::bufreader_wrapper::BufferedReaderWrapper;
+    use crate::input::input_scanner::InputScanner;
+
     use crate::words::rdh::RDH;
 
     type Payload = Vec<Vec<u8>>;

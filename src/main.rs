@@ -1,10 +1,9 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
-use fastpasta::util::bufreader_wrapper::BufferedReaderWrapper;
+use fastpasta::input::bufreader_wrapper::BufferedReaderWrapper;
+use fastpasta::input::input_scanner::InputScanner;
 use fastpasta::util::config::Opt;
-
-use fastpasta::util::input_scanner::InputScanner;
 use fastpasta::util::process_v7;
 use fastpasta::util::stats_controller;
 use fastpasta::words::rdh::{Rdh0, RdhCRUv6};
@@ -33,13 +32,8 @@ pub fn main() {
     stat_send_channel
         .send(stats_controller::StatType::RdhVersion(rdh_version))
         .unwrap();
-    let loader = InputScanner::new_from_rdh0(
-        config.clone(),
-        readable,
-        fastpasta::util::mem_pos_tracker::MemPosTracker::new(),
-        stat_send_channel.clone(),
-        rdh0,
-    );
+    let loader =
+        InputScanner::new_from_rdh0(config.clone(), readable, stat_send_channel.clone(), rdh0);
 
     // Choose the rest of the execution based on the RDH version
     // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time

@@ -1,8 +1,9 @@
-use super::stats_controller::StatType;
-use super::{
-    bufreader_wrapper::BufferedReaderWrapper, config::Opt, mem_pos_tracker::MemPosTracker,
+use super::bufreader_wrapper::BufferedReaderWrapper;
+use super::mem_pos_tracker::MemPosTracker;
+use crate::{
+    util::{config::Opt, stats_controller::StatType},
+    words::rdh::{Rdh0, RDH},
 };
-use crate::words::rdh::{Rdh0, RDH};
 use std::io::Read;
 
 /// Trait for a scanner that reads CDPs from a file or stdin
@@ -52,13 +53,12 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     pub fn new_from_rdh0(
         config: std::sync::Arc<Opt>,
         reader: Box<R>,
-        tracker: MemPosTracker,
         stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
         rdh0: Rdh0,
     ) -> Self {
         InputScanner {
             reader,
-            tracker,
+            tracker: MemPosTracker::new(),
             stats_controller_sender_ch,
             link_to_filter: config.filter_link(),
             unique_links_observed: vec![],
