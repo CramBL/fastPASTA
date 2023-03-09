@@ -571,7 +571,7 @@ impl RdhCruv7RunningChecker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::words::rdh::{BcReserved, CruidDw, DataformatReserved};
+    use crate::words::rdh::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
 
     #[test]
     fn validate_fee_id() {
@@ -823,52 +823,16 @@ mod tests {
         assert!(res.is_err());
     }
 
-    // RDH-CRU v7 sanity check
-    // Data for use in tests:
-    const CORRECT_RDH_CRU: RdhCRUv7 = RdhCRUv7 {
-        rdh0: Rdh0 {
-            header_id: 0x7,
-            header_size: 0x40,
-            fee_id: FeeId(0x502A),
-            priority_bit: 0x0,
-            system_id: 0x20,
-            reserved0: 0,
-        },
-        offset_new_packet: 0x13E0,
-        memory_size: 0x13E0,
-        link_id: 0x0,
-        packet_counter: 0x0,
-        cruid_dw: CruidDw(0x0018),
-        rdh1: Rdh1 {
-            bc_reserved0: BcReserved(0x0),
-            orbit: 0x0b7dd575,
-        },
-        dataformat_reserved0: DataformatReserved(0x2),
-        rdh2: Rdh2 {
-            trigger_type: 0x00006a03,
-            pages_counter: 0x0,
-            stop_bit: 0x0,
-            reserved0: 0x0,
-        },
-        reserved1: 0x0,
-        rdh3: Rdh3 {
-            detector_field: 0x0,
-            par_bit: 0x0,
-            reserved0: 0x0,
-        },
-        reserved2: 0x0,
-    };
-
     #[test]
     fn validate_rdh_cru_v7() {
         let validator = RDH_CRU_V7_VALIDATOR;
-        let res = validator.sanity_check(&CORRECT_RDH_CRU);
+        let res = validator.sanity_check(&CORRECT_RDH_CRU_V7);
         assert!(res.is_ok());
     }
     #[test]
     fn invalidate_rdh_cru_v7_bad_header_id() {
         let validator = RDH_CRU_V7_VALIDATOR;
-        let mut rdh_cru = CORRECT_RDH_CRU;
+        let mut rdh_cru = CORRECT_RDH_CRU_V7;
         rdh_cru.rdh0.header_id = 0x0;
         let res = validator.sanity_check(&rdh_cru);
         println!("{res:?}");
@@ -877,7 +841,7 @@ mod tests {
     #[test]
     fn invalidate_rdh_cru_v7_multiple_errors() {
         let validator = RDH_CRU_V7_VALIDATOR;
-        let mut rdh_cru = CORRECT_RDH_CRU;
+        let mut rdh_cru = CORRECT_RDH_CRU_V7;
         rdh_cru.rdh0.header_size = 0x0;
         rdh_cru.rdh2.reserved0 = 0x1;
         rdh_cru.rdh3.detector_field = 0x5;
@@ -890,42 +854,6 @@ mod tests {
         println!("{res:?}");
         assert!(res.is_err());
     }
-
-    // RDH-CRU v6 sanity check
-    // Data for use in tests:
-    const CORRECT_RDH_CRU_V6: RdhCRUv6 = RdhCRUv6 {
-        rdh0: Rdh0 {
-            header_id: 0x6,
-            header_size: 0x40,
-            fee_id: FeeId(0x502A),
-            priority_bit: 0x0,
-            system_id: 0x20,
-            reserved0: 0,
-        },
-        offset_new_packet: 0x13E0,
-        memory_size: 0x13E0,
-        link_id: 0x2,
-        packet_counter: 0x1,
-        cruid_dw: CruidDw(0x0018),
-        rdh1: Rdh1 {
-            bc_reserved0: BcReserved(0x0),
-            orbit: 0x0b7dd575,
-        },
-        reserved0: 0x0,
-        rdh2: Rdh2 {
-            trigger_type: 0x00006a03,
-            pages_counter: 0x0,
-            stop_bit: 0x0,
-            reserved0: 0x0,
-        },
-        reserved1: 0x0,
-        rdh3: Rdh3 {
-            detector_field: 0x0,
-            par_bit: 0x0,
-            reserved0: 0x0,
-        },
-        reserved2: 0x0,
-    };
 
     #[test]
     fn validate_rdh_cru_v6() {

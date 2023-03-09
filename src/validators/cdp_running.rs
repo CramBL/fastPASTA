@@ -371,42 +371,6 @@ impl<T: RDH> CdpRunningValidator<T> {
 mod tests {
     use super::*;
     use crate::words::rdh::*;
-    // RDH-CRU v7 sanity check
-    // Data for use in tests:
-    const CORRECT_RDH_CRU: RdhCRUv7 = RdhCRUv7 {
-        rdh0: Rdh0 {
-            header_id: 0x7,
-            header_size: 0x40,
-            fee_id: FeeId(0x502A),
-            priority_bit: 0x0,
-            system_id: 0x20,
-            reserved0: 0,
-        },
-        offset_new_packet: 0x13E0,
-        memory_size: 0x13E0,
-        link_id: 0x0,
-        packet_counter: 0x0,
-        cruid_dw: CruidDw(0x0018),
-        rdh1: Rdh1 {
-            bc_reserved0: BcReserved(0x0),
-            orbit: 0x0b7dd575,
-        },
-        dataformat_reserved0: DataformatReserved(0x2),
-        rdh2: Rdh2 {
-            trigger_type: 0x00006a03,
-            pages_counter: 0x0,
-            stop_bit: 0x0,
-            reserved0: 0x0,
-        },
-        reserved1: 0x0,
-        rdh3: Rdh3 {
-            detector_field: 0x0,
-            par_bit: 0x0,
-            reserved0: 0x0,
-        },
-        reserved2: 0x0,
-    };
-
     #[test]
     fn test_validate_ihw() {
         const VALID_ID: u8 = 0xE0;
@@ -419,7 +383,7 @@ mod tests {
         let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
         let payload_mem_pos = 512;
 
-        validator.set_current_rdh(&CORRECT_RDH_CRU, payload_mem_pos);
+        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, payload_mem_pos);
         validator.check(&raw_data_ihw);
 
         assert!(stats_recv_ch.try_recv().is_err()); // Checks that no error was received (nothing received)
@@ -437,7 +401,7 @@ mod tests {
         let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
         let payload_mem_pos = 512;
 
-        validator.set_current_rdh(&CORRECT_RDH_CRU, payload_mem_pos);
+        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, payload_mem_pos);
         validator.check(&raw_data_ihw);
 
         match stats_recv_ch.recv() {
@@ -462,7 +426,7 @@ mod tests {
         let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
         let payload_mem_pos = 512;
 
-        validator.set_current_rdh(&CORRECT_RDH_CRU, payload_mem_pos);
+        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, payload_mem_pos);
         validator.check(&raw_data_tdt);
 
         match stats_recv_ch.recv() {
