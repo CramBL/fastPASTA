@@ -711,6 +711,7 @@ mod tests {
 
     // Verifies that the RdhCruv7 struct is serialized and deserialized correctly
     #[test]
+    #[ignore] // This test is ignored because it depends on specific local files to exist
     fn test_load_rdhcruv7() {
         // Create an instace of an RDH-CRU v7
         // write it to a file
@@ -743,6 +744,7 @@ mod tests {
 
     // Verifies that the RdhCruv6 struct is serialized and deserialized correctly
     #[test]
+    #[ignore] // This test is ignored because it depends on specific local files to exist
     fn test_load_rdhcruv6() {
         // Create an instace of an RDH-CRU v6
         // write it to a file
