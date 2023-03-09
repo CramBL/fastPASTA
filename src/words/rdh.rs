@@ -634,7 +634,73 @@ impl Display for Rdh3 {
         )
     }
 }
-
+// For testing
+pub const CORRECT_RDH_CRU_V7: RdhCRUv7 = RdhCRUv7 {
+    rdh0: Rdh0 {
+        header_id: 0x7,
+        header_size: 0x40,
+        fee_id: FeeId(0x502A),
+        priority_bit: 0x0,
+        system_id: 0x20,
+        reserved0: 0,
+    },
+    offset_new_packet: 0x13E0,
+    memory_size: 0x13E0,
+    link_id: 0x0,
+    packet_counter: 0x0,
+    cruid_dw: CruidDw(0x0018),
+    rdh1: Rdh1 {
+        bc_reserved0: BcReserved(0x0),
+        orbit: 0x0b7dd575,
+    },
+    dataformat_reserved0: DataformatReserved(0x2),
+    rdh2: Rdh2 {
+        trigger_type: 0x00006a03,
+        pages_counter: 0x0,
+        stop_bit: 0x0,
+        reserved0: 0x0,
+    },
+    reserved1: 0x0,
+    rdh3: Rdh3 {
+        detector_field: 0x0,
+        par_bit: 0x0,
+        reserved0: 0x0,
+    },
+    reserved2: 0x0,
+};
+pub const CORRECT_RDH_CRU_V6: RdhCRUv6 = RdhCRUv6 {
+    rdh0: Rdh0 {
+        header_id: 0x6,
+        header_size: 0x40,
+        fee_id: FeeId(0x502A),
+        priority_bit: 0x0,
+        system_id: 0x20,
+        reserved0: 0,
+    },
+    offset_new_packet: 0x13E0,
+    memory_size: 0x13E0,
+    link_id: 0x2,
+    packet_counter: 0x1,
+    cruid_dw: CruidDw(0x0018),
+    rdh1: Rdh1 {
+        bc_reserved0: BcReserved(0x0),
+        orbit: 0x0b7dd575,
+    },
+    reserved0: 0x0,
+    rdh2: Rdh2 {
+        trigger_type: 0x00006a03,
+        pages_counter: 0x0,
+        stop_bit: 0x0,
+        reserved0: 0x0,
+    },
+    reserved1: 0x0,
+    rdh3: Rdh3 {
+        detector_field: 0x0,
+        par_bit: 0x0,
+        reserved0: 0x0,
+    },
+    reserved2: 0x0,
+};
 #[cfg(test)]
 mod tests {
 
@@ -645,46 +711,13 @@ mod tests {
 
     // Verifies that the RdhCruv7 struct is serialized and deserialized correctly
     #[test]
-    #[ignore] // Large test ignored in normal cases, useful for debugging
     fn test_load_rdhcruv7() {
         // Create an instace of an RDH-CRU v7
         // write it to a file
         // read it back
         // assert that they are equal
         let filename = "test_files/test_rdhcruv7.raw";
-        let correct_rdh_cru = RdhCRUv7 {
-            rdh0: Rdh0 {
-                header_id: 0x7,
-                header_size: 0x40,
-                fee_id: FeeId(0x502A),
-                priority_bit: 0x0,
-                system_id: 0x20,
-                reserved0: 0,
-            },
-            offset_new_packet: 0x13E0,
-            memory_size: 0x13E0,
-            link_id: 0x0,
-            packet_counter: 0x0,
-            cruid_dw: CruidDw(0x0018),
-            rdh1: Rdh1 {
-                bc_reserved0: BcReserved(0x0),
-                orbit: 0x0b7dd575,
-            },
-            dataformat_reserved0: DataformatReserved(0x2),
-            rdh2: Rdh2 {
-                trigger_type: 0x00006a03,
-                pages_counter: 0x0,
-                stop_bit: 0x0,
-                reserved0: 0x0,
-            },
-            reserved1: 0x0,
-            rdh3: Rdh3 {
-                detector_field: 0x0,
-                par_bit: 0x0,
-                reserved0: 0x0,
-            },
-            reserved2: 0x0,
-        };
+        let correct_rdh_cru = CORRECT_RDH_CRU_V7;
         let filepath = PathBuf::from(filename);
         let mut file = File::create(&filepath).unwrap();
         // Write the RDH-CRU v7 to the file
@@ -710,46 +743,13 @@ mod tests {
 
     // Verifies that the RdhCruv6 struct is serialized and deserialized correctly
     #[test]
-    #[ignore] // Large test ignored in normal cases, useful for debugging
     fn test_load_rdhcruv6() {
         // Create an instace of an RDH-CRU v6
         // write it to a file
         // read it back
         // assert that they are equal
         let filename = "test_files/test_rdhcruv6.raw";
-        let correct_rdhcruv6 = RdhCRUv6 {
-            rdh0: Rdh0 {
-                header_id: 0x6,
-                header_size: 0x40,
-                fee_id: FeeId(0x502A),
-                priority_bit: 0x0,
-                system_id: 0x20,
-                reserved0: 0,
-            },
-            offset_new_packet: 0x13E0,
-            memory_size: 0x13E0,
-            link_id: 0x2,
-            packet_counter: 0x1,
-            cruid_dw: CruidDw(0x0018),
-            rdh1: Rdh1 {
-                bc_reserved0: BcReserved(0x0),
-                orbit: 0x0b7dd575,
-            },
-            reserved0: 0x0,
-            rdh2: Rdh2 {
-                trigger_type: 0x00006a03,
-                pages_counter: 0x0,
-                stop_bit: 0x0,
-                reserved0: 0x0,
-            },
-            reserved1: 0x0,
-            rdh3: Rdh3 {
-                detector_field: 0x0,
-                par_bit: 0x0,
-                reserved0: 0x0,
-            },
-            reserved2: 0x0,
-        };
+        let correct_rdhcruv6 = CORRECT_RDH_CRU_V6;
 
         let filepath = PathBuf::from(filename);
         let mut file = File::create(&filepath).unwrap();
