@@ -11,9 +11,12 @@ impl DataWordSanityChecker {
         let id = data_word[9];
 
         if !self.is_valid_any_id(id) {
-            write!(err_str, "ID is invalid: {id:#2X} ").unwrap();
+            write!(err_str, "ID is invalid: {id:#02X} Full word: ").unwrap();
+            data_word.iter().for_each(|b| {
+                write!(err_str, "{b:02X} ").unwrap();
+            });
             // Early return if ID is wrong
-            return Err(err_str + "Full Word: {data_word:?}");
+            return Err(err_str);
         }
         Ok(())
     }
