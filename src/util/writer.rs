@@ -149,12 +149,11 @@ mod tests {
             let buf_size = writer.filtered_rdhs_buffer.len();
             println!("buf_size: {}", buf_size);
             assert_eq!(buf_size, length);
+            // Clean up before drop
+            let filepath = std::path::PathBuf::from(output_file_str);
+            // delete output file
+            std::fs::remove_file(filepath).unwrap();
         }
-
-        // CLEANUP
-        let filepath = std::path::PathBuf::from(output_file_str);
-        // delete output file
-        std::fs::remove_file(filepath).unwrap();
     }
 
     #[test]

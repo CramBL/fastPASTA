@@ -276,6 +276,9 @@ mod tests {
             assert_eq!(test_data, rdh);
         }
         stats_handle_super.unwrap().join().unwrap();
+
+        // delete output file
+        std::fs::remove_file(filepath).unwrap();
     }
 
     #[test]
@@ -298,6 +301,8 @@ mod tests {
             assert!(rdh.unwrap_err().kind() == std::io::ErrorKind::UnexpectedEof);
         }
         stats_handle_super.unwrap().join().unwrap();
+        // delete output file
+        std::fs::remove_file(filepath).unwrap();
     }
 
     #[test]
@@ -319,6 +324,8 @@ mod tests {
             assert_eq!(test_data, rdh);
         }
         stats_handle_super.unwrap().join().unwrap();
+        // delete output file
+        std::fs::remove_file(filepath).unwrap();
     }
 
     #[test]
