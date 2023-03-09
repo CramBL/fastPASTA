@@ -102,9 +102,43 @@ impl<T: RDH> Drop for BufferedWriter<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::words::rdh::RdhCRUv6;
-
     use super::*;
+    use crate::words::rdh::{
+        BcReserved, CruidDw, DataformatReserved, FeeId, Rdh0, Rdh1, Rdh2, Rdh3, RdhCRUv6, RdhCRUv7,
+    };
+    const CORRECT_RDH_CRU: RdhCRUv7 = RdhCRUv7 {
+        rdh0: Rdh0 {
+            header_id: 0x7,
+            header_size: 0x40,
+            fee_id: FeeId(0x502A),
+            priority_bit: 0x0,
+            system_id: 0x20,
+            reserved0: 0,
+        },
+        offset_new_packet: 0x13E0,
+        memory_size: 0x13E0,
+        link_id: 0x0,
+        packet_counter: 0x0,
+        cruid_dw: CruidDw(0x0018),
+        rdh1: Rdh1 {
+            bc_reserved0: BcReserved(0x0),
+            orbit: 0x0b7dd575,
+        },
+        dataformat_reserved0: DataformatReserved(0x2),
+        rdh2: Rdh2 {
+            trigger_type: 0x00006a03,
+            pages_counter: 0x0,
+            stop_bit: 0x0,
+            reserved0: 0x0,
+        },
+        reserved1: 0x0,
+        rdh3: Rdh3 {
+            detector_field: 0x0,
+            par_bit: 0x0,
+            reserved0: 0x0,
+        },
+        reserved2: 0x0,
+    };
 
     #[test]
     fn test_buffered_writer() {
@@ -124,6 +158,66 @@ mod tests {
 
         let filepath = std::path::PathBuf::from(output_file_str);
 
+        // delete output file
+        std::fs::remove_file(filepath).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    // Should panic, Because when the writer is dropped, it flushes the buffer, which will panic because the number of RDHs and payloads are not equal
+    // Empty payloads are counted.
+    fn test_push_2_rdh_v7_buffer_is_2() {
+        let output_file_str = " test_filter_link.raw";
+        let out_file_cmd = "-o test_filter_link.raw";
+        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
+            "fastpasta",
+            "-s",
+            "../fastpasta_test_files/data_ols_ul.raw",
+            out_file_cmd,
+        ]);
+        let rdhs = vec![CORRECT_RDH_CRU, CORRECT_RDH_CRU];
+        let length = rdhs.len();
+        println!("length: {}", length);
+        {
+            let mut writer = BufferedWriter::<RdhCRUv7>::new(&config, 10);
+            writer.push_rdhs(rdhs);
+            let buf_size = writer.filtered_rdhs_buffer.len();
+            println!("buf_size: {}", buf_size);
+            assert_eq!(buf_size, length);
+        }
+
+        // CLEANUP
+        let filepath = std::path::PathBuf::from(output_file_str);
+        // delete output file
+        std::fs::remove_file(filepath).unwrap();
+    }
+
+    #[test]
+    fn test_push_2_rdh_v7_and_empty_payloads_buffers_are_2() {
+        let output_file_str = " test_filter_link.raw";
+        let out_file_cmd = "-o test_filter_link.raw";
+        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
+            "fastpasta",
+            "-s",
+            "../fastpasta_test_files/data_ols_ul.raw",
+            out_file_cmd,
+        ]);
+        let rdhs = vec![CORRECT_RDH_CRU, CORRECT_RDH_CRU];
+        let length = rdhs.len();
+        let payloads: Vec<Vec<u8>> = vec![vec![], vec![]];
+        let cdps = (rdhs, payloads);
+        println!("length: {}", length);
+        {
+            let mut writer = BufferedWriter::<RdhCRUv7>::new(&config, 10);
+            writer.push_cdps_raw(cdps);
+            let rdh_buf_size = writer.filtered_rdhs_buffer.len();
+            let payload_buf_size = writer.filtered_payload_buffers.len();
+            assert_eq!(rdh_buf_size, length);
+            assert_eq!(payload_buf_size, length);
+        }
+
+        // CLEANUP
+        let filepath = std::path::PathBuf::from(output_file_str);
         // delete output file
         std::fs::remove_file(filepath).unwrap();
     }
