@@ -190,7 +190,7 @@ pub mod validate {
                 .send(StatType::DataFormat(rdh.data_format()))
                 .unwrap();
             do_rdh_checks(rdh, rdh_running, stats_sender_ch_checker);
-            tmp_mem_pos_tracker += 512;
+            tmp_mem_pos_tracker += 64;
             payload_running.set_current_rdh(rdh, tmp_mem_pos_tracker);
             if payload.is_empty() {
                 log::debug!("Empty payload at {}", tmp_mem_pos_tracker);

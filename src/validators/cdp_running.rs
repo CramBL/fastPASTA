@@ -288,7 +288,7 @@ impl<T: RDH> CdpRunningValidator<T> {
                 let ihw = Ihw::load(&mut <&[u8]>::clone(&ihw)).unwrap();
                 debug!("{ihw}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
-                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
+                    let mem_pos = (self.gbt_word_counter as u64 * 8) + self.payload_mem_pos;
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
@@ -300,7 +300,7 @@ impl<T: RDH> CdpRunningValidator<T> {
                 let tdh = Tdh::load(&mut <&[u8]>::clone(&tdh)).unwrap();
                 debug!("{tdh}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
-                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
+                    let mem_pos = (self.gbt_word_counter as u64 * 8) + self.payload_mem_pos;
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
@@ -312,7 +312,7 @@ impl<T: RDH> CdpRunningValidator<T> {
                 let tdt = Tdt::load(&mut <&[u8]>::clone(&tdt)).unwrap();
                 debug!("{tdt}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
-                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
+                    let mem_pos = (self.gbt_word_counter as u64 * 8) + self.payload_mem_pos;
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
@@ -325,14 +325,14 @@ impl<T: RDH> CdpRunningValidator<T> {
                 let ddw0 = Ddw0::load(&mut <&[u8]>::clone(&ddw0)).unwrap();
                 debug!("{ddw0}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0) {
-                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
+                    let mem_pos = (self.gbt_word_counter as u64 * 8) + self.payload_mem_pos;
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
                     debug!("DDW0: {ddw0}");
                 }
                 if self.current_rdh.as_ref().unwrap().stop_bit() != 1 {
-                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
+                    let mem_pos = (self.gbt_word_counter as u64 * 8) + self.payload_mem_pos;
                     self.stats_send_ch
                         .send(StatType::Error(format!(
                             "{mem_pos:#X}: [E10] DDW0 received but RDH stop bit is not 1"
@@ -341,7 +341,7 @@ impl<T: RDH> CdpRunningValidator<T> {
                     debug!("DDW0: {:X?}", ddw0.to_byte_slice());
                 }
                 if self.current_rdh.as_ref().unwrap().pages_counter() == 0 {
-                    let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
+                    let mem_pos = (self.gbt_word_counter as u64 * 8) + self.payload_mem_pos;
                     self.stats_send_ch
                         .send(StatType::Error(format!(
                             "{mem_pos:#X}: [E11] DDW0 found but RDH page counter is 0"
@@ -358,7 +358,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     #[inline(always)]
     fn process_data_word(&mut self, data_word: &[u8]) {
         if let Err(e) = DATA_WORD_SANITY_CHECKER.check_any(data_word) {
-            let mem_pos = (self.gbt_word_counter as u64 * 80) + self.payload_mem_pos;
+            let mem_pos = (self.gbt_word_counter as u64 * 8) + self.payload_mem_pos;
             self.stats_send_ch
                 .send(StatType::Error(format!("{mem_pos:#X}: [E02] {e}")))
                 .unwrap();
