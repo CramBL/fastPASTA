@@ -19,6 +19,7 @@ pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display + Sync 
     fn pages_counter(&self) -> u16;
     fn data_format(&self) -> u8;
     fn is_hba(&self) -> bool;
+    fn fee_id(&self) -> u16;
 }
 
 // Newtype pattern used to enforce type safety on fields that are not byte-aligned
@@ -34,6 +35,23 @@ pub(crate) struct DataformatReserved(pub(crate) u64); // 8 bit data_format, 56 b
 #[repr(packed)]
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub(crate) struct FeeId(pub(crate) u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
+                                         // Exaxmple: L4_12 -> Layer 4 stave 12 = 0b0100_00XX_0000_1100
+
+// Utility functions to extract information from the FeeId
+/// Extracts stave_number from 6 LSB [5:0]
+pub fn stave_number_from_feeid(fee_id: u16) -> u8 {
+    let stave_number_mask: u16 = 0b11_1111;
+    let stave_number = (fee_id & stave_number_mask) as u8;
+    stave_number
+}
+/// Extracts layer number from 3 bits [14:12]
+pub fn layer_from_feeid(fee_id: u16) -> u8 {
+    // Extract layer from 3 bits [14:12]
+    let layer_mask: u16 = 0b0111;
+    let layer_lsb_idx: u8 = 12;
+    let layer = ((fee_id >> layer_lsb_idx) & layer_mask) as u8;
+    layer
+}
 
 #[repr(packed)]
 pub struct RdhCRUv7 {
@@ -170,6 +188,10 @@ impl RDH for RdhCRUv7 {
         log::info!("Trigger type: {:032b}", trigger);
         log::info!("{self}");
         trigger & 0b10 == 0b10
+    }
+
+    fn fee_id(&self) -> u16 {
+        self.rdh0.fee_id.0
     }
 }
 impl ByteSlice for RdhCRUv7 {
@@ -326,6 +348,10 @@ impl RDH for RdhCRUv6 {
         let trigger = self.rdh2.trigger_type;
         // HBA is bit 1
         trigger & 0b10 == 0b10
+    }
+
+    fn fee_id(&self) -> u16 {
+        self.rdh0.fee_id.0
     }
 }
 
