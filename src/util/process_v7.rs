@@ -83,7 +83,7 @@ pub mod validate {
     use crate::util::stats_controller::StatType;
     use crate::validators::cdp_running::CdpRunningValidator;
     use crate::validators::rdh::RdhCruv7RunningChecker;
-    use crate::words::rdh::{RdhCRUv7, RDH};
+    use crate::words::rdh::{layer_from_feeid, stave_number_from_feeid, RdhCRUv7, RDH};
     use crossbeam_channel::{bounded, Receiver, RecvError};
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{mpsc, Arc};
@@ -127,6 +127,11 @@ pub mod validate {
                             if rdh.stop_bit() == 1 {
                                 stats_sender_channel.send(StatType::HBFsSeen(1)).unwrap();
                             }
+                            let layer = layer_from_feeid(rdh.fee_id());
+                            let stave = stave_number_from_feeid(rdh.fee_id());
+                            stats_sender_channel
+                                .send(StatType::LayerStaveSeen { layer, stave })
+                                .unwrap();
                         });
 
                         if config.any_checks() {
