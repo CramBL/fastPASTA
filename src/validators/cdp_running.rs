@@ -91,6 +91,7 @@ pub struct CdpRunningValidator<T: RDH> {
     gbt_word_counter: u16,
     stats_send_ch: std::sync::mpsc::Sender<StatType>,
     payload_mem_pos: u64,
+    gbt_word_padding_size_bytes: u8,
 }
 impl<T: RDH> CdpRunningValidator<T> {
     pub fn new(stats_send_ch: std::sync::mpsc::Sender<StatType>) -> Self {
@@ -104,6 +105,7 @@ impl<T: RDH> CdpRunningValidator<T> {
             gbt_word_counter: 0,
             stats_send_ch,
             payload_mem_pos: 0,
+            gbt_word_padding_size_bytes: 0,
         }
     }
 
@@ -112,15 +114,28 @@ impl<T: RDH> CdpRunningValidator<T> {
         self.sm = CDP_PAYLOAD_FSM_Continuous::Machine::new(IHW_).as_enum();
     }
 
+    /// This function has to be called for every RDH
+    ///
+    /// It defines what is valid, and is necessary to keep track of the memory position of each word
+    /// It uses the RDH to determine size of padding
     pub fn set_current_rdh(&mut self, rdh: &T, payload_mem_pos: u64) {
         self.current_rdh = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
         self.gbt_word_counter = 0;
         self.payload_mem_pos = payload_mem_pos;
+        if rdh.data_format() == 0 {
+            self.gbt_word_padding_size_bytes = 6;
+        } else {
+            self.gbt_word_padding_size_bytes = 0; // Data format 2
+        }
     }
 
     pub fn check(&mut self, gbt_word: &[u8]) {
         debug_assert!(gbt_word.len() == 10);
         self.gbt_word_counter += 1; // Tracks the number of GBT words seen in the current CDP
+        log::trace!(
+            "Processing GBT word: {gbt_word:X?} in memory position {:#X}",
+            self.calc_current_word_mem_pos(),
+        );
 
         use CDP_PAYLOAD_FSM_Continuous::Variant::*;
         use CDP_PAYLOAD_FSM_Continuous::*;
@@ -277,6 +292,20 @@ impl<T: RDH> CdpRunningValidator<T> {
         self.sm = nxt_st;
     }
 
+    /// Calculates the current position in the memory of the current word.
+    ///
+    /// Current payload position is the first byte after the current RDH
+    /// The gbt word position then relative to the current payload is then:
+    /// relative_mem_pos = gbt_word_counter * (10 + gbt_word_padding_size_bytes)
+    /// And the absolute position in the memory is then:
+    /// gbt_word_mem_pos = payload_mem_pos + relative_mem_pos
+    #[inline(always)]
+    fn calc_current_word_mem_pos(&self) -> u64 {
+        let gbt_word_memory_size_bytes: u64 = 10 + self.gbt_word_padding_size_bytes as u64;
+        let relative_mem_pos = (self.gbt_word_counter - 1) as u64 * gbt_word_memory_size_bytes;
+        relative_mem_pos + self.payload_mem_pos
+    }
+
     /// Takes a slice of bytes wrapped in an enum of the expected status word then:
     /// 1. Deserializes the slice as the expected status word and checks it for sanity.
     /// 2. If the sanity check fails, the error is sent to the stats channel
@@ -288,7 +317,7 @@ impl<T: RDH> CdpRunningValidator<T> {
                 let ihw = Ihw::load(&mut <&[u8]>::clone(&ihw)).unwrap();
                 debug!("{ihw}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
-                    let mem_pos = (self.gbt_word_counter as u64 * 8) + self.payload_mem_pos;
+                    let mem_pos = self.calc_current_word_mem_pos();
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
@@ -300,7 +329,7 @@ impl<T: RDH> CdpRunningValidator<T> {
                 let tdh = Tdh::load(&mut <&[u8]>::clone(&tdh)).unwrap();
                 debug!("{tdh}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
-                    let mem_pos = (self.gbt_word_counter as u64 * 8) + self.payload_mem_pos;
+                    let mem_pos = self.calc_current_word_mem_pos();
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
@@ -312,7 +341,7 @@ impl<T: RDH> CdpRunningValidator<T> {
                 let tdt = Tdt::load(&mut <&[u8]>::clone(&tdt)).unwrap();
                 debug!("{tdt}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
-                    let mem_pos = (self.gbt_word_counter as u64 * 8) + self.payload_mem_pos;
+                    let mem_pos = self.calc_current_word_mem_pos();
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
@@ -325,14 +354,14 @@ impl<T: RDH> CdpRunningValidator<T> {
                 let ddw0 = Ddw0::load(&mut <&[u8]>::clone(&ddw0)).unwrap();
                 debug!("{ddw0}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0) {
-                    let mem_pos = (self.gbt_word_counter as u64 * 8) + self.payload_mem_pos;
+                    let mem_pos = self.calc_current_word_mem_pos();
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
                     debug!("DDW0: {ddw0}");
                 }
                 if self.current_rdh.as_ref().unwrap().stop_bit() != 1 {
-                    let mem_pos = (self.gbt_word_counter as u64 * 8) + self.payload_mem_pos;
+                    let mem_pos = self.calc_current_word_mem_pos();
                     self.stats_send_ch
                         .send(StatType::Error(format!(
                             "{mem_pos:#X}: [E10] DDW0 received but RDH stop bit is not 1"
@@ -341,7 +370,7 @@ impl<T: RDH> CdpRunningValidator<T> {
                     debug!("DDW0: {:X?}", ddw0.to_byte_slice());
                 }
                 if self.current_rdh.as_ref().unwrap().pages_counter() == 0 {
-                    let mem_pos = (self.gbt_word_counter as u64 * 8) + self.payload_mem_pos;
+                    let mem_pos = self.calc_current_word_mem_pos();
                     self.stats_send_ch
                         .send(StatType::Error(format!(
                             "{mem_pos:#X}: [E11] DDW0 found but RDH page counter is 0"
@@ -358,7 +387,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     #[inline(always)]
     fn process_data_word(&mut self, data_word: &[u8]) {
         if let Err(e) = DATA_WORD_SANITY_CHECKER.check_any(data_word) {
-            let mem_pos = (self.gbt_word_counter as u64 * 8) + self.payload_mem_pos;
+            let mem_pos = self.calc_current_word_mem_pos();
             self.stats_send_ch
                 .send(StatType::Error(format!("{mem_pos:#X}: [E02] {e}")))
                 .unwrap();
@@ -424,16 +453,103 @@ mod tests {
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
         let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
-        let payload_mem_pos = 512;
+        let payload_mem_pos = 64; // RDH size is 64 bytes
 
-        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, payload_mem_pos);
+        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, payload_mem_pos); // Data format is 2
         validator.check(&raw_data_tdt);
 
         match stats_recv_ch.recv() {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
                     msg,
-                    "0x250: [E00] ID is not 0xE0: 0xF1 Full Word: F1 01 00 00 00 00 00 00 00 00 [79:0]"
+                    "0x40: [E00] ID is not 0xE0: 0xF1 Full Word: F1 01 00 00 00 00 00 00 00 00 [79:0]"
+                );
+                println!("{msg}");
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn test_expect_ihw_invalidate_tdh_and_next() {
+        const _VALID_ID: u8 = 0xF0;
+        // Boring but very typical TDT, everything is 0 except for packet_done
+        let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
+        let raw_data_tdt_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF2];
+
+        let (send, stats_recv_ch) = std::sync::mpsc::channel();
+        let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
+        let payload_mem_pos = 64; // RDH size is 64 bytes
+
+        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, payload_mem_pos); // Data format is 2
+        validator.check(&raw_data_tdt);
+        validator.check(&raw_data_tdt_next);
+
+        match stats_recv_ch.recv() {
+            Ok(StatType::Error(msg)) => {
+                assert_eq!(
+                    msg,
+                    "0x40: [E00] ID is not 0xE0: 0xF1 Full Word: F1 01 00 00 00 00 00 00 00 00 [79:0]"
+                );
+                println!("{msg}");
+            }
+            _ => unreachable!(),
+        }
+        match stats_recv_ch.recv() {
+            Ok(StatType::Error(msg)) => {
+                assert_eq!(
+                    msg,
+                    "0x49: [E00] ID is not 0xE8: 0xF2 Full Word: F2 01 00 00 00 00 00 00 00 00 [79:0]"
+                );
+                println!("{msg}");
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn test_expect_ihw_invalidate_tdh_and_next_next() {
+        const _VALID_ID: u8 = 0xF0;
+        // Boring but very typical TDT, everything is 0 except for packet_done
+        let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
+        let raw_data_tdt_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF2];
+        let raw_data_tdt_next_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF3];
+
+        let (send, stats_recv_ch) = std::sync::mpsc::channel();
+        let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
+        let payload_mem_pos = 64; // RDH size is 64 bytes
+
+        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, payload_mem_pos); // Data format is 2
+        validator.check(&raw_data_tdt);
+        validator.check(&raw_data_tdt_next);
+        validator.check(&raw_data_tdt_next_next);
+
+        match stats_recv_ch.recv() {
+            Ok(StatType::Error(msg)) => {
+                assert_eq!(
+                    msg,
+                    "0x40: [E00] ID is not 0xE0: 0xF1 Full Word: F1 01 00 00 00 00 00 00 00 00 [79:0]"
+                );
+                println!("{msg}");
+            }
+            _ => unreachable!(),
+        }
+        match stats_recv_ch.recv() {
+            Ok(StatType::Error(msg)) => {
+                assert_eq!(
+                    msg,
+                    "0x49: [E00] ID is not 0xE8: 0xF2 Full Word: F2 01 00 00 00 00 00 00 00 00 [79:0]"
+                );
+                println!("{msg}");
+            }
+            _ => unreachable!(),
+        }
+        match stats_recv_ch.recv() {
+            Ok(StatType::Error(msg)) => {
+                // Data word error
+                assert_eq!(
+                    msg,
+                    "0x52: [E02] ID is invalid: 0xF3 Full Word: F3 01 00 00 00 00 00 00 00 00 [79:0]"
                 );
                 println!("{msg}");
             }

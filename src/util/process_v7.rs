@@ -1,8 +1,10 @@
 type V7 = crate::words::rdh::RdhCRUv7;
 type Payload = Vec<Vec<u8>>;
-type Cdp = (Vec<V7>, Payload);
+type CdpChunk = Vec<CdpWrapper<V7>>;
 use crossbeam_channel::{bounded, Receiver};
 use std::sync::atomic::{AtomicBool, Ordering};
+
+use crate::input::input_scanner::CdpWrapper;
 // Larger capacity means less overhead, but more memory usage
 // Too small capacity will cause the producer thread to block
 // Too large capacity will cause down stream consumers to block
@@ -23,7 +25,7 @@ pub mod input {
         input_scanner: InputScanner<
             impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static,
         >,
-    ) -> (std::thread::JoinHandle<()>, Receiver<(Vec<T>, Payload)>) {
+    ) -> (std::thread::JoinHandle<()>, Receiver<Vec<CdpWrapper<T>>>) {
         let reader_thread = std::thread::Builder::new().name("Reader".to_string());
         let (send_channel, rcv_channel) = bounded(CHANNEL_CDP_CAPACITY);
         let thread_handle = reader_thread
@@ -37,7 +39,7 @@ pub mod input {
                             log::trace!("Stopping reader thread");
                             break;
                         }
-                        let (rdh_chunk, payload_chunk) =
+                        let cdps =
                             match get_chunk::<T>(&mut input_scanner, 100) {
                                 Ok(cdp) => cdp,
                                 Err(e) => {
@@ -55,7 +57,7 @@ pub mod input {
                             };
 
                         // Send a chunk to the checker
-                        if let Err(e) = send_channel.try_send((rdh_chunk, payload_chunk)) {
+                        if let Err(e) = send_channel.try_send(cdps) {
                             if e.is_full() {
                                 log::trace!("Checker is too slow");
                                 if send_channel.send(e.into_inner()).is_err()
@@ -98,11 +100,13 @@ pub mod validate {
         config: Arc<Opt>,
         stop_flag: Arc<AtomicBool>,
         stats_sender_channel: mpsc::Sender<StatType>,
-        data_channel: Receiver<Cdp>,
-    ) -> (JoinHandle<()>, Option<Receiver<Cdp>>) {
+        data_channel: Receiver<Vec<CdpWrapper<V7>>>,
+    ) -> (JoinHandle<()>, Option<Receiver<Vec<CdpWrapper<V7>>>>) {
         let checker_thread = std::thread::Builder::new().name("Checker".to_string());
-        let (send_channel, rcv_channel): (crossbeam_channel::Sender<Cdp>, Receiver<Cdp>) =
-            bounded(CHANNEL_CDP_CAPACITY);
+        let (send_channel, rcv_channel): (
+            crossbeam_channel::Sender<Vec<CdpWrapper<V7>>>,
+            Receiver<Vec<CdpWrapper<V7>>>,
+        ) = bounded(CHANNEL_CDP_CAPACITY);
         let validator_handle = checker_thread
             .spawn({
                 let config = config.clone();
@@ -114,22 +118,22 @@ pub mod validate {
 
                     while !stop_flag.load(Ordering::SeqCst) {
                         // Receive chunk from reader
-                        let (rdh_chunk, payload_chunk) = match data_channel.recv() {
+                        let cdp_chunk = match data_channel.recv() {
                             Ok(cdp) => cdp,
                             Err(e) => {
                                 debug_assert_eq!(e, RecvError);
                                 break;
                             }
                         };
-
                         // Collect global stats
                         // Send HBF seen if HBA is detected
-                        rdh_chunk.iter().for_each(|rdh| {
-                            if rdh.stop_bit() == 1 {
+                        cdp_chunk.iter().for_each(|cdp| {
+                            let current_rdh = &cdp.rdh;
+                            if current_rdh.stop_bit() == 1 {
                                 stats_sender_channel.send(StatType::HBFsSeen(1)).unwrap();
                             }
-                            let layer = layer_from_feeid(rdh.fee_id());
-                            let stave = stave_number_from_feeid(rdh.fee_id());
+                            let layer = layer_from_feeid(current_rdh.fee_id());
+                            let stave = stave_number_from_feeid(current_rdh.fee_id());
                             stats_sender_channel
                                 .send(StatType::LayerStaveSeen { layer, stave })
                                 .unwrap();
@@ -137,8 +141,7 @@ pub mod validate {
 
                         if config.any_checks() {
                             do_checks_v7(
-                                &rdh_chunk,
-                                &payload_chunk,
+                                &cdp_chunk,
                                 &stats_sender_channel,
                                 &mut running_rdh_checker,
                                 &mut cdp_payload_running_validator,
@@ -147,16 +150,15 @@ pub mod validate {
                         }
 
                         // Increment the current memory position based on RDH and payload sizes
-                        current_mem_pos += rdh_chunk.len() as u64 * 512;
-                        payload_chunk.iter().for_each(|v| {
-                            current_mem_pos += v.len() as u64 * 8;
-                        });
+                        log::debug!("Current memory position: {:#X}", current_mem_pos);
+                        current_mem_pos = cdp_chunk.last().unwrap().mem_pos;
+                        log::debug!("New  memory position: {:#X}", current_mem_pos);
 
                         // Send chunk to the checker
                         match config.output_mode() {
                             crate::util::config::DataOutputMode::None => {} // Do nothing
                             _ => {
-                                if send_channel.send((rdh_chunk, payload_chunk)).is_err()
+                                if send_channel.send(cdp_chunk).is_err()
                                     && !stop_flag.load(Ordering::SeqCst)
                                 {
                                     log::trace!("Unexpected error while sending data to writer");
@@ -177,33 +179,34 @@ pub mod validate {
 
     #[inline]
     fn do_checks_v7(
-        rdh_slices: &[RdhCRUv7],
-        payload_slices: &[Vec<u8>],
+        cdp_chunk: &Vec<CdpWrapper<RdhCRUv7>>,
         stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
         rdh_running: &mut RdhCruv7RunningChecker,
         payload_running: &mut CdpRunningValidator<RdhCRUv7>,
         current_mem_pos: u64,
     ) {
-        let mut tmp_mem_pos_tracker = current_mem_pos;
-        for (rdh, payload) in rdh_slices.iter().zip(payload_slices.iter()) {
+        cdp_chunk.iter().for_each(|cdp| {
+            let rdh = &cdp.rdh;
+            let payload = &cdp.payload;
+            let memory_position = cdp.mem_pos;
             stats_sender_ch_checker
                 .send(StatType::DataFormat(rdh.data_format()))
                 .unwrap();
-            do_rdh_checks(rdh, rdh_running, stats_sender_ch_checker);
-            tmp_mem_pos_tracker += 64;
-            payload_running.set_current_rdh(rdh, tmp_mem_pos_tracker);
-            if payload.is_empty() {
-                log::debug!("Empty payload at {}", tmp_mem_pos_tracker);
-                continue;
+
+            do_rdh_checks(&rdh, rdh_running, stats_sender_ch_checker);
+
+            payload_running.set_current_rdh(&rdh, memory_position);
+            if !payload.is_empty() {
+                do_payload_checks(
+                    &payload,
+                    rdh.data_format(),
+                    payload_running,
+                    stats_sender_ch_checker,
+                );
+            } else {
+                log::debug!("Empty payload at {}", memory_position);
             }
-            do_payload_checks(
-                payload,
-                rdh.data_format(),
-                payload_running,
-                stats_sender_ch_checker,
-            );
-            tmp_mem_pos_tracker += payload.len() as u64 * 8;
-        }
+        });
     }
 
     #[inline]
@@ -328,7 +331,7 @@ pub mod output {
     pub fn spawn_writer(
         config: Arc<Opt>,
         stop_flag: Arc<AtomicBool>,
-        data_channel: Receiver<Cdp>,
+        data_channel: Receiver<Vec<CdpWrapper<V7>>>,
     ) -> thread::JoinHandle<()> {
         let writer_thread = thread::Builder::new().name("Writer".to_string());
         writer_thread
@@ -336,7 +339,7 @@ pub mod output {
                 let mut writer = BufferedWriter::<V7>::new(&config, BUFFER_SIZE);
                 move || loop {
                     // Receive chunk from checker
-                    let (rdh_chunk, payload_chunk) = match data_channel.recv() {
+                    let cdps = match data_channel.recv() {
                         Ok(cdp) => cdp,
                         Err(e) => {
                             debug_assert_eq!(e, crossbeam_channel::RecvError);
@@ -348,7 +351,7 @@ pub mod output {
                         break;
                     }
                     // Push data onto the writer's buffer, which will flush it when the buffer is full or when the writer is dropped
-                    writer.push_cdps_raw((rdh_chunk, payload_chunk));
+                    writer.push_cdps_raw(cdps);
                 }
             })
             .expect("Failed to spawn writer thread")

@@ -1,4 +1,7 @@
-use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
+use input::{
+    bufreader_wrapper::BufferedReaderWrapper,
+    input_scanner::{CdpWrapper, InputScanner},
+};
 use std::{fmt::Display, sync::atomic::AtomicBool};
 use util::{config::Opt, stats_controller::Stats};
 
@@ -89,14 +92,13 @@ pub fn buf_reader_with_capacity<R: std::io::Read>(
 pub fn get_chunk<T: words::rdh::RDH>(
     file_scanner: &mut InputScanner<impl BufferedReaderWrapper + ?Sized>,
     chunk_size_cdps: usize,
-) -> Result<(Vec<T>, Vec<Vec<u8>>), std::io::Error> {
-    let mut rdhs: Vec<T> = vec![];
-    let mut payloads: Vec<Vec<u8>> = vec![];
+) -> Result<Vec<CdpWrapper<T>>, std::io::Error> {
+    let mut wrapped_cdps: Vec<CdpWrapper<T>> = vec![];
 
     use input::input_scanner::ScanCDP;
 
     for _ in 0..chunk_size_cdps {
-        let (rdh, payload) = match file_scanner.load_cdp() {
+        let cdp_wrapped = match file_scanner.load_cdp() {
             Ok(cdp) => cdp,
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
                 log::info!("EOF reached! ");
@@ -104,16 +106,15 @@ pub fn get_chunk<T: words::rdh::RDH>(
             }
             Err(e) => return Err(e),
         };
-        rdhs.push(rdh);
-        payloads.push(payload);
+        wrapped_cdps.push(cdp_wrapped);
     }
 
-    if rdhs.is_empty() {
+    if wrapped_cdps.is_empty() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::UnexpectedEof,
             "No CDPs found",
         ));
     }
 
-    Ok((rdhs, payloads))
+    Ok(wrapped_cdps)
 }

@@ -12,13 +12,43 @@ pub trait ScanCDP {
 
     fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error>;
 
-    fn load_cdp<T: RDH>(&mut self) -> Result<(T, Vec<u8>), std::io::Error> {
+    fn load_cdp<T: RDH>(&mut self) -> Result<CdpWrapper<T>, std::io::Error> {
         let rdh: T = self.load_rdh_cru()?;
         let payload = self.load_payload_raw(rdh.payload_size() as usize)?;
-        Ok((rdh, payload))
+        let mem_pos = self.current_mem_pos();
+
+        Ok(CdpWrapper {
+            rdh,
+            payload,
+            mem_pos,
+        })
     }
 
     fn load_next_rdh_to_filter<T: RDH>(&mut self) -> Result<T, std::io::Error>;
+
+    fn current_mem_pos(&self) -> u64;
+}
+
+pub struct CdpWrapper<T: RDH> {
+    pub rdh: T,
+    pub payload: Vec<u8>,
+    pub mem_pos: u64,
+}
+
+impl<T: RDH> CdpWrapper<T> {
+    pub fn new(rdh: T, payload: Vec<u8>, mem_pos: u64) -> Self {
+        CdpWrapper {
+            rdh,
+            payload,
+            mem_pos,
+        }
+    }
+    pub fn serialize(&self) -> Vec<u8> {
+        let serialized: &[u8] = self.rdh.to_byte_slice();
+        let payload_slice: &[u8] = self.payload.as_slice();
+        let res = [serialized, payload_slice].concat();
+        res
+    }
 }
 
 /// Scans data received through a BufferedReaderWrapper, tracks the position in memory and sends stats to the stats controller.
@@ -155,7 +185,7 @@ where
     }
     /// Reads the next CDP from file
     #[inline]
-    fn load_cdp<T: RDH>(&mut self) -> Result<(T, Vec<u8>), std::io::Error> {
+    fn load_cdp<T: RDH>(&mut self) -> Result<CdpWrapper<T>, std::io::Error> {
         log::trace!("Attempting to load CDP - 1. loading RDH");
         let rdh: T = self.load_rdh_cru()?;
 
@@ -167,7 +197,12 @@ where
         // );
         log::trace!("Attempting to load CDP - 2. loading Payload");
         let payload = self.load_payload_raw(rdh.payload_size() as usize)?;
-        Ok((rdh, payload))
+
+        Ok(CdpWrapper {
+            rdh,
+            payload,
+            mem_pos: self.tracker.memory_address_bytes,
+        })
     }
 
     fn load_next_rdh_to_filter<T: RDH>(&mut self) -> Result<T, std::io::Error> {
@@ -194,6 +229,10 @@ where
             self.reader
                 .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
         }
+    }
+
+    fn current_mem_pos(&self) -> u64 {
+        self.tracker.memory_address_bytes
     }
 }
 

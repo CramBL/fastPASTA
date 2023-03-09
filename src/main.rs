@@ -121,14 +121,14 @@ pub fn process_rdh_v6(
     // Automatically extracts link to filter if one is supplied
     let mut file_scanner = loader;
 
-    let (rdh_chunk, _payload_chunk) =
-        fastpasta::get_chunk::<RdhCRUv6>(&mut file_scanner, 10).expect("Error reading CDP chunks");
+    // let (rdh_chunk, _payload_chunk) =
+    //     fastpasta::get_chunk::<RdhCRUv6>(&mut file_scanner, 10).expect("Error reading CDP chunks");
 
-    for _rdh in rdh_chunk {
-        if config.sanity_checks() {
-            todo!("Sanity check for RDH v6")
-        }
-    }
+    // for _rdh in rdh_chunk {
+    //     if config.sanity_checks() {
+    //         todo!("Sanity check for RDH v6")
+    //     }
+    // }
 
     Ok(())
 }
