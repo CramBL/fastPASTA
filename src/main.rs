@@ -6,7 +6,7 @@ use fastpasta::input::input_scanner::InputScanner;
 use fastpasta::util::config::Opt;
 use fastpasta::util::process_v7;
 use fastpasta::util::stats_controller;
-use fastpasta::words::rdh::{Rdh0, RdhCRUv6};
+use fastpasta::words::rdh::Rdh0;
 use fastpasta::{init_stats_controller, GbtWord};
 use log::trace;
 use std::io;

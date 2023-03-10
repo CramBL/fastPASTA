@@ -1,11 +1,8 @@
-use input::{
-    bufreader_wrapper::BufferedReaderWrapper,
-    input_scanner::{CdpWrapper, InputScanner},
-};
+use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
 use std::{fmt::Display, sync::atomic::AtomicBool};
 use util::{config::Opt, stats_controller::Stats};
 
-use crate::input::stdin_reader::StdInReaderSeeker;
+use crate::input::{data_wrapper::CdpChunk, stdin_reader::StdInReaderSeeker};
 pub mod input;
 mod stats;
 pub mod util;
@@ -92,13 +89,13 @@ pub fn buf_reader_with_capacity<R: std::io::Read>(
 pub fn get_chunk<T: words::rdh::RDH>(
     file_scanner: &mut InputScanner<impl BufferedReaderWrapper + ?Sized>,
     chunk_size_cdps: usize,
-) -> Result<Vec<CdpWrapper<T>>, std::io::Error> {
-    let mut wrapped_cdps: Vec<CdpWrapper<T>> = vec![];
+) -> Result<CdpChunk<T>, std::io::Error> {
+    let mut cdp_chunk = CdpChunk::new();
 
     use input::input_scanner::ScanCDP;
 
     for _ in 0..chunk_size_cdps {
-        let cdp_wrapped = match file_scanner.load_cdp() {
+        let cdp_tuple = match file_scanner.load_cdp() {
             Ok(cdp) => cdp,
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
                 log::info!("EOF reached! ");
@@ -106,15 +103,15 @@ pub fn get_chunk<T: words::rdh::RDH>(
             }
             Err(e) => return Err(e),
         };
-        wrapped_cdps.push(cdp_wrapped);
+        cdp_chunk.push(cdp_tuple.0, cdp_tuple.1, cdp_tuple.2);
     }
 
-    if wrapped_cdps.is_empty() {
+    if cdp_chunk.is_empty() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::UnexpectedEof,
             "No CDPs found",
         ));
     }
 
-    Ok(wrapped_cdps)
+    Ok(cdp_chunk)
 }

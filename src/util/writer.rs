@@ -1,5 +1,5 @@
 use super::config::Opt;
-use crate::{input::input_scanner::CdpWrapper, words::rdh::RDH};
+use crate::{input::data_wrapper::CdpChunk, words::rdh::RDH};
 /// Writes data to file/stdout. Uses a buffer to minimize syscalls.
 ///
 /// Receives data incrementally and once a certain amount is reached, it will
@@ -8,12 +8,12 @@ use crate::{input::input_scanner::CdpWrapper, words::rdh::RDH};
 pub trait Writer<T: RDH> {
     fn write(&mut self, data: &[u8]) -> std::io::Result<()>;
     fn push_rdhs(&mut self, rdhs: Vec<T>);
-    fn push_cdps_raw(&mut self, cdps: Vec<CdpWrapper<T>>);
+    fn push_payload(&mut self, payload: Vec<u8>);
+    fn push_cdp_chunk(&mut self, cdp_chunk: CdpChunk<T>);
     fn flush(&mut self) -> std::io::Result<()>;
 }
 
 pub struct BufferedWriter<T: RDH> {
-    pub filtered_cdps_buffer: Vec<CdpWrapper<T>>,
     pub filtered_rdhs_buffer: Vec<T>,
     pub filtered_payload_buffers: Vec<Vec<u8>>, // 1 Linked list per payload
     buf_writer: Option<std::io::BufWriter<std::fs::File>>, // If no file is specified -> write to stdout
@@ -41,7 +41,6 @@ impl<T: RDH> BufferedWriter<T> {
         BufferedWriter {
             filtered_rdhs_buffer: Vec::with_capacity(max_buffer_size), // Will most likely not be filled as payloads are usually larger, but hard to say
             filtered_payload_buffers: Vec::with_capacity(max_buffer_size),
-            filtered_cdps_buffer: Vec::with_capacity(max_buffer_size),
             buf_writer,
             max_buffer_size,
         }
@@ -66,11 +65,24 @@ impl<T: RDH> Writer<T> for BufferedWriter<T> {
     }
 
     #[inline]
-    fn push_cdps_raw(&mut self, cdps: Vec<CdpWrapper<T>>) {
-        if self.filtered_cdps_buffer.len() >= self.max_buffer_size {
+    fn push_payload(&mut self, payload: Vec<u8>) {
+        if self.filtered_payload_buffers.len() + 1 >= self.max_buffer_size {
             self.flush().expect("Failed to flush buffer");
         }
-        self.filtered_cdps_buffer.extend(cdps);
+        self.filtered_payload_buffers.push(payload);
+    }
+
+    #[inline]
+    fn push_cdp_chunk(&mut self, cdp_chunk: CdpChunk<T>) {
+        if (self.filtered_rdhs_buffer.len() + cdp_chunk.len() >= self.max_buffer_size)
+            || (self.filtered_payload_buffers.len() + cdp_chunk.len() >= self.max_buffer_size)
+        {
+            self.flush().expect("Failed to flush buffer");
+        }
+        cdp_chunk.into_iter().for_each(|(rdh, payload, _)| {
+            self.filtered_rdhs_buffer.push(rdh);
+            self.filtered_payload_buffers.push(payload);
+        });
     }
 
     #[inline]
@@ -90,10 +102,6 @@ impl<T: RDH> Writer<T> for BufferedWriter<T> {
             data.extend(payload);
         }
 
-        self.filtered_cdps_buffer.iter().for_each(|cdp| {
-            data.extend(cdp.serialize().as_slice());
-        });
-
         self.write(&data)?;
         self.filtered_rdhs_buffer.clear();
         self.filtered_payload_buffers.clear();
@@ -111,6 +119,8 @@ impl<T: RDH> Drop for BufferedWriter<T> {
 
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
     use crate::words::rdh::{RdhCRUv6, RdhCRUv7, CORRECT_RDH_CRU_V7};
 
     use super::*;
@@ -175,19 +185,17 @@ mod tests {
             "../fastpasta_test_files/data_ols_ul.raw",
             out_file_cmd,
         ]);
-        let cdp1 = CdpWrapper {
-            rdh: CORRECT_RDH_CRU_V7,
-            payload: vec![],
-            mem_pos: 0,
-        };
-        let cdp2 = CdpWrapper::new(CORRECT_RDH_CRU_V7, vec![], 0);
-        let cdps = vec![cdp1, cdp2];
-        let length = cdps.len();
+        let mut cdp_chunk = CdpChunk::new();
+
+        cdp_chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
+        cdp_chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0x40);
+
+        let length = cdp_chunk.len();
         {
             let mut writer = BufferedWriter::<RdhCRUv7>::new(&config, 10);
-            writer.push_cdps_raw(cdps);
-            let cdp_buf_size = writer.filtered_cdps_buffer.len();
-            assert_eq!(cdp_buf_size, length);
+            writer.push_cdp_chunk(cdp_chunk);
+            let buf_size = writer.filtered_rdhs_buffer.len();
+            assert_eq!(buf_size, length);
         }
 
         // CLEANUP

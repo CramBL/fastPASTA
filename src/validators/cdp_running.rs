@@ -428,7 +428,7 @@ mod tests {
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
         let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
-        let payload_mem_pos = 512;
+        let payload_mem_pos = 0x40;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, payload_mem_pos);
         validator.check(&raw_data_ihw);
@@ -437,7 +437,7 @@ mod tests {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
                     msg,
-                    "0x250: [E00] ID is not 0xE0: 0xE1 Full Word: E1 00 00 00 00 00 00 00 3F FF [79:0]"
+                    "0x40: [E00] ID is not 0xE0: 0xE1 Full Word: E1 00 00 00 00 00 00 00 3F FF [79:0]"
                 );
                 println!("{msg}");
             }
@@ -499,7 +499,7 @@ mod tests {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
                     msg,
-                    "0x49: [E00] ID is not 0xE8: 0xF2 Full Word: F2 01 00 00 00 00 00 00 00 00 [79:0]"
+                    "0x4A: [E00] ID is not 0xE8: 0xF2 Full Word: F2 01 00 00 00 00 00 00 00 00 [79:0]"
                 );
                 println!("{msg}");
             }
@@ -538,7 +538,7 @@ mod tests {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
                     msg,
-                    "0x49: [E00] ID is not 0xE8: 0xF2 Full Word: F2 01 00 00 00 00 00 00 00 00 [79:0]"
+                    "0x4A: [E00] ID is not 0xE8: 0xF2 Full Word: F2 01 00 00 00 00 00 00 00 00 [79:0]"
                 );
                 println!("{msg}");
             }
@@ -549,7 +549,7 @@ mod tests {
                 // Data word error
                 assert_eq!(
                     msg,
-                    "0x52: [E02] ID is invalid: 0xF3 Full Word: F3 01 00 00 00 00 00 00 00 00 [79:0]"
+                    "0x54: [E02] ID is invalid: 0xF3 Full Word: F3 01 00 00 00 00 00 00 00 00 [79:0]"
                 );
                 println!("{msg}");
             }

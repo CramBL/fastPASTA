@@ -8,6 +8,12 @@ pub struct CdpChunk<T: RDH> {
     mem_positions: Vec<u64>,
 }
 
+impl<T: RDH> Default for CdpChunk<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: RDH> CdpChunk<T> {
     pub fn new() -> Self {
         Self {
