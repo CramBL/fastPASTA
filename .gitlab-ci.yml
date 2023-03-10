@@ -127,7 +127,7 @@ memory-sanitizer:
     RUSTFLAGS: "-Z sanitizer=memory"
   script:
     - rustup component add llvm-tools-preview
-    - cargo build -Z build-std --verbose
+    - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
     - cargo test --verbose --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
   allow_failure: true
 
@@ -144,7 +144,7 @@ leak-sanitizer:
     - sed -i '/\[features\]/i [profile.dev]' Cargo.toml
     - sed -i '/profile.dev/a opt-level = 1' Cargo.toml
     - cat Cargo.toml
-    - cargo build -Z build-std --verbose
+    - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
     - cargo test --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
   allow_failure: true
 
@@ -155,6 +155,6 @@ thread-sanitizer:
     RUSTFLAGS: "-Z sanitizer=thread"
   script:
     - rustup component add llvm-tools-preview
-    - cargo build -Z build-std --verbose
+    - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
     - cargo test --verbose --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
   allow_failure: true
