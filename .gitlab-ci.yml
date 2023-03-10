@@ -161,3 +161,18 @@ thread-sanitizer:
     - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
     - cargo test --verbose --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
   allow_failure: true
+
+## Safety
+address-sanitizer:
+  stage: test-safety
+  image: rustlang/rust:nightly
+  variables:
+    ASAN_OPTIONS: "detect_odr_violation=0:detect_leaks=0"
+    RUSTFLAGS: "-Z sanitizer=address"
+  script:
+    - rustup component add llvm-tools-preview
+    - rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+    - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
+    # only --lib --tests b/c of https://github.com/rust-lang/rust/issues/53945
+    - cargo test --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
+  allow_failure: true
