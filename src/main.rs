@@ -3,11 +3,13 @@
 #![allow(unreachable_code)]
 use fastpasta::input::bufreader_wrapper::BufferedReaderWrapper;
 use fastpasta::input::input_scanner::InputScanner;
+use fastpasta::input::lib::init_reader;
+use fastpasta::stats::lib::init_stats_controller;
 use fastpasta::stats::stats_controller;
 use fastpasta::util::config::Opt;
-use fastpasta::util::process_v7;
 use fastpasta::words::rdh::Rdh0;
-use fastpasta::{init_stats_controller, GbtWord};
+use fastpasta::GbtWord;
+use fastpasta::{data_write, validators};
 use log::trace;
 use std::io;
 use std::sync::atomic::AtomicBool;
@@ -24,7 +26,7 @@ pub fn main() {
     // If max allowed errors is reached, stop the processing from the stats thread
     let (stat_controller, stat_send_channel, stop_flag) = init_stats_controller(&config);
 
-    let mut readable = fastpasta::init_reader(&config);
+    let mut readable = init_reader(&config);
 
     // Determine RDH version
     let rdh0 = Rdh0::load(&mut readable).expect("Failed to read first RDH0");
@@ -81,10 +83,10 @@ pub fn process_rdh_v7(
 ) -> io::Result<()> {
     // 1. Read data from file
     let (reader_handle, reader_rcv_channel) =
-        process_v7::input::spawn_reader(thread_stopper.clone(), loader);
+        fastpasta::input::lib::spawn_reader(thread_stopper.clone(), loader);
 
     // 2. Do checks on a received chunk of data
-    let (validator_handle, checker_rcv_channel) = process_v7::validate::spawn_checker(
+    let (validator_handle, checker_rcv_channel) = validators::lib::spawn_checker(
         config.clone(),
         thread_stopper.clone(),
         send_stats_ch,
@@ -94,7 +96,7 @@ pub fn process_rdh_v7(
     // 3. Write data out
     let writer_handle: Option<JoinHandle<()>> = match config.output_mode() {
         fastpasta::util::config::DataOutputMode::None => None,
-        _ => Some(process_v7::output::spawn_writer(
+        _ => Some(data_write::lib::spawn_writer(
             config.clone(),
             thread_stopper,
             checker_rcv_channel.expect("Checker receiver channel not initialized"),

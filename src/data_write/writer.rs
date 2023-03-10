@@ -1,4 +1,4 @@
-use super::config::Opt;
+use crate::util::config::Opt;
 use crate::{input::data_wrapper::CdpChunk, words::rdh::RDH};
 /// Writes data to file/stdout. Uses a buffer to minimize syscalls.
 ///

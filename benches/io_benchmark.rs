@@ -4,12 +4,20 @@ use std::{
 };
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use fastpasta::{buf_reader_with_capacity, words::rdh::RdhCRUv7, words::rdh::RDH, ByteSlice};
+use fastpasta::{words::rdh::RdhCRUv7, words::rdh::RDH, ByteSlice};
 pub struct RelativeOffset(i64);
 impl RelativeOffset {
     fn new(byte_offset: u64) -> Self {
         RelativeOffset(byte_offset as i64)
     }
+}
+
+#[inline(always)]
+pub fn buf_reader_with_capacity<R: std::io::Read>(
+    input: R,
+    capacity: usize,
+) -> std::io::BufReader<R> {
+    std::io::BufReader::with_capacity(capacity, input)
 }
 
 // bybass lib arg parser with e.g.: cargo bench --bench io_benchmark -- --measurement-time 15
