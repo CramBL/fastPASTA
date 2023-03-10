@@ -79,8 +79,8 @@ pub mod validate {
     use super::*;
 
     use crate::input::data_wrapper::CdpChunk;
+    use crate::stats::stats_controller::StatType;
     use crate::util::config::Opt;
-    use crate::util::stats_controller::StatType;
     use crate::validators::cdp_running::CdpRunningValidator;
     use crate::validators::rdh::RdhCruv7RunningChecker;
     use crate::words::rdh::{layer_from_feeid, stave_number_from_feeid, RdhCRUv7, RDH};

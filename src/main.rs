@@ -3,9 +3,9 @@
 #![allow(unreachable_code)]
 use fastpasta::input::bufreader_wrapper::BufferedReaderWrapper;
 use fastpasta::input::input_scanner::InputScanner;
+use fastpasta::stats::stats_controller;
 use fastpasta::util::config::Opt;
 use fastpasta::util::process_v7;
-use fastpasta::util::stats_controller;
 use fastpasta::words::rdh::Rdh0;
 use fastpasta::{init_stats_controller, GbtWord};
 use log::trace;

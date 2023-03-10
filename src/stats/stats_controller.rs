@@ -6,7 +6,7 @@ use std::sync::{
     Arc,
 };
 
-use super::config::Opt;
+use crate::util::config::Opt;
 pub enum StatType {
     Fatal(String), // Fatal error, stop processing
     Error(String),

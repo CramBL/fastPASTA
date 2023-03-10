@@ -1,10 +1,11 @@
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
+use stats::stats_controller::Stats;
 use std::{fmt::Display, sync::atomic::AtomicBool};
-use util::{config::Opt, stats_controller::Stats};
+use util::config::Opt;
 
 use crate::input::{data_wrapper::CdpChunk, stdin_reader::StdInReaderSeeker};
 pub mod input;
-mod stats;
+pub mod stats;
 pub mod util;
 pub mod validators;
 pub mod words;
@@ -38,12 +39,12 @@ pub fn init_stats_controller(
     config: &Opt,
 ) -> (
     std::thread::JoinHandle<()>,
-    std::sync::mpsc::Sender<util::stats_controller::StatType>,
+    std::sync::mpsc::Sender<stats::stats_controller::StatType>,
     std::sync::Arc<AtomicBool>,
 ) {
     let (send_stats_channel, recv_stats_channel): (
-        std::sync::mpsc::Sender<util::stats_controller::StatType>,
-        std::sync::mpsc::Receiver<util::stats_controller::StatType>,
+        std::sync::mpsc::Sender<stats::stats_controller::StatType>,
+        std::sync::mpsc::Receiver<stats::stats_controller::StatType>,
     ) = std::sync::mpsc::channel();
     let thread_stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let mut stats = Stats::new(config, recv_stats_channel, thread_stop_flag.clone());

@@ -1,7 +1,8 @@
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
 use crate::{
-    util::{config::Opt, stats_controller::StatType},
+    stats::stats_controller::StatType,
+    util::config::Opt,
     words::rdh::{Rdh0, RDH},
 };
 use std::io::Read;
@@ -242,7 +243,7 @@ mod tests {
     use std::io::Write;
     use std::{fs::File, io::BufReader, path::PathBuf, thread::JoinHandle};
 
-    use crate::{util::stats_controller::Stats, words::rdh::RdhCRUv7, ByteSlice};
+    use crate::{stats::stats_controller::Stats, words::rdh::RdhCRUv7, ByteSlice};
 
     fn setup_scanner_for_file(
         path: &str,
