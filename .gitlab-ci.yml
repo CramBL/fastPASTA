@@ -19,9 +19,9 @@ variables:
   RUST_BACKTRACE: "FULL"
 
 stages:
-  - test-safety
   - code-quality
   - build-and-test
+  - test-safety
   - release
 
 pre-commit:
@@ -120,18 +120,8 @@ build-release-latest:
     - ./target
 
 ## Safety
-memory-sanitizer:
-  stage: test-safety
-  image: rustlang/rust:nightly
-  variables:
-    RUSTFLAGS: "-Z sanitizer=memory"
-  script:
-    - rustup component add llvm-tools-preview
-    - rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-    - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
-    - cargo test --verbose --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
-  allow_failure: true
-
+# Only includes address and leak sanitizing now, as there's simply too many false positives with memory and thread sanitizing on Rust code...
+# Leak and address sanitizing is also bugged (see links below) but there's decent work arounds at the moment
 leak-sanitizer:
   stage: test-safety
   image: rustlang/rust:nightly
@@ -150,19 +140,6 @@ leak-sanitizer:
     - cargo test --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
   allow_failure: true
 
-thread-sanitizer:
-  stage: test-safety
-  image: rustlang/rust:nightly
-  variables:
-    RUSTFLAGS: "-Z sanitizer=thread"
-  script:
-    - rustup component add llvm-tools-preview
-    - rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-    - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
-    - cargo test --verbose --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
-  allow_failure: true
-
-## Safety
 address-sanitizer:
   stage: test-safety
   image: rustlang/rust:nightly
