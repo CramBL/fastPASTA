@@ -40,7 +40,10 @@ pub fn main() {
     // Choose the rest of the execution based on the RDH version
     // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
     match rdh_version {
-        6 => process_rdh_v6(config, loader, stat_send_channel, stop_flag).unwrap(),
+        6 => {
+            log::warn!("RDH version 6 detected, using RDHv7 processing for now anyways... No guarantees it will work!");
+            process_rdh_v7(config, loader, stat_send_channel, stop_flag).unwrap()
+        }
         7 => process_rdh_v7(config, loader, stat_send_channel, stop_flag).unwrap(),
         _ => panic!("Unknown RDH version: {rdh_version}"),
     }
@@ -110,27 +113,5 @@ pub fn process_rdh_v7(
     if let Some(writer) = writer_handle {
         writer.join().expect("Error joining writer thread");
     }
-    Ok(())
-}
-
-pub fn process_rdh_v6(
-    config: Arc<Opt>,
-    loader: InputScanner<impl BufferedReaderWrapper + ?Sized>,
-    send_stats_ch: std::sync::mpsc::Sender<stats_controller::StatType>,
-    thread_stopper: Arc<AtomicBool>,
-) -> io::Result<()> {
-    todo!("RDH v6 not implemented yet");
-    // Automatically extracts link to filter if one is supplied
-    let mut file_scanner = loader;
-
-    // let (rdh_chunk, _payload_chunk) =
-    //     fastpasta::get_chunk::<RdhCRUv6>(&mut file_scanner, 10).expect("Error reading CDP chunks");
-
-    // for _rdh in rdh_chunk {
-    //     if config.sanity_checks() {
-    //         todo!("Sanity check for RDH v6")
-    //     }
-    // }
-
     Ok(())
 }

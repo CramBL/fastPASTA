@@ -26,3 +26,6 @@ tabled = { version = "0.10.0", features = ["color"]}
 [[bench]]
 name = "io_benchmark"
 harness = false
+
+[profile.dev]
+opt-level = 1
