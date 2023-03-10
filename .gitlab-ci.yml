@@ -19,9 +19,9 @@ variables:
   RUST_BACKTRACE: "FULL"
 
 stages:
+  - test-safety
   - code-quality
   - build-and-test
-  - test-safety
   - release
 
 pre-commit:
@@ -128,7 +128,6 @@ address-sanitizer:
     RUSTFLAGS: "-Z sanitizer=address"
   script:
     - rustup component add llvm-tools-preview
-    - apt install llvm
     - cargo build --verbose
     # only --lib --tests b/c of https://github.com/rust-lang/rust/issues/53945
     - cargo test -Zsanitizer=address --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
@@ -142,7 +141,6 @@ leak-sanitizer:
     RUSTFLAGS: "-Z sanitizer=leak"
   script:
     - rustup component add llvm-tools-preview
-    - apt install llvm
     # to fix buggy leak analyzer:
     # https://github.com/japaric/rust-san#unrealiable-leaksanitizer
     - sed -i '/\[features\]/i [profile.dev]' Cargo.toml
