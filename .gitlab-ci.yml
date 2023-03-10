@@ -120,17 +120,15 @@ build-release-latest:
     - ./target
 
 ## Safety
-address-sanitizer:
+memory-sanitizer:
   stage: test-safety
   image: rustlang/rust:nightly
   variables:
-    ASAN_OPTIONS: "detect_odr_violation=0:detect_leaks=0"
-    #RUSTFLAGS: "-Z sanitizer=address"
+    RUSTFLAGS: "-Z sanitizer=memory"
   script:
     - rustup component add llvm-tools-preview
     - cargo build --verbose
-    # only --lib --tests b/c of https://github.com/rust-lang/rust/issues/53945
-    - cargo test -Zsanitizer=address --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
+    - cargo test --verbose --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
   allow_failure: true
 
 leak-sanitizer:
@@ -147,5 +145,16 @@ leak-sanitizer:
     - sed -i '/profile.dev/a opt-level = 1' Cargo.toml
     - cat Cargo.toml
     - cargo build --verbose
-    - cargo test -Zsanitizer=leak --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
+    - cargo test --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
+  allow_failure: true
+
+thread-sanitizer:
+  stage: test-safety
+  image: rustlang/rust:nightly
+  variables:
+    RUSTFLAGS: "-Z sanitizer=thread"
+  script:
+    - rustup component add llvm-tools-preview
+    - cargo build --verbose
+    - cargo test --verbose --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
   allow_failure: true
