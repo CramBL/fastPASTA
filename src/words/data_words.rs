@@ -20,16 +20,16 @@ fn display_byte_slice<T: DataWord>(
     write!(
         f,
         "{:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} [79:0]",
-        slice[9],
-        slice[8],
-        slice[7],
-        slice[6],
-        slice[5],
-        slice[4],
-        slice[3],
-        slice[2],
-        slice[1],
         slice[0],
+        slice[1],
+        slice[2],
+        slice[3],
+        slice[4],
+        slice[5],
+        slice[6],
+        slice[7],
+        slice[8],
+        slice[9],
     )
 }
 
