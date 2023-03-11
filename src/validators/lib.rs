@@ -90,12 +90,42 @@ fn do_checks<T: RDH>(
 ) {
     cdp_chunk
         .into_iter()
-        .for_each(|(rdh, payload, rdh_mem_pos)| {
+        .enumerate()
+        .for_each(|(rdh_idx, (rdh, payload, rdh_mem_pos))| {
             stats_sender_ch_checker
                 .send(StatType::DataFormat(rdh.data_format()))
                 .unwrap();
 
-            rdh_checks::do_rdh_checks(rdh, rdh_running, stats_sender_ch_checker, rdh_mem_pos);
+            if let Err(mut e) = rdh_checks::do_rdh_checks(rdh, rdh_running) {
+                e.push_str(crate::words::rdh::rdh_header_text_to_string().as_str());
+                let rdhs = cdp_chunk.rdh_slice();
+                match rdh_idx {
+                    0 => log::warn!("Error occured in the first RDH in a CdpChunk, it is not possible to retrieve previous RDHS"),
+                    1 => {
+                        log::warn!("Error occured in the second RDH in a CdpChunk, can only retrieve 1 previous RDH");
+                        e.push_str(&format!("{}", rdhs.first().unwrap()));
+                        e.push_str(&format!("\n{rdh}"));
+                        e.push_str("<--- Error occured here\n");
+                        e.push_str(&format!("{}", rdhs.get(rdh_idx + 1).unwrap()));
+                    }
+                    // Last RDH of the CDP Chunk
+                    _ if rdhs.len() == (rdh_idx + 1) => {
+                        log::warn!("Error occured in last RDH in CdpChunk, it is not possible to retrieve the next RDH");
+                        e.push_str(&format!("{}", rdhs.get(rdh_idx - 2).unwrap()));
+                        e.push_str(&format!("\n{rdh}"));
+                        e.push_str("<--- Error occured here\n");
+                    }
+                    _ => {
+                        e.push_str(&format!("{}", rdhs.get(rdh_idx - 2).unwrap()));
+                        e.push_str(&format!("\n{rdh}"));
+                        e.push_str("<--- Error occured here\n");
+                        e.push_str(&format!("{}", rdhs.get(rdh_idx + 1).unwrap()));
+                    }
+                }
+                stats_sender_ch_checker
+                    .send(StatType::Error(format!("{rdh_mem_pos:#X}: [E98] {e}")))
+                    .unwrap();
+            }
 
             payload_running.set_current_rdh(rdh, rdh_mem_pos);
             if !payload.is_empty() {
@@ -112,40 +142,23 @@ fn do_checks<T: RDH>(
 }
 
 mod rdh_checks {
-    use crate::{
-        stats::stats_controller::StatType, validators::rdh::RdhCRURunningChecker, words::rdh::RDH,
-    };
+    use crate::{validators::rdh::RdhCRURunningChecker, words::rdh::RDH};
 
     #[inline]
     pub fn do_rdh_checks<T: RDH>(
         rdh: &T,
         running_rdh_checker: &mut RdhCRURunningChecker<T>,
-        stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
-        rdh_mem_pos: u64,
-    ) {
-        do_rdh_running_checks(
-            rdh,
-            running_rdh_checker,
-            stats_sender_ch_checker,
-            rdh_mem_pos,
-        );
+    ) -> Result<(), String> {
+        do_rdh_running_checks(rdh, running_rdh_checker)
     }
 
     #[inline]
     fn do_rdh_running_checks<T: RDH>(
         rdh: &T,
         running_rdh_checker: &mut RdhCRURunningChecker<T>,
-        stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
-        rdh_mem_pos: u64,
-    ) {
+    ) -> Result<(), String> {
         // RDH CHECK: There is always page 0 + minimum page 1 + stop flag
-        if let Err(e) = running_rdh_checker.check(rdh) {
-            stats_sender_ch_checker
-                .send(StatType::Error(format!(
-                    "{rdh_mem_pos:#X}: [E98] RDH check failed: {e}"
-                )))
-                .unwrap();
-        }
+        running_rdh_checker.check(rdh)
     }
 }
 

@@ -86,19 +86,21 @@ impl RdhCRUv7 {
     }
 }
 
+pub fn rdh_header_text_to_string() -> String {
+    let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop";
+    let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit";
+    format!("\n       {header_text_top}\n       {header_text_bottom}\n")
+}
+
 impl Display for RdhCRUv7 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop";
-        let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit";
-        //Needed?  Memory   CRU   DW");
-        //Needed?    size     ID    ID\n");
         let tmp_offset = self.offset_new_packet;
         let tmp_link = self.link_id;
         let tmp_packet_cnt = self.packet_counter;
         let rdhcru_fields0 = format!("{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}");
         write!(
             f,
-            "{header_text_top}\n       {header_text_bottom}\n       {}{}{}{:<11}{}",
+            "       {}{}{}{:<11}{}",
             self.rdh0,
             rdhcru_fields0,
             self.rdh1,
@@ -267,18 +269,18 @@ impl RdhCRUv6 {
 
 impl Display for RdhCRUv6 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let header_text_top    = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Trigger   Pages    Stop";
-        let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     type      counter  bit";
-        //Needed?  Memory   CRU   DW");
-        //Needed?    size     ID    ID\n");
         let tmp_offset = self.offset_new_packet;
         let tmp_link = self.link_id;
         let tmp_packet_cnt = self.packet_counter;
         let rdhcru_fields0 = format!("{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}");
         write!(
             f,
-            "{header_text_top}\n       {header_text_bottom}\n       {}{}{}{}",
-            self.rdh0, rdhcru_fields0, self.rdh1, self.rdh2
+            "       {}{}{}{:<11}{}",
+            self.rdh0,
+            rdhcru_fields0,
+            self.rdh1,
+            self.data_format(),
+            self.rdh2
         )
     }
 }
