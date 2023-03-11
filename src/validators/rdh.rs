@@ -499,7 +499,7 @@ impl RdhCRURunningChecker {
         let mut rdh_errors: Vec<String> = vec![];
         let mut err_cnt: u8 = 0;
 
-        match self.check_stop_bit_and_page_counter(&rdh.rdh2()) {
+        match self.check_stop_bit_and_page_counter(rdh.rdh2()) {
             Ok(_) => (),
             Err(e) => {
                 err_cnt += 1;

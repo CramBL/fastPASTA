@@ -360,7 +360,7 @@ mod tests {
         println!("Test data: \n       {test_data}");
         let file_name = "test.raw";
         let filepath = PathBuf::from(file_name);
-        let mut file = File::create(&filepath).unwrap();
+        let mut file = File::create(filepath).unwrap();
         // Write to file for testing
         file.write_all(test_data.to_byte_slice()).unwrap();
 
