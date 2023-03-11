@@ -12,7 +12,7 @@ impl DataWordSanityChecker {
 
         if !self.is_valid_any_id(id) {
             write!(err_str, "ID is invalid: {id:#02X} Full Word: ").unwrap();
-            data_word.iter().rev().for_each(|b| {
+            data_word.iter().for_each(|b| {
                 write!(err_str, "{b:02X} ").unwrap();
             });
             err_str.push_str("[79:0]");

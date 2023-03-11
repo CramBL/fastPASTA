@@ -212,7 +212,7 @@ fn sanity_check_offset_next<T: RDH>(
     stats_ch: &std::sync::mpsc::Sender<StatType>,
 ) -> Result<(), std::io::Error> {
     let current_rdh_offset_to_next = rdh.offset_to_next() as i64;
-    let next_rdh_memory_location = (current_rdh_offset_to_next - 64) as i64;
+    let next_rdh_memory_location = current_rdh_offset_to_next - 64;
     if next_rdh_memory_location < 0 {
         let error_string =
             format!("\nCurrent Loaded RDH at [{current_memory_address:#X}]: \n       {rdh}");
