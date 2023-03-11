@@ -184,8 +184,6 @@ impl RDH for RdhCRUv7 {
     fn is_hba(&self) -> bool {
         let trigger = self.rdh2.trigger_type;
         // HBA is bit 1
-        log::info!("Trigger type: {:032b}", trigger);
-        log::info!("{self}");
         trigger & 0b10 == 0b10
     }
 

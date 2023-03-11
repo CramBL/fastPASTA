@@ -121,11 +121,6 @@ impl<T: RDH> CdpRunningValidator<T> {
     pub fn set_current_rdh(&mut self, rdh: &T, rdh_mem_pos: u64) {
         self.current_rdh = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
         self.gbt_word_counter = 0;
-        log::info!(
-            "Setting current payload_mem_pos from RDH mem_pos: {:#X}",
-            rdh_mem_pos
-        );
-        log::info!("Setting current RDH: {:#X?}", self.current_rdh);
         self.payload_mem_pos = rdh_mem_pos + 64;
         if rdh.data_format() == 0 {
             self.gbt_word_padding_size_bytes = 6;
