@@ -118,10 +118,15 @@ impl<T: RDH> CdpRunningValidator<T> {
     ///
     /// It defines what is valid, and is necessary to keep track of the memory position of each word
     /// It uses the RDH to determine size of padding
-    pub fn set_current_rdh(&mut self, rdh: &T, payload_mem_pos: u64) {
+    pub fn set_current_rdh(&mut self, rdh: &T, rdh_mem_pos: u64) {
         self.current_rdh = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
         self.gbt_word_counter = 0;
-        self.payload_mem_pos = payload_mem_pos;
+        log::info!(
+            "Setting current payload_mem_pos from RDH mem_pos: {:#X}",
+            rdh_mem_pos
+        );
+        log::info!("Setting current RDH: {:#X?}", self.current_rdh);
+        self.payload_mem_pos = rdh_mem_pos + 64;
         if rdh.data_format() == 0 {
             self.gbt_word_padding_size_bytes = 6;
         } else {
@@ -410,9 +415,9 @@ mod tests {
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
         let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
-        let payload_mem_pos = 512;
+        let rdh_mem_pos = 0;
 
-        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, payload_mem_pos);
+        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos);
         validator.check(&raw_data_ihw);
 
         assert!(stats_recv_ch.try_recv().is_err()); // Checks that no error was received (nothing received)
@@ -428,9 +433,9 @@ mod tests {
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
         let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
-        let payload_mem_pos = 0x40;
+        let rdh_mem_pos = 0x0;
 
-        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, payload_mem_pos);
+        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos);
         validator.check(&raw_data_ihw);
 
         match stats_recv_ch.recv() {
@@ -453,9 +458,9 @@ mod tests {
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
         let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
-        let payload_mem_pos = 64; // RDH size is 64 bytes
+        let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
-        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, payload_mem_pos); // Data format is 2
+        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
         validator.check(&raw_data_tdt);
 
         match stats_recv_ch.recv() {
@@ -479,9 +484,9 @@ mod tests {
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
         let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
-        let payload_mem_pos = 64; // RDH size is 64 bytes
+        let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
-        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, payload_mem_pos); // Data format is 2
+        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
         validator.check(&raw_data_tdt);
         validator.check(&raw_data_tdt_next);
 
@@ -517,9 +522,9 @@ mod tests {
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
         let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
-        let payload_mem_pos = 64; // RDH size is 64 bytes
+        let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
-        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, payload_mem_pos); // Data format is 2
+        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
         validator.check(&raw_data_tdt);
         validator.check(&raw_data_tdt_next);
         validator.check(&raw_data_tdt_next_next);
