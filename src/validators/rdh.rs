@@ -1,4 +1,4 @@
-use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3, RdhCRUv6, RdhCRUv7};
+use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3, RdhCRUv6, RdhCRUv7, RDH};
 use std::fmt;
 use std::fmt::Write as _;
 
@@ -475,26 +475,41 @@ pub const RDH_CRU_V6_VALIDATOR: RdhCruv6Validator = RdhCruv6Validator {
     rdh3_validator: &RDH3_VALIDATOR,
 };
 
-pub struct RdhCRURunningChecker {
+pub struct RdhCRURunningChecker<T: RDH> {
     pub expect_pages_counter: u16,
     pub last_rdh2: Option<Rdh2>,
+    // The first 2 RDHs are used to determine what the expected page counter increments are
+    first_rdh_cru: Option<T>,
+    second_rdh_cru: Option<T>,
+    expect_pages_counter_increment: u16,
 }
 
-impl Default for RdhCRURunningChecker {
+impl<T: RDH> Default for RdhCRURunningChecker<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl RdhCRURunningChecker {
+impl<T: RDH> RdhCRURunningChecker<T> {
     pub fn new() -> Self {
         Self {
             expect_pages_counter: 0,
             last_rdh2: None,
+            first_rdh_cru: None,
+            second_rdh_cru: None,
+            expect_pages_counter_increment: 1,
         }
     }
     #[inline]
-    pub fn check<T: crate::words::rdh::RDH>(&mut self, rdh: &T) -> Result<(), GbtError> {
+    pub fn check(&mut self, rdh: &T) -> Result<(), GbtError> {
+        if self.first_rdh_cru.is_none() {
+            self.first_rdh_cru = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
+        } else if self.second_rdh_cru.is_none() {
+            self.second_rdh_cru = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
+            self.expect_pages_counter_increment =
+                self.second_rdh_cru.as_ref().unwrap().rdh2().pages_counter;
+        }
+
         let mut err_str = String::from("RDH running check failed: ");
         let mut rdh_errors: Vec<String> = vec![];
         let mut err_cnt: u8 = 0;
@@ -541,7 +556,7 @@ impl RdhCRURunningChecker {
                     let tmp = rdh2.pages_counter;
                     write!(err_str, "{} = {:#x} ", stringify!(pages_counter), tmp).unwrap();
                 }
-                self.expect_pages_counter += 1;
+                self.expect_pages_counter += self.expect_pages_counter_increment;
             }
             1 => {
                 if rdh2.pages_counter != self.expect_pages_counter {
