@@ -5,7 +5,7 @@ type CdpTuple<T> = (T, Vec<u8>, u64);
 pub struct CdpChunk<T: RDH> {
     rdhs: Vec<T>,
     payloads: Vec<Vec<u8>>,
-    mem_positions: Vec<u64>,
+    rdh_mem_pos: Vec<u64>,
 }
 
 impl<T: RDH> Default for CdpChunk<T> {
@@ -19,7 +19,7 @@ impl<T: RDH> CdpChunk<T> {
         Self {
             rdhs: Vec::new(),
             payloads: Vec::new(),
-            mem_positions: Vec::new(),
+            rdh_mem_pos: Vec::new(),
         }
     }
 
@@ -27,14 +27,14 @@ impl<T: RDH> CdpChunk<T> {
         Self {
             rdhs: Vec::with_capacity(capacity),
             payloads: Vec::with_capacity(capacity),
-            mem_positions: Vec::with_capacity(capacity),
+            rdh_mem_pos: Vec::with_capacity(capacity),
         }
     }
 
     pub fn push(&mut self, rdh: T, payload: Vec<u8>, mem_pos: u64) {
         self.rdhs.push(rdh);
         self.payloads.push(payload);
-        self.mem_positions.push(mem_pos);
+        self.rdh_mem_pos.push(mem_pos);
     }
 
     /// Convenience method to push a tuple of (RDH, payload, mem_pos)
@@ -43,25 +43,25 @@ impl<T: RDH> CdpChunk<T> {
     pub fn push_tuple(&mut self, cdp_tuple: CdpTuple<T>) {
         self.rdhs.push(cdp_tuple.0);
         self.payloads.push(cdp_tuple.1);
-        self.mem_positions.push(cdp_tuple.2);
+        self.rdh_mem_pos.push(cdp_tuple.2);
     }
 
     pub fn len(&self) -> usize {
         debug_assert!(self.rdhs.len() == self.payloads.len());
-        debug_assert!(self.rdhs.len() == self.mem_positions.len());
+        debug_assert!(self.rdhs.len() == self.rdh_mem_pos.len());
         self.rdhs.len()
     }
 
     pub fn is_empty(&self) -> bool {
         debug_assert!(self.rdhs.len() == self.payloads.len());
-        debug_assert!(self.rdhs.len() == self.mem_positions.len());
+        debug_assert!(self.rdhs.len() == self.rdh_mem_pos.len());
         self.rdhs.is_empty()
     }
 
     pub fn clear(&mut self) {
         self.rdhs.clear();
         self.payloads.clear();
-        self.mem_positions.clear();
+        self.rdh_mem_pos.clear();
     }
 
     pub fn rdh_slice(&self) -> &[T] {
@@ -80,7 +80,7 @@ impl<T: RDH> IntoIterator for CdpChunk<T> {
                 .rdhs
                 .into_iter()
                 .zip(self.payloads.into_iter())
-                .zip(self.mem_positions.into_iter())
+                .zip(self.rdh_mem_pos.into_iter())
                 .map(|((rdh, payload), mem_pos)| (rdh, payload, mem_pos))
                 .collect::<Vec<_>>()
                 .into_iter(),
@@ -126,7 +126,7 @@ impl<'a, T: RDH> Iterator for CdpChunkIter<'a, T> {
             let item = Some((
                 self.cdp_chunk.rdhs.get(self.index)?,
                 self.cdp_chunk.payloads.get(self.index)?.as_slice(),
-                self.cdp_chunk.mem_positions.get(self.index)?.to_owned(),
+                self.cdp_chunk.rdh_mem_pos.get(self.index)?.to_owned(),
             ));
             self.index += 1;
             item
@@ -149,7 +149,7 @@ mod tests {
 
         assert_eq!(chunk.rdhs.len(), 2);
         assert_eq!(chunk.payloads.len(), 2);
-        assert_eq!(chunk.mem_positions.len(), 2);
+        assert_eq!(chunk.rdh_mem_pos.len(), 2);
     }
 
     #[test]
@@ -161,7 +161,7 @@ mod tests {
 
         assert_eq!(chunk.rdhs.len(), 2);
         assert_eq!(chunk.payloads.len(), 2);
-        assert_eq!(chunk.mem_positions.len(), 2);
+        assert_eq!(chunk.rdh_mem_pos.len(), 2);
     }
 
     #[test]
@@ -172,13 +172,13 @@ mod tests {
 
         assert_eq!(chunk.rdhs.len(), 2);
         assert_eq!(chunk.payloads.len(), 2);
-        assert_eq!(chunk.mem_positions.len(), 2);
+        assert_eq!(chunk.rdh_mem_pos.len(), 2);
 
         chunk.clear();
 
         assert_eq!(chunk.rdhs.len(), 0);
         assert_eq!(chunk.payloads.len(), 0);
-        assert_eq!(chunk.mem_positions.len(), 0);
+        assert_eq!(chunk.rdh_mem_pos.len(), 0);
     }
 
     #[test]
@@ -204,7 +204,7 @@ mod tests {
         let chunk = CdpChunk::<RdhCRUv7>::with_capacity(10);
         assert_eq!(chunk.rdhs.capacity(), 10);
         assert_eq!(chunk.payloads.capacity(), 10);
-        assert_eq!(chunk.mem_positions.capacity(), 10);
+        assert_eq!(chunk.rdh_mem_pos.capacity(), 10);
     }
 
     #[test]
@@ -225,7 +225,7 @@ mod tests {
         let cdp_chunk = CdpChunk {
             rdhs: vec![CORRECT_RDH_CRU_V7, CORRECT_RDH_CRU_V7],
             payloads: vec![vec![0; 10], vec![0; 10]],
-            mem_positions: vec![0, 1],
+            rdh_mem_pos: vec![0, 1],
         };
 
         cdp_chunk
@@ -243,7 +243,7 @@ mod tests {
         let cdp_chunk = CdpChunk {
             rdhs: vec![CORRECT_RDH_CRU_V7, CORRECT_RDH_CRU_V7],
             payloads: vec![vec![0; 10], vec![0; 10]],
-            mem_positions: vec![255, 255],
+            rdh_mem_pos: vec![255, 255],
         };
 
         for (rdh, payload, mem_pos) in &cdp_chunk {
@@ -258,7 +258,7 @@ mod tests {
         let cdp_chunk = CdpChunk {
             rdhs: vec![CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V6],
             payloads: vec![vec![0; 10], vec![0; 10]],
-            mem_positions: vec![0, 1],
+            rdh_mem_pos: vec![0, 1],
         };
 
         cdp_chunk
@@ -276,7 +276,7 @@ mod tests {
         let cdp_chunk = CdpChunk {
             rdhs: vec![CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V6],
             payloads: vec![vec![0; 10], vec![0; 10]],
-            mem_positions: vec![0xd, 0xd],
+            rdh_mem_pos: vec![0xd, 0xd],
         };
 
         for (rdh, payload, mem_pos) in &cdp_chunk {
@@ -300,7 +300,7 @@ mod tests {
         let cdp_chunk = CdpChunk {
             rdhs: vec![CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V6],
             payloads: vec![vec![0; 10], vec![0; 10]],
-            mem_positions: vec![0xd, 0xd],
+            rdh_mem_pos: vec![0xd, 0xd],
         };
 
         print_cdp_chunk(&cdp_chunk);
@@ -317,7 +317,7 @@ mod tests {
         let cdp_chunk = CdpChunk {
             rdhs: vec![CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V6],
             payloads: vec![vec![0; 10], vec![0; 10]],
-            mem_positions: vec![0xd, 0xd],
+            rdh_mem_pos: vec![0xd, 0xd],
         };
 
         consume_cdp_chunk(cdp_chunk);

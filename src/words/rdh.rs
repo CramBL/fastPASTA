@@ -578,10 +578,9 @@ impl Debug for Rdh2 {
         let tmp_trigger_type = self.trigger_type;
         let tmp_pages_counter = self.pages_counter;
         let tmp_stop_bit = self.stop_bit;
-        let tmp_reserved0 = self.reserved0;
         write!(
             f,
-            "Rdh2: trigger_type: {tmp_trigger_type:x?}, pages_counter: {tmp_pages_counter:x?}, stop_bit: {tmp_stop_bit:x?}, reserved0: {tmp_reserved0:x?}"
+            "Rdh2: trigger_type: {tmp_trigger_type:X?}, pages_counter: {tmp_pages_counter:X?}, stop_bit: {tmp_stop_bit:X?}"
         )
     }
 }

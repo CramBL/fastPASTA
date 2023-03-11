@@ -164,18 +164,15 @@ where
     #[inline]
     fn load_cdp<T: RDH>(&mut self) -> Result<CdpWrapper<T>, std::io::Error> {
         log::trace!("Attempting to load CDP - 1. loading RDH");
+        let loading_at_memory_offset = self.tracker.memory_address_bytes;
         let rdh: T = self.load_rdh_cru()?;
 
         self.tracker.memory_address_bytes += rdh.offset_to_next() as u64;
-        // log::trace!(
-        //     "Current memory offset: {}, rdh memory offset: {}",
-        //     self.tracker.memory_address_bytes,
-        //     rdh.offset_to_next()
-        // );
+
         log::trace!("Attempting to load CDP - 2. loading Payload");
         let payload = self.load_payload_raw(rdh.payload_size() as usize)?;
 
-        Ok(CdpWrapper(rdh, payload, self.tracker.memory_address_bytes))
+        Ok(CdpWrapper(rdh, payload, loading_at_memory_offset))
     }
 
     fn load_next_rdh_to_filter<T: RDH>(&mut self) -> Result<T, std::io::Error> {
@@ -214,12 +211,13 @@ fn sanity_check_offset_next<T: RDH>(
     current_memory_address: u64,
     stats_ch: &std::sync::mpsc::Sender<StatType>,
 ) -> Result<(), std::io::Error> {
-    let next_rdh_memory_location = (rdh.offset_to_next() - 64) as i64;
+    let current_rdh_offset_to_next = rdh.offset_to_next() as i64;
+    let next_rdh_memory_location = (current_rdh_offset_to_next - 64) as i64;
     if next_rdh_memory_location < 0 {
         let error_string =
-            format!("Current Loaded RDH at [{current_memory_address:#X}]: \n       {rdh}");
+            format!("\nCurrent Loaded RDH at [{current_memory_address:#X}]: \n       {rdh}");
         let fatal_error_string = format!(
-            "RDH offset to next is {next_rdh_memory_location} (less than 64 bytes). This is not possible. {error_string}");
+            " {current_memory_address:#X}: RDH offset to next is {current_rdh_offset_to_next} (less than 64 bytes). This is not possible. {error_string}");
         stats_ch
             .send(StatType::Fatal(fatal_error_string.clone()))
             .unwrap();

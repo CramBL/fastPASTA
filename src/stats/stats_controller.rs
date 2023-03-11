@@ -131,7 +131,7 @@ impl Stats {
                 }
                 self.end_processing_flag
                     .store(true, std::sync::atomic::Ordering::SeqCst);
-                log::error!("Fatal error: {}\nShutting down...", err);
+                log::error!("FATAL: {err}\nShutting down...");
                 self.fatal_error = Some(err);
             }
             StatType::LayerStaveSeen { layer, stave } => {
