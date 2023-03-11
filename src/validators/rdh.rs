@@ -475,18 +475,18 @@ pub const RDH_CRU_V6_VALIDATOR: RdhCruv6Validator = RdhCruv6Validator {
     rdh3_validator: &RDH3_VALIDATOR,
 };
 
-pub struct RdhCruv7RunningChecker {
+pub struct RdhCRURunningChecker {
     pub expect_pages_counter: u16,
     pub last_rdh2: Option<Rdh2>,
 }
 
-impl Default for RdhCruv7RunningChecker {
+impl Default for RdhCRURunningChecker {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl RdhCruv7RunningChecker {
+impl RdhCRURunningChecker {
     pub fn new() -> Self {
         Self {
             expect_pages_counter: 0,
@@ -494,12 +494,12 @@ impl RdhCruv7RunningChecker {
         }
     }
     #[inline]
-    pub fn check(&mut self, rdh: &RdhCRUv7) -> Result<(), GbtError> {
-        let mut err_str = String::from("RDH v7 running check failed: ");
+    pub fn check<T: crate::words::rdh::RDH>(&mut self, rdh: &T) -> Result<(), GbtError> {
+        let mut err_str = String::from("RDH running check failed: ");
         let mut rdh_errors: Vec<String> = vec![];
         let mut err_cnt: u8 = 0;
 
-        match self.check_stop_bit_and_page_counter(&rdh.rdh2) {
+        match self.check_stop_bit_and_page_counter(&rdh.rdh2()) {
             Ok(_) => (),
             Err(e) => {
                 err_cnt += 1;
@@ -514,7 +514,7 @@ impl RdhCruv7RunningChecker {
             return Err(GbtError::InvalidWord(err_str));
         }
 
-        self.last_rdh2 = Some(rdh.rdh2);
+        self.last_rdh2 = Some(*rdh.rdh2());
 
         Ok(())
     }

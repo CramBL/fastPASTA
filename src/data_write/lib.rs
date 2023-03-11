@@ -8,19 +8,19 @@ use super::writer::BufferedWriter;
 use super::writer::Writer;
 use crate::input::data_wrapper::CdpChunk;
 use crate::util::config::Opt;
-use crate::words::rdh::RdhCRUv7;
+use crate::words::rdh::RDH;
 
 const BUFFER_SIZE: usize = 1024 * 1024; // 1MB buffer
 
-pub fn spawn_writer(
+pub fn spawn_writer<T: RDH + 'static>(
     config: Arc<Opt>,
     stop_flag: Arc<AtomicBool>,
-    data_channel: Receiver<CdpChunk<RdhCRUv7>>,
+    data_channel: Receiver<CdpChunk<T>>,
 ) -> thread::JoinHandle<()> {
     let writer_thread = thread::Builder::new().name("Writer".to_string());
     writer_thread
         .spawn({
-            let mut writer = BufferedWriter::<RdhCRUv7>::new(&config, BUFFER_SIZE);
+            let mut writer = BufferedWriter::<T>::new(&config, BUFFER_SIZE);
             move || loop {
                 // Receive chunk from checker
                 let cdps = match data_channel.recv() {

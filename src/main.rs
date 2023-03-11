@@ -7,7 +7,7 @@ use fastpasta::input::lib::init_reader;
 use fastpasta::stats::lib::init_stats_controller;
 use fastpasta::stats::stats_controller;
 use fastpasta::util::config::Opt;
-use fastpasta::words::rdh::Rdh0;
+use fastpasta::words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7, RDH};
 use fastpasta::GbtWord;
 use fastpasta::{data_write, validators};
 use log::trace;
@@ -42,9 +42,9 @@ pub fn main() {
     match rdh_version {
         6 => {
             log::warn!("RDH version 6 detected, using RDHv7 processing for now anyways... No guarantees it will work!");
-            process_rdh_v7(config, loader, stat_send_channel, stop_flag).unwrap()
+            process::<RdhCRUv6>(config, loader, stat_send_channel, stop_flag).unwrap()
         }
-        7 => process_rdh_v7(config, loader, stat_send_channel, stop_flag).unwrap(),
+        7 => process::<RdhCRUv7>(config, loader, stat_send_channel, stop_flag).unwrap(),
         _ => panic!("Unknown RDH version: {rdh_version}"),
     }
     stat_controller.join().expect("Failed to join stats thread");
@@ -78,7 +78,7 @@ fn get_config() -> Arc<Opt> {
 // 1. Setup reading (file or stdin)
 // 2. Do checks on read data
 // 3. Write data out (file or stdout)
-pub fn process_rdh_v7(
+pub fn process<T: RDH + 'static>(
     config: Arc<Opt>,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
     send_stats_ch: std::sync::mpsc::Sender<stats_controller::StatType>,
@@ -89,7 +89,7 @@ pub fn process_rdh_v7(
         fastpasta::input::lib::spawn_reader(thread_stopper.clone(), loader);
 
     // 2. Do checks on a received chunk of data
-    let (validator_handle, checker_rcv_channel) = validators::lib::spawn_checker(
+    let (validator_handle, checker_rcv_channel) = validators::lib::spawn_checker::<T>(
         config.clone(),
         thread_stopper.clone(),
         send_stats_ch,

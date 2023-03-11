@@ -1,24 +1,22 @@
 use crate::input::data_wrapper::CdpChunk;
 use crate::stats::stats_controller::StatType;
 use crate::util::config::Opt;
-use crate::words::rdh::{layer_from_feeid, stave_number_from_feeid, RdhCRUv7, RDH};
+use crate::words::rdh::{layer_from_feeid, stave_number_from_feeid, RDH};
 use crossbeam_channel::{bounded, Receiver, RecvError};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread::JoinHandle;
 
 use super::cdp_running::CdpRunningValidator;
-use super::rdh::RdhCruv7RunningChecker;
-
-type RdhV7 = crate::words::rdh::RdhCRUv7;
+use super::rdh::RdhCRURunningChecker;
 
 #[inline]
-pub fn spawn_checker(
+pub fn spawn_checker<T: RDH + 'static>(
     config: Arc<Opt>,
     stop_flag: Arc<AtomicBool>,
     stats_sender_channel: mpsc::Sender<StatType>,
-    data_channel: Receiver<CdpChunk<RdhV7>>,
-) -> (JoinHandle<()>, Option<Receiver<CdpChunk<RdhV7>>>) {
+    data_channel: Receiver<CdpChunk<T>>,
+) -> (JoinHandle<()>, Option<Receiver<CdpChunk<T>>>) {
     let checker_thread = std::thread::Builder::new().name("Checker".to_string());
     let (send_channel, rcv_channel) = bounded(crate::CHANNEL_CDP_CAPACITY);
     let validator_handle = checker_thread
@@ -27,7 +25,7 @@ pub fn spawn_checker(
             move || {
                 let mut cdp_payload_running_validator =
                     CdpRunningValidator::new(stats_sender_channel.clone());
-                let mut running_rdh_checker = RdhCruv7RunningChecker::new();
+                let mut running_rdh_checker = RdhCRURunningChecker::new();
 
                 while !stop_flag.load(Ordering::SeqCst) {
                     // Receive chunk from reader
@@ -84,11 +82,11 @@ pub fn spawn_checker(
 }
 
 #[inline]
-fn do_checks_v7(
-    cdp_chunk: &CdpChunk<RdhV7>,
+fn do_checks_v7<T: RDH>(
+    cdp_chunk: &CdpChunk<T>,
     stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
-    rdh_running: &mut RdhCruv7RunningChecker,
-    payload_running: &mut CdpRunningValidator<RdhCRUv7>,
+    rdh_running: &mut RdhCRURunningChecker,
+    payload_running: &mut CdpRunningValidator<T>,
 ) {
     cdp_chunk.into_iter().for_each(|(rdh, payload, mem_pos)| {
         stats_sender_ch_checker
@@ -112,9 +110,9 @@ fn do_checks_v7(
 }
 
 #[inline]
-fn do_rdh_checks(
-    rdh: &RdhV7,
-    running_rdh_checker: &mut RdhCruv7RunningChecker,
+fn do_rdh_checks<T: RDH>(
+    rdh: &T,
+    running_rdh_checker: &mut RdhCRURunningChecker,
     stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
 ) {
     do_rdh_v7_running_checks(rdh, running_rdh_checker, stats_sender_ch_checker);
@@ -139,9 +137,9 @@ fn do_payload_checks<T: RDH>(
 }
 
 #[inline]
-fn do_rdh_v7_running_checks(
-    rdh: &RdhV7,
-    running_rdh_checker: &mut RdhCruv7RunningChecker,
+fn do_rdh_v7_running_checks<T: RDH>(
+    rdh: &T,
+    running_rdh_checker: &mut RdhCRURunningChecker,
     stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
 ) {
     // RDH CHECK: There is always page 0 + minimum page 1 + stop flag

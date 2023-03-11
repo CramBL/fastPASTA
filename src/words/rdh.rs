@@ -10,6 +10,7 @@ pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display + Sync 
         Self: Sized;
     fn load_from_rdh0<T: std::io::Read>(reader: &mut T, rdh0: Rdh0)
         -> Result<Self, std::io::Error>;
+    fn rdh2(&self) -> &Rdh2;
     fn link_id(&self) -> u8;
     /// Returns the size of the payload in bytes
     /// This is EXCLUDING the size of the RDH
@@ -191,6 +192,10 @@ impl RDH for RdhCRUv7 {
     fn fee_id(&self) -> u16 {
         self.rdh0.fee_id.0
     }
+
+    fn rdh2(&self) -> &Rdh2 {
+        &self.rdh2
+    }
 }
 impl ByteSlice for RdhCRUv7 {
     fn to_byte_slice(&self) -> &[u8] {
@@ -350,6 +355,10 @@ impl RDH for RdhCRUv6 {
 
     fn fee_id(&self) -> u16 {
         self.rdh0.fee_id.0
+    }
+
+    fn rdh2(&self) -> &Rdh2 {
+        &self.rdh2
     }
 }
 
