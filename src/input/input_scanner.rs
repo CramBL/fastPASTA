@@ -3,7 +3,7 @@ use super::mem_pos_tracker::MemPosTracker;
 use crate::{
     stats::stats_controller::StatType,
     util::config::Opt,
-    words::rdh::{Rdh0, RDH},
+    words::rdh::{rdh_header_text_to_string, Rdh0, RDH},
 };
 use std::io::Read;
 
@@ -227,8 +227,10 @@ fn sanity_check_offset_next<T: RDH>(
         ));
     } else if next_rdh_memory_location > 0x4FFF {
         // VERY HIGH OFFSET
-        let error_string =
-            format!("Current Loaded RDH at [{current_memory_address:#X}]: \n       {rdh}");
+        let error_string = format!(
+            "Current Loaded RDH at [{current_memory_address:#X}]: {rdh_header_text}{rdh}",
+            rdh_header_text = rdh_header_text_to_string()
+        );
         let fatal_error_string =
             format!("RDH offset to next is larger than 20KB. This is not possible. {error_string}");
         stats_ch.send(StatType::Fatal(fatal_error_string)).unwrap();

@@ -1,3 +1,5 @@
+use super::cdp_running::CdpRunningValidator;
+use super::rdh::RdhCRURunningChecker;
 use crate::input::data_wrapper::CdpChunk;
 use crate::stats::stats_controller::StatType;
 use crate::util::config::Opt;
@@ -6,9 +8,6 @@ use crossbeam_channel::{bounded, Receiver, RecvError};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread::JoinHandle;
-
-use super::cdp_running::CdpRunningValidator;
-use super::rdh::RdhCRURunningChecker;
 
 #[inline]
 pub fn spawn_checker<T: RDH + 'static>(
