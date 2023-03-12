@@ -6,7 +6,7 @@ use std::sync::{
     Arc,
 };
 
-use super::config::Opt;
+use crate::util::config::Opt;
 pub enum StatType {
     Fatal(String), // Fatal error, stop processing
     Error(String),
@@ -86,6 +86,11 @@ impl Stats {
         //self.print();
         match stat {
             StatType::Error(msg) => {
+                if self.fatal_error.is_some() {
+                    // Stop processing any error messages
+                    log::trace!("Fatal error already seen, ignoring error: {}", msg);
+                    return;
+                }
                 if self.max_tolerate_errors == 0 {
                     error!("{msg}");
                     self.non_atomic_total_errors += 1;
@@ -119,9 +124,14 @@ impl Stats {
             }
             StatType::HBFsSeen(val) => self.hbfs_seen += val,
             StatType::Fatal(err) => {
+                if self.fatal_error.is_some() {
+                    // Stop processing any error messages
+                    log::trace!("Fatal error already seen, ignoring error: {}", err);
+                    return;
+                }
                 self.end_processing_flag
                     .store(true, std::sync::atomic::Ordering::SeqCst);
-                log::error!("Fatal error: {}\nShutting down...", err);
+                log::error!("FATAL: {err}\nShutting down...");
                 self.fatal_error = Some(err);
             }
             StatType::LayerStaveSeen { layer, stave } => {

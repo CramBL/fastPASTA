@@ -1,8 +1,10 @@
-use super::stats_controller::StatType;
-use super::{
-    bufreader_wrapper::BufferedReaderWrapper, config::Opt, mem_pos_tracker::MemPosTracker,
+use super::bufreader_wrapper::BufferedReaderWrapper;
+use super::mem_pos_tracker::MemPosTracker;
+use crate::{
+    stats::stats_controller::StatType,
+    util::config::Opt,
+    words::rdh::{rdh_header_text_to_string, Rdh0, RDH},
 };
-use crate::words::rdh::{Rdh0, RDH};
 use std::io::Read;
 
 /// Trait for a scanner that reads CDPs from a file or stdin
@@ -11,14 +13,20 @@ pub trait ScanCDP {
 
     fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error>;
 
-    fn load_cdp<T: RDH>(&mut self) -> Result<(T, Vec<u8>), std::io::Error> {
+    fn load_cdp<T: RDH>(&mut self) -> Result<CdpWrapper<T>, std::io::Error> {
         let rdh: T = self.load_rdh_cru()?;
         let payload = self.load_payload_raw(rdh.payload_size() as usize)?;
-        Ok((rdh, payload))
+        let mem_pos = self.current_mem_pos();
+
+        Ok(CdpWrapper(rdh, payload, mem_pos))
     }
 
     fn load_next_rdh_to_filter<T: RDH>(&mut self) -> Result<T, std::io::Error>;
+
+    fn current_mem_pos(&self) -> u64;
 }
+
+pub struct CdpWrapper<T: RDH>(pub T, pub Vec<u8>, pub u64);
 
 /// Scans data received through a BufferedReaderWrapper, tracks the position in memory and sends stats to the stats controller.
 ///
@@ -52,13 +60,12 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     pub fn new_from_rdh0(
         config: std::sync::Arc<Opt>,
         reader: Box<R>,
-        tracker: MemPosTracker,
         stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
         rdh0: Rdh0,
     ) -> Self {
         InputScanner {
             reader,
-            tracker,
+            tracker: MemPosTracker::new(),
             stats_controller_sender_ch,
             link_to_filter: config.filter_link(),
             unique_links_observed: vec![],
@@ -104,7 +111,7 @@ where
             false => RDH::load(&mut self.reader)?,
         };
         log::debug!(
-            "Loaded RDH at [{:#X}]: \n      {rdh}",
+            "Loaded RDH at [{:#X}]: \n       {rdh}",
             self.tracker.memory_address_bytes,
             rdh = rdh
         );
@@ -118,7 +125,11 @@ where
             self.unique_links_observed.push(current_link_id);
             self.report_link_seen(current_link_id);
         }
-
+        sanity_check_offset_next(
+            &rdh,
+            self.tracker.memory_address_bytes,
+            &self.stats_controller_sender_ch,
+        )?;
         // If we have a link filter set, check if the current link matches the filter
         if let Some(x) = self.link_to_filter.as_ref() {
             // If it matches, return the RDH
@@ -129,19 +140,7 @@ where
             } else {
                 // If it doesn't match: Set tracker to jump to next RDH and try until we find a matching link or EOF
                 log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
-                let next_rdh_memory_location = (rdh.offset_to_next() - 64) as i64;
-                if next_rdh_memory_location < 0 {
-                    self.stats_controller_sender_ch
-                        .send(StatType::Fatal(
-                            "RDH offset to next is smaller than 64 bytes. This is not possible."
-                                .to_string(),
-                        ))
-                        .unwrap();
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "RDH offset to next is smaller than 64 bytes. This is not possible.",
-                    ));
-                }
+
                 self.reader
                     .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
                 self.load_next_rdh_to_filter()
@@ -163,19 +162,17 @@ where
     }
     /// Reads the next CDP from file
     #[inline]
-    fn load_cdp<T: RDH>(&mut self) -> Result<(T, Vec<u8>), std::io::Error> {
+    fn load_cdp<T: RDH>(&mut self) -> Result<CdpWrapper<T>, std::io::Error> {
         log::trace!("Attempting to load CDP - 1. loading RDH");
+        let loading_at_memory_offset = self.tracker.memory_address_bytes;
         let rdh: T = self.load_rdh_cru()?;
 
         self.tracker.memory_address_bytes += rdh.offset_to_next() as u64;
-        // log::trace!(
-        //     "Current memory offset: {}, rdh memory offset: {}",
-        //     self.tracker.memory_address_bytes,
-        //     rdh.offset_to_next()
-        // );
+
         log::trace!("Attempting to load CDP - 2. loading Payload");
         let payload = self.load_payload_raw(rdh.payload_size() as usize)?;
-        Ok((rdh, payload))
+
+        Ok(CdpWrapper(rdh, payload, loading_at_memory_offset))
     }
 
     fn load_next_rdh_to_filter<T: RDH>(&mut self) -> Result<T, std::io::Error> {
@@ -184,19 +181,11 @@ where
             let rdh: T = RDH::load(&mut self.reader)?;
             log::debug!("Loaded RDH: \n      {rdh}");
             log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
-            let next_rdh_memory_location = rdh.offset_to_next() as i64 - 64;
-            if next_rdh_memory_location < 0 {
-                self.stats_controller_sender_ch
-                    .send(StatType::Fatal(
-                        "RDH offset to next is smaller than 64 bytes (size of RDH). This is not possible."
-                            .to_string(),
-                    ))
-                    .unwrap();
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "RDH offset to next is smaller than 64 bytes (size of RDH). This is not possible.",
-                ));
-            }
+            sanity_check_offset_next(
+                &rdh,
+                self.tracker.memory_address_bytes,
+                &self.stats_controller_sender_ch,
+            )?;
             let current_link_id = rdh.link_id();
             self.report_rdh_seen();
             if !self.unique_links_observed.contains(&current_link_id) {
@@ -211,6 +200,42 @@ where
                 .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
         }
     }
+
+    fn current_mem_pos(&self) -> u64 {
+        self.tracker.memory_address_bytes
+    }
+}
+
+fn sanity_check_offset_next<T: RDH>(
+    rdh: &T,
+    current_memory_address: u64,
+    stats_ch: &std::sync::mpsc::Sender<StatType>,
+) -> Result<(), std::io::Error> {
+    let current_rdh_offset_to_next = rdh.offset_to_next() as i64;
+    let next_rdh_memory_location = current_rdh_offset_to_next - 64;
+    if next_rdh_memory_location < 0 {
+        let error_string =
+            format!("\nCurrent Loaded RDH at [{current_memory_address:#X}]: \n       {rdh}");
+        let fatal_error_string = format!(
+            " {current_memory_address:#X}: RDH offset to next is {current_rdh_offset_to_next} (less than 64 bytes). This is not possible. {error_string}");
+        stats_ch
+            .send(StatType::Fatal(fatal_error_string.clone()))
+            .unwrap();
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            fatal_error_string,
+        ));
+    } else if next_rdh_memory_location > 0x4FFF {
+        // VERY HIGH OFFSET
+        let error_string = format!(
+            "Current Loaded RDH at [{current_memory_address:#X}]: {rdh_header_text}{rdh}",
+            rdh_header_text = rdh_header_text_to_string()
+        );
+        let fatal_error_string =
+            format!("RDH offset to next is larger than 20KB. This is not possible. {error_string}");
+        stats_ch.send(StatType::Fatal(fatal_error_string)).unwrap();
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -218,7 +243,7 @@ mod tests {
     use std::io::Write;
     use std::{fs::File, io::BufReader, path::PathBuf, thread::JoinHandle};
 
-    use crate::{util::stats_controller::Stats, words::rdh::RdhCRUv7, ByteSlice};
+    use crate::{stats::stats_controller::Stats, words::rdh::RdhCRUv7, ByteSlice};
 
     fn setup_scanner_for_file(
         path: &str,
@@ -335,7 +360,7 @@ mod tests {
         println!("Test data: \n       {test_data}");
         let file_name = "test.raw";
         let filepath = PathBuf::from(file_name);
-        let mut file = File::create(&filepath).unwrap();
+        let mut file = File::create(filepath).unwrap();
         // Write to file for testing
         file.write_all(test_data.to_byte_slice()).unwrap();
 

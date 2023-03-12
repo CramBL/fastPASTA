@@ -1,14 +1,15 @@
-use super::config::Opt;
-use crate::words::rdh::RDH;
+use crate::util::config::Opt;
+use crate::{input::data_wrapper::CdpChunk, words::rdh::RDH};
 /// Writes data to file/stdout. Uses a buffer to minimize syscalls.
 ///
 /// Receives data incrementally and once a certain amount is reached, it will
 /// write it out to file/stdout.
 /// Implements drop to flush the remaining data to the file once processing is done.
-pub trait Writer<T> {
+pub trait Writer<T: RDH> {
     fn write(&mut self, data: &[u8]) -> std::io::Result<()>;
     fn push_rdhs(&mut self, rdhs: Vec<T>);
-    fn push_cdps_raw(&mut self, cdps: (Vec<T>, Vec<Vec<u8>>));
+    fn push_payload(&mut self, payload: Vec<u8>);
+    fn push_cdp_chunk(&mut self, cdp_chunk: CdpChunk<T>);
     fn flush(&mut self) -> std::io::Result<()>;
 }
 
@@ -64,9 +65,24 @@ impl<T: RDH> Writer<T> for BufferedWriter<T> {
     }
 
     #[inline]
-    fn push_cdps_raw(&mut self, cdps: (Vec<T>, Vec<Vec<u8>>)) {
-        self.filtered_rdhs_buffer.extend(cdps.0);
-        self.filtered_payload_buffers.extend(cdps.1);
+    fn push_payload(&mut self, payload: Vec<u8>) {
+        if self.filtered_payload_buffers.len() + 1 >= self.max_buffer_size {
+            self.flush().expect("Failed to flush buffer");
+        }
+        self.filtered_payload_buffers.push(payload);
+    }
+
+    #[inline]
+    fn push_cdp_chunk(&mut self, cdp_chunk: CdpChunk<T>) {
+        if (self.filtered_rdhs_buffer.len() + cdp_chunk.len() >= self.max_buffer_size)
+            || (self.filtered_payload_buffers.len() + cdp_chunk.len() >= self.max_buffer_size)
+        {
+            self.flush().expect("Failed to flush buffer");
+        }
+        cdp_chunk.into_iter().for_each(|(rdh, payload, _)| {
+            self.filtered_rdhs_buffer.push(rdh);
+            self.filtered_payload_buffers.push(payload);
+        });
     }
 
     #[inline]
@@ -85,6 +101,7 @@ impl<T: RDH> Writer<T> for BufferedWriter<T> {
             data.extend(rdh.to_byte_slice());
             data.extend(payload);
         }
+
         self.write(&data)?;
         self.filtered_rdhs_buffer.clear();
         self.filtered_payload_buffers.clear();
@@ -102,6 +119,8 @@ impl<T: RDH> Drop for BufferedWriter<T> {
 
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
     use crate::words::rdh::{RdhCRUv6, RdhCRUv7, CORRECT_RDH_CRU_V7};
 
     use super::*;
@@ -166,18 +185,17 @@ mod tests {
             "../fastpasta_test_files/data_ols_ul.raw",
             out_file_cmd,
         ]);
-        let rdhs = vec![CORRECT_RDH_CRU_V7, CORRECT_RDH_CRU_V7];
-        let length = rdhs.len();
-        let payloads: Vec<Vec<u8>> = vec![vec![], vec![]];
-        let cdps = (rdhs, payloads);
-        println!("length: {}", length);
+        let mut cdp_chunk = CdpChunk::new();
+
+        cdp_chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
+        cdp_chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0x40);
+
+        let length = cdp_chunk.len();
         {
             let mut writer = BufferedWriter::<RdhCRUv7>::new(&config, 10);
-            writer.push_cdps_raw(cdps);
-            let rdh_buf_size = writer.filtered_rdhs_buffer.len();
-            let payload_buf_size = writer.filtered_payload_buffers.len();
-            assert_eq!(rdh_buf_size, length);
-            assert_eq!(payload_buf_size, length);
+            writer.push_cdp_chunk(cdp_chunk);
+            let buf_size = writer.filtered_rdhs_buffer.len();
+            assert_eq!(buf_size, length);
         }
 
         // CLEANUP

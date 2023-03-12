@@ -1,16 +1,5 @@
-use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3, RdhCRUv6, RdhCRUv7};
-use std::fmt;
+use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3, RdhCRUv6, RdhCRUv7, RDH};
 use std::fmt::Write as _;
-
-#[derive(Debug)]
-pub enum GbtError {
-    InvalidWord(String),
-}
-impl std::fmt::Display for GbtError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
 
 pub struct FeeIdSanityValidator {
     pub reserved0: u8,
@@ -302,7 +291,7 @@ pub struct RdhCruv7Validator {
 
 impl RdhCruv7Validator {
     #[inline]
-    pub fn sanity_check(&self, rdh: &RdhCRUv7) -> Result<(), GbtError> {
+    pub fn sanity_check(&self, rdh: &RdhCRUv7) -> Result<(), String> {
         let mut err_str = String::from("RDH v7 sanity check failed: ");
         let mut err_cnt: u8 = 0;
         let mut rdh_errors: Vec<String> = vec![];
@@ -372,7 +361,7 @@ impl RdhCruv7Validator {
         });
 
         if err_cnt != 0 {
-            return Err(GbtError::InvalidWord(err_str.to_owned()));
+            return Err(err_str.to_owned());
         }
 
         Ok(())
@@ -398,7 +387,7 @@ pub struct RdhCruv6Validator {
 
 impl RdhCruv6Validator {
     #[inline]
-    pub fn sanity_check(&self, rdh: &RdhCRUv6) -> Result<(), GbtError> {
+    pub fn sanity_check(&self, rdh: &RdhCRUv6) -> Result<(), String> {
         let mut err_str = String::from("RDH v7 sanity check failed: ");
         let mut err_cnt: u8 = 0;
         let mut rdh_errors: Vec<String> = vec![];
@@ -462,7 +451,7 @@ impl RdhCruv6Validator {
             rdh_errors.into_iter().for_each(|e| {
                 err_str.push_str(&e);
             });
-            return Err(GbtError::InvalidWord(err_str.to_owned()));
+            return Err(err_str.to_owned());
         }
 
         Ok(())
@@ -475,31 +464,46 @@ pub const RDH_CRU_V6_VALIDATOR: RdhCruv6Validator = RdhCruv6Validator {
     rdh3_validator: &RDH3_VALIDATOR,
 };
 
-pub struct RdhCruv7RunningChecker {
+pub struct RdhCRURunningChecker<T: RDH> {
     pub expect_pages_counter: u16,
     pub last_rdh2: Option<Rdh2>,
+    // The first 2 RDHs are used to determine what the expected page counter increments are
+    first_rdh_cru: Option<T>,
+    second_rdh_cru: Option<T>,
+    expect_pages_counter_increment: u16,
 }
 
-impl Default for RdhCruv7RunningChecker {
+impl<T: RDH> Default for RdhCRURunningChecker<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl RdhCruv7RunningChecker {
+impl<T: RDH> RdhCRURunningChecker<T> {
     pub fn new() -> Self {
         Self {
             expect_pages_counter: 0,
             last_rdh2: None,
+            first_rdh_cru: None,
+            second_rdh_cru: None,
+            expect_pages_counter_increment: 1,
         }
     }
     #[inline]
-    pub fn check(&mut self, rdh: &RdhCRUv7) -> Result<(), GbtError> {
-        let mut err_str = String::from("RDH v7 running check failed: ");
+    pub fn check(&mut self, rdh: &T) -> Result<(), String> {
+        if self.first_rdh_cru.is_none() {
+            self.first_rdh_cru = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
+        } else if self.second_rdh_cru.is_none() {
+            self.second_rdh_cru = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
+            self.expect_pages_counter_increment =
+                self.second_rdh_cru.as_ref().unwrap().rdh2().pages_counter;
+        }
+
+        let mut err_str = String::new();
         let mut rdh_errors: Vec<String> = vec![];
         let mut err_cnt: u8 = 0;
 
-        match self.check_stop_bit_and_page_counter(&rdh.rdh2) {
+        match self.check_stop_bit_and_page_counter(rdh.rdh2()) {
             Ok(_) => (),
             Err(e) => {
                 err_cnt += 1;
@@ -511,10 +515,10 @@ impl RdhCruv7RunningChecker {
             rdh_errors.into_iter().for_each(|e| {
                 err_str.push_str(&e);
             });
-            return Err(GbtError::InvalidWord(err_str));
+            return Err(err_str);
         }
 
-        self.last_rdh2 = Some(rdh.rdh2);
+        self.last_rdh2 = Some(*rdh.rdh2());
 
         Ok(())
     }
@@ -539,22 +543,32 @@ impl RdhCruv7RunningChecker {
                 if rdh2.pages_counter != self.expect_pages_counter {
                     err_cnt += 1;
                     let tmp = rdh2.pages_counter;
-                    write!(err_str, "{} = {:#x} ", stringify!(pages_counter), tmp).unwrap();
+                    write!(
+                        err_str,
+                        "pages_counter = {tmp} expected: {}",
+                        self.expect_pages_counter
+                    )
+                    .unwrap();
                 }
-                self.expect_pages_counter += 1;
+                self.expect_pages_counter += self.expect_pages_counter_increment;
             }
             1 => {
                 if rdh2.pages_counter != self.expect_pages_counter {
                     err_cnt += 1;
                     let tmp = rdh2.pages_counter;
-                    write!(err_str, "{} = {:#x} ", stringify!(pages_counter), tmp).unwrap();
+                    write!(
+                        err_str,
+                        "pages_counter = {tmp} expected: {}",
+                        self.expect_pages_counter
+                    )
+                    .unwrap();
                 }
                 self.expect_pages_counter = 0;
             }
             _ => {
                 err_cnt += 1;
                 let tmp = rdh2.stop_bit;
-                write!(err_str, "{} = {:#x} ", stringify!(stop_bit), tmp).unwrap();
+                write!(err_str, "stop_bit = {tmp}").unwrap();
             }
         };
 

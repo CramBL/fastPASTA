@@ -1,14 +1,15 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
-use fastpasta::util::bufreader_wrapper::BufferedReaderWrapper;
+use fastpasta::input::bufreader_wrapper::BufferedReaderWrapper;
+use fastpasta::input::input_scanner::InputScanner;
+use fastpasta::input::lib::init_reader;
+use fastpasta::stats::lib::init_stats_controller;
+use fastpasta::stats::stats_controller;
 use fastpasta::util::config::Opt;
-
-use fastpasta::util::input_scanner::InputScanner;
-use fastpasta::util::process_v7;
-use fastpasta::util::stats_controller;
-use fastpasta::words::rdh::{Rdh0, RdhCRUv6};
-use fastpasta::{init_stats_controller, GbtWord};
+use fastpasta::words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7, RDH};
+use fastpasta::GbtWord;
+use fastpasta::{data_write, validators};
 use log::trace;
 use std::io;
 use std::sync::atomic::AtomicBool;
@@ -25,7 +26,7 @@ pub fn main() {
     // If max allowed errors is reached, stop the processing from the stats thread
     let (stat_controller, stat_send_channel, stop_flag) = init_stats_controller(&config);
 
-    let mut readable = fastpasta::init_reader(&config);
+    let mut readable = init_reader(&config);
 
     // Determine RDH version
     let rdh0 = Rdh0::load(&mut readable).expect("Failed to read first RDH0");
@@ -33,19 +34,17 @@ pub fn main() {
     stat_send_channel
         .send(stats_controller::StatType::RdhVersion(rdh_version))
         .unwrap();
-    let loader = InputScanner::new_from_rdh0(
-        config.clone(),
-        readable,
-        fastpasta::util::mem_pos_tracker::MemPosTracker::new(),
-        stat_send_channel.clone(),
-        rdh0,
-    );
+    let loader =
+        InputScanner::new_from_rdh0(config.clone(), readable, stat_send_channel.clone(), rdh0);
 
     // Choose the rest of the execution based on the RDH version
     // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
     match rdh_version {
-        6 => process_rdh_v6(config, loader, stat_send_channel, stop_flag).unwrap(),
-        7 => process_rdh_v7(config, loader, stat_send_channel, stop_flag).unwrap(),
+        6 => {
+            log::warn!("RDH version 6 detected, using RDHv7 processing for now anyways... No guarantees it will work!");
+            process::<RdhCRUv6>(config, loader, stat_send_channel, stop_flag).unwrap()
+        }
+        7 => process::<RdhCRUv7>(config, loader, stat_send_channel, stop_flag).unwrap(),
         _ => panic!("Unknown RDH version: {rdh_version}"),
     }
     stat_controller.join().expect("Failed to join stats thread");
@@ -79,7 +78,7 @@ fn get_config() -> Arc<Opt> {
 // 1. Setup reading (file or stdin)
 // 2. Do checks on read data
 // 3. Write data out (file or stdout)
-pub fn process_rdh_v7(
+pub fn process<T: RDH + 'static>(
     config: Arc<Opt>,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
     send_stats_ch: std::sync::mpsc::Sender<stats_controller::StatType>,
@@ -87,10 +86,10 @@ pub fn process_rdh_v7(
 ) -> io::Result<()> {
     // 1. Read data from file
     let (reader_handle, reader_rcv_channel) =
-        process_v7::input::spawn_reader(thread_stopper.clone(), loader);
+        fastpasta::input::lib::spawn_reader(thread_stopper.clone(), loader);
 
     // 2. Do checks on a received chunk of data
-    let (validator_handle, checker_rcv_channel) = process_v7::validate::spawn_checker(
+    let (validator_handle, checker_rcv_channel) = validators::lib::spawn_checker::<T>(
         config.clone(),
         thread_stopper.clone(),
         send_stats_ch,
@@ -100,7 +99,7 @@ pub fn process_rdh_v7(
     // 3. Write data out
     let writer_handle: Option<JoinHandle<()>> = match config.output_mode() {
         fastpasta::util::config::DataOutputMode::None => None,
-        _ => Some(process_v7::output::spawn_writer(
+        _ => Some(data_write::lib::spawn_writer(
             config.clone(),
             thread_stopper,
             checker_rcv_channel.expect("Checker receiver channel not initialized"),
@@ -114,27 +113,5 @@ pub fn process_rdh_v7(
     if let Some(writer) = writer_handle {
         writer.join().expect("Error joining writer thread");
     }
-    Ok(())
-}
-
-pub fn process_rdh_v6(
-    config: Arc<Opt>,
-    loader: InputScanner<impl BufferedReaderWrapper + ?Sized>,
-    send_stats_ch: std::sync::mpsc::Sender<stats_controller::StatType>,
-    thread_stopper: Arc<AtomicBool>,
-) -> io::Result<()> {
-    todo!("RDH v6 not implemented yet");
-    // Automatically extracts link to filter if one is supplied
-    let mut file_scanner = loader;
-
-    let (rdh_chunk, _payload_chunk) =
-        fastpasta::get_chunk::<RdhCRUv6>(&mut file_scanner, 10).expect("Error reading CDP chunks");
-
-    for _rdh in rdh_chunk {
-        if config.sanity_checks() {
-            todo!("Sanity check for RDH v6")
-        }
-    }
-
     Ok(())
 }

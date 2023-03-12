@@ -10,6 +10,7 @@ pub trait RDH: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display + Sync 
         Self: Sized;
     fn load_from_rdh0<T: std::io::Read>(reader: &mut T, rdh0: Rdh0)
         -> Result<Self, std::io::Error>;
+    fn rdh2(&self) -> &Rdh2;
     fn link_id(&self) -> u8;
     /// Returns the size of the payload in bytes
     /// This is EXCLUDING the size of the RDH
@@ -85,19 +86,21 @@ impl RdhCRUv7 {
     }
 }
 
+pub fn rdh_header_text_to_string() -> String {
+    let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop";
+    let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit";
+    format!("\n       {header_text_top}\n       {header_text_bottom}\n")
+}
+
 impl Display for RdhCRUv7 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop";
-        let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit";
-        //Needed?  Memory   CRU   DW");
-        //Needed?    size     ID    ID\n");
         let tmp_offset = self.offset_new_packet;
         let tmp_link = self.link_id;
         let tmp_packet_cnt = self.packet_counter;
         let rdhcru_fields0 = format!("{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}");
         write!(
             f,
-            "{header_text_top}\n       {header_text_bottom}\n       {}{}{}{:<11}{}",
+            "       {}{}{}{:<11}{}",
             self.rdh0,
             rdhcru_fields0,
             self.rdh1,
@@ -183,13 +186,15 @@ impl RDH for RdhCRUv7 {
     fn is_hba(&self) -> bool {
         let trigger = self.rdh2.trigger_type;
         // HBA is bit 1
-        log::info!("Trigger type: {:032b}", trigger);
-        log::info!("{self}");
         trigger & 0b10 == 0b10
     }
 
     fn fee_id(&self) -> u16 {
         self.rdh0.fee_id.0
+    }
+
+    fn rdh2(&self) -> &Rdh2 {
+        &self.rdh2
     }
 }
 impl ByteSlice for RdhCRUv7 {
@@ -264,18 +269,18 @@ impl RdhCRUv6 {
 
 impl Display for RdhCRUv6 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let header_text_top    = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Trigger   Pages    Stop";
-        let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     type      counter  bit";
-        //Needed?  Memory   CRU   DW");
-        //Needed?    size     ID    ID\n");
         let tmp_offset = self.offset_new_packet;
         let tmp_link = self.link_id;
         let tmp_packet_cnt = self.packet_counter;
         let rdhcru_fields0 = format!("{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}");
         write!(
             f,
-            "{header_text_top}\n       {header_text_bottom}\n       {}{}{}{}",
-            self.rdh0, rdhcru_fields0, self.rdh1, self.rdh2
+            "       {}{}{}{:<11}{}",
+            self.rdh0,
+            rdhcru_fields0,
+            self.rdh1,
+            self.data_format(),
+            self.rdh2
         )
     }
 }
@@ -350,6 +355,10 @@ impl RDH for RdhCRUv6 {
 
     fn fee_id(&self) -> u16 {
         self.rdh0.fee_id.0
+    }
+
+    fn rdh2(&self) -> &Rdh2 {
+        &self.rdh2
     }
 }
 
@@ -569,10 +578,9 @@ impl Debug for Rdh2 {
         let tmp_trigger_type = self.trigger_type;
         let tmp_pages_counter = self.pages_counter;
         let tmp_stop_bit = self.stop_bit;
-        let tmp_reserved0 = self.reserved0;
         write!(
             f,
-            "Rdh2: trigger_type: {tmp_trigger_type:x?}, pages_counter: {tmp_pages_counter:x?}, stop_bit: {tmp_stop_bit:x?}, reserved0: {tmp_reserved0:x?}"
+            "Rdh2: trigger_type: {tmp_trigger_type:X?}, pages_counter: {tmp_pages_counter:X?}, stop_bit: {tmp_stop_bit:X?}"
         )
     }
 }
