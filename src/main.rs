@@ -1,20 +1,21 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
-use fastpasta::input::bufreader_wrapper::BufferedReaderWrapper;
-use fastpasta::input::input_scanner::InputScanner;
-use fastpasta::input::lib::init_reader;
-use fastpasta::stats::lib::init_stats_controller;
-use fastpasta::stats::stats_controller;
+use fastpasta::input::{
+    bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner, lib::init_reader,
+};
+use fastpasta::stats::{lib::init_stats_controller, stats_controller};
 use fastpasta::util::config::Opt;
-use fastpasta::words::rdh::{Rdh0, RdhCRUv6, RdhCRUv7, RDH};
-use fastpasta::GbtWord;
+use fastpasta::words::{
+    lib::RdhSubWord,
+    rdh::Rdh0,
+    rdh_cru::{RdhCRU, V6, V7},
+};
 use fastpasta::{data_write, validators};
 use log::trace;
 use std::io;
 use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
-use std::thread::JoinHandle;
+use std::{sync::Arc, thread::JoinHandle};
 use structopt::StructOpt;
 
 pub fn main() {
@@ -42,9 +43,9 @@ pub fn main() {
     match rdh_version {
         6 => {
             log::warn!("RDH version 6 detected, using RDHv7 processing for now anyways... No guarantees it will work!");
-            process::<RdhCRUv6>(config, loader, stat_send_channel, stop_flag).unwrap()
+            process::<RdhCRU<V6>>(config, loader, stat_send_channel, stop_flag).unwrap()
         }
-        7 => process::<RdhCRUv7>(config, loader, stat_send_channel, stop_flag).unwrap(),
+        7 => process::<RdhCRU<V7>>(config, loader, stat_send_channel, stop_flag).unwrap(),
         _ => panic!("Unknown RDH version: {rdh_version}"),
     }
     stat_controller.join().expect("Failed to join stats thread");
@@ -78,7 +79,7 @@ fn get_config() -> Arc<Opt> {
 // 1. Setup reading (file or stdin)
 // 2. Do checks on read data
 // 3. Write data out (file or stdout)
-pub fn process<T: RDH + 'static>(
+pub fn process<T: fastpasta::words::lib::RDH + 'static>(
     config: Arc<Opt>,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
     send_stats_ch: std::sync::mpsc::Sender<stats_controller::StatType>,

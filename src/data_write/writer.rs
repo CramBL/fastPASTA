@@ -1,5 +1,6 @@
+use crate::input::data_wrapper::CdpChunk;
 use crate::util::config::Opt;
-use crate::{input::data_wrapper::CdpChunk, words::rdh::RDH};
+use crate::words::lib::RDH;
 /// Writes data to file/stdout. Uses a buffer to minimize syscalls.
 ///
 /// Receives data incrementally and once a certain amount is reached, it will
@@ -121,7 +122,8 @@ impl<T: RDH> Drop for BufferedWriter<T> {
 mod tests {
     use std::vec;
 
-    use crate::words::rdh::{RdhCRUv6, RdhCRUv7, CORRECT_RDH_CRU_V7};
+    use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
+    use crate::words::rdh_cru::{RdhCRU, V6, V7};
 
     use super::*;
     #[test]
@@ -135,7 +137,7 @@ mod tests {
             out_file_cmd,
         ]);
         {
-            let writer = BufferedWriter::<RdhCRUv6>::new(&config, 10);
+            let writer = BufferedWriter::<RdhCRU<V6>>::new(&config, 10);
 
             assert!(writer.buf_writer.is_some());
         }
@@ -163,7 +165,7 @@ mod tests {
         let length = rdhs.len();
         println!("length: {}", length);
         {
-            let mut writer = BufferedWriter::<RdhCRUv7>::new(&config, 10);
+            let mut writer = BufferedWriter::<RdhCRU<V7>>::new(&config, 10);
             writer.push_rdhs(rdhs);
             let buf_size = writer.filtered_rdhs_buffer.len();
             println!("buf_size: {}", buf_size);
@@ -192,7 +194,7 @@ mod tests {
 
         let length = cdp_chunk.len();
         {
-            let mut writer = BufferedWriter::<RdhCRUv7>::new(&config, 10);
+            let mut writer = BufferedWriter::<RdhCRU<V7>>::new(&config, 10);
             writer.push_cdp_chunk(cdp_chunk);
             let buf_size = writer.filtered_rdhs_buffer.len();
             assert_eq!(buf_size, length);

@@ -11,7 +11,7 @@ use super::stdin_reader::StdInReaderSeeker;
 use super::util::buf_reader_with_capacity;
 use crate::util::config::Opt;
 use crate::words;
-use crate::words::rdh::RDH;
+use crate::words::lib::RDH;
 
 #[inline]
 pub fn init_reader(config: &Opt) -> Box<dyn BufferedReaderWrapper> {
@@ -37,7 +37,7 @@ pub fn init_reader(config: &Opt) -> Box<dyn BufferedReaderWrapper> {
 }
 
 #[inline]
-pub fn get_chunk<T: words::rdh::RDH>(
+pub fn get_chunk<T: words::lib::RDH>(
     file_scanner: &mut InputScanner<impl BufferedReaderWrapper + ?Sized>,
     chunk_size_cdps: usize,
 ) -> Result<CdpChunk<T>, std::io::Error> {

@@ -4,7 +4,8 @@ use std::{
 };
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use fastpasta::{words::rdh::RdhCRUv7, words::rdh::RDH, ByteSlice};
+use fastpasta::words::lib::RDH;
+use fastpasta::{words::rdh_cru::RdhCRU, words::rdh_cru::V7, ByteSlice};
 pub struct RelativeOffset(i64);
 impl RelativeOffset {
     fn new(byte_offset: u64) -> Self {
@@ -76,7 +77,7 @@ fn parse_rdh_manual(rdh_cru_size_bytes: u64, filename: &str, iterations: usize) 
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
     for _i in 1..iterations {
-        let rdh_tmp = RdhCRUv7::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
+        let rdh_tmp: RdhCRU<V7> = RdhCRU::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
         let relative_offset =
             RelativeOffset::new((rdh_tmp.offset_new_packet as u64) - rdh_cru_size_bytes);
         buf_reader
@@ -116,9 +117,9 @@ fn write_rdh_manual(fileout: &str) {
         .open(filepath)
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
-    let rdhs: Vec<RdhCRUv7> = (0..50000)
+    let rdhs: Vec<RdhCRU<V7>> = (0..50000)
         .map(|_| {
-            let rdh_tmp = RdhCRUv7::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
+            let rdh_tmp = RdhCRU::<V7>::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
             let relative_offset =
                 RelativeOffset::new((rdh_tmp.offset_new_packet as u64) - RDH_CRU_SIZE_BYTES);
             buf_reader
@@ -168,7 +169,7 @@ fn sanity_check_rdhs(rdh_cru_size_bytes: u64, filename: &str, iterations: usize)
     let mut rdhs = 0;
 
     loop {
-        let tmp_rdh = match RdhCRUv7::load(&mut buf_reader) {
+        let tmp_rdh = match RdhCRU::<V7>::load(&mut buf_reader) {
             Ok(rdh) => rdh,
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
                 print!("EOF reached! ");

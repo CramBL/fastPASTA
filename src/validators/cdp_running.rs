@@ -1,16 +1,12 @@
 #![allow(non_camel_case_types)] // An exception to the Rust naming convention, for the state machine macro types
 
+use crate::words::lib::RDH;
 use crate::{
     stats::stats_controller::StatType,
     validators::status_words::STATUS_WORD_SANITY_CHECKER,
-    words::{
-        rdh::RDH,
-        status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt},
-    },
+    words::status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt},
     ByteSlice,
 };
-
-use log::debug;
 use sm::sm;
 
 use self::CDP_PAYLOAD_FSM_Continuous::IHW_;
@@ -262,7 +258,7 @@ impl<T: RDH> CdpRunningValidator<T> {
                             )))
                             .unwrap();
                         let tmp_rdh = self.current_rdh.as_ref().unwrap();
-                        debug!("{tmp_rdh}");
+                        log::debug!("{tmp_rdh}");
                     }
                     debug_assert!(self.current_tdh.as_ref().unwrap().continuation() == 0);
                     match self.current_tdh.as_ref().unwrap().no_data() {
@@ -315,50 +311,50 @@ impl<T: RDH> CdpRunningValidator<T> {
         match status_word {
             StatusWordKind::Ihw(ihw) => {
                 let ihw = Ihw::load(&mut <&[u8]>::clone(&ihw)).unwrap();
-                debug!("{ihw}");
+                log::debug!("{ihw}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
                     let mem_pos = self.calc_current_word_mem_pos();
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
-                    debug!("IHW: {ihw}");
+                    log::debug!("IHW: {ihw}");
                 }
                 self.current_ihw = Some(ihw);
             }
             StatusWordKind::Tdh(tdh) => {
                 let tdh = Tdh::load(&mut <&[u8]>::clone(&tdh)).unwrap();
-                debug!("{tdh}");
+                log::debug!("{tdh}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
                     let mem_pos = self.calc_current_word_mem_pos();
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
-                    debug!("TDH: {tdh}");
+                    log::debug!("TDH: {tdh}");
                 }
                 self.current_tdh = Some(tdh);
             }
             StatusWordKind::Tdt(tdt) => {
                 let tdt = Tdt::load(&mut <&[u8]>::clone(&tdt)).unwrap();
-                debug!("{tdt}");
+                log::debug!("{tdt}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
                     let mem_pos = self.calc_current_word_mem_pos();
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
                     print!("{e}");
-                    debug!("TDT: {tdt}");
+                    log::debug!("TDT: {tdt}");
                 }
                 self.current_tdt = Some(tdt);
             }
             StatusWordKind::Ddw0(ddw0) => {
                 let ddw0 = Ddw0::load(&mut <&[u8]>::clone(&ddw0)).unwrap();
-                debug!("{ddw0}");
+                log::debug!("{ddw0}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0) {
                     let mem_pos = self.calc_current_word_mem_pos();
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
-                    debug!("DDW0: {ddw0}");
+                    log::debug!("DDW0: {ddw0}");
                 }
                 if self.current_rdh.as_ref().unwrap().stop_bit() != 1 {
                     let mem_pos = self.calc_current_word_mem_pos();
@@ -367,7 +363,7 @@ impl<T: RDH> CdpRunningValidator<T> {
                             "{mem_pos:#X}: [E10] DDW0 received but RDH stop bit is not 1"
                         )))
                         .unwrap();
-                    debug!("DDW0: {:X?}", ddw0.to_byte_slice());
+                    log::debug!("DDW0: {:X?}", ddw0.to_byte_slice());
                 }
                 if self.current_rdh.as_ref().unwrap().pages_counter() == 0 {
                     let mem_pos = self.calc_current_word_mem_pos();
@@ -376,7 +372,7 @@ impl<T: RDH> CdpRunningValidator<T> {
                             "{mem_pos:#X}: [E11] DDW0 found but RDH page counter is 0"
                         )))
                         .unwrap();
-                    debug!("DDW0: {:X?}", ddw0.to_byte_slice());
+                    log::debug!("DDW0: {:X?}", ddw0.to_byte_slice());
                 }
                 self.current_ddw0 = Some(ddw0);
             }
@@ -391,7 +387,7 @@ impl<T: RDH> CdpRunningValidator<T> {
             self.stats_send_ch
                 .send(StatType::Error(format!("{mem_pos:#X}: [E02] {e}")))
                 .unwrap();
-            debug!("Data word: {data_word:?}");
+            log::debug!("Data word: {data_word:?}");
         }
     }
 }
@@ -399,7 +395,7 @@ impl<T: RDH> CdpRunningValidator<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::words::rdh::*;
+    use crate::words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7};
     #[test]
     fn test_validate_ihw() {
         const VALID_ID: u8 = 0xE0;
@@ -409,7 +405,7 @@ mod tests {
         ];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
+        let mut validator = CdpRunningValidator::<RdhCRU<V7>>::new(send);
         let rdh_mem_pos = 0;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos);
@@ -427,7 +423,7 @@ mod tests {
         ];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
+        let mut validator = CdpRunningValidator::<RdhCRU<V7>>::new(send);
         let rdh_mem_pos = 0x0;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos);
@@ -452,7 +448,7 @@ mod tests {
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
+        let mut validator = CdpRunningValidator::<RdhCRU<V7>>::new(send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
@@ -478,7 +474,7 @@ mod tests {
         let raw_data_tdt_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF2];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
+        let mut validator = CdpRunningValidator::<RdhCRU<V7>>::new(send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
@@ -516,7 +512,7 @@ mod tests {
         let raw_data_tdt_next_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF3];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::<RdhCRUv7>::new(send);
+        let mut validator = CdpRunningValidator::<RdhCRU<V7>>::new(send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2

@@ -1,4 +1,3 @@
-use std::fmt::Display;
 pub mod data_write;
 pub mod input;
 pub mod stats;
@@ -10,16 +9,6 @@ pub mod words;
 // Too small capacity will cause the producer thread to block
 // Too large capacity will cause down stream consumers to block
 pub const CHANNEL_CDP_CAPACITY: usize = 100;
-
-/// This is the trait that all GBT words must implement
-/// It is used to:
-/// * pretty printing to stdout
-/// * deserialize the GBT words from the binary file
-pub trait GbtWord: std::fmt::Debug + PartialEq + Sized + Display {
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
-    where
-        Self: Sized;
-}
 
 /// This trait is used to convert a struct to a byte slice
 /// All structs that are used to represent a full GBT word (not sub RDH words) must implement this trait

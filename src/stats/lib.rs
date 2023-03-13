@@ -1,8 +1,6 @@
-use std::sync::atomic::AtomicBool;
-
-use crate::util::config::Opt;
-
 use super::stats_controller::Stats;
+use crate::util::config::Opt;
+use std::sync::atomic::AtomicBool;
 
 pub fn init_stats_controller(
     config: &Opt,

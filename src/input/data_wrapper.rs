@@ -1,4 +1,4 @@
-use crate::words::rdh::RDH;
+use crate::words::lib::RDH;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
@@ -139,11 +139,15 @@ impl<'a, T: RDH> Iterator for CdpChunkIter<'a, T> {
 #[cfg(test)]
 mod tests {
     use super::CdpChunk;
-    use crate::words::rdh::{RdhCRUv7, CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7, RDH};
+    use crate::words::lib::RDH;
+    use crate::words::rdh_cru::{
+        test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7},
+        RdhCRU, V7,
+    };
 
     #[test]
     fn test_push() {
-        let mut chunk = CdpChunk::<RdhCRUv7>::new();
+        let mut chunk = CdpChunk::<RdhCRU<V7>>::new();
         chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
@@ -154,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_push_tup() {
-        let mut chunk = CdpChunk::<RdhCRUv7>::new();
+        let mut chunk = CdpChunk::<RdhCRU<V7>>::new();
         let tup = (CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         chunk.push_tuple(tup);
         chunk.push_tuple((CORRECT_RDH_CRU_V7, vec![0; 10], 1));
@@ -166,7 +170,7 @@ mod tests {
 
     #[test]
     fn test_clear() {
-        let mut chunk = CdpChunk::<RdhCRUv7>::new();
+        let mut chunk = CdpChunk::<RdhCRU<V7>>::new();
         chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
@@ -183,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_len() {
-        let mut chunk = CdpChunk::<RdhCRUv7>::new();
+        let mut chunk = CdpChunk::<RdhCRU<V7>>::new();
         chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
@@ -192,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        let mut chunk = CdpChunk::<RdhCRUv7>::new();
+        let mut chunk = CdpChunk::<RdhCRU<V7>>::new();
         assert!(chunk.is_empty());
 
         chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
@@ -201,7 +205,7 @@ mod tests {
 
     #[test]
     fn test_with_capacity() {
-        let chunk = CdpChunk::<RdhCRUv7>::with_capacity(10);
+        let chunk = CdpChunk::<RdhCRU<V7>>::with_capacity(10);
         assert_eq!(chunk.rdhs.capacity(), 10);
         assert_eq!(chunk.payloads.capacity(), 10);
         assert_eq!(chunk.rdh_mem_pos.capacity(), 10);
@@ -209,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_rdh_slice() {
-        let mut chunk = CdpChunk::<RdhCRUv7>::new();
+        let mut chunk = CdpChunk::<RdhCRU<V7>>::new();
         chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 

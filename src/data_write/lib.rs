@@ -8,7 +8,7 @@ use super::writer::BufferedWriter;
 use super::writer::Writer;
 use crate::input::data_wrapper::CdpChunk;
 use crate::util::config::Opt;
-use crate::words::rdh::RDH;
+use crate::words::lib::RDH;
 
 const BUFFER_SIZE: usize = 1024 * 1024; // 1MB buffer
 
