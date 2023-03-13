@@ -3,7 +3,8 @@ use super::rdh::RdhCRURunningChecker;
 use crate::input::data_wrapper::CdpChunk;
 use crate::stats::stats_controller::StatType;
 use crate::util::config::Opt;
-use crate::words::rdh::{layer_from_feeid, stave_number_from_feeid, RDH};
+use crate::words::lib::RDH;
+use crate::words::rdh::{layer_from_feeid, stave_number_from_feeid};
 use crossbeam_channel::{bounded, Receiver, RecvError};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
@@ -96,7 +97,7 @@ fn do_checks<T: RDH>(
                 .unwrap();
 
             if let Err(mut e) = rdh_checks::do_rdh_checks(rdh, rdh_running) {
-                e.push_str(crate::words::rdh::rdh_header_text_to_string().as_str());
+                e.push_str(crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_to_string().as_str());
                 let rdhs = cdp_chunk.rdh_slice();
                 match rdh_idx {
                     0 => log::warn!("Error occured in the first RDH in a CdpChunk, it is not possible to retrieve previous RDHS"),
@@ -141,13 +142,15 @@ fn do_checks<T: RDH>(
 }
 
 mod rdh_checks {
-    use crate::{validators::rdh::RdhCRURunningChecker, words::rdh::RDH};
+    use crate::validators::rdh::RdhCRURunningChecker;
+    use crate::words::lib::RDH;
 
     #[inline]
     pub fn do_rdh_checks<T: RDH>(
         rdh: &T,
         running_rdh_checker: &mut RdhCRURunningChecker<T>,
     ) -> Result<(), String> {
+        //do_rdh_sanity_checks(rdh)?;
         do_rdh_running_checks(rdh, running_rdh_checker)
     }
 
@@ -162,10 +165,8 @@ mod rdh_checks {
 }
 
 mod payload_checks {
-    use crate::{
-        stats::stats_controller::StatType, validators::cdp_running::CdpRunningValidator,
-        words::rdh::RDH,
-    };
+    use crate::words::lib::RDH;
+    use crate::{stats::stats_controller::StatType, validators::cdp_running::CdpRunningValidator};
 
     #[inline]
     pub fn do_payload_checks<T: RDH>(

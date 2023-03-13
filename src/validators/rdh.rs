@@ -1,4 +1,6 @@
-use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3, RdhCRUv6, RdhCRUv7, RDH};
+use crate::words::lib::RDH;
+use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3};
+use crate::words::rdh_cru::{RdhCRU, V6, V7};
 use std::fmt::Write as _;
 
 pub struct FeeIdSanityValidator {
@@ -291,7 +293,7 @@ pub struct RdhCruv7Validator {
 
 impl RdhCruv7Validator {
     #[inline]
-    pub fn sanity_check(&self, rdh: &RdhCRUv7) -> Result<(), String> {
+    pub fn sanity_check(&self, rdh: &RdhCRU<V7>) -> Result<(), String> {
         let mut err_str = String::from("RDH v7 sanity check failed: ");
         let mut err_cnt: u8 = 0;
         let mut rdh_errors: Vec<String> = vec![];
@@ -387,7 +389,7 @@ pub struct RdhCruv6Validator {
 
 impl RdhCruv6Validator {
     #[inline]
-    pub fn sanity_check(&self, rdh: &RdhCRUv6) -> Result<(), String> {
+    pub fn sanity_check(&self, rdh: &RdhCRU<V6>) -> Result<(), String> {
         let mut err_str = String::from("RDH v7 sanity check failed: ");
         let mut err_cnt: u8 = 0;
         let mut rdh_errors: Vec<String> = vec![];
@@ -431,9 +433,9 @@ impl RdhCruv6Validator {
             let tmp = rdh.dw();
             write!(err_str, "{} = {:#x} ", stringify!(dw), tmp).unwrap();
         }
-        if rdh.reserved0 != 0 {
+        if rdh.reserved0() != 0 {
             err_cnt += 1;
-            let tmp = rdh.reserved0;
+            let tmp = rdh.reserved0();
             write!(err_str, "{} = {:#x} ", stringify!(reserved0), tmp).unwrap();
         }
         if rdh.reserved1 != 0 {
@@ -582,7 +584,7 @@ impl<T: RDH> RdhCRURunningChecker<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::words::rdh::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
+    use crate::words::rdh_cru::test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
 
     #[test]
     fn validate_fee_id() {

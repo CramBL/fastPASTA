@@ -1,10 +1,7 @@
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
-use crate::{
-    stats::stats_controller::StatType,
-    util::config::Opt,
-    words::rdh::{rdh_header_text_to_string, Rdh0, RDH},
-};
+use crate::words::lib::RDH;
+use crate::{stats::stats_controller::StatType, util::config::Opt, words::rdh::Rdh0};
 use std::io::Read;
 
 /// Trait for a scanner that reads CDPs from a file or stdin
@@ -229,7 +226,7 @@ fn sanity_check_offset_next<T: RDH>(
         // VERY HIGH OFFSET
         let error_string = format!(
             "Current Loaded RDH at [{current_memory_address:#X}]: {rdh_header_text}{rdh}",
-            rdh_header_text = rdh_header_text_to_string()
+            rdh_header_text = crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_to_string()
         );
         let fatal_error_string =
             format!("RDH offset to next is larger than 20KB. This is not possible. {error_string}");
@@ -243,7 +240,8 @@ mod tests {
     use std::io::Write;
     use std::{fs::File, io::BufReader, path::PathBuf, thread::JoinHandle};
 
-    use crate::{stats::stats_controller::Stats, words::rdh::RdhCRUv7, ByteSlice};
+    use crate::words::rdh_cru::{RdhCRU, V6, V7};
+    use crate::{stats::stats_controller::Stats, ByteSlice};
 
     fn setup_scanner_for_file(
         path: &str,
@@ -282,7 +280,7 @@ mod tests {
     }
 
     use super::*;
-    use crate::words::rdh::{RdhCRUv6, CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
+    use crate::words::rdh_cru::test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
     #[test]
     fn test_load_rdhcruv7_test() {
         let test_data = CORRECT_RDH_CRU_V7;
@@ -297,7 +295,7 @@ mod tests {
         {
             let (mut scanner, stats_handle) = setup_scanner_for_file("test.raw");
             stats_handle_super = Some(stats_handle);
-            let rdh = scanner.load_rdh_cru::<RdhCRUv7>().unwrap();
+            let rdh = scanner.load_rdh_cru::<RdhCRU<V7>>().unwrap();
             assert_eq!(test_data, rdh);
         }
         stats_handle_super.unwrap().join().unwrap();
@@ -321,7 +319,7 @@ mod tests {
         {
             let (mut scanner, stats_handle) = setup_scanner_for_file("test.raw");
             stats_handle_super = Some(stats_handle);
-            let rdh = scanner.load_rdh_cru::<RdhCRUv7>();
+            let rdh = scanner.load_rdh_cru::<RdhCRU<V7>>();
             assert!(rdh.is_err());
             assert!(rdh.unwrap_err().kind() == std::io::ErrorKind::UnexpectedEof);
         }
@@ -345,7 +343,7 @@ mod tests {
         {
             let (mut scanner, stats_handle) = setup_scanner_for_file("test.raw");
             stats_handle_super = Some(stats_handle);
-            let rdh = scanner.load_rdh_cru::<RdhCRUv6>().unwrap();
+            let rdh = scanner.load_rdh_cru::<RdhCRU<V6>>().unwrap();
             assert_eq!(test_data, rdh);
         }
         stats_handle_super.unwrap().join().unwrap();
@@ -368,7 +366,7 @@ mod tests {
         {
             let (mut scanner, stats_handle) = setup_scanner_for_file("test.raw");
             stats_handle_super = Some(stats_handle);
-            let rdh = scanner.load_rdh_cru::<RdhCRUv6>();
+            let rdh = scanner.load_rdh_cru::<RdhCRU<V6>>();
             assert!(rdh.is_err());
             assert!(rdh.unwrap_err().kind() == std::io::ErrorKind::UnexpectedEof);
         }
