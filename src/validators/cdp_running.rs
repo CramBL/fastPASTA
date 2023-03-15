@@ -292,7 +292,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     /// relative_mem_pos = gbt_word_counter * (10 + gbt_word_padding_size_bytes)
     /// And the absolute position in the memory is then:
     /// gbt_word_mem_pos = payload_mem_pos + relative_mem_pos
-    #[inline(always)]
+    #[inline]
     fn calc_current_word_mem_pos(&self) -> u64 {
         let gbt_word_memory_size_bytes: u64 = 10 + self.gbt_word_padding_size_bytes as u64;
         let relative_mem_pos = (self.gbt_word_counter - 1) as u64 * gbt_word_memory_size_bytes;
@@ -303,7 +303,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     /// 1. Deserializes the slice as the expected status word and checks it for sanity.
     /// 2. If the sanity check fails, the error is sent to the stats channel
     /// 3. Stores the deserialized status word as the last status word of the same type.
-    #[inline(always)]
+    #[inline]
     fn process_status_word(&mut self, status_word: StatusWordKind) {
         match status_word {
             StatusWordKind::Ihw(ihw) => {
@@ -377,7 +377,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     }
 
     /// Takes a slice of bytes expected to be a data word, and checks if it has a valid identifier.
-    #[inline(always)]
+    #[inline]
     fn process_data_word(&mut self, data_word: &[u8]) {
         if let Err(e) = DATA_WORD_SANITY_CHECKER.check_any(data_word) {
             let mem_pos = self.calc_current_word_mem_pos();
