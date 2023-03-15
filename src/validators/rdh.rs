@@ -1,6 +1,5 @@
 use crate::words::lib::RDH;
 use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3};
-use crate::words::rdh_cru::{RdhCRU, V6, V7};
 use std::fmt::Write as _;
 
 pub struct FeeIdSanityValidator {
@@ -60,15 +59,6 @@ impl FeeIdSanityValidator {
             write!(err_str, "{} = {} ", stringify!(stave_number), stave_number).unwrap();
         }
 
-        // All values of fiber_uplink are valid in a sanity check
-        // Extract fiber_uplink from 2 bits [9:8]
-        // let fiber_uplink_mask: u16 = 0b11;
-        // let fiber_uplink_lsb_idx: u8 = 8;
-        // let fiber_uplink = ((fee_id.0 >> fiber_uplink_lsb_idx) & fiber_uplink_mask) as u8;
-        // if fiber_uplink < self.fiber_uplink_min_max.0 || fiber_uplink > self.fiber_uplink_min_max.1
-        // {
-        //     todo!("Finish sanity check");
-        // }
         // Extract layer from 3 bits [14:12]
         let layer = crate::words::rdh::layer_from_feeid(fee_id.0);
 
@@ -88,19 +78,38 @@ impl FeeIdSanityValidator {
 const FEE_ID_SANITY_VALIDATOR: FeeIdSanityValidator = FeeIdSanityValidator::new((0, 6), (0, 47));
 
 pub struct Rdh0Validator {
-    pub header_id: u8,
+    pub header_id: Option<u8>, // The first Rdh0 checked will determine what is a valid header_id
     pub header_size: u8,
     pub fee_id: FeeIdSanityValidator,
     pub priority_bit: u8,
     pub system_id: u8,
     pub reserved0: u16,
 }
+impl Default for Rdh0Validator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
+const ITS_SYSTEM_ID: u8 = 32;
 impl Rdh0Validator {
-    pub fn sanity_check(&self, rdh0: &Rdh0) -> Result<(), String> {
+    pub fn new() -> Self {
+        Self {
+            header_id: None,
+            header_size: 0x40,
+            fee_id: FEE_ID_SANITY_VALIDATOR,
+            priority_bit: 0,
+            system_id: ITS_SYSTEM_ID,
+            reserved0: 0,
+        }
+    }
+    pub fn sanity_check(&mut self, rdh0: &Rdh0) -> Result<(), String> {
+        if self.header_id.is_none() {
+            self.header_id = Some(rdh0.header_id);
+        }
         let mut err_str = String::new();
         let mut err_cnt: u8 = 0;
-        if rdh0.header_id != self.header_id {
+        if rdh0.header_id != self.header_id.unwrap() {
             err_cnt += 1;
             write!(
                 err_str,
@@ -158,23 +167,6 @@ impl Rdh0Validator {
         Ok(())
     }
 }
-const ITS_SYSTEM_ID: u8 = 32;
-pub const RDH0_V7_VALIDATOR: Rdh0Validator = Rdh0Validator {
-    header_id: 7,
-    header_size: 0x40,
-    fee_id: FEE_ID_SANITY_VALIDATOR,
-    priority_bit: 0,
-    system_id: ITS_SYSTEM_ID,
-    reserved0: 0,
-};
-pub const RDH0_V6_VALIDATOR: Rdh0Validator = Rdh0Validator {
-    header_id: 6,
-    header_size: 0x40,
-    fee_id: FEE_ID_SANITY_VALIDATOR,
-    priority_bit: 0,
-    system_id: ITS_SYSTEM_ID,
-    reserved0: 0,
-};
 
 pub struct Rdh1Validator {
     valid_rdh1: Rdh1,
@@ -199,12 +191,6 @@ impl Rdh1Validator {
             write!(err_str, "{} = {:#x} ", stringify!(bc), rdh1.bc()).unwrap();
         }
 
-        // Any orbit number is valid in a sanity check
-        // if rdh1.orbit != self.valid_rdh1.orbit {
-        //     err_cnt += 1;
-        //     let tmp = rdh1.orbit;
-        //     write!(err_str, "{} = {:#x} ", stringify!(orbit), tmp).unwrap();
-        // }
         if err_cnt != 0 {
             return Err(err_str.to_owned());
         }
@@ -215,7 +201,7 @@ pub const RDH1_VALIDATOR: Rdh1Validator = Rdh1Validator {
     valid_rdh1: Rdh1::test_new(0, 0, 0),
 };
 
-pub struct Rdh2Validator {}
+pub struct Rdh2Validator;
 impl Rdh2Validator {
     pub fn sanity_check(&self, rdh2: &Rdh2) -> Result<(), String> {
         let mut err_str = String::new();
@@ -230,7 +216,6 @@ impl Rdh2Validator {
             )
             .unwrap();
         }
-        // Any page counter is valid in a sanity check
 
         if rdh2.stop_bit > 1 {
             err_cnt += 1;
@@ -252,8 +237,7 @@ impl Rdh2Validator {
 
 pub const RDH2_VALIDATOR: Rdh2Validator = Rdh2Validator {};
 
-pub struct Rdh3Validator {}
-
+pub struct Rdh3Validator;
 impl Rdh3Validator {
     pub fn sanity_check(&self, rdh3: &Rdh3) -> Result<(), String> {
         let mut err_str = String::new();
@@ -281,44 +265,59 @@ impl Rdh3Validator {
 
 pub const RDH3_VALIDATOR: Rdh3Validator = Rdh3Validator {};
 
-pub struct RdhCruv7Validator {
-    rdh0_validator: &'static Rdh0Validator,
+pub struct RdhCruSanityValidator<T: RDH> {
+    rdh0_validator: Rdh0Validator,
     rdh1_validator: &'static Rdh1Validator,
     rdh2_validator: &'static Rdh2Validator,
     rdh3_validator: &'static Rdh3Validator,
+    _phantom: std::marker::PhantomData<T>,
     // valid_dataformat_reserved0: DataformatReserved,
     // valid link IDs are 0-11 and 15
     // datawrapper ID is 0 or 1
 }
+impl<T: RDH> Default for RdhCruSanityValidator<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-impl RdhCruv7Validator {
+impl<T: RDH> RdhCruSanityValidator<T> {
+    pub fn new() -> Self {
+        Self {
+            rdh0_validator: Rdh0Validator::default(),
+            rdh1_validator: &RDH1_VALIDATOR,
+            rdh2_validator: &RDH2_VALIDATOR,
+            rdh3_validator: &RDH3_VALIDATOR,
+            _phantom: std::marker::PhantomData,
+        }
+    }
     #[inline]
-    pub fn sanity_check(&self, rdh: &RdhCRU<V7>) -> Result<(), String> {
-        let mut err_str = String::from("RDH v7 sanity check failed: ");
+    pub fn sanity_check(&mut self, rdh: &T) -> Result<(), String> {
+        let mut err_str = String::from("RDH sanity check failed: ");
         let mut err_cnt: u8 = 0;
         let mut rdh_errors: Vec<String> = vec![];
-        match self.rdh0_validator.sanity_check(&rdh.rdh0) {
+        match self.rdh0_validator.sanity_check(rdh.rdh0()) {
             Ok(_) => (),
             Err(e) => {
                 err_cnt += 1;
                 rdh_errors.push(e);
             }
         };
-        match self.rdh1_validator.sanity_check(&rdh.rdh1) {
+        match self.rdh1_validator.sanity_check(rdh.rdh1()) {
             Ok(_) => (),
             Err(e) => {
                 err_cnt += 1;
                 rdh_errors.push(e);
             }
         };
-        match self.rdh2_validator.sanity_check(&rdh.rdh2) {
+        match self.rdh2_validator.sanity_check(rdh.rdh2()) {
             Ok(_) => (),
             Err(e) => {
                 err_cnt += 1;
                 rdh_errors.push(e);
             }
         };
-        match self.rdh3_validator.sanity_check(&rdh.rdh3) {
+        match self.rdh3_validator.sanity_check(rdh.rdh3()) {
             Ok(_) => (),
             Err(e) => {
                 err_cnt += 1;
@@ -326,12 +325,6 @@ impl RdhCruv7Validator {
             }
         };
 
-        // TODO: find out what the valid values for the cru id are
-        if rdh.cru_id() > 0x1F {
-            err_cnt += 1;
-            let tmp = rdh.cru_id();
-            write!(err_str, "{} = {:#x} ", stringify!(cru_id), tmp).unwrap();
-        }
         if rdh.dw() > 1 {
             err_cnt += 1;
             let tmp = rdh.dw();
@@ -341,21 +334,6 @@ impl RdhCruv7Validator {
             err_cnt += 1;
             let tmp = rdh.data_format();
             write!(err_str, "{} = {:#x} ", stringify!(data_format), tmp).unwrap();
-        }
-        if rdh.reserved0() != 0 {
-            err_cnt += 1;
-            let tmp = rdh.reserved0();
-            write!(err_str, "{} = {:#x} ", stringify!(reserved0), tmp).unwrap();
-        }
-        if rdh.reserved1 != 0 {
-            err_cnt += 1;
-            let tmp = rdh.reserved1;
-            write!(err_str, "{} = {:#x} ", stringify!(reserved1), tmp).unwrap();
-        }
-        if rdh.reserved2 != 0 {
-            err_cnt += 1;
-            let tmp = rdh.reserved2;
-            write!(err_str, "{} = {:#x} ", stringify!(reserved2), tmp).unwrap();
         }
 
         rdh_errors.into_iter().for_each(|e| {
@@ -369,102 +347,6 @@ impl RdhCruv7Validator {
         Ok(())
     }
 }
-
-pub const RDH_CRU_V7_VALIDATOR: RdhCruv7Validator = RdhCruv7Validator {
-    rdh0_validator: &RDH0_V7_VALIDATOR,
-    rdh1_validator: &RDH1_VALIDATOR,
-    rdh2_validator: &RDH2_VALIDATOR,
-    rdh3_validator: &RDH3_VALIDATOR,
-};
-
-pub struct RdhCruv6Validator {
-    rdh0_validator: &'static Rdh0Validator,
-    rdh1_validator: &'static Rdh1Validator,
-    rdh2_validator: &'static Rdh2Validator,
-    rdh3_validator: &'static Rdh3Validator,
-    //valid_dataformat_reserved0: DataformatReserved,
-    // valid link IDs are 0-11 and 15
-    // datawrapper ID is 0 or 1
-}
-
-impl RdhCruv6Validator {
-    #[inline]
-    pub fn sanity_check(&self, rdh: &RdhCRU<V6>) -> Result<(), String> {
-        let mut err_str = String::from("RDH v7 sanity check failed: ");
-        let mut err_cnt: u8 = 0;
-        let mut rdh_errors: Vec<String> = vec![];
-        match self.rdh0_validator.sanity_check(&rdh.rdh0) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
-        };
-        match self.rdh1_validator.sanity_check(&rdh.rdh1) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
-        };
-        match self.rdh2_validator.sanity_check(&rdh.rdh2) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
-        };
-        match self.rdh3_validator.sanity_check(&rdh.rdh3) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
-        };
-
-        // TODO: find out what the valid values for the cru id are
-        if rdh.cru_id() > 0x1F {
-            err_cnt += 1;
-            let tmp = rdh.cru_id();
-            write!(err_str, "{} = {:#x} ", stringify!(cru_id), tmp).unwrap();
-        }
-        if rdh.dw() > 1 {
-            err_cnt += 1;
-            let tmp = rdh.dw();
-            write!(err_str, "{} = {:#x} ", stringify!(dw), tmp).unwrap();
-        }
-        if rdh.reserved0() != 0 {
-            err_cnt += 1;
-            let tmp = rdh.reserved0();
-            write!(err_str, "{} = {:#x} ", stringify!(reserved0), tmp).unwrap();
-        }
-        if rdh.reserved1 != 0 {
-            err_cnt += 1;
-            let tmp = rdh.reserved1;
-            write!(err_str, "{} = {:#x} ", stringify!(reserved1), tmp).unwrap();
-        }
-        if rdh.reserved2 != 0 {
-            err_cnt += 1;
-            let tmp = rdh.reserved2;
-            write!(err_str, "{} = {:#x} ", stringify!(reserved2), tmp).unwrap();
-        }
-
-        if err_cnt != 0 {
-            rdh_errors.into_iter().for_each(|e| {
-                err_str.push_str(&e);
-            });
-            return Err(err_str.to_owned());
-        }
-
-        Ok(())
-    }
-}
-pub const RDH_CRU_V6_VALIDATOR: RdhCruv6Validator = RdhCruv6Validator {
-    rdh0_validator: &RDH0_V6_VALIDATOR,
-    rdh1_validator: &RDH1_VALIDATOR,
-    rdh2_validator: &RDH2_VALIDATOR,
-    rdh3_validator: &RDH3_VALIDATOR,
-};
 
 pub struct RdhCRURunningChecker<T: RDH> {
     pub expect_pages_counter: u16,
@@ -618,15 +500,6 @@ mod tests {
         assert!(validator.sanity_check(fee_id_invalid_layer_is_7).is_err());
     }
 
-    // All values of fiber_uplink are valid in a sanity check
-    // #[test]
-    // fn invalidate_fee_id_bad_fiber_uplink() {
-    //     let validator = FEE_ID_SANITY_VALIDATOR;
-    //     let invalid_value = ??
-    //     let fee_id_invalid_fiber_uplink_is_x = FeeId(invalid_value);
-    //     assert!(validator.sanity_check(fee_id_invalid_fiber_uplink_is_x).is_err());
-    // }
-
     #[test]
     fn invalidate_fee_id_bad_stave_number() {
         let validator = FEE_ID_SANITY_VALIDATOR;
@@ -638,8 +511,16 @@ mod tests {
     // RDH0 sanity check
     #[test]
     fn validate_rdh0() {
-        let validator = RDH0_V7_VALIDATOR;
+        let mut validator = Rdh0Validator::new();
         let rdh0 = Rdh0 {
+            header_id: 7,
+            header_size: 0x40,
+            fee_id: FeeId(0x502A),
+            priority_bit: 0,
+            system_id: ITS_SYSTEM_ID,
+            reserved0: 0,
+        };
+        let rdh0_2 = Rdh0 {
             header_id: 7,
             header_size: 0x40,
             fee_id: FeeId(0x502A),
@@ -649,12 +530,14 @@ mod tests {
         };
         let res = validator.sanity_check(&rdh0);
         assert!(res.is_ok());
+        let res = validator.sanity_check(&rdh0_2);
+        assert!(res.is_ok());
     }
     #[test]
     fn invalidate_rdh0_bad_header_id() {
-        let validator = RDH0_V7_VALIDATOR;
-        let rdh0 = Rdh0 {
-            header_id: 0x3,
+        let mut validator = Rdh0Validator::default();
+        let mut rdh0 = Rdh0 {
+            header_id: 0x7,
             header_size: 0x40,
             fee_id: FeeId(0x502A),
             priority_bit: 0,
@@ -662,12 +545,13 @@ mod tests {
             reserved0: 0,
         };
         let res = validator.sanity_check(&rdh0);
-        println!("{res:?}");
-        assert!(res.is_err());
+        assert!(res.is_ok());
+        rdh0.header_id = 0x8; // Change to different header_id
+        assert!(validator.sanity_check(&rdh0).is_err());
     }
     #[test]
     fn invalidate_rdh0_bad_header_size() {
-        let validator = RDH0_V7_VALIDATOR;
+        let mut validator = Rdh0Validator::new();
         let rdh0 = Rdh0 {
             header_id: 7,
             header_size: 0x3,
@@ -682,7 +566,7 @@ mod tests {
     }
     #[test]
     fn invalidate_rdh0_bad_fee_id() {
-        let validator = RDH0_V7_VALIDATOR;
+        let mut validator = Rdh0Validator::default();
         let fee_id_bad_stave_number_is_48 = FeeId(0x30);
         let rdh0 = Rdh0 {
             header_id: 7,
@@ -698,7 +582,7 @@ mod tests {
     }
     #[test]
     fn invalidate_rdh0_bad_system_id() {
-        let validator = RDH0_V7_VALIDATOR;
+        let mut validator = Rdh0Validator::new();
         let rdh0 = Rdh0 {
             header_id: 7,
             header_size: 0x40,
@@ -713,7 +597,7 @@ mod tests {
     }
     #[test]
     fn invalidate_rdh0_bad_reserved0() {
-        let validator = RDH0_V7_VALIDATOR;
+        let mut validator = Rdh0Validator::new();
         let rdh0 = Rdh0 {
             header_id: 7,
             header_size: 0x40,
@@ -838,14 +722,16 @@ mod tests {
 
     #[test]
     fn validate_rdh_cru_v7() {
-        let validator = RDH_CRU_V7_VALIDATOR;
+        let mut validator = RdhCruSanityValidator::new();
+        validator.rdh1_validator = &RDH1_VALIDATOR;
         let res = validator.sanity_check(&CORRECT_RDH_CRU_V7);
         assert!(res.is_ok());
     }
     #[test]
     fn invalidate_rdh_cru_v7_bad_header_id() {
-        let validator = RDH_CRU_V7_VALIDATOR;
+        let mut validator = RdhCruSanityValidator::default();
         let mut rdh_cru = CORRECT_RDH_CRU_V7;
+        assert!(validator.sanity_check(&rdh_cru).is_ok());
         rdh_cru.rdh0.header_id = 0x0;
         let res = validator.sanity_check(&rdh_cru);
         println!("{res:?}");
@@ -853,7 +739,7 @@ mod tests {
     }
     #[test]
     fn invalidate_rdh_cru_v7_multiple_errors() {
-        let validator = RDH_CRU_V7_VALIDATOR;
+        let mut validator = RdhCruSanityValidator::default();
         let mut rdh_cru = CORRECT_RDH_CRU_V7;
         rdh_cru.rdh0.header_size = 0x0;
         rdh_cru.rdh2.reserved0 = 0x1;
@@ -870,22 +756,24 @@ mod tests {
 
     #[test]
     fn validate_rdh_cru_v6() {
-        let validator = RDH_CRU_V6_VALIDATOR;
+        let mut validator = RdhCruSanityValidator::default();
         let res = validator.sanity_check(&CORRECT_RDH_CRU_V6);
         assert!(res.is_ok());
     }
     #[test]
     fn invalidate_rdh_cru_v6_bad_header_id() {
-        let validator = RDH_CRU_V6_VALIDATOR;
+        let mut validator = RdhCruSanityValidator::default();
         let mut rdh_cru = CORRECT_RDH_CRU_V6;
-        rdh_cru.rdh0.header_id = 0x0;
         let res = validator.sanity_check(&rdh_cru);
         println!("{res:?}");
+        assert!(res.is_ok());
+        rdh_cru.rdh0.header_id = 0x0;
+        let res = validator.sanity_check(&rdh_cru);
         assert!(res.is_err());
     }
     #[test]
     fn invalidate_rdh_cru_v6_multiple_errors() {
-        let validator = RDH_CRU_V6_VALIDATOR;
+        let mut validator = RdhCruSanityValidator::default();
         let mut rdh_cru = CORRECT_RDH_CRU_V6;
         rdh_cru.rdh0.header_size = 0x0;
         rdh_cru.rdh2.reserved0 = 0x1;
