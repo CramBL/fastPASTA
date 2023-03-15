@@ -78,7 +78,13 @@ struct CdpRunningValidator<T> {
 }
 CdpRunningValidator -up-> StatsController : uses
 
+struct RdhCruSanityValidator<T> {
+    + sanity_check( rdh: &T) : Result<(), String>
+}
 
+struct RdhCruRunningChecker<T> {
+    + check( rdh: &T) : Result<(), String>
+}
 
 
 struct Config {
