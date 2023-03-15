@@ -186,12 +186,32 @@ impl<Version: std::marker::Send + std::marker::Sync> super::lib::RDH for RdhCRU<
         self.rdh0.fee_id.0
     }
     #[inline]
+    fn version(&self) -> u8 {
+        self.rdh0.header_id
+    }
+    #[inline]
+    fn rdh0(&self) -> &Rdh0 {
+        &self.rdh0
+    }
+    #[inline]
+    fn rdh1(&self) -> &Rdh1 {
+        &self.rdh1
+    }
+    #[inline]
     fn rdh2(&self) -> &Rdh2 {
         &self.rdh2
     }
     #[inline]
-    fn version(&self) -> u8 {
-        self.rdh0.header_id
+    fn rdh3(&self) -> &Rdh3 {
+        &self.rdh3
+    }
+    #[inline]
+    fn cru_id(&self) -> u16 {
+        self.cru_id()
+    }
+    #[inline]
+    fn dw(&self) -> u8 {
+        self.dw()
     }
 }
 

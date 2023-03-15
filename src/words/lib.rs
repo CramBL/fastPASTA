@@ -1,4 +1,4 @@
-use super::rdh::{Rdh0, Rdh2};
+use super::rdh::{Rdh0, Rdh1, Rdh2, Rdh3};
 
 /// This is the trait that all RDH `subwords` words must implement
 /// It is used to:
@@ -19,7 +19,10 @@ pub trait RDH:
     fn load_from_rdh0<T: std::io::Read>(reader: &mut T, rdh0: Rdh0)
         -> Result<Self, std::io::Error>;
     fn version(&self) -> u8;
+    fn rdh0(&self) -> &Rdh0;
+    fn rdh1(&self) -> &Rdh1;
     fn rdh2(&self) -> &Rdh2;
+    fn rdh3(&self) -> &Rdh3;
     fn link_id(&self) -> u8;
     /// Returns the size of the payload in bytes
     /// This is EXCLUDING the size of the RDH
@@ -30,4 +33,6 @@ pub trait RDH:
     fn data_format(&self) -> u8;
     fn is_hba(&self) -> bool;
     fn fee_id(&self) -> u16;
+    fn cru_id(&self) -> u16;
+    fn dw(&self) -> u8;
 }
