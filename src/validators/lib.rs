@@ -1,31 +1,33 @@
 use super::cdp_running::CdpRunningValidator;
-use super::rdh::RdhCRURunningChecker;
+use super::rdh::{RdhCRURunningChecker, RdhCruSanityValidator};
 use crate::input::data_wrapper::CdpChunk;
 use crate::stats::stats_controller::StatType;
 use crate::util::config::Opt;
 use crate::words::lib::RDH;
 use crate::words::rdh::{layer_from_feeid, stave_number_from_feeid};
+use crate::words::rdh_cru::RdhCRU;
 use crossbeam_channel::{bounded, Receiver, RecvError};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread::JoinHandle;
 
 #[inline]
-pub fn spawn_checker<T: RDH + 'static>(
+pub fn spawn_validator<T: RDH + 'static>(
     config: Arc<Opt>,
     stop_flag: Arc<AtomicBool>,
     stats_sender_channel: mpsc::Sender<StatType>,
     data_channel: Receiver<CdpChunk<T>>,
 ) -> (JoinHandle<()>, Option<Receiver<CdpChunk<T>>>) {
-    let checker_thread = std::thread::Builder::new().name("Checker".to_string());
+    let validator_thread = std::thread::Builder::new().name("Validator".to_string());
     let (send_channel, rcv_channel) = bounded(crate::CHANNEL_CDP_CAPACITY);
-    let validator_handle = checker_thread
+    let validator_handle = validator_thread
         .spawn({
             let config = config.clone();
             move || {
                 let mut cdp_payload_running_validator =
                     CdpRunningValidator::new(stats_sender_channel.clone());
                 let mut running_rdh_checker = RdhCRURunningChecker::new();
+                let mut sanity_rdh_checker = RdhCruSanityValidator::new();
 
                 while !stop_flag.load(Ordering::SeqCst) {
                     // Receive chunk from reader
@@ -53,9 +55,18 @@ pub fn spawn_checker<T: RDH + 'static>(
                         do_checks(
                             &cdp_chunk,
                             &stats_sender_channel,
+                            &mut sanity_rdh_checker,
                             &mut running_rdh_checker,
                             &mut cdp_payload_running_validator,
                         );
+                    }
+
+                    if config.print_rdhs() {
+                        let header_text = RdhCRU::<T>::rdh_header_text_with_indent_to_string(16);
+                        println!("             {header_text}");
+                        for (rdh, _, mem_pos) in &cdp_chunk {
+                            println!("{mem_pos:>8X}:{rdh}");
+                        }
                     }
 
                     // Send chunk to the checker
@@ -85,6 +96,7 @@ pub fn spawn_checker<T: RDH + 'static>(
 fn do_checks<T: RDH>(
     cdp_chunk: &CdpChunk<T>,
     stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
+    rdh_sanity: &mut RdhCruSanityValidator<T>,
     rdh_running: &mut RdhCRURunningChecker<T>,
     payload_running: &mut CdpRunningValidator<T>,
 ) {
@@ -96,8 +108,8 @@ fn do_checks<T: RDH>(
                 .send(StatType::DataFormat(rdh.data_format()))
                 .unwrap();
 
-            if let Err(mut e) = rdh_checks::do_rdh_checks(rdh, rdh_running) {
-                e.push_str(crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_to_string().as_str());
+            if let Err(mut e) = rdh_checks::do_rdh_checks(rdh, rdh_sanity, rdh_running) {
+                e.push_str(crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(7).as_str());
                 let rdhs = cdp_chunk.rdh_slice();
                 match rdh_idx {
                     0 => log::warn!("Error occured in the first RDH in a CdpChunk, it is not possible to retrieve previous RDHS"),
@@ -111,12 +123,14 @@ fn do_checks<T: RDH>(
                     // Last RDH of the CDP Chunk
                     _ if rdhs.len() == (rdh_idx + 1) => {
                         log::warn!("Error occured in last RDH in CdpChunk, it is not possible to retrieve the next RDH");
-                        e.push_str(&format!("{}", rdhs.get(rdh_idx - 2).unwrap()));
+                        e.push_str(&format!("{}\n", rdhs.get(rdh_idx - 2).unwrap()));
+                        e.push_str(&format!("{}", rdhs.get(rdh_idx - 1).unwrap()));
                         e.push_str(&format!("\n{rdh}"));
                         e.push_str("<--- Error occured here\n");
                     }
                     _ => {
-                        e.push_str(&format!("{}", rdhs.get(rdh_idx - 2).unwrap()));
+                        e.push_str(&format!("{}\n", rdhs.get(rdh_idx - 2).unwrap()));
+                        e.push_str(&format!("{}", rdhs.get(rdh_idx - 1).unwrap()));
                         e.push_str(&format!("\n{rdh}"));
                         e.push_str("<--- Error occured here\n");
                         e.push_str(&format!("{}", rdhs.get(rdh_idx + 1).unwrap()));
@@ -142,16 +156,25 @@ fn do_checks<T: RDH>(
 }
 
 mod rdh_checks {
-    use crate::validators::rdh::RdhCRURunningChecker;
+    use crate::validators::rdh::{RdhCRURunningChecker, RdhCruSanityValidator};
     use crate::words::lib::RDH;
 
     #[inline]
     pub fn do_rdh_checks<T: RDH>(
         rdh: &T,
+        sanity_rdh_checker: &mut RdhCruSanityValidator<T>,
         running_rdh_checker: &mut RdhCRURunningChecker<T>,
     ) -> Result<(), String> {
-        //do_rdh_sanity_checks(rdh)?;
+        do_rdh_sanity_checks(rdh, sanity_rdh_checker)?;
         do_rdh_running_checks(rdh, running_rdh_checker)
+    }
+
+    #[inline]
+    fn do_rdh_sanity_checks<T: RDH>(
+        rdh: &T,
+        sanity_rdh_checker: &mut RdhCruSanityValidator<T>,
+    ) -> Result<(), String> {
+        sanity_rdh_checker.sanity_check(rdh)
     }
 
     #[inline]

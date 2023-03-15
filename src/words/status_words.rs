@@ -1,6 +1,7 @@
-use crate::ByteSlice;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::fmt::{Debug, Display};
+
+use super::lib::ByteSlice;
 
 /// Definitions for status words
 /// `IHW`, `TDH`, `TDT`, `DDW0`, `CDW`
@@ -82,12 +83,6 @@ impl StatusWord for Ihw {
     }
     fn is_reserved_0(&self) -> bool {
         self.reserved() == 0
-    }
-}
-
-impl ByteSlice for Ihw {
-    fn to_byte_slice(&self) -> &[u8] {
-        unsafe { crate::any_as_u8_slice(self) }
     }
 }
 
@@ -190,12 +185,6 @@ impl StatusWord for Tdh {
     }
     fn is_reserved_0(&self) -> bool {
         self.reserved0() == 0 && self.reserved1() == 0 && self.reserved2() == 0
-    }
-}
-
-impl ByteSlice for Tdh {
-    fn to_byte_slice(&self) -> &[u8] {
-        unsafe { crate::any_as_u8_slice(self) }
     }
 }
 
@@ -317,12 +306,6 @@ impl StatusWord for Tdt {
     }
 }
 
-impl ByteSlice for Tdt {
-    fn to_byte_slice(&self) -> &[u8] {
-        unsafe { crate::any_as_u8_slice(self) }
-    }
-}
-
 impl Debug for Tdt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let id = self.id();
@@ -425,12 +408,6 @@ impl StatusWord for Ddw0 {
     }
 }
 
-impl ByteSlice for Ddw0 {
-    fn to_byte_slice(&self) -> &[u8] {
-        unsafe { crate::any_as_u8_slice(self) }
-    }
-}
-
 impl Debug for Ddw0 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let id = self.id();
@@ -499,12 +476,6 @@ impl StatusWord for Cdw {
     }
     fn is_reserved_0(&self) -> bool {
         true // No reserved bits
-    }
-}
-
-impl ByteSlice for Cdw {
-    fn to_byte_slice(&self) -> &[u8] {
-        unsafe { crate::any_as_u8_slice(self) }
     }
 }
 

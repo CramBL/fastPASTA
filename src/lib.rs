@@ -10,17 +10,45 @@ pub mod words;
 // Too large capacity will cause down stream consumers to block
 pub const CHANNEL_CDP_CAPACITY: usize = 100;
 
-/// This trait is used to convert a struct to a byte slice
-/// All structs that are used to represent a full GBT word (not sub RDH words) must implement this trait
-pub trait ByteSlice {
-    fn to_byte_slice(&self) -> &[u8];
-}
+// 1. Setup reading (file or stdin)
+// 2. Do checks on read data
+// 3. Write data out (file or stdout)
+pub fn process<T: words::lib::RDH + 'static>(
+    config: std::sync::Arc<util::config::Opt>,
+    loader: input::input_scanner::InputScanner<
+        impl input::bufreader_wrapper::BufferedReaderWrapper + ?Sized + std::marker::Send + 'static,
+    >,
+    send_stats_ch: std::sync::mpsc::Sender<stats::stats_controller::StatType>,
+    thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
+) -> std::io::Result<()> {
+    // 1. Read data from file
+    let (reader_handle, reader_rcv_channel) =
+        input::lib::spawn_reader(thread_stopper.clone(), loader);
 
-/// # Safety
-/// This function can only be used to serialize a struct if it has the #[repr(packed)] attribute
-/// If there's any padding on T, it is UNITIALIZED MEMORY and therefor UNDEFINED BEHAVIOR!
-#[inline]
-pub unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
-    // Create read-only reference to T as a byte slice, safe as long as no padding bytes are read
-    ::core::slice::from_raw_parts((p as *const T) as *const u8, ::core::mem::size_of::<T>())
+    // 2. Do checks on a received chunk of data
+    let (validator_handle, checker_rcv_channel) = validators::lib::spawn_validator::<T>(
+        config.clone(),
+        thread_stopper.clone(),
+        send_stats_ch,
+        reader_rcv_channel,
+    );
+
+    // 3. Write data out
+    let writer_handle: Option<std::thread::JoinHandle<()>> = match config.output_mode() {
+        util::config::DataOutputMode::None => None,
+        _ => Some(data_write::lib::spawn_writer(
+            config.clone(),
+            thread_stopper,
+            checker_rcv_channel.expect("Checker receiver channel not initialized"),
+        )),
+    };
+
+    reader_handle.join().expect("Error joining reader thread");
+    if let Err(e) = validator_handle.join() {
+        log::error!("Validator thread terminated early: {:#?}\n", e);
+    }
+    if let Some(writer) = writer_handle {
+        writer.join().expect("Could not join writer thread");
+    }
+    Ok(())
 }

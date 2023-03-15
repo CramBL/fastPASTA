@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use std::fmt::Display;
 
-use crate::ByteSlice;
+use crate::words::lib::ByteSlice;
 
 pub trait DataWord: std::fmt::Display + PartialEq + Sized + ByteSlice {
     fn lane(&self) -> u8;
@@ -104,12 +104,6 @@ impl DataWord for ItsDataWordIb {
     }
 }
 
-impl ByteSlice for ItsDataWordIb {
-    fn to_byte_slice(&self) -> &[u8] {
-        unsafe { crate::any_as_u8_slice(self) }
-    }
-}
-
 impl Display for ItsDataWordIb {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         display_byte_slice(self, f)
@@ -134,12 +128,6 @@ pub struct ItsDataWordOb {
 impl Display for ItsDataWordOb {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         display_byte_slice(self, f)
-    }
-}
-
-impl ByteSlice for ItsDataWordOb {
-    fn to_byte_slice(&self) -> &[u8] {
-        unsafe { crate::any_as_u8_slice(self) }
     }
 }
 

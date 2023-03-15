@@ -4,8 +4,8 @@ use std::{
 };
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use fastpasta::words::lib::RDH;
-use fastpasta::{words::rdh_cru::RdhCRU, words::rdh_cru::V7, ByteSlice};
+use fastpasta::words::lib::{ByteSlice, RDH};
+use fastpasta::{words::rdh_cru::RdhCRU, words::rdh_cru::V7};
 pub struct RelativeOffset(i64);
 impl RelativeOffset {
     fn new(byte_offset: u64) -> Self {
@@ -165,7 +165,7 @@ fn sanity_check_rdhs(rdh_cru_size_bytes: u64, filename: &str, iterations: usize)
         .open(&filepath)
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
-    let rdh_validator = fastpasta::validators::rdh::RDH_CRU_V7_VALIDATOR;
+    let mut rdh_validator = fastpasta::validators::rdh::RdhCruSanityValidator::default();
     let mut rdhs = 0;
 
     loop {

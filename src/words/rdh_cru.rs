@@ -1,8 +1,5 @@
-use super::lib::RdhSubWord;
-use crate::{
-    words::rdh::{CruidDw, DataformatReserved, Rdh0, Rdh1, Rdh2, Rdh3},
-    ByteSlice,
-};
+use super::lib::{ByteSlice, RdhSubWord};
+use crate::words::rdh::{CruidDw, DataformatReserved, Rdh0, Rdh1, Rdh2, Rdh3};
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::fmt::{self, Display};
 use std::{fmt::Debug, marker::PhantomData};
@@ -34,9 +31,8 @@ impl<Version> Display for RdhCRU<Version> {
         let rdhcru_fields0 = format!("{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}");
         write!(
             f,
-            "       {}{}{}{:<11}{}",
+            "       {}{rdhcru_fields0}{}{:<11}{}",
             self.rdh0,
-            rdhcru_fields0,
             self.rdh1,
             self.data_format(),
             self.rdh2
@@ -45,10 +41,16 @@ impl<Version> Display for RdhCRU<Version> {
 }
 
 impl<Version> RdhCRU<Version> {
-    pub fn rdh_header_text_to_string() -> String {
+    pub fn rdh_header_text_with_indent_to_string(indent: usize) -> String {
         let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop";
         let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit";
-        format!("\n       {header_text_top}\n       {header_text_bottom}\n")
+        format!(
+            "\n{:indent$}{header_text_top}\n{:indent2$}{header_text_bottom}\n",
+            "",
+            "",
+            indent = indent,
+            indent2 = indent
+        )
     }
     #[inline]
     pub fn cru_id(&self) -> u16 {
@@ -69,13 +71,6 @@ impl<Version> RdhCRU<Version> {
     pub fn reserved0(&self) -> u64 {
         // Get the reserved0 present in the 56 MSB
         (self.dataformat_reserved0.0 & 0xFFFFFFFFFFFFFF00) >> 8
-    }
-}
-
-impl<Version> ByteSlice for RdhCRU<Version> {
-    #[inline]
-    fn to_byte_slice(&self) -> &[u8] {
-        unsafe { crate::any_as_u8_slice(self) }
     }
 }
 
@@ -186,12 +181,32 @@ impl<Version: std::marker::Send + std::marker::Sync> super::lib::RDH for RdhCRU<
         self.rdh0.fee_id.0
     }
     #[inline]
+    fn version(&self) -> u8 {
+        self.rdh0.header_id
+    }
+    #[inline]
+    fn rdh0(&self) -> &Rdh0 {
+        &self.rdh0
+    }
+    #[inline]
+    fn rdh1(&self) -> &Rdh1 {
+        &self.rdh1
+    }
+    #[inline]
     fn rdh2(&self) -> &Rdh2 {
         &self.rdh2
     }
     #[inline]
-    fn version(&self) -> u8 {
-        self.rdh0.header_id
+    fn rdh3(&self) -> &Rdh3 {
+        &self.rdh3
+    }
+    #[inline]
+    fn cru_id(&self) -> u16 {
+        self.cru_id()
+    }
+    #[inline]
+    fn dw(&self) -> u8 {
+        self.dw()
     }
 }
 
@@ -283,7 +298,7 @@ mod tests {
 
     #[test]
     fn test_header_text() {
-        let header_text = RdhCRU::<V7>::rdh_header_text_to_string();
+        let header_text = RdhCRU::<V7>::rdh_header_text_with_indent_to_string(7);
         println!("{}", header_text);
     }
 
@@ -364,14 +379,17 @@ mod tests {
     fn test_print_generic() {
         let rdh_v7: RdhCRU<V7> = CORRECT_RDH_CRU_V7;
         let rdh_v6: RdhCRU<V6> = CORRECT_RDH_CRU_V6;
-        println!("{}", RdhCRU::<rdh_cru::V7>::rdh_header_text_to_string());
+        println!(
+            "{}",
+            RdhCRU::<rdh_cru::V7>::rdh_header_text_with_indent_to_string(7)
+        );
         println!("{rdh_v7}");
         println!("{rdh_v6}");
         let v = rdh_v7.version;
         println!("{:?}", v);
         print_rdh_cru_v6(rdh_v6);
         print_rdh_cru(rdh_v7);
-        println!("{}", RdhCRU::<V7>::rdh_header_text_to_string());
+        println!("{}", RdhCRU::<V7>::rdh_header_text_with_indent_to_string(7));
         let rdh_v7: RdhCRU<V7> = CORRECT_RDH_CRU_V7;
         let rdh_v6: RdhCRU<V6> = CORRECT_RDH_CRU_V6;
         print_rdh_cru::<V6>(rdh_v6);

@@ -226,10 +226,9 @@ fn sanity_check_offset_next<T: RDH>(
         // VERY HIGH OFFSET
         let error_string = format!(
             "Current Loaded RDH at [{current_memory_address:#X}]: {rdh_header_text}{rdh}",
-            rdh_header_text = crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_to_string()
+            rdh_header_text = crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(7)
         );
-        let fatal_error_string =
-            format!("RDH offset to next is larger than 20KB. This is not possible. {error_string}");
+        let fatal_error_string = format!("RDH offset is larger than 20KB. {error_string}");
         stats_ch.send(StatType::Fatal(fatal_error_string)).unwrap();
     }
     Ok(())
@@ -240,8 +239,9 @@ mod tests {
     use std::io::Write;
     use std::{fs::File, io::BufReader, path::PathBuf, thread::JoinHandle};
 
+    use crate::stats::stats_controller::Stats;
+    use crate::words::lib::ByteSlice;
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
-    use crate::{stats::stats_controller::Stats, ByteSlice};
 
     fn setup_scanner_for_file(
         path: &str,

@@ -1,11 +1,10 @@
 #![allow(non_camel_case_types)] // An exception to the Rust naming convention, for the state machine macro types
 
-use crate::words::lib::RDH;
+use crate::words::lib::{ByteSlice, RDH};
 use crate::{
     stats::stats_controller::StatType,
     validators::status_words::STATUS_WORD_SANITY_CHECKER,
     words::status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt},
-    ByteSlice,
 };
 use sm::sm;
 
