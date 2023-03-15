@@ -1,8 +1,5 @@
-use super::lib::RdhSubWord;
-use crate::{
-    words::rdh::{CruidDw, DataformatReserved, Rdh0, Rdh1, Rdh2, Rdh3},
-    ByteSlice,
-};
+use super::lib::{ByteSlice, RdhSubWord};
+use crate::words::rdh::{CruidDw, DataformatReserved, Rdh0, Rdh1, Rdh2, Rdh3};
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::fmt::{self, Display};
 use std::{fmt::Debug, marker::PhantomData};
@@ -74,13 +71,6 @@ impl<Version> RdhCRU<Version> {
     pub fn reserved0(&self) -> u64 {
         // Get the reserved0 present in the 56 MSB
         (self.dataformat_reserved0.0 & 0xFFFFFFFFFFFFFF00) >> 8
-    }
-}
-
-impl<Version> ByteSlice for RdhCRU<Version> {
-    #[inline]
-    fn to_byte_slice(&self) -> &[u8] {
-        unsafe { crate::any_as_u8_slice(self) }
     }
 }
 

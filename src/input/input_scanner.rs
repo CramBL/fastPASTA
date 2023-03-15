@@ -239,8 +239,9 @@ mod tests {
     use std::io::Write;
     use std::{fs::File, io::BufReader, path::PathBuf, thread::JoinHandle};
 
+    use crate::stats::stats_controller::Stats;
+    use crate::words::lib::ByteSlice;
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
-    use crate::{stats::stats_controller::Stats, ByteSlice};
 
     fn setup_scanner_for_file(
         path: &str,

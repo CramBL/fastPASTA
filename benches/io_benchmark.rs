@@ -4,8 +4,8 @@ use std::{
 };
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use fastpasta::words::lib::RDH;
-use fastpasta::{words::rdh_cru::RdhCRU, words::rdh_cru::V7, ByteSlice};
+use fastpasta::words::lib::{ByteSlice, RDH};
+use fastpasta::{words::rdh_cru::RdhCRU, words::rdh_cru::V7};
 pub struct RelativeOffset(i64);
 impl RelativeOffset {
     fn new(byte_offset: u64) -> Self {
