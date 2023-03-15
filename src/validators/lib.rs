@@ -5,21 +5,22 @@ use crate::stats::stats_controller::StatType;
 use crate::util::config::Opt;
 use crate::words::lib::RDH;
 use crate::words::rdh::{layer_from_feeid, stave_number_from_feeid};
+use crate::words::rdh_cru::RdhCRU;
 use crossbeam_channel::{bounded, Receiver, RecvError};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread::JoinHandle;
 
 #[inline]
-pub fn spawn_checker<T: RDH + 'static>(
+pub fn spawn_validator<T: RDH + 'static>(
     config: Arc<Opt>,
     stop_flag: Arc<AtomicBool>,
     stats_sender_channel: mpsc::Sender<StatType>,
     data_channel: Receiver<CdpChunk<T>>,
 ) -> (JoinHandle<()>, Option<Receiver<CdpChunk<T>>>) {
-    let checker_thread = std::thread::Builder::new().name("Checker".to_string());
+    let validator_thread = std::thread::Builder::new().name("Validator".to_string());
     let (send_channel, rcv_channel) = bounded(crate::CHANNEL_CDP_CAPACITY);
-    let validator_handle = checker_thread
+    let validator_handle = validator_thread
         .spawn({
             let config = config.clone();
             move || {
@@ -58,6 +59,14 @@ pub fn spawn_checker<T: RDH + 'static>(
                             &mut running_rdh_checker,
                             &mut cdp_payload_running_validator,
                         );
+                    }
+
+                    if config.print_rdhs() {
+                        let header_text = RdhCRU::<T>::rdh_header_text_with_indent_to_string(16);
+                        println!("             {header_text}");
+                        for (rdh, _, mem_pos) in &cdp_chunk {
+                            println!("{mem_pos:>8X}:{rdh}");
+                        }
                     }
 
                     // Send chunk to the checker
@@ -100,7 +109,7 @@ fn do_checks<T: RDH>(
                 .unwrap();
 
             if let Err(mut e) = rdh_checks::do_rdh_checks(rdh, rdh_sanity, rdh_running) {
-                e.push_str(crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_to_string().as_str());
+                e.push_str(crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(7).as_str());
                 let rdhs = cdp_chunk.rdh_slice();
                 match rdh_idx {
                     0 => log::warn!("Error occured in the first RDH in a CdpChunk, it is not possible to retrieve previous RDHS"),

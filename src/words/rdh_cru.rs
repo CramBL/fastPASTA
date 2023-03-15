@@ -34,9 +34,8 @@ impl<Version> Display for RdhCRU<Version> {
         let rdhcru_fields0 = format!("{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}");
         write!(
             f,
-            "       {}{}{}{:<11}{}",
+            "       {}{rdhcru_fields0}{}{:<11}{}",
             self.rdh0,
-            rdhcru_fields0,
             self.rdh1,
             self.data_format(),
             self.rdh2
@@ -45,10 +44,16 @@ impl<Version> Display for RdhCRU<Version> {
 }
 
 impl<Version> RdhCRU<Version> {
-    pub fn rdh_header_text_to_string() -> String {
+    pub fn rdh_header_text_with_indent_to_string(indent: usize) -> String {
         let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop";
         let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit";
-        format!("\n       {header_text_top}\n       {header_text_bottom}\n")
+        format!(
+            "\n{:indent$}{header_text_top}\n{:indent2$}{header_text_bottom}\n",
+            "",
+            "",
+            indent = indent,
+            indent2 = indent
+        )
     }
     #[inline]
     pub fn cru_id(&self) -> u16 {
@@ -303,7 +308,7 @@ mod tests {
 
     #[test]
     fn test_header_text() {
-        let header_text = RdhCRU::<V7>::rdh_header_text_to_string();
+        let header_text = RdhCRU::<V7>::rdh_header_text_with_indent_to_string(7);
         println!("{}", header_text);
     }
 
@@ -384,14 +389,17 @@ mod tests {
     fn test_print_generic() {
         let rdh_v7: RdhCRU<V7> = CORRECT_RDH_CRU_V7;
         let rdh_v6: RdhCRU<V6> = CORRECT_RDH_CRU_V6;
-        println!("{}", RdhCRU::<rdh_cru::V7>::rdh_header_text_to_string());
+        println!(
+            "{}",
+            RdhCRU::<rdh_cru::V7>::rdh_header_text_with_indent_to_string(7)
+        );
         println!("{rdh_v7}");
         println!("{rdh_v6}");
         let v = rdh_v7.version;
         println!("{:?}", v);
         print_rdh_cru_v6(rdh_v6);
         print_rdh_cru(rdh_v7);
-        println!("{}", RdhCRU::<V7>::rdh_header_text_to_string());
+        println!("{}", RdhCRU::<V7>::rdh_header_text_with_indent_to_string(7));
         let rdh_v7: RdhCRU<V7> = CORRECT_RDH_CRU_V7;
         let rdh_v6: RdhCRU<V6> = CORRECT_RDH_CRU_V6;
         print_rdh_cru::<V6>(rdh_v6);

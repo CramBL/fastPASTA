@@ -90,7 +90,7 @@ pub fn process<T: fastpasta::words::lib::RDH + 'static>(
         fastpasta::input::lib::spawn_reader(thread_stopper.clone(), loader);
 
     // 2. Do checks on a received chunk of data
-    let (validator_handle, checker_rcv_channel) = validators::lib::spawn_checker::<T>(
+    let (validator_handle, checker_rcv_channel) = validators::lib::spawn_validator::<T>(
         config.clone(),
         thread_stopper.clone(),
         send_stats_ch,
@@ -108,11 +108,11 @@ pub fn process<T: fastpasta::words::lib::RDH + 'static>(
     };
 
     reader_handle.join().expect("Error joining reader thread");
-    validator_handle
-        .join()
-        .expect("Error joining checker thread");
+    if let Err(e) = validator_handle.join() {
+        log::error!("Validator thread terminated early: {:#?}\n", e);
+    }
     if let Some(writer) = writer_handle {
-        writer.join().expect("Error joining writer thread");
+        writer.join().expect("Could not join writer thread");
     }
     Ok(())
 }
