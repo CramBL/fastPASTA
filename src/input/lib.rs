@@ -36,6 +36,10 @@ pub fn get_chunk<T: words::lib::RDH>(
     for _ in 0..chunk_size_cdps {
         let cdp_tuple = match file_scanner.load_cdp() {
             Ok(cdp) => cdp,
+            Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
+                log::trace!("Invalid data found, returning all CDPs found so far");
+                break;
+            }
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
                 log::info!("EOF reached! ");
                 break;
@@ -61,6 +65,8 @@ pub fn spawn_reader<T: RDH + 'static>(
 ) -> (std::thread::JoinHandle<()>, Receiver<CdpChunk<T>>) {
     let reader_thread = std::thread::Builder::new().name("Reader".to_string());
     let (send_channel, rcv_channel) = crossbeam_channel::bounded(crate::CHANNEL_CDP_CAPACITY);
+    let mut local_stop_on_non_full_chunk = false;
+    const CDP_CHUNK_SIZE: usize = 100;
     let thread_handle = reader_thread
         .spawn({
             move || {
@@ -68,19 +74,21 @@ pub fn spawn_reader<T: RDH + 'static>(
 
                 // Automatically extracts link to filter if one is supplied
                 loop {
-                    if stop_flag.load(Ordering::SeqCst) {
-                        log::trace!("Stopping reader thread");
+                    if stop_flag.load(Ordering::SeqCst) || local_stop_on_non_full_chunk {
+                        log::trace!("Stopping reader thread on stop flag");
                         break;
                     }
-                    let cdps = match get_chunk::<T>(&mut input_scanner, 100) {
-                        Ok(cdp) => cdp,
+                    let cdps = match get_chunk::<T>(&mut input_scanner, CDP_CHUNK_SIZE) {
+                        Ok(cdp) => {
+                            if cdp.len() < CDP_CHUNK_SIZE {
+                                local_stop_on_non_full_chunk = true; // Stop on non-full chunk, could be InvalidData
+                                log::trace!("Stopping reader thread on non-full chunk");
+                            }
+                            cdp
+                        }
                         Err(e) => {
                             if e.kind() == std::io::ErrorKind::UnexpectedEof {
-                                break;
-                            } else if e.kind() == std::io::ErrorKind::InvalidData {
-                                log::trace!(
-                                    "Input scanner returned invalid data, exiting reader thread"
-                                );
+                                log::trace!("Stopping reader thread on EOF");
                                 break;
                             } else {
                                 panic!("Unexpected Error reading CDP chunks: {e}");
