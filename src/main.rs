@@ -11,17 +11,14 @@ use fastpasta::words::{
     rdh::Rdh0,
     rdh_cru::{RdhCRU, V6, V7},
 };
-use fastpasta::{data_write, validators};
-use log::trace;
-use std::io;
 use std::sync::atomic::AtomicBool;
-use std::{sync::Arc, thread::JoinHandle};
+use std::sync::Arc;
 use structopt::StructOpt;
 
 pub fn main() -> std::process::ExitCode {
     let config = get_config();
     init_error_logger(&config);
-    trace!("Starting fastpasta with args: {:#?}", config);
+    log::trace!("Starting fastpasta with args: {:#?}", config);
 
     // Launch statistics thread
     // If max allowed errors is reached, stop the processing from the stats thread
@@ -49,9 +46,11 @@ fn init_error_logger(cfg: &Opt) {
         .init()
         .expect("Failed to initialize logger");
     match cfg.output_mode() {
-        fastpasta::util::config::DataOutputMode::Stdout => trace!("Data ouput set to stdout"),
-        fastpasta::util::config::DataOutputMode::File => trace!("Data ouput set to file"),
-        fastpasta::util::config::DataOutputMode::None => trace!("Data ouput set to suppressed"),
+        fastpasta::util::config::DataOutputMode::Stdout => log::trace!("Data ouput set to stdout"),
+        fastpasta::util::config::DataOutputMode::File => log::trace!("Data ouput set to file"),
+        fastpasta::util::config::DataOutputMode::None => {
+            log::trace!("Data ouput set to suppressed")
+        }
     }
 }
 
@@ -86,8 +85,12 @@ fn init_processing(
     // Choose the rest of the execution based on the RDH version
     // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
     match rdh_version {
-        6 => match process::<RdhCRU<V6>>(config, loader, stat_send_channel.clone(), thread_stopper)
-        {
+        6 => match fastpasta::process::<RdhCRU<V6>>(
+            config,
+            loader,
+            stat_send_channel.clone(),
+            thread_stopper,
+        ) {
             Ok(_) => std::process::ExitCode::SUCCESS,
             Err(e) => {
                 stat_send_channel
@@ -96,8 +99,12 @@ fn init_processing(
                 std::process::ExitCode::from(2)
             }
         },
-        7 => match process::<RdhCRU<V7>>(config, loader, stat_send_channel.clone(), thread_stopper)
-        {
+        7 => match fastpasta::process::<RdhCRU<V7>>(
+            config,
+            loader,
+            stat_send_channel.clone(),
+            thread_stopper,
+        ) {
             Ok(_) => std::process::ExitCode::SUCCESS,
             Err(e) => {
                 stat_send_channel
@@ -115,45 +122,4 @@ fn init_processing(
             std::process::ExitCode::from(3)
         }
     }
-}
-
-// 1. Setup reading (file or stdin)
-// 2. Do checks on read data
-// 3. Write data out (file or stdout)
-pub fn process<T: fastpasta::words::lib::RDH + 'static>(
-    config: Arc<Opt>,
-    loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
-    send_stats_ch: std::sync::mpsc::Sender<stats_controller::StatType>,
-    thread_stopper: Arc<AtomicBool>,
-) -> io::Result<()> {
-    // 1. Read data from file
-    let (reader_handle, reader_rcv_channel) =
-        fastpasta::input::lib::spawn_reader(thread_stopper.clone(), loader);
-
-    // 2. Do checks on a received chunk of data
-    let (validator_handle, checker_rcv_channel) = validators::lib::spawn_validator::<T>(
-        config.clone(),
-        thread_stopper.clone(),
-        send_stats_ch,
-        reader_rcv_channel,
-    );
-
-    // 3. Write data out
-    let writer_handle: Option<JoinHandle<()>> = match config.output_mode() {
-        fastpasta::util::config::DataOutputMode::None => None,
-        _ => Some(data_write::lib::spawn_writer(
-            config.clone(),
-            thread_stopper,
-            checker_rcv_channel.expect("Checker receiver channel not initialized"),
-        )),
-    };
-
-    reader_handle.join().expect("Error joining reader thread");
-    if let Err(e) = validator_handle.join() {
-        log::error!("Validator thread terminated early: {:#?}\n", e);
-    }
-    if let Some(writer) = writer_handle {
-        writer.join().expect("Could not join writer thread");
-    }
-    Ok(())
 }
