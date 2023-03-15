@@ -1,38 +1,28 @@
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
-
-use crossbeam_channel::Receiver;
-
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::data_wrapper::CdpChunk;
-use super::input_scanner::InputScanner;
-use super::input_scanner::ScanCDP;
+use super::input_scanner::{InputScanner, ScanCDP};
 use super::stdin_reader::StdInReaderSeeker;
 use super::util::buf_reader_with_capacity;
 use crate::util::config::Opt;
 use crate::words;
 use crate::words::lib::RDH;
+use crossbeam_channel::Receiver;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 #[inline]
-pub fn init_reader(config: &Opt) -> Box<dyn BufferedReaderWrapper> {
-    match config.file() {
-        Some(path) => {
-            log::trace!("Reading from file: {:?}", &path);
-            let f = std::fs::OpenOptions::new()
-                .read(true)
-                .open(path)
-                .expect("File not found");
-            Box::new(buf_reader_with_capacity(f, 1024 * 50))
+pub fn init_reader(config: &Opt) -> Result<Box<dyn BufferedReaderWrapper>, std::io::Error> {
+    if let Some(path) = config.file() {
+        log::trace!("Reading from file: {:?}", &path);
+        let f = std::fs::OpenOptions::new().read(true).open(path)?;
+        Ok(Box::new(buf_reader_with_capacity(f, 1024 * 50)))
+    } else {
+        log::trace!("Reading from stdin");
+        if atty::is(atty::Stream::Stdin) {
+            log::error!("stdin not redirected!");
         }
-        None => {
-            log::trace!("Reading from stdin");
-            if atty::is(atty::Stream::Stdin) {
-                log::trace!("stdin not redirected!");
-            }
-            Box::new(StdInReaderSeeker {
-                reader: std::io::stdin(),
-            })
-        }
+        Ok(Box::new(StdInReaderSeeker {
+            reader: std::io::stdin(),
+        }))
     }
 }
 

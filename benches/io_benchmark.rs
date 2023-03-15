@@ -165,7 +165,7 @@ fn sanity_check_rdhs(rdh_cru_size_bytes: u64, filename: &str, iterations: usize)
         .open(&filepath)
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
-    let rdh_validator = fastpasta::validators::rdh::RDH_CRU_V7_VALIDATOR;
+    let mut rdh_validator = fastpasta::validators::rdh::RdhCruSanityValidator::default();
     let mut rdhs = 0;
 
     loop {

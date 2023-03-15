@@ -18,7 +18,7 @@ use std::sync::atomic::AtomicBool;
 use std::{sync::Arc, thread::JoinHandle};
 use structopt::StructOpt;
 
-pub fn main() {
+pub fn main() -> std::process::ExitCode {
     let config = get_config();
     init_error_logger(&config);
     trace!("Starting fastpasta with args: {:#?}", config);
@@ -27,28 +27,19 @@ pub fn main() {
     // If max allowed errors is reached, stop the processing from the stats thread
     let (stat_controller, stat_send_channel, stop_flag) = init_stats_controller(&config);
 
-    let mut readable = init_reader(&config);
-
-    // Determine RDH version
-    let rdh0 = Rdh0::load(&mut readable).expect("Failed to read first RDH0");
-    let rdh_version = rdh0.header_id;
-    stat_send_channel
-        .send(stats_controller::StatType::RdhVersion(rdh_version))
-        .unwrap();
-    let loader =
-        InputScanner::new_from_rdh0(config.clone(), readable, stat_send_channel.clone(), rdh0);
-
-    // Choose the rest of the execution based on the RDH version
-    // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
-    match rdh_version {
-        6 => {
-            log::warn!("RDH version 6 detected, using RDHv7 processing for now anyways... No guarantees it will work!");
-            process::<RdhCRU<V6>>(config, loader, stat_send_channel, stop_flag).unwrap()
+    let exit_code: std::process::ExitCode = match init_reader(&config) {
+        Ok(readable) => init_processing(config, readable, stat_send_channel, stop_flag),
+        Err(e) => {
+            stat_send_channel
+                .send(stats_controller::StatType::Fatal(e.to_string()))
+                .unwrap();
+            drop(stat_send_channel);
+            std::process::ExitCode::from(1)
         }
-        7 => process::<RdhCRU<V7>>(config, loader, stat_send_channel, stop_flag).unwrap(),
-        _ => panic!("Unknown RDH version: {rdh_version}"),
-    }
+    };
+
     stat_controller.join().expect("Failed to join stats thread");
+    exit_code
 }
 
 fn init_error_logger(cfg: &Opt) {
@@ -76,6 +67,56 @@ fn get_config() -> Arc<Opt> {
 
     Arc::new(cfg)
 }
+
+fn init_processing(
+    config: Arc<Opt>,
+    mut reader: Box<dyn BufferedReaderWrapper>,
+    stat_send_channel: std::sync::mpsc::Sender<stats_controller::StatType>,
+    thread_stopper: Arc<AtomicBool>,
+) -> std::process::ExitCode {
+    // Determine RDH version
+    let rdh0 = Rdh0::load(&mut reader).expect("Failed to read first RDH0");
+    let rdh_version = rdh0.header_id;
+    stat_send_channel
+        .send(stats_controller::StatType::RdhVersion(rdh_version))
+        .unwrap();
+    let loader =
+        InputScanner::new_from_rdh0(config.clone(), reader, stat_send_channel.clone(), rdh0);
+
+    // Choose the rest of the execution based on the RDH version
+    // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
+    match rdh_version {
+        6 => match process::<RdhCRU<V6>>(config, loader, stat_send_channel.clone(), thread_stopper)
+        {
+            Ok(_) => std::process::ExitCode::SUCCESS,
+            Err(e) => {
+                stat_send_channel
+                    .send(stats_controller::StatType::Fatal(e.to_string()))
+                    .unwrap();
+                std::process::ExitCode::from(2)
+            }
+        },
+        7 => match process::<RdhCRU<V7>>(config, loader, stat_send_channel.clone(), thread_stopper)
+        {
+            Ok(_) => std::process::ExitCode::SUCCESS,
+            Err(e) => {
+                stat_send_channel
+                    .send(stats_controller::StatType::Fatal(e.to_string()))
+                    .unwrap();
+                std::process::ExitCode::from(2)
+            }
+        },
+        _ => {
+            stat_send_channel
+                .send(stats_controller::StatType::Fatal(format!(
+                    "Unknown RDH version: {rdh_version}",
+                )))
+                .unwrap();
+            std::process::ExitCode::from(3)
+        }
+    }
+}
+
 // 1. Setup reading (file or stdin)
 // 2. Do checks on read data
 // 3. Write data out (file or stdout)
