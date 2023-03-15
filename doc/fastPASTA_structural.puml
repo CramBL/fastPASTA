@@ -1,0 +1,105 @@
+@startuml
+Title **fastPASTA 'Class' Diagram**
+
+hide empty members
+hide empty methods
+
+struct StatsController {
+}
+
+' Data wrapper
+struct CdpChunk<T> {
+    - rdhs: Vec<T>
+    - payloads: Vec<Vec<u8>>
+    - rdh_mem_pos: Vec<u64>
+}
+
+' Output module
+interface Writer<T> {
+    + write( data : &[u8]) : std::io::Result<()>
+    + push_rdhs( rdhs : Vec<T>)
+    + push_payloads( payloads : Vec<Vec<u8>>)
+    + push_cdp_chunk( cdp_chunk : CdpChunk<T>)
+    + flush() : std::io::Result<()>
+}
+struct BufferedWriter<T> implements Writer
+{
+    - filtered_rdhs_buffer: Vec<T>
+    - filtered_payloads_buffer: Vec<Vec<u8>>
+    - buf_writer: Option<BufWriter<File>>
+}
+Writer --> CdpChunk : uses
+note top of BufferedWriter : if no output file is specified, buf_writer is **None**\nthen all writes are to **stdout**
+
+
+' Input module
+interface ScanCDP {
+    + load_rdh_cru<T>() : Result<T, Error>
+    + load_payload_raw( payload_size : usize) : Result<Vec<u8>, Error>
+    + load_cdp<T>() : Result<CdpChunk<T>, Error>
+    + load_next_rdh_to_filter() : Result<T, Error>
+    + current_mem_pos() : u64
+}
+struct CdpWrapper<T> {
+    - rdh: T
+    - payload: Vec<u8>
+    - mem_pos: u64
+}
+ScanCDP --> CdpWrapper : uses
+
+struct InputScanner<R> implements ScanCDP {
+    - reader: Box<R>
+    - link_to_filter: Option<Vec<u8>>
+}
+
+struct MemPosTracker {
+    + memory_address_bytes: u64
+    - offset_next : i64
+    - rdh_cru_size_bytes: u64
+    + next(rdh_offset : u64) : i64
+}
+InputScanner *-- MemPosTracker : contains
+
+interface BufferedReaderWrapper {
+    + read_exact( buf : &[u8]) : std::io::Result<()>
+    + seek_relative( offset : i64) : std::io::Result<()>
+}
+
+struct StdInReaderSeeker<R> implements BufferedReaderWrapper {
+    + reader: Box<R>
+}
+
+InputScanner --> BufferedReaderWrapper : uses
+
+struct CdpRunningValidator<T> {
+    + reset_fsm()
+    + check( gbt_word: &[u8])
+    + set_current_rdh( rdh: &T, rdh_mem_pos : u64)
+}
+CdpRunningValidator -up-> StatsController : uses
+
+struct RdhCruSanityValidator<T> {
+    + sanity_check( rdh: &T) : Result<(), String>
+}
+
+struct RdhCruRunningChecker<T> {
+    + check( rdh: &T) : Result<(), String>
+}
+
+
+struct Config {
+    + dump_rdhs() : bool
+    + sanity_checks() : bool
+    + file() : PathBuf
+    + link_to_filter() : Option<u8>
+    + output_file() : Option<PathBuf>
+}
+
+
+InputScanner -up-> StatsController : uses
+StatsController -up-> Config : uses
+BufferedWriter -up-> Config : uses
+InputScanner -up-> Config : uses
+
+
+@enduml

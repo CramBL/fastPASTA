@@ -1,6 +1,3 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unreachable_code)]
 use fastpasta::input::{
     bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner, lib::init_reader,
 };

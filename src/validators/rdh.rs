@@ -348,7 +348,7 @@ impl<T: RDH> RdhCruSanityValidator<T> {
     }
 }
 
-pub struct RdhCRURunningChecker<T: RDH> {
+pub struct RdhCruRunningChecker<T: RDH> {
     pub expect_pages_counter: u16,
     pub last_rdh2: Option<Rdh2>,
     // The first 2 RDHs are used to determine what the expected page counter increments are
@@ -357,13 +357,13 @@ pub struct RdhCRURunningChecker<T: RDH> {
     expect_pages_counter_increment: u16,
 }
 
-impl<T: RDH> Default for RdhCRURunningChecker<T> {
+impl<T: RDH> Default for RdhCruRunningChecker<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: RDH> RdhCRURunningChecker<T> {
+impl<T: RDH> RdhCruRunningChecker<T> {
     pub fn new() -> Self {
         Self {
             expect_pages_counter: 0,

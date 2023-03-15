@@ -1,5 +1,5 @@
 use super::cdp_running::CdpRunningValidator;
-use super::rdh::{RdhCRURunningChecker, RdhCruSanityValidator};
+use super::rdh::{RdhCruRunningChecker, RdhCruSanityValidator};
 use crate::input::data_wrapper::CdpChunk;
 use crate::stats::stats_controller::StatType;
 use crate::util::config::Opt;
@@ -26,7 +26,7 @@ pub fn spawn_validator<T: RDH + 'static>(
             move || {
                 let mut cdp_payload_running_validator =
                     CdpRunningValidator::new(stats_sender_channel.clone());
-                let mut running_rdh_checker = RdhCRURunningChecker::new();
+                let mut running_rdh_checker = RdhCruRunningChecker::new();
                 let mut sanity_rdh_checker = RdhCruSanityValidator::new();
 
                 while !stop_flag.load(Ordering::SeqCst) {
@@ -97,7 +97,7 @@ fn do_checks<T: RDH>(
     cdp_chunk: &CdpChunk<T>,
     stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
     rdh_sanity: &mut RdhCruSanityValidator<T>,
-    rdh_running: &mut RdhCRURunningChecker<T>,
+    rdh_running: &mut RdhCruRunningChecker<T>,
     payload_running: &mut CdpRunningValidator<T>,
 ) {
     cdp_chunk
@@ -156,32 +156,16 @@ fn do_checks<T: RDH>(
 }
 
 mod rdh_checks {
-    use crate::validators::rdh::{RdhCRURunningChecker, RdhCruSanityValidator};
+    use crate::validators::rdh::{RdhCruRunningChecker, RdhCruSanityValidator};
     use crate::words::lib::RDH;
 
     #[inline]
     pub fn do_rdh_checks<T: RDH>(
         rdh: &T,
         sanity_rdh_checker: &mut RdhCruSanityValidator<T>,
-        running_rdh_checker: &mut RdhCRURunningChecker<T>,
+        running_rdh_checker: &mut RdhCruRunningChecker<T>,
     ) -> Result<(), String> {
-        do_rdh_sanity_checks(rdh, sanity_rdh_checker)?;
-        do_rdh_running_checks(rdh, running_rdh_checker)
-    }
-
-    #[inline]
-    fn do_rdh_sanity_checks<T: RDH>(
-        rdh: &T,
-        sanity_rdh_checker: &mut RdhCruSanityValidator<T>,
-    ) -> Result<(), String> {
-        sanity_rdh_checker.sanity_check(rdh)
-    }
-
-    #[inline]
-    fn do_rdh_running_checks<T: RDH>(
-        rdh: &T,
-        running_rdh_checker: &mut RdhCRURunningChecker<T>,
-    ) -> Result<(), String> {
+        sanity_rdh_checker.sanity_check(rdh)?;
         // RDH CHECK: There is always page 0 + minimum page 1 + stop flag
         running_rdh_checker.check(rdh)
     }

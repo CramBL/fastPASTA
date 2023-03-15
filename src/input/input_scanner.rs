@@ -203,6 +203,7 @@ where
     }
 }
 
+// The error is fatal to the input scanner, so parsing input is stopped, but the previously read data is still forwarded for checking etc.
 fn sanity_check_offset_next<T: RDH>(
     rdh: &T,
     current_memory_address: u64,
@@ -211,12 +212,14 @@ fn sanity_check_offset_next<T: RDH>(
     let current_rdh_offset_to_next = rdh.offset_to_next() as i64;
     let next_rdh_memory_location = current_rdh_offset_to_next - 64;
     if next_rdh_memory_location < 0 {
-        let error_string =
-            format!("\nCurrent Loaded RDH at [{current_memory_address:#X}]: \n       {rdh}");
+        let error_string = format!(
+            "\n[{current_memory_address:#X}]:{rdh_header_text}{rdh}",
+            rdh_header_text = crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(7)
+        );
         let fatal_error_string = format!(
-            " {current_memory_address:#X}: RDH offset to next is {current_rdh_offset_to_next} (less than 64 bytes). This is not possible. {error_string}");
+            "RDH offset to next is {current_rdh_offset_to_next} (less than 64 bytes). {error_string}");
         stats_ch
-            .send(StatType::Fatal(fatal_error_string.clone()))
+            .send(StatType::Error(fatal_error_string.clone()))
             .unwrap();
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
@@ -225,11 +228,17 @@ fn sanity_check_offset_next<T: RDH>(
     } else if next_rdh_memory_location > 0x4FFF {
         // VERY HIGH OFFSET
         let error_string = format!(
-            "Current Loaded RDH at [{current_memory_address:#X}]: {rdh_header_text}{rdh}",
+            "\n[{current_memory_address:#X}]:{rdh_header_text}{rdh}",
             rdh_header_text = crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(7)
         );
         let fatal_error_string = format!("RDH offset is larger than 20KB. {error_string}");
-        stats_ch.send(StatType::Fatal(fatal_error_string)).unwrap();
+        stats_ch
+            .send(StatType::Error(fatal_error_string.clone()))
+            .unwrap();
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            fatal_error_string,
+        ));
     }
     Ok(())
 }

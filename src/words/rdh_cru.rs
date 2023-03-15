@@ -97,7 +97,7 @@ impl<Version> Debug for RdhCRU<Version> {
 }
 
 impl<Version: std::marker::Send + std::marker::Sync> super::lib::RDH for RdhCRU<Version> {
-    #[inline(always)]
+    #[inline]
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
     where
         Self: Sized,
@@ -108,7 +108,7 @@ impl<Version: std::marker::Send + std::marker::Sync> super::lib::RDH for RdhCRU<
         };
         Self::load_from_rdh0(reader, rdh0)
     }
-    #[inline(always)]
+    #[inline]
     fn load_from_rdh0<T: std::io::Read>(
         reader: &mut T,
         rdh0: Rdh0,
