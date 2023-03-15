@@ -1,5 +1,7 @@
 #![allow(non_camel_case_types)] // An exception to the Rust naming convention, for the state machine macro types
 
+use self::CDP_PAYLOAD_FSM_Continuous::IHW_;
+use super::data_words::DATA_WORD_SANITY_CHECKER;
 use crate::words::lib::{ByteSlice, RDH};
 use crate::{
     stats::stats_controller::StatType,
@@ -7,10 +9,6 @@ use crate::{
     words::status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt},
 };
 use sm::sm;
-
-use self::CDP_PAYLOAD_FSM_Continuous::IHW_;
-
-use super::data_words::DATA_WORD_SANITY_CHECKER;
 sm! {
     // All states have the '_' suffix and events have '_' prefix so they show up as `STATE_BY_EVENT` in the generated code
     // The statemachine macro notation goes like this:
