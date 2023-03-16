@@ -4,7 +4,7 @@ use crate::input::data_wrapper::CdpChunk;
 use crate::stats::stats_controller::StatType;
 use crate::util::config::Opt;
 use crate::words::lib::RDH;
-use crate::words::rdh::{layer_from_feeid, stave_number_from_feeid};
+use crate::words::lib::{layer_from_feeid, stave_number_from_feeid};
 use crate::words::rdh_cru::RdhCRU;
 use crossbeam_channel::{bounded, Receiver, RecvError};
 use std::sync::atomic::{AtomicBool, Ordering};

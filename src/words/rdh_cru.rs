@@ -8,18 +8,18 @@ pub struct V7;
 
 #[repr(packed)]
 pub struct RdhCRU<Version> {
-    pub rdh0: Rdh0,
-    pub offset_new_packet: u16,
-    pub memory_size: u16,
-    pub link_id: u8,
-    pub packet_counter: u8,
-    pub(crate) cruid_dw: CruidDw, // 12 bit cru_id, 4 bit dw
-    pub rdh1: Rdh1,
-    pub(crate) dataformat_reserved0: DataformatReserved, // 8 bit data_format, 56 bit reserved0
-    pub rdh2: Rdh2,
-    pub reserved1: u64,
-    pub rdh3: Rdh3,
-    pub reserved2: u64,
+    pub(crate) rdh0: Rdh0,
+    offset_new_packet: u16,
+    memory_size: u16,
+    pub(crate) link_id: u8,
+    packet_counter: u8,
+    cruid_dw: CruidDw, // 12 bit cru_id, 4 bit dw
+    rdh1: Rdh1,
+    dataformat_reserved0: DataformatReserved, // 8 bit data_format, 56 bit reserved0
+    pub(crate) rdh2: Rdh2,
+    pub(crate) reserved1: u64,
+    pub(crate) rdh3: Rdh3,
+    pub(crate) reserved2: u64,
     version: PhantomData<Version>,
 }
 

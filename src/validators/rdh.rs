@@ -2,11 +2,8 @@ use crate::words::lib::RDH;
 use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3};
 use std::fmt::Write as _;
 
-pub struct FeeIdSanityValidator {
-    pub reserved0: u8,
+struct FeeIdSanityValidator {
     layer_min_max: (u8, u8),
-    pub reserved1: u8,
-    pub reserved2: u8,
     stave_number_min_max: (u8, u8),
 }
 
@@ -19,10 +16,7 @@ impl FeeIdSanityValidator {
             panic!("Stave number min must be smaller than stave number max");
         }
         Self {
-            reserved0: 0,
             layer_min_max,
-            reserved1: 0,
-            reserved2: 0,
             stave_number_min_max,
         }
     }
@@ -52,7 +46,7 @@ impl FeeIdSanityValidator {
             .unwrap();
         }
         // Extract stave_number from 6 LSB [5:0]
-        let stave_number = crate::words::rdh::stave_number_from_feeid(fee_id.0);
+        let stave_number = crate::words::lib::stave_number_from_feeid(fee_id.0);
         if stave_number < self.stave_number_min_max.0 || stave_number > self.stave_number_min_max.1
         {
             err_cnt += 1;
@@ -60,7 +54,7 @@ impl FeeIdSanityValidator {
         }
 
         // Extract layer from 3 bits [14:12]
-        let layer = crate::words::rdh::layer_from_feeid(fee_id.0);
+        let layer = crate::words::lib::layer_from_feeid(fee_id.0);
 
         if layer < self.layer_min_max.0 || layer > self.layer_min_max.1 {
             err_cnt += 1;
@@ -77,13 +71,13 @@ impl FeeIdSanityValidator {
 
 const FEE_ID_SANITY_VALIDATOR: FeeIdSanityValidator = FeeIdSanityValidator::new((0, 6), (0, 47));
 
-pub struct Rdh0Validator {
-    pub header_id: Option<u8>, // The first Rdh0 checked will determine what is a valid header_id
-    pub header_size: u8,
-    pub fee_id: FeeIdSanityValidator,
-    pub priority_bit: u8,
-    pub system_id: u8,
-    pub reserved0: u16,
+struct Rdh0Validator {
+    header_id: Option<u8>, // The first Rdh0 checked will determine what is a valid header_id
+    header_size: u8,
+    fee_id: FeeIdSanityValidator,
+    priority_bit: u8,
+    system_id: u8,
+    reserved0: u16,
 }
 impl Default for Rdh0Validator {
     fn default() -> Self {
@@ -168,7 +162,7 @@ impl Rdh0Validator {
     }
 }
 
-pub struct Rdh1Validator {
+struct Rdh1Validator {
     valid_rdh1: Rdh1,
 }
 impl Rdh1Validator {
@@ -197,11 +191,11 @@ impl Rdh1Validator {
         Ok(())
     }
 }
-pub const RDH1_VALIDATOR: Rdh1Validator = Rdh1Validator {
+const RDH1_VALIDATOR: Rdh1Validator = Rdh1Validator {
     valid_rdh1: Rdh1::test_new(0, 0, 0),
 };
 
-pub struct Rdh2Validator;
+struct Rdh2Validator;
 impl Rdh2Validator {
     pub fn sanity_check(&self, rdh2: &Rdh2) -> Result<(), String> {
         let mut err_str = String::new();
@@ -235,9 +229,9 @@ impl Rdh2Validator {
     }
 }
 
-pub const RDH2_VALIDATOR: Rdh2Validator = Rdh2Validator {};
+const RDH2_VALIDATOR: Rdh2Validator = Rdh2Validator {};
 
-pub struct Rdh3Validator;
+struct Rdh3Validator;
 impl Rdh3Validator {
     pub fn sanity_check(&self, rdh3: &Rdh3) -> Result<(), String> {
         let mut err_str = String::new();
@@ -263,7 +257,7 @@ impl Rdh3Validator {
     }
 }
 
-pub const RDH3_VALIDATOR: Rdh3Validator = Rdh3Validator {};
+const RDH3_VALIDATOR: Rdh3Validator = Rdh3Validator {};
 
 pub struct RdhCruSanityValidator<T: RDH> {
     rdh0_validator: Rdh0Validator,
@@ -349,8 +343,8 @@ impl<T: RDH> RdhCruSanityValidator<T> {
 }
 
 pub struct RdhCruRunningChecker<T: RDH> {
-    pub expect_pages_counter: u16,
-    pub last_rdh2: Option<Rdh2>,
+    expect_pages_counter: u16,
+    last_rdh2: Option<Rdh2>,
     // The first 2 RDHs are used to determine what the expected page counter increments are
     first_rdh_cru: Option<T>,
     second_rdh_cru: Option<T>,

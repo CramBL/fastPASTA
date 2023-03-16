@@ -15,8 +15,8 @@ pub trait Writer<T: RDH> {
 }
 
 pub struct BufferedWriter<T: RDH> {
-    pub filtered_rdhs_buffer: Vec<T>,
-    pub filtered_payload_buffers: Vec<Vec<u8>>, // 1 Linked list per payload
+    filtered_rdhs_buffer: Vec<T>,
+    filtered_payload_buffers: Vec<Vec<u8>>, // 1 Linked list per payload
     buf_writer: Option<std::io::BufWriter<std::fs::File>>, // If no file is specified -> write to stdout
     max_buffer_size: usize,
 }

@@ -40,12 +40,12 @@ impl StatusWordSanityChecker {
     }
 }
 
-pub trait StatusWordValidator<T: StatusWord> {
+trait StatusWordValidator<T: StatusWord> {
     fn sanity_check(&self, status_word: &T) -> Result<(), String>;
 }
 
 const IHW_VALIDATOR: IhwValidator = IhwValidator { valid_id: 0xE0 };
-pub struct IhwValidator {
+struct IhwValidator {
     valid_id: u8,
 }
 impl StatusWordValidator<Ihw> for IhwValidator {
@@ -72,7 +72,7 @@ impl StatusWordValidator<Ihw> for IhwValidator {
 }
 
 const TDH_VALIDATOR: TdhValidator = TdhValidator { valid_id: 0xE8 };
-pub struct TdhValidator {
+struct TdhValidator {
     valid_id: u8,
 }
 impl StatusWordValidator<Tdh> for TdhValidator {
@@ -119,7 +119,7 @@ impl StatusWordValidator<Tdh> for TdhValidator {
 }
 
 const TDT_VALIDATOR: TdtValidator = TdtValidator { valid_id: 0xF0 };
-pub struct TdtValidator {
+struct TdtValidator {
     valid_id: u8,
 }
 impl StatusWordValidator<Tdt> for TdtValidator {
@@ -153,7 +153,7 @@ impl StatusWordValidator<Tdt> for TdtValidator {
 }
 
 const DDW0_VALIDATOR: Ddw0Validator = Ddw0Validator { valid_id: 0xE4 }; // Used in the final StatusWord sanity checker
-pub struct Ddw0Validator {
+struct Ddw0Validator {
     valid_id: u8,
 }
 impl StatusWordValidator<Ddw0> for Ddw0Validator {

@@ -30,10 +30,10 @@ pub struct CdpWrapper<T: RDH>(pub T, pub Vec<u8>, pub u64);
 /// Uses the config to filter for user specified links.
 /// Implements ScanCDP for a BufferedReaderWrapper.
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
-    pub reader: Box<R>,
-    pub tracker: MemPosTracker,
-    pub stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
-    pub link_to_filter: Option<Vec<u8>>,
+    reader: Box<R>,
+    tracker: MemPosTracker,
+    stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
+    link_to_filter: Option<Vec<u8>>,
     unique_links_observed: Vec<u8>,
     initial_rdh0: Option<Rdh0>,
 }
