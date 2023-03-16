@@ -7,13 +7,13 @@
 ## fast Protocol Analysis Scanner Tool for ALICE
 fastPASTA uses [Semantic Versioning](https://semver.org/).
 
-For extensive documentation of source code, invoke ```cargo doc --open```
+For extensive documentation of public facing source code, invoke ```cargo doc --open```
 
 ## Purpose
 
 To parse CRU Data Packets for protocol violations and report any errors
 
-## To start using fastPASTA, build the binary with `cargo build -r` and find it in ../target/release/fastpasta, or download the latest release from the [releases page](https://gitlab.cern.ch/mkonig/fastpasta/-/releases).
+## To start using fastPASTA, build the binary with `cargo build -r` and find it in ../target/release/fastpasta.
 ### See help, including examples of use
 
 ```shell
