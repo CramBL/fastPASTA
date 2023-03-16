@@ -5,6 +5,7 @@
  [![Latest Release](https://gitlab.cern.ch/mkonig/fastpasta/-/badges/release.svg)](https://gitlab.cern.ch/mkonig/fastpasta/-/releases)
 
 ## fast Protocol Analysis Scanner Tool for ALICE
+fastPASTA uses [Semantic Versioning](https://semver.org/).
 
 For extensive documentation of source code, invoke ```cargo doc --open```
 
