@@ -113,21 +113,20 @@ impl<Version: std::marker::Send + std::marker::Sync> super::lib::RDH for RdhCRU<
         reader: &mut T,
         rdh0: Rdh0,
     ) -> Result<Self, std::io::Error> {
-        let offset_new_packet = reader.read_u16::<LittleEndian>().unwrap();
-        let memory_size = reader.read_u16::<LittleEndian>().unwrap();
-        let link_id = reader.read_u8().unwrap();
-        let packet_counter = reader.read_u8().unwrap();
+        let offset_new_packet = reader.read_u16::<LittleEndian>()?;
+        let memory_size = reader.read_u16::<LittleEndian>()?;
+        let link_id = reader.read_u8()?;
+        let packet_counter = reader.read_u8()?;
         // cru_id is 12 bit and the following dw is 4 bit
-        let tmp_cruid_dw = CruidDw(reader.read_u16::<LittleEndian>().unwrap());
-        let rdh1 = Rdh1::load(reader).expect("Error while loading Rdh1");
+        let tmp_cruid_dw = CruidDw(reader.read_u16::<LittleEndian>()?);
+        let rdh1 = Rdh1::load(reader)?;
         // Now the next 64 bits contain the reserved0 and data_format
         // [7:0]data_format, [63:8]reserved0
-        let tmp_dataformat_reserverd0 =
-            DataformatReserved(reader.read_u64::<LittleEndian>().unwrap());
-        let rdh2 = Rdh2::load(reader).expect("Error while loading Rdh2");
-        let reserved1 = reader.read_u64::<LittleEndian>().unwrap();
+        let tmp_dataformat_reserverd0 = DataformatReserved(reader.read_u64::<LittleEndian>()?);
+        let rdh2 = Rdh2::load(reader)?;
+        let reserved1 = reader.read_u64::<LittleEndian>()?;
         let rdh3 = Rdh3::load(reader).expect("Error while loading Rdh3");
-        let reserved2 = reader.read_u64::<LittleEndian>().unwrap();
+        let reserved2 = reader.read_u64::<LittleEndian>()?;
         // Finally return the RdhCRU
         Ok(RdhCRU {
             rdh0,
