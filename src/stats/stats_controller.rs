@@ -25,7 +25,7 @@ pub enum StatType {
 pub struct Stats {
     pub rdhs_seen: u64,
     pub rdhs_filtered: u64,
-    pub filtered_payload_size: u64,
+    pub payload_size: u64,
     pub links_observed: Vec<u8>,
     pub processing_time: std::time::Instant,
     total_errors: AtomicU32,
@@ -49,7 +49,7 @@ impl Stats {
         Stats {
             rdhs_seen: 0,
             rdhs_filtered: 0,
-            filtered_payload_size: 0,
+            payload_size: 0,
             links_observed: Vec::new(),
             processing_time: std::time::Instant::now(),
             total_errors: AtomicU32::new(0),
@@ -113,7 +113,7 @@ impl Stats {
             }
             StatType::RDHsSeen(val) => self.rdhs_seen += val as u64,
             StatType::RDHsFiltered(val) => self.rdhs_filtered += val as u64,
-            StatType::PayloadSize(size) => self.filtered_payload_size += size as u64,
+            StatType::PayloadSize(size) => self.payload_size += size as u64,
             StatType::LinksObserved(val) => self.links_observed.push(val),
             StatType::ProcessingTime => info!("{:?}", self.processing_time.elapsed()),
             StatType::RdhVersion(version) => self.rdh_version = version,
@@ -190,6 +190,17 @@ impl Stats {
             .map(|(layer, stave)| format!("L{layer}_{stave}"))
             .collect::<Vec<String>>()
             .join(", ");
+        // Format and add payload size seen/loaded
+        let payload_string = match self.payload_size {
+            0..=1024 => format!("{} B", self.payload_size),
+            1025..=1048576 => {
+                format!("{:.3} KiB", self.payload_size as f64 / 1024_f64)
+            }
+            1048577..=1073741824 => {
+                format!("{:.3} MiB", self.payload_size as f64 / 1048576_f64)
+            }
+            _ => format!("{:.3} GiB", self.payload_size as f64 / 1073741824_f64),
+        };
         // If no filtering, the HBFs seen is from the total RDHs
         if self.links_to_filter.is_empty() {
             report.add_stat(StatSummary::new(
@@ -201,6 +212,12 @@ impl Stats {
             report.add_stat(StatSummary::new(
                 "Layers and Staves seen".to_string(),
                 layers_staves_seen_string,
+                None,
+            ));
+            // If no filtering, the payload size seen is from the total RDHs
+            report.add_stat(StatSummary::new(
+                "Total Payload Size".to_string(),
+                payload_string,
                 None,
             ));
         } else {
@@ -215,18 +232,15 @@ impl Stats {
                 self.hbfs_seen.to_string(),
                 None,
             ));
-            let payload_string = match self.filtered_payload_size {
-                0..=1024 => format!("{} B", self.filtered_payload_size),
+            let payload_string = match self.payload_size {
+                0..=1024 => format!("{} B", self.payload_size),
                 1025..=1048576 => {
-                    format!("{:.3} KiB", self.filtered_payload_size as f64 / 1024_f64)
+                    format!("{:.3} KiB", self.payload_size as f64 / 1024_f64)
                 }
                 1048577..=1073741824 => {
-                    format!("{:.3} MiB", self.filtered_payload_size as f64 / 1048576_f64)
+                    format!("{:.3} MiB", self.payload_size as f64 / 1048576_f64)
                 }
-                _ => format!(
-                    "{:.3} GiB",
-                    self.filtered_payload_size as f64 / 1073741824_f64
-                ),
+                _ => format!("{:.3} GiB", self.payload_size as f64 / 1073741824_f64),
             };
             filtered_stats.push(StatSummary::new(
                 "Total Payload Size".to_string(),
