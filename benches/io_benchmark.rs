@@ -79,12 +79,12 @@ fn parse_rdh_manual(rdh_cru_size_bytes: u64, filename: &str, iterations: usize) 
     for _i in 1..iterations {
         let rdh_tmp: RdhCRU<V7> = RdhCRU::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
         let relative_offset =
-            RelativeOffset::new((rdh_tmp.offset_new_packet as u64) - rdh_cru_size_bytes);
+            RelativeOffset::new((rdh_tmp.offset_to_next() as u64) - rdh_cru_size_bytes);
         buf_reader
             .seek_relative(relative_offset.0)
             .expect("Error seeking");
-        if rdh_tmp.rdh0.header_id != 7 {
-            println!("WRONG header ID: {}", rdh_tmp.rdh0.header_id);
+        if rdh_tmp.rdh0().header_id != 7 {
+            println!("WRONG header ID: {}", rdh_tmp.rdh0().header_id);
         }
     }
 }
@@ -121,7 +121,7 @@ fn write_rdh_manual(fileout: &str) {
         .map(|_| {
             let rdh_tmp = RdhCRU::<V7>::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
             let relative_offset =
-                RelativeOffset::new((rdh_tmp.offset_new_packet as u64) - RDH_CRU_SIZE_BYTES);
+                RelativeOffset::new((rdh_tmp.offset_to_next() as u64) - RDH_CRU_SIZE_BYTES);
             buf_reader
                 .seek_relative(relative_offset.0)
                 .expect("Error seeking");
@@ -181,7 +181,7 @@ fn sanity_check_rdhs(rdh_cru_size_bytes: u64, filename: &str, iterations: usize)
             }
         };
         let relative_offset =
-            RelativeOffset::new((tmp_rdh.offset_new_packet as u64) - rdh_cru_size_bytes);
+            RelativeOffset::new((tmp_rdh.offset_to_next() as u64) - rdh_cru_size_bytes);
         buf_reader
             .seek_relative(relative_offset.0)
             .expect("Error seeking");
