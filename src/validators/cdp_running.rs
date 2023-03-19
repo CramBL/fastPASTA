@@ -338,7 +338,6 @@ impl<T: RDH> CdpRunningValidator<T> {
                     self.stats_send_ch
                         .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
                         .unwrap();
-                    print!("{e}");
                     log::debug!("TDT: {tdt}");
                 }
                 self.current_tdt = Some(tdt);
