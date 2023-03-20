@@ -323,14 +323,7 @@ impl Rdh2Validator {
             let tmp = rdh2.trigger_type;
             write!(err_str, "Spare bits set in trigger_type = {:#x} ", tmp).unwrap();
         }
-        // Legal triggers are triggers described in bits [14:0]
-        // Check if any triggers besides these are set (this excludes the spare bits from above)
-        let bit_mask_illegal_triggers: u32 = 0b1111_1000_0000_0000_1000_0000_0000_0000;
-        if rdh2.trigger_type & bit_mask_illegal_triggers != 0 {
-            err_cnt += 1;
-            let tmp = rdh2.trigger_type;
-            write!(err_str, "Illegal triggers in trigger_type = {:#x} ", tmp).unwrap();
-        }
+
         if err_cnt != 0 {
             return Err(err_str.to_owned());
         }

@@ -34,9 +34,9 @@ fn display_byte_slice<T: DataWord>(
 
 // IDs are defined as follows:
 // 7:5 =
-//   * 0b0   = reserved
-//   * 0b1   = Inner Barrel Data (layers 0,1,2)
-//   * 0b10  = Outer Barrel Data (layers 3,4,5,6)
+//   * 0b000 = reserved
+//   * 0b001 = Inner Barrel Data (layers 0,1,2)
+//   * 0b010 = Outer Barrel Data (layers 3,4,5,6)
 //   * 0b111 = Status Word
 // 4:0 for INNER BARREL = lane number
 //   * 0b00000 - 0b1000 (0-8)

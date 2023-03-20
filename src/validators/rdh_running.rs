@@ -1,12 +1,15 @@
-use crate::words::{lib::RDH, rdh::Rdh2};
+use crate::words::{
+    lib::RDH,
+    rdh::{Rdh1, Rdh2},
+};
 use std::fmt::Write;
 pub struct RdhCruRunningChecker<T: RDH> {
     expect_pages_counter: u16,
-    last_rdh2: Option<Rdh2>,
     // The first 2 RDHs are used to determine what the expected page counter increments are
     first_rdh_cru: Option<T>,
     second_rdh_cru: Option<T>,
     expect_pages_counter_increment: u16,
+    last_rdh_cru: Option<T>,
 }
 
 impl<T: RDH> Default for RdhCruRunningChecker<T> {
@@ -19,12 +22,16 @@ impl<T: RDH> RdhCruRunningChecker<T> {
     pub fn new() -> Self {
         Self {
             expect_pages_counter: 0,
-            last_rdh2: None,
             first_rdh_cru: None,
             second_rdh_cru: None,
             expect_pages_counter_increment: 1,
+            last_rdh_cru: None,
         }
     }
+
+    /// Does running checks across CDPs maintaining state based on the previous RDH
+    ///
+    /// No checks that are dependent on CDP payload state are done here (instead see cdp_running.rs)
     #[inline]
     pub fn check(&mut self, rdh: &T) -> Result<(), String> {
         if self.first_rdh_cru.is_none() {
@@ -39,12 +46,14 @@ impl<T: RDH> RdhCruRunningChecker<T> {
         let mut rdh_errors: Vec<String> = vec![];
         let mut err_cnt: u8 = 0;
 
-        match self.check_stop_bit_and_page_counter(rdh.rdh2()) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
+        if let Err(e) = self.check_stop_bit_and_page_counter(rdh.rdh2()) {
+            err_cnt += 1;
+            rdh_errors.push(e);
+        };
+
+        if let Err(e) = self.check_orbit_counter_changes(rdh.rdh1()) {
+            err_cnt += 1;
+            rdh_errors.push(e);
         };
 
         if err_cnt != 0 {
@@ -54,7 +63,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
             return Err(err_str);
         }
 
-        self.last_rdh2 = Some(*rdh.rdh2());
+        self.last_rdh_cru = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
 
         Ok(())
     }
@@ -112,6 +121,17 @@ impl<T: RDH> RdhCruRunningChecker<T> {
             return Err(err_str.to_owned());
         }
 
+        Ok(())
+    }
+
+    #[inline]
+    fn check_orbit_counter_changes(&self, rdh1: &Rdh1) -> Result<(), String> {
+        if let Some(last_rdh_cru) = &self.last_rdh_cru {
+            let current_orbit = rdh1.orbit;
+            if last_rdh_cru.rdh1().orbit == current_orbit {
+                return Err(format!("Orbit same as previous {current_orbit} "));
+            }
+        }
         Ok(())
     }
 }
