@@ -55,7 +55,7 @@ impl StatusWordValidator<Ihw> for IhwValidator {
         if ihw.id() != self.valid_id {
             write!(err_str, "ID is not 0xE0: {:#2X} ", ihw.id()).unwrap();
             // Early return if ID is wrong
-            return Err(err_str + "Full Word: " + &ihw.to_string());
+            return Err(err_str);
         }
 
         let mut err_cnt: u8 = 0;
@@ -64,7 +64,7 @@ impl StatusWordValidator<Ihw> for IhwValidator {
             write!(err_str, "reserved bits are not 0: {:2X} ", ihw.reserved()).unwrap();
         }
         if err_cnt > 0 {
-            Err(err_str + "Full Word: " + &ihw.to_string())
+            Err(err_str)
         } else {
             Ok(())
         }
@@ -82,7 +82,7 @@ impl StatusWordValidator<Tdh> for TdhValidator {
         if tdh.id() != self.valid_id {
             write!(err_str, "ID is not 0xE8: {:#2X} ", tdh.id()).unwrap();
             // Early return if ID is wrong
-            return Err(err_str + "Full Word: " + &tdh.to_string());
+            return Err(err_str);
         }
 
         let mut err_cnt: u8 = 0;
@@ -111,7 +111,7 @@ impl StatusWordValidator<Tdh> for TdhValidator {
         }
 
         if err_cnt > 0 {
-            Err(err_str + "Full Word: " + &tdh.to_string())
+            Err(err_str)
         } else {
             Ok(())
         }
@@ -128,24 +128,17 @@ impl StatusWordValidator<Tdt> for TdtValidator {
         if tdt.id() != self.valid_id {
             write!(err_str, "ID is not 0xF0: {:#2X} ", tdt.id()).unwrap();
             // Early return if ID is wrong
-            return Err(err_str + "Full Word: " + &tdt.to_string());
+            return Err(err_str);
         }
 
         let mut err_cnt: u8 = 0;
         if !tdt.is_reserved_0() {
             err_cnt += 1;
-            write!(
-                err_str,
-                "reserved bits are not 0:  {:b} {:b} {:b} ",
-                tdt.reserved0(),
-                tdt.reserved1(),
-                tdt.reserved2()
-            )
-            .unwrap();
+            write!(err_str, "reserved bits are not 0").unwrap();
         }
 
         if err_cnt > 0 {
-            Err(err_str + "Full Word: " + &tdt.to_string())
+            Err(err_str)
         } else {
             Ok(())
         }
@@ -163,7 +156,7 @@ impl StatusWordValidator<Ddw0> for Ddw0Validator {
         if ddw0.id() != self.valid_id {
             write!(err_str, "ID is not 0xE4: {:#2X} ", ddw0.id()).unwrap();
             // Early return if ID is wrong
-            return Err(err_str + "Full Word: " + &ddw0.to_string());
+            return Err(err_str);
         }
 
         let mut err_cnt: u8 = 0;
@@ -180,11 +173,11 @@ impl StatusWordValidator<Ddw0> for Ddw0Validator {
 
         if ddw0.index() != 0 {
             err_cnt += 1;
-            write!(err_str, "index is not 0:  {:b} ", ddw0.index()).unwrap();
+            write!(err_str, "index is not 0:  {:#2X} ", ddw0.index()).unwrap();
         }
 
         if err_cnt > 0 {
-            Err(err_str + "Full Word: " + &ddw0.to_string())
+            Err(err_str)
         } else {
             Ok(())
         }

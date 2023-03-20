@@ -23,7 +23,7 @@ fn display_byte_slice<T: StatusWord>(
     let slice = status_word.to_byte_slice();
     write!(
         f,
-        "{:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} [79:0]",
+        "{:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}",
         slice[0],
         slice[1],
         slice[2],

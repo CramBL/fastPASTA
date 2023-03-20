@@ -1,8 +1,29 @@
 # Checks performed
-## Prelimary sanity checks (Performed in the `input module`)
+## Error messages
+Messages are formatted as follows:
+
+```MEMORY_OFFSET: [ERROR_CODE] ERROR_MESSAGE```
+
+Example: ```0xE450FFD: [E10] RDH sanity check failed: data_format = 255```
+
+### Error codes are not unique
+But they signify categories of errors.
+E.g. all RDH sanity checks have the same error code, but the error message will specify which field failed.
+The following is a list of error codes and their meaning, `x` is a placeholder for any number 0-9.
+* [Ex0] - Sanity check
+* [E1x] - RDH
+* [E3x] - IHW
+* [E4x] - TDH
+* [E5x] - TDT
+* [E6x] - DDW0
+* [E7x] - Data word
+## Prelimary sanity checks
+### RDH version and payload size (Performed in the `input module`)
 1. `Once` The first 10 bytes of the input is read as an RDH0 and the version field is checked, if it is not 6 or 7, processing is stopped.
 
 2. `Every RDH` The input scanner uses RDHs to navigate the data, and does one sanity check on the `offset_to_next` field. It subtracts the size of an RDH (64 bytes) from the value of the `offset_to_next` field, and checks that the result is not less than 0, and not more than 20 KB. If it fails, processing will stop.
+### Payload preprocessing (Performed in the `validation module`)
+End of payload padding is checked, if it exceed 15 bytes, an error is raised and the payload is skipped, and the CDP payload FSM is reset.
 
 # Running checks (Performed in the `validation module`)
 ## RDH running checks
@@ -22,10 +43,18 @@ Uses the value of the stop_bit to determine if the page_counter is expected to i
 ## Payload running checks
 Before each payload is checked, the rdh for that payload is set as the current rdh. A state machine (see below) is used to keep track of which words are expected, and sanity checks are performed on the each word (sanity checks are listed further down this document).
 
-Additional checks not performed in the sanity checks:
-* Word is DDW0
+Additional checks related to state:
+* `When:` Word is DDW0
   * RDH stop_bit == 1
   * RDH pages_counter $>$ 0
+* `When:` Word is IHW (not in continuation substate)
+  * RDH stop_bit == 0
+  * RDH pages_counter == 0
+* `When:`TDH following a TDT with packet_done == 1
+  * TDH internal_trigger == 1
+  * TDH continuation == 0
+* `When:` TDH Following a TDT with packet_done == 0
+  * TDH continuation == 1
 
 
 Certain transitions are ambigious (marked by yellow notes), these are resolved based on the ID of the next received GBT word.
