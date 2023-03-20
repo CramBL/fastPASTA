@@ -207,6 +207,10 @@ impl<Version: std::marker::Send + std::marker::Sync> super::lib::RDH for RdhCRU<
     fn dw(&self) -> u8 {
         self.dw()
     }
+    #[inline]
+    fn packet_counter(&self) -> u8 {
+        self.packet_counter
+    }
 }
 
 pub mod test_data {

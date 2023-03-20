@@ -321,7 +321,7 @@ impl Rdh2Validator {
         if rdh2.trigger_type == 0 || (rdh2.trigger_type & spare_bits_15_to_26_set != 0) {
             err_cnt += 1;
             let tmp = rdh2.trigger_type;
-            write!(err_str, "Spare bits set in trigger_type = {:#x} ", tmp).unwrap();
+            write!(err_str, "Spare bits set in trigger_type = {tmp:#x} ").unwrap();
         }
 
         if err_cnt != 0 {

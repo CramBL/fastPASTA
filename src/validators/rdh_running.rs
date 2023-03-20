@@ -56,14 +56,19 @@ impl<T: RDH> RdhCruRunningChecker<T> {
             rdh_errors.push(e);
         };
 
+        if let Err(e) = self.check_packet_counter_increments(rdh) {
+            err_cnt += 1;
+            rdh_errors.push(e);
+        }
+
+        self.last_rdh_cru = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
+
         if err_cnt != 0 {
             rdh_errors.into_iter().for_each(|e| {
                 err_str.push_str(&e);
             });
             return Err(err_str);
         }
-
-        self.last_rdh_cru = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
 
         Ok(())
     }
@@ -127,9 +132,27 @@ impl<T: RDH> RdhCruRunningChecker<T> {
     #[inline]
     fn check_orbit_counter_changes(&self, rdh1: &Rdh1) -> Result<(), String> {
         if let Some(last_rdh_cru) = &self.last_rdh_cru {
-            let current_orbit = rdh1.orbit;
-            if last_rdh_cru.rdh1().orbit == current_orbit {
-                return Err(format!("Orbit same as previous {current_orbit} "));
+            if last_rdh_cru.stop_bit() == 1 {
+                let current_orbit = rdh1.orbit;
+                if last_rdh_cru.rdh1().orbit == current_orbit {
+                    return Err(format!("Orbit same as previous {current_orbit} "));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn check_packet_counter_increments(&mut self, rdh_cru: &T) -> Result<(), String> {
+        if let Some(last_rdh_cru) = &self.last_rdh_cru {
+            let current_packet_counter = rdh_cru.packet_counter();
+            // If it overflow from 255 the max it can be is 2 as there's 3 links.
+            if current_packet_counter < last_rdh_cru.packet_counter() && current_packet_counter > 2
+            {
+                return Err(format!(
+                    "Packet counter did not increment or reset as expected. Previous: {} Current: {current_packet_counter}.",
+                    last_rdh_cru.packet_counter()
+                ));
             }
         }
         Ok(())

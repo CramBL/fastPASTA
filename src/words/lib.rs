@@ -39,6 +39,7 @@ pub trait RDH:
     fn fee_id(&self) -> u16;
     fn cru_id(&self) -> u16;
     fn dw(&self) -> u8;
+    fn packet_counter(&self) -> u8;
 }
 
 /// This trait is used to convert a struct to a byte slice
