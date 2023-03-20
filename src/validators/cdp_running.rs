@@ -2,7 +2,7 @@
 
 use self::CDP_PAYLOAD_FSM_Continuous::IHW_;
 use super::data_words::DATA_WORD_SANITY_CHECKER;
-use crate::words::lib::{ByteSlice, RDH};
+use crate::words::lib::RDH;
 use crate::{
     stats::stats_controller::StatType,
     validators::status_words::STATUS_WORD_SANITY_CHECKER,
@@ -102,6 +102,35 @@ impl<T: RDH> CdpRunningValidator<T> {
         }
     }
 
+    /// Helper function to format and report an error
+    ///
+    /// Takes in the error string slice and the word slice
+    /// Adds the current memory position to the error string
+    /// Sends the error to the stats channel
+    #[inline]
+    fn report_error(&mut self, error: &str, word_slice: &[u8]) {
+        let mem_pos = self.calc_current_word_mem_pos();
+        self.stats_send_ch
+            .send(StatType::Error(format!(
+                "{mem_pos:#X}: {error} [{:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}]",
+                word_slice[0],
+                word_slice[1],
+                word_slice[2],
+                word_slice[3],
+                word_slice[4],
+                word_slice[5],
+                word_slice[6],
+                word_slice[7],
+                word_slice[8],
+                word_slice[9],
+                            )))
+            .expect("Failed to send error to stats channel");
+    }
+
+    /// Resets the state machine to the initial state and logs a warning
+    ///
+    /// Use this if a payload format is invalid and the next payload can be processed from the initial state
+    #[inline]
     pub fn reset_fsm(&mut self) {
         log::warn!("Resetting CDP Payload FSM");
         self.sm = CDP_PAYLOAD_FSM_Continuous::Machine::new(IHW_).as_enum();
@@ -111,6 +140,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     ///
     /// It defines what is valid, and is necessary to keep track of the memory position of each word
     /// It uses the RDH to determine size of padding
+    #[inline]
     pub fn set_current_rdh(&mut self, rdh: &T, rdh_mem_pos: u64) {
         self.current_rdh = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
         self.gbt_word_counter = 0;
@@ -137,15 +167,14 @@ impl<T: RDH> CdpRunningValidator<T> {
 
         let nxt_st = match current_st {
             InitialIHW_(m) => {
-                debug_assert!(self.current_rdh.as_ref().unwrap().stop_bit() == 0);
-                debug_assert!(self.current_rdh.as_ref().unwrap().pages_counter() == 0);
                 self.process_status_word(StatusWordKind::Ihw(gbt_word));
+                self.check_rdh_at_initial_ihw(gbt_word);
                 m.transition(_WasIhw).as_enum()
             }
 
             TDH_By_WasIhw(m) => {
                 self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                debug_assert!(self.current_tdh.as_ref().unwrap().continuation() == 0);
+                self.check_tdh_no_continuation(gbt_word);
                 match self.current_tdh.as_ref().unwrap().no_data() {
                     0 => m.transition(_NoDataFalse).as_enum(),
                     1 => m.transition(_NoDataTrue).as_enum(),
@@ -161,7 +190,6 @@ impl<T: RDH> CdpRunningValidator<T> {
                     m.transition(_NoDataFalse).as_enum()
                 } else {
                     debug_assert!(gbt_word[9] == 0xE4);
-                    // DDW0
                     self.process_status_word(StatusWordKind::Ddw0(gbt_word));
 
                     m.transition(_WasDdw0).as_enum()
@@ -170,7 +198,6 @@ impl<T: RDH> CdpRunningValidator<T> {
 
             DATA_By_NoDataFalse(m) => {
                 if gbt_word[9] == 0xF0 {
-                    // TDT ID
                     self.process_status_word(StatusWordKind::Tdt(gbt_word));
 
                     // Next word is decided by if packet_done is 0 or 1
@@ -208,11 +235,8 @@ impl<T: RDH> CdpRunningValidator<T> {
 
             c_TDH_By_Next(m) => {
                 self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                if self.current_tdh.as_ref().unwrap().continuation() != 1 {
-                    self.stats_send_ch
-                        .send(StatType::Error("Tdh continuation is not 1".to_string()))
-                        .unwrap();
-                }
+                self.check_tdh_continuation(gbt_word);
+
                 m.transition(_Next).as_enum()
             }
 
@@ -248,16 +272,8 @@ impl<T: RDH> CdpRunningValidator<T> {
                 if gbt_word[9] == 0xE8 {
                     // TDH
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                    if self.current_tdh.as_ref().unwrap().internal_trigger() != 1 {
-                        self.stats_send_ch
-                            .send(StatType::Error(format!(
-                                "TDH internal trigger is not 1, got: {gbt_word:02X?}"
-                            )))
-                            .unwrap();
-                        let tmp_rdh = self.current_rdh.as_ref().unwrap();
-                        log::debug!("{tmp_rdh}");
-                    }
-                    debug_assert!(self.current_tdh.as_ref().unwrap().continuation() == 0);
+                    self.check_tdh_by_was_tdt_packet_done_true(gbt_word);
+
                     match self.current_tdh.as_ref().unwrap().no_data() {
                         0 => m.transition(_NoDataFalse).as_enum(),
                         1 => m.transition(_NoDataTrue).as_enum(),
@@ -270,14 +286,14 @@ impl<T: RDH> CdpRunningValidator<T> {
                 } else {
                     // IHW
                     self.process_status_word(StatusWordKind::Ihw(gbt_word));
+                    self.check_rdh_at_initial_ihw(gbt_word);
+
                     m.transition(_WasIhw).as_enum()
                 }
             }
             IHW_By_WasDdw0(m) => {
-                debug_assert!(self.current_rdh.as_ref().unwrap().stop_bit() == 0);
-                debug_assert!(self.current_rdh.as_ref().unwrap().pages_counter() == 0);
                 self.process_status_word(StatusWordKind::Ihw(gbt_word));
-
+                self.check_rdh_at_initial_ihw(gbt_word);
                 m.transition(_WasIhw).as_enum()
             }
         };
@@ -306,71 +322,39 @@ impl<T: RDH> CdpRunningValidator<T> {
     #[inline]
     fn process_status_word(&mut self, status_word: StatusWordKind) {
         match status_word {
-            StatusWordKind::Ihw(ihw) => {
-                let ihw = Ihw::load(&mut <&[u8]>::clone(&ihw)).unwrap();
+            StatusWordKind::Ihw(ihw_as_slice) => {
+                let ihw = Ihw::load(&mut <&[u8]>::clone(&ihw_as_slice)).unwrap();
                 log::debug!("{ihw}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
-                    let mem_pos = self.calc_current_word_mem_pos();
-                    self.stats_send_ch
-                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
-                        .unwrap();
-                    log::debug!("IHW: {ihw}");
+                    self.report_error(&format!("[E30] {e}"), ihw_as_slice);
                 }
                 self.current_ihw = Some(ihw);
             }
-            StatusWordKind::Tdh(tdh) => {
-                let tdh = Tdh::load(&mut <&[u8]>::clone(&tdh)).unwrap();
+            StatusWordKind::Tdh(tdh_as_slice) => {
+                let tdh = Tdh::load(&mut <&[u8]>::clone(&tdh_as_slice)).unwrap();
                 log::debug!("{tdh}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
-                    let mem_pos = self.calc_current_word_mem_pos();
-                    self.stats_send_ch
-                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
-                        .unwrap();
-                    log::debug!("TDH: {tdh}");
+                    self.report_error(&format!("[E40] {e}"), tdh_as_slice);
                 }
                 self.current_tdh = Some(tdh);
             }
-            StatusWordKind::Tdt(tdt) => {
-                let tdt = Tdt::load(&mut <&[u8]>::clone(&tdt)).unwrap();
+            StatusWordKind::Tdt(tdt_as_slice) => {
+                let tdt = Tdt::load(&mut <&[u8]>::clone(&tdt_as_slice)).unwrap();
                 log::debug!("{tdt}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
-                    let mem_pos = self.calc_current_word_mem_pos();
-                    self.stats_send_ch
-                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
-                        .unwrap();
-                    print!("{e}");
-                    log::debug!("TDT: {tdt}");
+                    self.report_error(&format!("[E50] {e}"), tdt_as_slice);
                 }
                 self.current_tdt = Some(tdt);
             }
-            StatusWordKind::Ddw0(ddw0) => {
-                let ddw0 = Ddw0::load(&mut <&[u8]>::clone(&ddw0)).unwrap();
+            StatusWordKind::Ddw0(ddw0_as_slice) => {
+                let ddw0 = Ddw0::load(&mut <&[u8]>::clone(&ddw0_as_slice)).unwrap();
                 log::debug!("{ddw0}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0) {
-                    let mem_pos = self.calc_current_word_mem_pos();
-                    self.stats_send_ch
-                        .send(StatType::Error(format!("{mem_pos:#X}: [E00] {e}")))
-                        .unwrap();
-                    log::debug!("DDW0: {ddw0}");
+                    self.report_error(&format!("[E60] {e}"), ddw0_as_slice);
                 }
-                if self.current_rdh.as_ref().unwrap().stop_bit() != 1 {
-                    let mem_pos = self.calc_current_word_mem_pos();
-                    self.stats_send_ch
-                        .send(StatType::Error(format!(
-                            "{mem_pos:#X}: [E10] DDW0 received but RDH stop bit is not 1"
-                        )))
-                        .unwrap();
-                    log::debug!("DDW0: {:X?}", ddw0.to_byte_slice());
-                }
-                if self.current_rdh.as_ref().unwrap().pages_counter() == 0 {
-                    let mem_pos = self.calc_current_word_mem_pos();
-                    self.stats_send_ch
-                        .send(StatType::Error(format!(
-                            "{mem_pos:#X}: [E11] DDW0 found but RDH page counter is 0"
-                        )))
-                        .unwrap();
-                    log::debug!("DDW0: {:X?}", ddw0.to_byte_slice());
-                }
+
+                // Additional state dependent checks on RDH
+                self.check_rdh_at_ddw0(ddw0_as_slice);
                 self.current_ddw0 = Some(ddw0);
             }
         }
@@ -380,11 +364,66 @@ impl<T: RDH> CdpRunningValidator<T> {
     #[inline]
     fn process_data_word(&mut self, data_word: &[u8]) {
         if let Err(e) = DATA_WORD_SANITY_CHECKER.check_any(data_word) {
-            let mem_pos = self.calc_current_word_mem_pos();
-            self.stats_send_ch
-                .send(StatType::Error(format!("{mem_pos:#X}: [E02] {e}")))
-                .unwrap();
+            self.report_error(&format!("[E70] {e}"), data_word);
             log::debug!("Data word: {data_word:?}");
+        }
+    }
+
+    // Minor checks done in certain states
+
+    /// Checks TDH trigger and continuation following a TDT packet_done = 1
+    #[inline]
+    fn check_tdh_by_was_tdt_packet_done_true(&mut self, tdh_slice: &[u8]) {
+        if self.current_tdh.as_ref().unwrap().internal_trigger() != 1 {
+            self.report_error("TDH internal trigger is not 1", tdh_slice);
+            let tmp_rdh = self.current_rdh.as_ref().unwrap();
+            log::debug!("{tmp_rdh}");
+        }
+        if self.current_tdh.as_ref().unwrap().continuation() != 0 {
+            self.report_error(
+                "TDH continuation is not 0 but previous TDT had packet_done = 1",
+                tdh_slice,
+            );
+            let tmp_rdh = self.current_rdh.as_ref().unwrap();
+            log::debug!("{tmp_rdh}");
+        }
+    }
+
+    /// Checks RDH stop_bit and pages_counter when a DDW0 is observed
+    #[inline]
+    fn check_rdh_at_ddw0(&mut self, ddw0_slice: &[u8]) {
+        if self.current_rdh.as_ref().unwrap().stop_bit() != 1 {
+            self.report_error("[E11] DDW0 observed but RDH stop bit is not 1", ddw0_slice);
+        }
+        if self.current_rdh.as_ref().unwrap().pages_counter() == 0 {
+            self.report_error("[E11] DDW0 observed but RDH page counter is 0", ddw0_slice);
+        }
+    }
+    /// Checks RDH stop_bit and pages_counter when an initial IHW is observed (not IHW during continuation)
+    #[inline]
+    fn check_rdh_at_initial_ihw(&mut self, ihw_slice: &[u8]) {
+        if self.current_rdh.as_ref().unwrap().stop_bit() != 0 {
+            self.report_error("[E12] IHW observed but RDH stop bit is not 0", ihw_slice);
+        }
+        if self.current_rdh.as_ref().unwrap().pages_counter() != 0 {
+            self.report_error(
+                "[E12] IHW observed but RDH page counter is not 0",
+                ihw_slice,
+            );
+        }
+    }
+
+    /// Checks TDH when continuation is expected (last TDT packet_done = 0)
+    #[inline]
+    fn check_tdh_continuation(&mut self, gbt_word: &[u8]) {
+        if self.current_tdh.as_ref().unwrap().continuation() != 1 {
+            self.report_error("[E41] TDH continuation is not 1", gbt_word);
+        }
+    }
+    #[inline]
+    fn check_tdh_no_continuation(&mut self, gbt_word: &[u8]) {
+        if self.current_tdh.as_ref().unwrap().continuation() != 0 {
+            self.report_error("[E42] TDH continuation is not 0", gbt_word);
         }
     }
 }
@@ -430,7 +469,7 @@ mod tests {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
                     msg,
-                    "0x40: [E00] ID is not 0xE0: 0xE1 Full Word: FF 3F 00 00 00 00 00 00 00 E1 [79:0]"
+                    "0x40: [E30] ID is not 0xE0: 0xE1  [FF 3F 00 00 00 00 00 00 00 E1]"
                 );
                 println!("{msg}");
             }
@@ -455,7 +494,7 @@ mod tests {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
                     msg,
-                    "0x40: [E00] ID is not 0xE0: 0xF1 Full Word: 00 00 00 00 00 00 00 00 01 F1 [79:0]"
+                    "0x40: [E30] ID is not 0xE0: 0xF1  [00 00 00 00 00 00 00 00 01 F1]"
                 );
                 println!("{msg}");
             }
@@ -482,7 +521,7 @@ mod tests {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
                     msg,
-                    "0x40: [E00] ID is not 0xE0: 0xF1 Full Word: 00 00 00 00 00 00 00 00 01 F1 [79:0]"
+                    "0x40: [E30] ID is not 0xE0: 0xF1  [00 00 00 00 00 00 00 00 01 F1]"
                 );
                 println!("{msg}");
             }
@@ -492,7 +531,7 @@ mod tests {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
                     msg,
-                    "0x4A: [E00] ID is not 0xE8: 0xF2 Full Word: 00 00 00 00 00 00 00 00 01 F2 [79:0]"
+                    "0x4A: [E40] ID is not 0xE8: 0xF2  [00 00 00 00 00 00 00 00 01 F2]"
                 );
                 println!("{msg}");
             }
@@ -521,7 +560,7 @@ mod tests {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
                     msg,
-                    "0x40: [E00] ID is not 0xE0: 0xF1 Full Word: 00 00 00 00 00 00 00 00 01 F1 [79:0]"
+                    "0x40: [E30] ID is not 0xE0: 0xF1  [00 00 00 00 00 00 00 00 01 F1]"
                 );
                 println!("{msg}");
             }
@@ -531,7 +570,7 @@ mod tests {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
                     msg,
-                    "0x4A: [E00] ID is not 0xE8: 0xF2 Full Word: 00 00 00 00 00 00 00 00 01 F2 [79:0]"
+                    "0x4A: [E40] ID is not 0xE8: 0xF2  [00 00 00 00 00 00 00 00 01 F2]"
                 );
                 println!("{msg}");
             }
@@ -542,7 +581,7 @@ mod tests {
                 // Data word error
                 assert_eq!(
                     msg,
-                    "0x54: [E02] ID is invalid: 0xF3 Full Word: 00 00 00 00 00 00 00 00 01 F3 [79:0]"
+                    "0x54: [E70] ID is invalid: 0xF3 [00 00 00 00 00 00 00 00 01 F3]"
                 );
                 println!("{msg}");
             }
