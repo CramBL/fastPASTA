@@ -1,5 +1,6 @@
 use super::cdp_running::CdpRunningValidator;
-use super::rdh::{RdhCruRunningChecker, RdhCruSanityValidator};
+use super::rdh::RdhCruSanityValidator;
+use super::rdh_running::RdhCruRunningChecker;
 use crate::input::data_wrapper::CdpChunk;
 use crate::stats::stats_controller::StatType;
 use crate::util::config::Opt;
@@ -160,7 +161,8 @@ fn do_checks<T: RDH>(
 }
 
 mod rdh_checks {
-    use crate::validators::rdh::{RdhCruRunningChecker, RdhCruSanityValidator};
+    use crate::validators::rdh::RdhCruSanityValidator;
+    use crate::validators::rdh_running::RdhCruRunningChecker;
     use crate::words::lib::RDH;
 
     #[inline]
