@@ -79,21 +79,27 @@ struct Rdh0Validator {
     system_id: u8,
     reserved0: u16,
 }
+
 impl Default for Rdh0Validator {
     fn default() -> Self {
-        Self::new()
+        Self::new(0x40, FEE_ID_SANITY_VALIDATOR, 0, ITS_SYSTEM_ID)
     }
 }
 
 const ITS_SYSTEM_ID: u8 = 32;
 impl Rdh0Validator {
-    pub fn new() -> Self {
+    pub fn new(
+        header_size: u8,
+        fee_id: FeeIdSanityValidator,
+        priority_bit: u8,
+        system_id: u8,
+    ) -> Self {
         Self {
             header_id: None,
-            header_size: 0x40,
-            fee_id: FEE_ID_SANITY_VALIDATOR,
-            priority_bit: 0,
-            system_id: ITS_SYSTEM_ID,
+            header_size,
+            fee_id,
+            priority_bit,
+            system_id,
             reserved0: 0,
         }
     }
@@ -505,7 +511,7 @@ mod tests {
     // RDH0 sanity check
     #[test]
     fn validate_rdh0() {
-        let mut validator = Rdh0Validator::new();
+        let mut validator = Rdh0Validator::default();
         let rdh0 = Rdh0 {
             header_id: 7,
             header_size: 0x40,
@@ -545,7 +551,7 @@ mod tests {
     }
     #[test]
     fn invalidate_rdh0_bad_header_size() {
-        let mut validator = Rdh0Validator::new();
+        let mut validator = Rdh0Validator::default();
         let rdh0 = Rdh0 {
             header_id: 7,
             header_size: 0x3,
@@ -576,7 +582,7 @@ mod tests {
     }
     #[test]
     fn invalidate_rdh0_bad_system_id() {
-        let mut validator = Rdh0Validator::new();
+        let mut validator = Rdh0Validator::default();
         let rdh0 = Rdh0 {
             header_id: 7,
             header_size: 0x40,
@@ -591,7 +597,7 @@ mod tests {
     }
     #[test]
     fn invalidate_rdh0_bad_reserved0() {
-        let mut validator = Rdh0Validator::new();
+        let mut validator = Rdh0Validator::new(0x40, FEE_ID_SANITY_VALIDATOR, 0, ITS_SYSTEM_ID);
         let rdh0 = Rdh0 {
             header_id: 7,
             header_size: 0x40,
