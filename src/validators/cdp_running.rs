@@ -393,10 +393,10 @@ impl<T: RDH> CdpRunningValidator<T> {
         log::debug!("{cdw}");
 
         if let Some(previous_cdw) = self.previous_cdw.as_ref() {
-            if previous_cdw.calibration_user_fields() != cdw.calibration_user_fields() {
-                if cdw.calibration_word_index() != 0 {
-                    self.report_error("CDW index is not 0", cdw_slice);
-                }
+            if previous_cdw.calibration_user_fields() != cdw.calibration_user_fields()
+                && cdw.calibration_word_index() != 0
+            {
+                self.report_error("CDW index is not 0", cdw_slice);
             }
         }
 
@@ -485,27 +485,27 @@ impl<T: RDH> CdpRunningValidator<T> {
             );
         }
 
-        if current_rdh.pages_counter() == 0 {
-            if current_tdh.internal_trigger() == 1 || current_rdh.rdh2().is_pht_trigger() {
-                // In this case the bc and trigger_type of the TDH and RDH should match
-                if current_rdh.rdh1().bc() != current_tdh.trigger_bc() {
-                    self.report_error(
-                        &format!(
-                            "[E44] TDH trigger_bc is not equal to RDH bc, TDH: {:#X}, RDH: {:#X}.",
-                            current_tdh.trigger_bc(),
-                            current_rdh.rdh1().bc()
-                        ),
-                        tdh_slice,
-                    );
-                }
-                // TDH only has the 12 LSB of the trigger type
-                if current_rdh.rdh2().trigger_type as u16 & 0xFFF != current_tdh.trigger_type() {
-                    let tmp_rdh_trig = current_rdh.rdh2().trigger_type as u16;
-                    self.report_error(
+        if current_rdh.pages_counter() == 0
+            && (current_tdh.internal_trigger() == 1 || current_rdh.rdh2().is_pht_trigger())
+        {
+            // In this case the bc and trigger_type of the TDH and RDH should match
+            if current_rdh.rdh1().bc() != current_tdh.trigger_bc() {
+                self.report_error(
+                    &format!(
+                        "[E44] TDH trigger_bc is not equal to RDH bc, TDH: {:#X}, RDH: {:#X}.",
+                        current_tdh.trigger_bc(),
+                        current_rdh.rdh1().bc()
+                    ),
+                    tdh_slice,
+                );
+            }
+            // TDH only has the 12 LSB of the trigger type
+            if current_rdh.rdh2().trigger_type as u16 & 0xFFF != current_tdh.trigger_type() {
+                let tmp_rdh_trig = current_rdh.rdh2().trigger_type as u16;
+                self.report_error(
                         &format!("[E44] TDH trigger_type is not equal to RDH trigger_type, TDH: {:#X}, RDH: {tmp_rdh_trig:#X}", current_tdh.trigger_type()),
                         tdh_slice,
                     );
-                }
             }
         }
     }
