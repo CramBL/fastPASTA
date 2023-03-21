@@ -3,6 +3,7 @@
 use self::CDP_PAYLOAD_FSM_Continuous::IHW_;
 use super::data_words::DATA_WORD_SANITY_CHECKER;
 use crate::words::lib::RDH;
+use crate::words::status_words::Cdw;
 use crate::{
     stats::stats_controller::StatType,
     validators::status_words::STATUS_WORD_SANITY_CHECKER,
@@ -79,12 +80,15 @@ pub struct CdpRunningValidator<T: RDH> {
     current_rdh: Option<T>,
     current_ihw: Option<Ihw>,
     current_tdh: Option<Tdh>,
+    previous_tdh: Option<Tdh>,
     current_tdt: Option<Tdt>,
     current_ddw0: Option<Ddw0>,
+    previous_cdw: Option<Cdw>,
     gbt_word_counter: u16,
     stats_send_ch: std::sync::mpsc::Sender<StatType>,
     payload_mem_pos: u64,
     gbt_word_padding_size_bytes: u8,
+    is_new_data: bool, // Flag used to indicate start of new CDP payload where a CDW is valid
 }
 impl<T: RDH> CdpRunningValidator<T> {
     pub fn new(stats_send_ch: std::sync::mpsc::Sender<StatType>) -> Self {
@@ -93,12 +97,15 @@ impl<T: RDH> CdpRunningValidator<T> {
             current_rdh: None,
             current_ihw: None,
             current_tdh: None,
+            previous_tdh: None,
             current_tdt: None,
             current_ddw0: None,
+            previous_cdw: None,
             gbt_word_counter: 0,
             stats_send_ch,
             payload_mem_pos: 0,
             gbt_word_padding_size_bytes: 0,
+            is_new_data: false,
         }
     }
 
@@ -108,7 +115,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     /// Adds the current memory position to the error string
     /// Sends the error to the stats channel
     #[inline]
-    fn report_error(&mut self, error: &str, word_slice: &[u8]) {
+    fn report_error(&self, error: &str, word_slice: &[u8]) {
         let mem_pos = self.calc_current_word_mem_pos();
         self.stats_send_ch
             .send(StatType::Error(format!(
@@ -150,6 +157,7 @@ impl<T: RDH> CdpRunningValidator<T> {
         } else {
             self.gbt_word_padding_size_bytes = 0; // Data format 2
         }
+        self.is_new_data = true;
     }
 
     pub fn check(&mut self, gbt_word: &[u8]) {
@@ -186,7 +194,7 @@ impl<T: RDH> CdpRunningValidator<T> {
                 if gbt_word[9] == 0xE8 {
                     // TDH
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                    debug_assert!(self.current_tdh.as_ref().unwrap().no_data() == 0);
+                    self.check_tdh_no_continuation(gbt_word);
                     m.transition(_NoDataFalse).as_enum()
                 } else {
                     debug_assert!(gbt_word[9] == 0xE4);
@@ -336,6 +344,8 @@ impl<T: RDH> CdpRunningValidator<T> {
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
                     self.report_error(&format!("[E40] {e}"), tdh_as_slice);
                 }
+                // Swap current and last TDH, then replace current with the new TDH
+                std::mem::swap(&mut self.current_tdh, &mut self.previous_tdh);
                 self.current_tdh = Some(tdh);
             }
             StatusWordKind::Tdt(tdt_as_slice) => {
@@ -362,11 +372,35 @@ impl<T: RDH> CdpRunningValidator<T> {
 
     /// Takes a slice of bytes expected to be a data word, and checks if it has a valid identifier.
     #[inline]
-    fn process_data_word(&mut self, data_word: &[u8]) {
-        if let Err(e) = DATA_WORD_SANITY_CHECKER.check_any(data_word) {
-            self.report_error(&format!("[E70] {e}"), data_word);
-            log::debug!("Data word: {data_word:?}");
+    fn process_data_word(&mut self, data_word_slice: &[u8]) {
+        if self.is_new_data && data_word_slice[9] == 0xF8 {
+            // CDW
+            self.process_cdw(data_word_slice);
+        } else {
+            // Regular data word
+            if let Err(e) = DATA_WORD_SANITY_CHECKER.check_any(data_word_slice) {
+                self.report_error(&format!("[E70] {e}"), data_word_slice);
+                log::debug!("Data word: {data_word_slice:?}");
+            }
         }
+
+        self.is_new_data = false;
+    }
+
+    #[inline]
+    fn process_cdw(&mut self, cdw_slice: &[u8]) {
+        let cdw = Cdw::load(&mut <&[u8]>::clone(&cdw_slice)).unwrap();
+        log::debug!("{cdw}");
+
+        if let Some(previous_cdw) = self.previous_cdw.as_ref() {
+            if previous_cdw.calibration_user_fields() != cdw.calibration_user_fields() {
+                if cdw.calibration_word_index() != 0 {
+                    self.report_error("CDW index is not 0", cdw_slice);
+                }
+            }
+        }
+
+        self.previous_cdw = Some(cdw);
     }
 
     // Minor checks done in certain states
@@ -379,13 +413,17 @@ impl<T: RDH> CdpRunningValidator<T> {
             let tmp_rdh = self.current_rdh.as_ref().unwrap();
             log::debug!("{tmp_rdh}");
         }
-        if self.current_tdh.as_ref().unwrap().continuation() != 0 {
-            self.report_error(
-                "TDH continuation is not 0 but previous TDT had packet_done = 1",
-                tdh_slice,
-            );
-            let tmp_rdh = self.current_rdh.as_ref().unwrap();
-            log::debug!("{tmp_rdh}");
+        if let Some(previous_tdh) = self.previous_tdh.as_ref() {
+            if previous_tdh.trigger_bc() > self.current_tdh.as_ref().unwrap().trigger_bc() {
+                self.report_error(
+                    &format!(
+                        "[E43] TDH trigger_bc is not increasing, previous: {:#X}, current: {:#X}.",
+                        previous_tdh.trigger_bc(),
+                        self.current_tdh.as_ref().unwrap().trigger_bc()
+                    ),
+                    tdh_slice,
+                );
+            }
         }
     }
 
@@ -405,25 +443,70 @@ impl<T: RDH> CdpRunningValidator<T> {
         if self.current_rdh.as_ref().unwrap().stop_bit() != 0 {
             self.report_error("[E12] IHW observed but RDH stop bit is not 0", ihw_slice);
         }
-        if self.current_rdh.as_ref().unwrap().pages_counter() != 0 {
-            self.report_error(
-                "[E12] IHW observed but RDH page counter is not 0",
-                ihw_slice,
-            );
+    }
+
+    /// Checks TDH when continuation is expected (Previous TDT packet_done = 0)
+    #[inline]
+    fn check_tdh_continuation(&mut self, tdh_slice: &[u8]) {
+        if self.current_tdh.as_ref().unwrap().continuation() != 1 {
+            self.report_error("[E41] TDH continuation is not 1", tdh_slice);
+        }
+
+        if let Some(previous_tdh) = self.previous_tdh.as_ref() {
+            if previous_tdh.trigger_bc() != self.current_tdh.as_ref().unwrap().trigger_bc() {
+                self.report_error("[E44] TDH trigger_bc is not the same", tdh_slice);
+            }
+            if previous_tdh.trigger_orbit != self.current_tdh.as_ref().unwrap().trigger_orbit {
+                self.report_error("[E44] TDH trigger_orbit is not the same", tdh_slice);
+            }
+            if previous_tdh.trigger_type() != self.current_tdh.as_ref().unwrap().trigger_type() {
+                self.report_error("[E44] TDH trigger_type is not the same", tdh_slice);
+            }
         }
     }
 
-    /// Checks TDH when continuation is expected (last TDT packet_done = 0)
+    /// Checks TDH continuation, orbit when the TDH immediately follows an IHW
     #[inline]
-    fn check_tdh_continuation(&mut self, gbt_word: &[u8]) {
-        if self.current_tdh.as_ref().unwrap().continuation() != 1 {
-            self.report_error("[E41] TDH continuation is not 1", gbt_word);
+    fn check_tdh_no_continuation(&mut self, tdh_slice: &[u8]) {
+        let current_rdh = self.current_rdh.as_ref().expect("RDH should be set");
+        let current_tdh = self
+            .current_tdh
+            .as_ref()
+            .expect("TDH should be set, process words before checks");
+
+        if current_tdh.continuation() != 0 {
+            self.report_error("[E42] TDH continuation is not 0", tdh_slice);
         }
-    }
-    #[inline]
-    fn check_tdh_no_continuation(&mut self, gbt_word: &[u8]) {
-        if self.current_tdh.as_ref().unwrap().continuation() != 0 {
-            self.report_error("[E42] TDH continuation is not 0", gbt_word);
+
+        if current_tdh.trigger_orbit != current_rdh.rdh1().orbit {
+            self.report_error(
+                "[E44] TDH trigger_orbit is not equal to RDH orbit",
+                tdh_slice,
+            );
+        }
+
+        if current_rdh.pages_counter() == 0 {
+            if current_tdh.internal_trigger() == 1 || current_rdh.rdh2().is_pht_trigger() {
+                // In this case the bc and trigger_type of the TDH and RDH should match
+                if current_rdh.rdh1().bc() != current_tdh.trigger_bc() {
+                    self.report_error(
+                        &format!(
+                            "[E44] TDH trigger_bc is not equal to RDH bc, TDH: {:#X}, RDH: {:#X}.",
+                            current_tdh.trigger_bc(),
+                            current_rdh.rdh1().bc()
+                        ),
+                        tdh_slice,
+                    );
+                }
+                // TDH only has the 12 LSB of the trigger type
+                if current_rdh.rdh2().trigger_type as u16 & 0xFFF != current_tdh.trigger_type() {
+                    let tmp_rdh_trig = current_rdh.rdh2().trigger_type as u16;
+                    self.report_error(
+                        &format!("[E44] TDH trigger_type is not equal to RDH trigger_type, TDH: {:#X}, RDH: {tmp_rdh_trig:#X}", current_tdh.trigger_type()),
+                        tdh_slice,
+                    );
+                }
+            }
         }
     }
 }
@@ -571,6 +654,16 @@ mod tests {
                 assert_eq!(
                     msg,
                     "0x4A: [E40] ID is not 0xE8: 0xF2  [00 00 00 00 00 00 00 00 01 F2]"
+                );
+                println!("{msg}");
+            }
+            _ => unreachable!(),
+        }
+        match stats_recv_ch.recv() {
+            Ok(StatType::Error(msg)) => {
+                assert_eq!(
+                    msg,
+                    "0x4A: [E44] TDH trigger_orbit is not equal to RDH orbit [00 00 00 00 00 00 00 00 01 F2]"
                 );
                 println!("{msg}");
             }

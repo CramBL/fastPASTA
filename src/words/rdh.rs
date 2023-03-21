@@ -164,6 +164,14 @@ pub struct Rdh2 {
     pub reserved0: u8,
 }
 
+impl Rdh2 {
+    // Checks if the 4th bit of the trigger type is set
+    #[inline]
+    pub fn is_pht_trigger(&self) -> bool {
+        self.trigger_type >> 4 & 0x1 == 1
+    }
+}
+
 impl RdhSubWord for Rdh2 {
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh2, std::io::Error> {
         // Create a helper macro for loading an array of the given size from

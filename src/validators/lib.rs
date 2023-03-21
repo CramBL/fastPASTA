@@ -66,10 +66,20 @@ pub fn spawn_validator<T: RDH + 'static>(
                         let header_text = RdhCRU::<T>::rdh_header_text_with_indent_to_string(16);
                         let mut stdio_lock = std::io::stdout().lock();
                         use std::io::Write;
-                        writeln!(stdio_lock, "             {header_text}").unwrap();
+                        if let Err(e) = writeln!(stdio_lock, "             {header_text}") {
+                            stats_sender_channel
+                                .send(StatType::Fatal(format!(
+                                    "Error while printing RDH header: {e}"
+                                )))
+                                .unwrap();
+                        }
                         for (rdh, _, mem_pos) in &cdp_chunk {
                             if let Err(e) = writeln!(stdio_lock, "{mem_pos:>8X}:{rdh}") {
-                                log::error!("Error while printing RDH: {}", e);
+                                stats_sender_channel
+                                    .send(StatType::Fatal(format!(
+                                        "Error while printing RDH header: {e}"
+                                    )))
+                                    .unwrap();
                             }
                         }
                     }

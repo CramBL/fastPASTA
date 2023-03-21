@@ -108,8 +108,8 @@ pub struct Tdh {
     // 11:0 trigger_type
     // 12: internal_trigger, 13: no_data, 14: continuation, 15: reserved
     trigger_type_internal_trigger_no_data_continuation_reserved2: u16,
-    trigger_bc_reserved1: u16, // 27:16 trigger_bc, 31:28 reserved,
-    trigger_orbit: u32,        // 63:32
+    trigger_bc_reserved1: u16,     // 27:16 trigger_bc, 31:28 reserved,
+    pub(crate) trigger_orbit: u32, // 63:32
     // ID 0xe8
     reserved0_id: u16, // 71:64 reserved, 79:72 id
 }
@@ -149,6 +149,7 @@ impl Tdh {
             >> 12
     }
 
+    /// Beware! Only 12 LSB are valid!
     pub fn trigger_type(&self) -> u16 {
         // 11:0 is trigger_type
         self.trigger_type_internal_trigger_no_data_continuation_reserved2 & 0b1111_1111_1111

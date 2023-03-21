@@ -55,12 +55,14 @@ Additional checks related to state:
   * RDH pages_counter > 0
 * `When:` Word is IHW (not in continuation substate)
   * RDH stop_bit == 0
-  * RDH pages_counter == 0
-* `When:`TDH following a TDT with packet_done == 1
+* `When:` TDH following a TDT with packet_done == 1
   * TDH internal_trigger == 1
   * TDH continuation == 0
-* `When:` TDH Following a TDT with packet_done == 0
+  * TDH trigger_bc > previous TDH
+* `When:` TDH following a TDT with packet_done == 0
   * TDH continuation == 1
+* `When:` CDW where user_field != previous CDW user_field
+  * CDW index == 0
 
 
 Certain transitions are ambigious (marked by yellow notes), these are resolved based on the ID of the next received GBT word.
