@@ -16,7 +16,8 @@ The following is a list of error codes and their meaning, `x` is a placeholder f
 * [E4x] - TDH
 * [E5x] - TDT
 * [E6x] - DDW0
-* [E7x] - Data word
+* [E7x] - Data word (Even number: IB, Odd number: OB) E70 is sanity check for both IB/OB.
+* [E8x] - CDW
 ## Prelimary sanity checks
 ### RDH version and payload size (Performed in the `input module`)
 1. `Once` The first 10 bytes of the input is read as an RDH0 and the version field is checked, if it is not 6 or 7, processing is stopped.

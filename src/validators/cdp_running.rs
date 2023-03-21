@@ -406,7 +406,7 @@ impl<T: RDH> CdpRunningValidator<T> {
         let active_lanes = self.current_ihw.as_ref().unwrap().active_lanes();
         if !is_lane_active(lane_id, active_lanes) {
             self.report_error(
-                &format!("IB lane {lane_id} is not active according to IHW active_lanes: {active_lanes:#X}."),
+                &format!("[E72] IB lane {lane_id} is not active according to IHW active_lanes: {active_lanes:#X}."),
                 ib_slice,
             );
         }
@@ -415,7 +415,7 @@ impl<T: RDH> CdpRunningValidator<T> {
         let chip_id = chip_header_msb & 0xF;
         if lane_id != chip_id {
             self.report_error(
-                &format!("IB lane {lane_id} does not match chip ID: {chip_id:#X}."),
+                &format!("[E74] IB lane {lane_id} does not match chip ID: {chip_id:#X}."),
                 ib_slice,
             );
         }
@@ -428,7 +428,7 @@ impl<T: RDH> CdpRunningValidator<T> {
         let active_lanes = self.current_ihw.as_ref().unwrap().active_lanes();
         if !is_lane_active(lane_id, active_lanes) {
             self.report_error(
-                &format!("OB lane {lane_id} is not active according to IHW active_lanes: {active_lanes:#X}."),
+                &format!("[E71] OB lane {lane_id} is not active according to IHW active_lanes: {active_lanes:#X}."),
                 ob_slice,
             );
         }
@@ -437,7 +437,7 @@ impl<T: RDH> CdpRunningValidator<T> {
         let input_number_connector = ob_data_word_id_to_input_number_connector(ob_slice[9]);
         if input_number_connector > 6 {
             self.report_error(
-                &format!("OB Data Word has input connector {input_number_connector} > 6."),
+                &format!("[E73] OB Data Word has input connector {input_number_connector} > 6."),
                 ob_slice,
             );
         }
@@ -452,7 +452,7 @@ impl<T: RDH> CdpRunningValidator<T> {
             if previous_cdw.calibration_user_fields() != cdw.calibration_user_fields()
                 && cdw.calibration_word_index() != 0
             {
-                self.report_error("CDW index is not 0", cdw_slice);
+                self.report_error("[E81] CDW index is not 0", cdw_slice);
             }
         }
 
@@ -465,7 +465,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     #[inline]
     fn check_tdh_by_was_tdt_packet_done_true(&mut self, tdh_slice: &[u8]) {
         if self.current_tdh.as_ref().unwrap().internal_trigger() != 1 {
-            self.report_error("TDH internal trigger is not 1", tdh_slice);
+            self.report_error("[E43] TDH internal trigger is not 1", tdh_slice);
             let tmp_rdh = self.current_rdh.as_ref().unwrap();
             log::debug!("{tmp_rdh}");
         }
@@ -473,7 +473,7 @@ impl<T: RDH> CdpRunningValidator<T> {
             if previous_tdh.trigger_bc() > self.current_tdh.as_ref().unwrap().trigger_bc() {
                 self.report_error(
                     &format!(
-                        "[E43] TDH trigger_bc is not increasing, previous: {:#X}, current: {:#X}.",
+                        "[E44] TDH trigger_bc is not increasing, previous: {:#X}, current: {:#X}.",
                         previous_tdh.trigger_bc(),
                         self.current_tdh.as_ref().unwrap().trigger_bc()
                     ),
