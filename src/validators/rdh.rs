@@ -2,6 +2,111 @@ use crate::words::lib::RDH;
 use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3};
 use std::fmt::Write as _;
 
+pub enum SpecializeChecks {
+    ITS,
+}
+
+pub struct RdhCruSanityValidator<T: RDH> {
+    rdh0_validator: Rdh0Validator,
+    rdh1_validator: &'static Rdh1Validator,
+    rdh2_validator: &'static Rdh2Validator,
+    rdh3_validator: &'static Rdh3Validator,
+    _phantom: std::marker::PhantomData<T>,
+    // valid_dataformat_reserved0: DataformatReserved,
+    // valid link IDs are 0-11 and 15
+    // datawrapper ID is 0 or 1
+}
+impl<T: RDH> Default for RdhCruSanityValidator<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Const values used by the RdhCrusanityValidator
+const RDH1_VALIDATOR: Rdh1Validator = Rdh1Validator {
+    valid_rdh1: Rdh1::test_new(0, 0, 0),
+};
+const RDH2_VALIDATOR: Rdh2Validator = Rdh2Validator {};
+const RDH3_VALIDATOR: Rdh3Validator = Rdh3Validator {};
+const FEE_ID_SANITY_VALIDATOR: FeeIdSanityValidator = FeeIdSanityValidator::new((0, 6), (0, 47));
+
+/// Specialized for ITS
+const ITS_SYSTEM_ID: u8 = 32;
+impl<T: RDH> RdhCruSanityValidator<T> {
+    pub fn new() -> Self {
+        Self {
+            rdh0_validator: Rdh0Validator::default(),
+            rdh1_validator: &RDH1_VALIDATOR,
+            rdh2_validator: &RDH2_VALIDATOR,
+            rdh3_validator: &RDH3_VALIDATOR,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn specialize(&mut self, specialization: SpecializeChecks) {
+        match specialization {
+            SpecializeChecks::ITS => {
+                self.rdh0_validator.system_id = Some(ITS_SYSTEM_ID);
+            }
+        }
+    }
+
+    #[inline]
+    pub fn sanity_check(&mut self, rdh: &T) -> Result<(), String> {
+        let mut err_str = String::from("RDH sanity check failed: ");
+        let mut err_cnt: u8 = 0;
+        let mut rdh_errors: Vec<String> = vec![];
+        match self.rdh0_validator.sanity_check(rdh.rdh0()) {
+            Ok(_) => (),
+            Err(e) => {
+                err_cnt += 1;
+                rdh_errors.push(e);
+            }
+        };
+        match self.rdh1_validator.sanity_check(rdh.rdh1()) {
+            Ok(_) => (),
+            Err(e) => {
+                err_cnt += 1;
+                rdh_errors.push(e);
+            }
+        };
+        match self.rdh2_validator.sanity_check(rdh.rdh2()) {
+            Ok(_) => (),
+            Err(e) => {
+                err_cnt += 1;
+                rdh_errors.push(e);
+            }
+        };
+        match self.rdh3_validator.sanity_check(rdh.rdh3()) {
+            Ok(_) => (),
+            Err(e) => {
+                err_cnt += 1;
+                rdh_errors.push(e);
+            }
+        };
+
+        if rdh.dw() > 1 {
+            err_cnt += 1;
+            let tmp = rdh.dw();
+            write!(err_str, "{} = {:#x} ", stringify!(dw), tmp).unwrap();
+        }
+        if rdh.data_format() > 2 {
+            err_cnt += 1;
+            let tmp = rdh.data_format();
+            write!(err_str, "{} = {:#x} ", stringify!(data_format), tmp).unwrap();
+        }
+
+        rdh_errors.into_iter().for_each(|e| {
+            err_str.push_str(&e);
+        });
+
+        if err_cnt != 0 {
+            return Err(err_str.to_owned());
+        }
+
+        Ok(())
+    }
+}
 struct FeeIdSanityValidator {
     layer_min_max: (u8, u8),
     stave_number_min_max: (u8, u8),
@@ -69,30 +174,27 @@ impl FeeIdSanityValidator {
     }
 }
 
-const FEE_ID_SANITY_VALIDATOR: FeeIdSanityValidator = FeeIdSanityValidator::new((0, 6), (0, 47));
-
 struct Rdh0Validator {
     header_id: Option<u8>, // The first Rdh0 checked will determine what is a valid header_id
     header_size: u8,
     fee_id: FeeIdSanityValidator,
     priority_bit: u8,
-    system_id: u8,
+    system_id: Option<u8>,
     reserved0: u16,
 }
 
 impl Default for Rdh0Validator {
     fn default() -> Self {
-        Self::new(0x40, FEE_ID_SANITY_VALIDATOR, 0, ITS_SYSTEM_ID)
+        Self::new(0x40, FEE_ID_SANITY_VALIDATOR, 0, None)
     }
 }
 
-const ITS_SYSTEM_ID: u8 = 32;
 impl Rdh0Validator {
     pub fn new(
         header_size: u8,
         fee_id: FeeIdSanityValidator,
         priority_bit: u8,
-        system_id: u8,
+        system_id: Option<u8>,
     ) -> Self {
         Self {
             header_id: None,
@@ -146,16 +248,13 @@ impl Rdh0Validator {
             )
             .unwrap();
         }
-        if rdh0.system_id != self.system_id {
-            err_cnt += 1;
-            write!(
-                err_str,
-                "{} = {:#x} ",
-                stringify!(system_id),
-                rdh0.system_id
-            )
-            .unwrap();
+        if let Some(valid_system_id) = self.system_id {
+            if rdh0.system_id != valid_system_id {
+                err_cnt += 1;
+                write!(err_str, "system_id = {:#x} ", rdh0.system_id).unwrap();
+            }
         }
+
         if rdh0.reserved0 != self.reserved0 {
             err_cnt += 1;
             let tmp = rdh0.reserved0;
@@ -197,9 +296,6 @@ impl Rdh1Validator {
         Ok(())
     }
 }
-const RDH1_VALIDATOR: Rdh1Validator = Rdh1Validator {
-    valid_rdh1: Rdh1::test_new(0, 0, 0),
-};
 
 struct Rdh2Validator;
 impl Rdh2Validator {
@@ -219,13 +315,13 @@ impl Rdh2Validator {
 
         if rdh2.stop_bit > 1 {
             err_cnt += 1;
-            write!(err_str, "{} = {:#x} ", stringify!(stop_bit), rdh2.stop_bit).unwrap();
+            write!(err_str, "stop_bit = {:#x} ", rdh2.stop_bit).unwrap();
         }
         let spare_bits_15_to_26_set: u32 = 0b0000_0111_1111_1111_1000_0000_0000_0000;
         if rdh2.trigger_type == 0 || (rdh2.trigger_type & spare_bits_15_to_26_set != 0) {
             err_cnt += 1;
             let tmp = rdh2.trigger_type;
-            write!(err_str, "{} = {:#x} ", stringify!(trigger_type), tmp).unwrap();
+            write!(err_str, "Spare bits set in trigger_type = {tmp:#x} ").unwrap();
         }
 
         if err_cnt != 0 {
@@ -234,8 +330,6 @@ impl Rdh2Validator {
         Ok(())
     }
 }
-
-const RDH2_VALIDATOR: Rdh2Validator = Rdh2Validator {};
 
 struct Rdh3Validator;
 impl Rdh3Validator {
@@ -263,206 +357,6 @@ impl Rdh3Validator {
     }
 }
 
-const RDH3_VALIDATOR: Rdh3Validator = Rdh3Validator {};
-
-pub struct RdhCruSanityValidator<T: RDH> {
-    rdh0_validator: Rdh0Validator,
-    rdh1_validator: &'static Rdh1Validator,
-    rdh2_validator: &'static Rdh2Validator,
-    rdh3_validator: &'static Rdh3Validator,
-    _phantom: std::marker::PhantomData<T>,
-    // valid_dataformat_reserved0: DataformatReserved,
-    // valid link IDs are 0-11 and 15
-    // datawrapper ID is 0 or 1
-}
-impl<T: RDH> Default for RdhCruSanityValidator<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<T: RDH> RdhCruSanityValidator<T> {
-    pub fn new() -> Self {
-        Self {
-            rdh0_validator: Rdh0Validator::default(),
-            rdh1_validator: &RDH1_VALIDATOR,
-            rdh2_validator: &RDH2_VALIDATOR,
-            rdh3_validator: &RDH3_VALIDATOR,
-            _phantom: std::marker::PhantomData,
-        }
-    }
-    #[inline]
-    pub fn sanity_check(&mut self, rdh: &T) -> Result<(), String> {
-        let mut err_str = String::from("RDH sanity check failed: ");
-        let mut err_cnt: u8 = 0;
-        let mut rdh_errors: Vec<String> = vec![];
-        match self.rdh0_validator.sanity_check(rdh.rdh0()) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
-        };
-        match self.rdh1_validator.sanity_check(rdh.rdh1()) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
-        };
-        match self.rdh2_validator.sanity_check(rdh.rdh2()) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
-        };
-        match self.rdh3_validator.sanity_check(rdh.rdh3()) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
-        };
-
-        if rdh.dw() > 1 {
-            err_cnt += 1;
-            let tmp = rdh.dw();
-            write!(err_str, "{} = {:#x} ", stringify!(dw), tmp).unwrap();
-        }
-        if rdh.data_format() > 2 {
-            err_cnt += 1;
-            let tmp = rdh.data_format();
-            write!(err_str, "{} = {:#x} ", stringify!(data_format), tmp).unwrap();
-        }
-
-        rdh_errors.into_iter().for_each(|e| {
-            err_str.push_str(&e);
-        });
-
-        if err_cnt != 0 {
-            return Err(err_str.to_owned());
-        }
-
-        Ok(())
-    }
-}
-
-pub struct RdhCruRunningChecker<T: RDH> {
-    expect_pages_counter: u16,
-    last_rdh2: Option<Rdh2>,
-    // The first 2 RDHs are used to determine what the expected page counter increments are
-    first_rdh_cru: Option<T>,
-    second_rdh_cru: Option<T>,
-    expect_pages_counter_increment: u16,
-}
-
-impl<T: RDH> Default for RdhCruRunningChecker<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<T: RDH> RdhCruRunningChecker<T> {
-    pub fn new() -> Self {
-        Self {
-            expect_pages_counter: 0,
-            last_rdh2: None,
-            first_rdh_cru: None,
-            second_rdh_cru: None,
-            expect_pages_counter_increment: 1,
-        }
-    }
-    #[inline]
-    pub fn check(&mut self, rdh: &T) -> Result<(), String> {
-        if self.first_rdh_cru.is_none() {
-            self.first_rdh_cru = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
-        } else if self.second_rdh_cru.is_none() {
-            self.second_rdh_cru = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
-            self.expect_pages_counter_increment =
-                self.second_rdh_cru.as_ref().unwrap().rdh2().pages_counter;
-        }
-
-        let mut err_str = String::new();
-        let mut rdh_errors: Vec<String> = vec![];
-        let mut err_cnt: u8 = 0;
-
-        match self.check_stop_bit_and_page_counter(rdh.rdh2()) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
-        };
-
-        if err_cnt != 0 {
-            rdh_errors.into_iter().for_each(|e| {
-                err_str.push_str(&e);
-            });
-            return Err(err_str);
-        }
-
-        self.last_rdh2 = Some(*rdh.rdh2());
-
-        Ok(())
-    }
-
-    /// # Check `stop_bit` and `pages_counter` across a CDP
-    ///
-    /// 1. If `stop_bit` is 0, page counter should be equal to either:
-    ///      * the previous `pages_counter` + 1
-    ///      * 0 if the `stop_bit` of the previous `Rdh2` was 1 (handled in the match on `stop_bit == 1`)
-    ///
-    ///     Side effect: `self.expect_pages_counter += 1`
-    ///
-    /// 2. If `stop_bit` is 1, `pages_counter` should be equal to the previous `pages_counter` + 1
-    ///
-    ///    Side effect: `self.expect_pages_counter = 0`
-    #[inline]
-    fn check_stop_bit_and_page_counter(&mut self, rdh2: &Rdh2) -> Result<(), String> {
-        let mut err_str = String::from("RDH2 check stop_bit & page_counter failed: ");
-        let mut err_cnt: u8 = 0;
-        match rdh2.stop_bit {
-            0 => {
-                if rdh2.pages_counter != self.expect_pages_counter {
-                    err_cnt += 1;
-                    let tmp = rdh2.pages_counter;
-                    write!(
-                        err_str,
-                        "pages_counter = {tmp} expected: {}",
-                        self.expect_pages_counter
-                    )
-                    .unwrap();
-                }
-                self.expect_pages_counter += self.expect_pages_counter_increment;
-            }
-            1 => {
-                if rdh2.pages_counter != self.expect_pages_counter {
-                    err_cnt += 1;
-                    let tmp = rdh2.pages_counter;
-                    write!(
-                        err_str,
-                        "pages_counter = {tmp} expected: {}",
-                        self.expect_pages_counter
-                    )
-                    .unwrap();
-                }
-                self.expect_pages_counter = 0;
-            }
-            _ => {
-                err_cnt += 1;
-                let tmp = rdh2.stop_bit;
-                write!(err_str, "stop_bit = {tmp}").unwrap();
-            }
-        };
-
-        if err_cnt != 0 {
-            return Err(err_str.to_owned());
-        }
-
-        Ok(())
-    }
-}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -582,7 +476,8 @@ mod tests {
     }
     #[test]
     fn invalidate_rdh0_bad_system_id() {
-        let mut validator = Rdh0Validator::default();
+        let mut validator =
+            Rdh0Validator::new(0x40, FEE_ID_SANITY_VALIDATOR, 0, Some(ITS_SYSTEM_ID));
         let rdh0 = Rdh0 {
             header_id: 7,
             header_size: 0x40,
@@ -597,7 +492,8 @@ mod tests {
     }
     #[test]
     fn invalidate_rdh0_bad_reserved0() {
-        let mut validator = Rdh0Validator::new(0x40, FEE_ID_SANITY_VALIDATOR, 0, ITS_SYSTEM_ID);
+        let mut validator =
+            Rdh0Validator::new(0x40, FEE_ID_SANITY_VALIDATOR, 0, Some(ITS_SYSTEM_ID));
         let rdh0 = Rdh0 {
             header_id: 7,
             header_size: 0x40,

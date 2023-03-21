@@ -110,6 +110,8 @@ impl StatusWordValidator<Tdh> for TdhValidator {
             write!(err_str, "trigger type and internal trigger both 0").unwrap();
         }
 
+        debug_assert!(tdh.internal_trigger() < 2);
+
         if err_cnt > 0 {
             Err(err_str)
         } else {

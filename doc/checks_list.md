@@ -16,7 +16,8 @@ The following is a list of error codes and their meaning, `x` is a placeholder f
 * [E4x] - TDH
 * [E5x] - TDT
 * [E6x] - DDW0
-* [E7x] - Data word
+* [E7x] - Data word (Even number: IB, Odd number: OB) E70 is sanity check for both IB/OB.
+* [E8x] - CDW
 ## Prelimary sanity checks
 ### RDH version and payload size (Performed in the `input module`)
 1. `Once` The first 10 bytes of the input is read as an RDH0 and the version field is checked, if it is not 6 or 7, processing is stopped.
@@ -27,17 +28,23 @@ End of payload padding is checked, if it exceed 15 bytes, an error is raised and
 
 # Running checks (Performed in the `validation module`)
 ## RDH running checks
-### Check stop_bit and page_counter
-The first 2 RDHs sets the baseline for the expected page_counter increments (if second rdh has page_counter == 2, then the increments are +2).
-
+### Check stop_bit, page_counter, orbit, packet_counter, FeeId, trigger_type (Performed in the `validation module`)
 Uses the value of the stop_bit to determine if the page_counter is expected to increment or reset to 0.
 
-* If stop_bit == 0
+* `If stop_bit == 0`
   * Check page_counter == expected_page_counter
   * Increment expected_page_counter
-* If stop_bit == 1
+* `If stop_bit == 1`
   * Check page_counter == expected_page_counter
   * Reset expected_page_counter to 0
+  * Check next RDH's orbit is different from the current RDH's orbit
+* Check that the RDH's packet_counter increments, and if it doesn't, check that it is less than 3.
+* `If page_counter != 0` check that these fields are same as previous RDH:
+  * orbit
+  * trigger
+  * detector field
+  * FeeID
+
 
 
 ## Payload running checks
@@ -46,15 +53,23 @@ Before each payload is checked, the rdh for that payload is set as the current r
 Additional checks related to state:
 * `When:` Word is DDW0
   * RDH stop_bit == 1
-  * RDH pages_counter $>$ 0
+  * RDH pages_counter > 0
 * `When:` Word is IHW (not in continuation substate)
   * RDH stop_bit == 0
-  * RDH pages_counter == 0
-* `When:`TDH following a TDT with packet_done == 1
+* `When:` TDH following a TDT with packet_done == 1
   * TDH internal_trigger == 1
   * TDH continuation == 0
-* `When:` TDH Following a TDT with packet_done == 0
+  * TDH trigger_bc > previous TDH
+* `When:` TDH following a TDT with packet_done == 0
   * TDH continuation == 1
+* `When:` CDW where user_field != previous CDW user_field
+  * CDW index == 0
+* `When:` Data Word observed
+  * lane in IHW active_lanes
+  * `When:` IB data word:
+    * Lane in data word ID matches chip_id
+  * `When:` OB data word:
+    * Input connector number < 7
 
 
 Certain transitions are ambigious (marked by yellow notes), these are resolved based on the ID of the next received GBT word.
@@ -68,23 +83,23 @@ If any of the following conditions are not met, the RDH fails the sanity check a
   * Header ID equal to first Header ID seen during processing
   * header_size = 0x40
   * FeeID
-    * 0 $\le$ layer $\le$ 6
-    * 0 $\le$ stave $\le$ 47
+    * 0 <= layer <= 6
+    * 0 <= stave <= 47
     * reserved = 0
   * system_id = 0x20 `ITS system ID`
   * priority_bit = 0
   * reserved = 0
 * RDH1
-  * bc $\lt$ 0xdeb
+  * bc < 0xdeb
   * reserved = 0
 * RDH2
-  * stop_bit $\le$ 1
-  * trigger_type $\ge$ 1 AND all spare bits = 0
+  * stop_bit <= 1
+  * trigger_type >= 1 AND all spare bits = 0
   * reserved = 0
 * RDH3
   * reserved = 0 `includes reserved 23:4 in detector field`
-* dw $\le$ 1
-* data_format $\le$ 2
+* dw <= 1
+* data_format <= 2
 
 ## Payload sanity checks
 ### Status Words
@@ -104,27 +119,27 @@ If any of the following conditions are not met, the RDH fails the sanity check a
 #### DDW0
 * id = 0xE4
 * reserved = 0
-* index $\ge$ 1
+* index >= 1
 
 ### Data Words
 Checks that the ID is a valid ID for IL, ML or OL.
 
 If any of the following checks passes, it is considered valid.
 
-0x20 $\le$ ID $\le$ 0x28 `IL`
+0x20 <= ID <= 0x28 `IL`
 
-0x43 $\le$ ID $\le$ 0x46 `ML`
+0x43 <= ID <= 0x46 `ML`
 
-0x48 $\le$ ID $\le$ 0x4B `ML`
+0x48 <= ID <= 0x4B `ML`
 
-0x53 $\le$ ID $\le$ 0x56 `ML`
+0x53 <= ID <= 0x56 `ML`
 
-0x58 $\le$ ID $\le$ 0x5B `ML`
+0x58 <= ID <= 0x5B `ML`
 
-0x40 $\le$ ID $\le$ 0x46 `OL`
+0x40 <= ID <= 0x46 `OL`
 
-0x48 $\le$ ID $\le$ 0x4E `OL`
+0x48 <= ID <= 0x4E `OL`
 
-0x50 $\le$ ID $\le$ 0x56 `OL`
+0x50 <= ID <= 0x56 `OL`
 
-0x58 $\le$ ID $\le$ 0x5E `OL`
+0x58 <= ID <= 0x5E `OL`

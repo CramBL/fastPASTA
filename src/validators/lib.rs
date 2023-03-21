@@ -1,5 +1,6 @@
 use super::cdp_running::CdpRunningValidator;
-use super::rdh::{RdhCruRunningChecker, RdhCruSanityValidator};
+use super::rdh::RdhCruSanityValidator;
+use super::rdh_running::RdhCruRunningChecker;
 use crate::input::data_wrapper::CdpChunk;
 use crate::stats::stats_controller::StatType;
 use crate::util::config::Opt;
@@ -65,10 +66,20 @@ pub fn spawn_validator<T: RDH + 'static>(
                         let header_text = RdhCRU::<T>::rdh_header_text_with_indent_to_string(16);
                         let mut stdio_lock = std::io::stdout().lock();
                         use std::io::Write;
-                        writeln!(stdio_lock, "             {header_text}").unwrap();
+                        if let Err(e) = writeln!(stdio_lock, "             {header_text}") {
+                            stats_sender_channel
+                                .send(StatType::Fatal(format!(
+                                    "Error while printing RDH header: {e}"
+                                )))
+                                .unwrap();
+                        }
                         for (rdh, _, mem_pos) in &cdp_chunk {
                             if let Err(e) = writeln!(stdio_lock, "{mem_pos:>8X}:{rdh}") {
-                                log::error!("Error while printing RDH: {}", e);
+                                stats_sender_channel
+                                    .send(StatType::Fatal(format!(
+                                        "Error while printing RDH header: {e}"
+                                    )))
+                                    .unwrap();
                             }
                         }
                     }
@@ -141,7 +152,7 @@ fn do_checks<T: RDH>(
                     }
                 }
                 stats_sender_ch_checker
-                    .send(StatType::Error(format!("{rdh_mem_pos:#X}: [E98] {e}")))
+                    .send(StatType::Error(format!("{rdh_mem_pos:#X}: {e}")))
                     .unwrap();
             }
 
@@ -160,7 +171,8 @@ fn do_checks<T: RDH>(
 }
 
 mod rdh_checks {
-    use crate::validators::rdh::{RdhCruRunningChecker, RdhCruSanityValidator};
+    use crate::validators::rdh::RdhCruSanityValidator;
+    use crate::validators::rdh_running::RdhCruRunningChecker;
     use crate::words::lib::RDH;
 
     #[inline]
