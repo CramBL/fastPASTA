@@ -27,17 +27,23 @@ End of payload padding is checked, if it exceed 15 bytes, an error is raised and
 
 # Running checks (Performed in the `validation module`)
 ## RDH running checks
-### Check stop_bit and page_counter
-The first 2 RDHs sets the baseline for the expected page_counter increments (if second rdh has page_counter == 2, then the increments are +2).
-
+### Check stop_bit, page_counter, orbit, packet_counter
 Uses the value of the stop_bit to determine if the page_counter is expected to increment or reset to 0.
 
-* If stop_bit == 0
+* `If stop_bit == 0`
   * Check page_counter == expected_page_counter
   * Increment expected_page_counter
-* If stop_bit == 1
+* `If stop_bit == 1`
   * Check page_counter == expected_page_counter
   * Reset expected_page_counter to 0
+  * Check next RDH's orbit is different from the current RDH's orbit
+* Check that the RDH's packet_counter increments, and if it doesn't, check that it is less than 3.
+* `If page_counter != 0` check that these fields are same as previous RDH:
+  * orbit
+  * trigger
+  * detector field
+  * FeeID
+
 
 
 ## Payload running checks

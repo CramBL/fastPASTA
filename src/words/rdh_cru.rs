@@ -9,18 +9,18 @@ pub struct V7;
 #[repr(packed)]
 pub struct RdhCRU<Version> {
     pub(crate) rdh0: Rdh0,
-    offset_new_packet: u16,
-    memory_size: u16,
+    pub(crate) offset_new_packet: u16,
+    pub(crate) memory_size: u16,
     pub(crate) link_id: u8,
-    packet_counter: u8,
-    cruid_dw: CruidDw, // 12 bit cru_id, 4 bit dw
-    rdh1: Rdh1,
-    dataformat_reserved0: DataformatReserved, // 8 bit data_format, 56 bit reserved0
+    pub(crate) packet_counter: u8,
+    pub(crate) cruid_dw: CruidDw, // 12 bit cru_id, 4 bit dw
+    pub(crate) rdh1: Rdh1,
+    pub(crate) dataformat_reserved0: DataformatReserved, // 8 bit data_format, 56 bit reserved0
     pub(crate) rdh2: Rdh2,
     pub(crate) reserved1: u64,
     pub(crate) rdh3: Rdh3,
     pub(crate) reserved2: u64,
-    version: PhantomData<Version>,
+    pub(crate) version: PhantomData<Version>,
 }
 
 impl<Version> Display for RdhCRU<Version> {
@@ -276,6 +276,75 @@ pub mod test_data {
             trigger_type: 0x00006a03,
             pages_counter: 0x0,
             stop_bit: 0x0,
+            reserved0: 0x0,
+        },
+        reserved1: 0x0,
+        rdh3: Rdh3 {
+            detector_field: 0x0,
+            par_bit: 0x0,
+            reserved0: 0x0,
+        },
+        reserved2: 0x0,
+        version: PhantomData,
+    };
+
+    pub const CORRECT_RDH_CRU_V7_NEXT: RdhCRU<V7> = RdhCRU::<V7> {
+        rdh0: Rdh0 {
+            header_id: 0x7,
+            header_size: 0x40,
+            fee_id: FeeId(0x502A),
+            priority_bit: 0x0,
+            system_id: 0x20,
+            reserved0: 0,
+        },
+        offset_new_packet: 0x13E0,
+        memory_size: 0x13E0,
+        link_id: 0x0,
+        packet_counter: 0x2,
+        cruid_dw: CruidDw(0x0018),
+        rdh1: Rdh1 {
+            bc_reserved0: BcReserved(0x0),
+            orbit: 0x0b7dd575,
+        },
+        dataformat_reserved0: DataformatReserved(0x2),
+        rdh2: Rdh2 {
+            trigger_type: 0x00006a03,
+            pages_counter: 0x1,
+            stop_bit: 0x0,
+            reserved0: 0x0,
+        },
+        reserved1: 0x0,
+        rdh3: Rdh3 {
+            detector_field: 0x0,
+            par_bit: 0x0,
+            reserved0: 0x0,
+        },
+        reserved2: 0x0,
+        version: PhantomData,
+    };
+    pub const CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP: RdhCRU<V7> = RdhCRU::<V7> {
+        rdh0: Rdh0 {
+            header_id: 0x7,
+            header_size: 0x40,
+            fee_id: FeeId(0x502A),
+            priority_bit: 0x0,
+            system_id: 0x20,
+            reserved0: 0,
+        },
+        offset_new_packet: 0x13E0,
+        memory_size: 0x13E0,
+        link_id: 0x0,
+        packet_counter: 0x3,
+        cruid_dw: CruidDw(0x0018),
+        rdh1: Rdh1 {
+            bc_reserved0: BcReserved(0x0),
+            orbit: 0x0b7dd575,
+        },
+        dataformat_reserved0: DataformatReserved(0x2),
+        rdh2: Rdh2 {
+            trigger_type: 0x00006a03,
+            pages_counter: 0x2,
+            stop_bit: 0x1,
             reserved0: 0x0,
         },
         reserved1: 0x0,

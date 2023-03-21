@@ -142,7 +142,7 @@ fn do_checks<T: RDH>(
                     }
                 }
                 stats_sender_ch_checker
-                    .send(StatType::Error(format!("{rdh_mem_pos:#X}: [E98] {e}")))
+                    .send(StatType::Error(format!("{rdh_mem_pos:#X}: {e}")))
                     .unwrap();
             }
 
