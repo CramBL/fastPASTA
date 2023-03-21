@@ -1,6 +1,71 @@
+use crate::words::lib::ByteSlice;
 use std::fmt::Display;
 
-use crate::words::lib::ByteSlice;
+/// Takes in an IB lane number and a byte slice (data word), returns an ItsDataWordIb if the lane number matches the data word
+pub fn data_word_lane_filter_ib(ib_lane: IbLane, data_word: &[u8]) -> Option<ItsDataWordIb> {
+    let lane_id = data_word[9] & 0x1F;
+    if ib_lane.0 == lane_id {
+        #[allow(clippy::useless_asref)] // Actual false negative
+        let data_word = ItsDataWordIb::load(&mut data_word.as_ref()).unwrap();
+        Some(data_word)
+    } else {
+        None
+    }
+}
+
+/// Takes in an OB lane number and a byte slice (data word), returns an ItsDataWordOb if the lane number matches the data word
+pub fn data_word_lane_filter_ob(ob_lane_num: ObLane, data_word: &[u8]) -> Option<ItsDataWordOb> {
+    let lane = ob_data_word_id_to_lane(data_word[9]);
+    if ob_lane_num.0 == lane {
+        #[allow(clippy::useless_asref)] // Actual false negative
+        let data_word = ItsDataWordOb::load(&mut data_word.as_ref()).unwrap();
+        Some(data_word)
+    } else {
+        None
+    }
+}
+
+/// Takes an ob data word ID and returns the lane number
+#[inline]
+pub fn ob_data_word_id_to_lane(data_word_id: u8) -> u8 {
+    //let lane_id = data_word_id & 0x1F;
+    ob_lane(ObLane(data_word_id))
+}
+
+/// Takes an ob data word ID and returns the input connector number
+#[inline]
+pub fn ob_data_word_id_to_input_number_connector(data_word_id: u8) -> u8 {
+    // [2:0] = input number on the connector
+    //     * 0b000 - 0b110 (0-6 on the connector)
+    data_word_id & 0b111
+}
+
+/// Takes an ob data word ID and returns the connector number
+#[inline]
+pub fn ob_data_word_id_to_connector(data_word_id: u8) -> u8 {
+    // [4:3] = connector number
+    //     * 0b00 - 0b11 (0-3)
+    (data_word_id >> 3) & 0b11
+}
+
+// Helper function to get the lane number from an ob lane ID
+#[inline]
+fn ob_lane(ob_id: ObLane) -> u8 {
+    let lane_id = ob_id.0;
+    if lane_id <= VALID_OL_CONNECT0_ID_MIN_MAX.1 {
+        // 0-6
+        lane_id % VALID_OL_CONNECT0_ID_MIN_MAX.0
+    } else if lane_id <= VALID_OL_CONNECT1_ID_MIN_MAX.1 {
+        // 7-13
+        7 + (lane_id % VALID_OL_CONNECT1_ID_MIN_MAX.0)
+    } else if lane_id <= VALID_OL_CONNECT2_ID_MIN_MAX.1 {
+        // 14-20
+        14 + (lane_id % VALID_OL_CONNECT2_ID_MIN_MAX.0)
+    } else {
+        // 21-27
+        21 + (lane_id % VALID_OL_CONNECT3_ID_MIN_MAX.0)
+    }
+}
 
 pub trait DataWord: std::fmt::Display + PartialEq + Sized + ByteSlice {
     fn lane(&self) -> u8;
@@ -156,23 +221,6 @@ impl DataWord for ItsDataWordOb {
     }
 }
 
-fn ob_lane(ob_id: ObLane) -> u8 {
-    let lane_id = ob_id.0;
-    if lane_id < VALID_OL_CONNECT0_ID_MIN_MAX.1 {
-        // 0-6
-        lane_id % VALID_OL_CONNECT0_ID_MIN_MAX.0
-    } else if lane_id < VALID_OL_CONNECT1_ID_MIN_MAX.1 {
-        // 7-13
-        7 + (lane_id % VALID_OL_CONNECT1_ID_MIN_MAX.0)
-    } else if lane_id < VALID_OL_CONNECT2_ID_MIN_MAX.1 {
-        // 14-20
-        14 + (lane_id % VALID_OL_CONNECT2_ID_MIN_MAX.0)
-    } else {
-        // 21-27
-        21 + (lane_id % VALID_OL_CONNECT3_ID_MIN_MAX.0)
-    }
-}
-
 // Newtypes for the inner/outer barrel, to avoid comparing lanes from different barrels, with 0 runtime cost
 #[repr(transparent)]
 #[derive(PartialEq, PartialOrd)]
@@ -180,31 +228,6 @@ pub struct IbLane(u8);
 #[repr(transparent)]
 #[derive(PartialEq, PartialOrd)]
 pub struct ObLane(u8);
-
-/// Takes in an IB lane number and a byte slice (data word), returns an ItsDataWordIb if the lane number matches the data word
-pub fn data_word_lane_filter_ib(ib_lane: IbLane, data_word: &[u8]) -> Option<ItsDataWordIb> {
-    let lane_id = data_word[9] & 0x1F;
-    if ib_lane.0 == lane_id {
-        #[allow(clippy::useless_asref)] // Actual false negative
-        let data_word = ItsDataWordIb::load(&mut data_word.as_ref()).unwrap();
-        Some(data_word)
-    } else {
-        None
-    }
-}
-
-/// Takes in an OB lane number and a byte slice (data word), returns an ItsDataWordOb if the lane number matches the data word
-pub fn data_word_lane_filter_ob(ob_lane_num: ObLane, data_word: &[u8]) -> Option<ItsDataWordOb> {
-    let lane_id = data_word[9] & 0x1F;
-    let lane = ob_lane(ObLane(lane_id));
-    if ob_lane_num.0 == lane {
-        #[allow(clippy::useless_asref)] // Actual false negative
-        let data_word = ItsDataWordOb::load(&mut data_word.as_ref()).unwrap();
-        Some(data_word)
-    } else {
-        None
-    }
-}
 
 #[cfg(test)]
 mod tests {

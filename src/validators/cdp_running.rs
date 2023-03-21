@@ -2,8 +2,11 @@
 
 use self::CDP_PAYLOAD_FSM_Continuous::IHW_;
 use super::data_words::DATA_WORD_SANITY_CHECKER;
+use crate::words::data_words::{
+    ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane,
+};
 use crate::words::lib::RDH;
-use crate::words::status_words::Cdw;
+use crate::words::status_words::{is_lane_active, Cdw};
 use crate::{
     stats::stats_controller::StatType,
     validators::status_words::STATUS_WORD_SANITY_CHECKER,
@@ -373,7 +376,8 @@ impl<T: RDH> CdpRunningValidator<T> {
     /// Takes a slice of bytes expected to be a data word, and checks if it has a valid identifier.
     #[inline]
     fn process_data_word(&mut self, data_word_slice: &[u8]) {
-        if self.is_new_data && data_word_slice[9] == 0xF8 {
+        let id_index = 9;
+        if self.is_new_data && data_word_slice[id_index] == 0xF8 {
             // CDW
             self.process_cdw(data_word_slice);
         } else {
@@ -382,9 +386,61 @@ impl<T: RDH> CdpRunningValidator<T> {
                 self.report_error(&format!("[E70] {e}"), data_word_slice);
                 log::debug!("Data word: {data_word_slice:?}");
             }
+            let id_3_msb = data_word_slice[id_index] >> 5;
+            if id_3_msb == 0b001 {
+                // Inner Barrel
+                self.process_ib_data_word(data_word_slice);
+            } else if id_3_msb == 0b010 {
+                // Outer Barrel
+                self.process_ob_data_word(data_word_slice);
+            }
         }
 
         self.is_new_data = false;
+    }
+
+    #[inline]
+    fn process_ib_data_word(&mut self, ib_slice: &[u8]) {
+        let lane_id = ib_slice[9] & 0x1F;
+        // lane in active_lanes
+        let active_lanes = self.current_ihw.as_ref().unwrap().active_lanes();
+        if !is_lane_active(lane_id, active_lanes) {
+            self.report_error(
+                &format!("IB lane {lane_id} is not active according to IHW active_lanes: {active_lanes:#X}."),
+                ib_slice,
+            );
+        }
+        // lane and chip header match
+        let chip_header_msb = ib_slice[0]; // 0xA<chip_id[3:0]>
+        let chip_id = chip_header_msb & 0xF;
+        if lane_id != chip_id {
+            self.report_error(
+                &format!("IB lane {lane_id} does not match chip ID: {chip_id:#X}."),
+                ib_slice,
+            );
+        }
+    }
+
+    #[inline]
+    fn process_ob_data_word(&mut self, ob_slice: &[u8]) {
+        let lane_id = ob_data_word_id_to_lane(ob_slice[9]);
+        // lane in active_lanes
+        let active_lanes = self.current_ihw.as_ref().unwrap().active_lanes();
+        if !is_lane_active(lane_id, active_lanes) {
+            self.report_error(
+                &format!("OB lane {lane_id} is not active according to IHW active_lanes: {active_lanes:#X}."),
+                ob_slice,
+            );
+        }
+
+        // lane in connector <= 6
+        let input_number_connector = ob_data_word_id_to_input_number_connector(ob_slice[9]);
+        if input_number_connector > 6 {
+            self.report_error(
+                &format!("OB Data Word has input connector {input_number_connector} > 6."),
+                ob_slice,
+            );
+        }
     }
 
     #[inline]

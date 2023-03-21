@@ -27,7 +27,7 @@ End of payload padding is checked, if it exceed 15 bytes, an error is raised and
 
 # Running checks (Performed in the `validation module`)
 ## RDH running checks
-### Check stop_bit, page_counter, orbit, packet_counter
+### Check stop_bit, page_counter, orbit, packet_counter, FeeId, trigger_type (Performed in the `validation module`)
 Uses the value of the stop_bit to determine if the page_counter is expected to increment or reset to 0.
 
 * `If stop_bit == 0`
@@ -63,6 +63,12 @@ Additional checks related to state:
   * TDH continuation == 1
 * `When:` CDW where user_field != previous CDW user_field
   * CDW index == 0
+* `When:` Data Word observed
+  * lane in IHW active_lanes
+  * `When:` IB data word:
+    * Lane in data word ID matches chip_id
+  * `When:` OB data word:
+    * Input connector number < 7
 
 
 Certain transitions are ambigious (marked by yellow notes), these are resolved based on the ID of the next received GBT word.

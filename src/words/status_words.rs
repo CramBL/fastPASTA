@@ -37,6 +37,13 @@ fn display_byte_slice<T: StatusWord>(
     )
 }
 
+/// Checks if the corrosponding lane bit is set in the IHW active lanes field
+pub fn is_lane_active(lane: u8, active_lanes: u32) -> bool {
+    log::debug!("Lane: {lane}, Active lanes: {active_lanes:#X}");
+    let lane = lane as u32;
+    let mask = 1 << lane;
+    active_lanes & mask != 0
+}
 #[repr(packed)]
 pub struct Ihw {
     // Total of 80 bits
