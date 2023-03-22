@@ -1,3 +1,5 @@
+use super::config::{Check, View};
+
 pub trait Config: Util + Filter + InputOutput + Checks + Views + Send + Sync {}
 
 pub trait Util {
@@ -27,44 +29,4 @@ pub enum DataOutputMode {
     File,
     Stdout,
     None,
-}
-
-#[derive(structopt::StructOpt, Debug, Clone)]
-pub enum Command {
-    Check(Check),
-    View(View),
-}
-
-#[derive(structopt::StructOpt, Debug, Clone)]
-pub enum Check {
-    All(Target),
-    Sanity(Target),
-    Running(Target),
-}
-
-impl Check {
-    pub fn target(&self) -> Option<Data> {
-        match self {
-            Check::All(target) => target.target.clone(),
-            Check::Sanity(target) => target.target.clone(),
-            Check::Running(target) => target.target.clone(),
-        }
-    }
-}
-
-#[derive(structopt::StructOpt, Debug, Clone)]
-pub enum View {
-    /// Print formatted RDHs to stdout or file
-    Rdh,
-}
-
-#[derive(structopt::StructOpt, Debug, Clone)]
-pub struct Target {
-    #[structopt(subcommand)]
-    pub target: Option<Data>,
-}
-
-#[derive(structopt::StructOpt, Debug, Clone)]
-pub enum Data {
-    Rdh,
 }

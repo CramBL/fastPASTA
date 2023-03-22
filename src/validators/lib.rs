@@ -136,7 +136,7 @@ fn do_checks<T: RDH>(
             }
 
             // 2. Payload sanity and running checks
-            use crate::util::lib::Check;
+            use crate::util::config::Check;
             if let Some(check) = config.check() {
                 match check {
                     // Only check if the target is not set (i.e. check all)
@@ -160,7 +160,8 @@ fn do_checks<T: RDH>(
 }
 
 mod rdh_checks {
-    use crate::util::lib::{Config, Data};
+    use crate::util::config::Data;
+    use crate::util::lib::Config;
     use crate::validators::rdh::RdhCruSanityValidator;
     use crate::validators::rdh_running::RdhCruRunningChecker;
     use crate::words::lib::RDH;
@@ -174,7 +175,7 @@ mod rdh_checks {
     ) -> Result<(), String> {
         // Check if any checks have been specified in the config
         if let Some(check) = config.check() {
-            use crate::util::lib::Check;
+            use crate::util::config::Check;
             // Check if the check is for the current target (rdh)
             //  then check if all checks are to be performed or just a specific one
             match check {

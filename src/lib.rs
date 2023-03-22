@@ -1,4 +1,4 @@
-use util::lib::{Config, View};
+use util::lib::Config;
 
 pub mod data_write;
 pub mod input;
@@ -91,7 +91,7 @@ fn spawn_view<T: words::lib::RDH + 'static>(
                 // Print a view
                 if let Some(view) = config.view() {
                     match view {
-                        View::Rdh => {
+                        util::config::View::Rdh => {
                             let header_text =
                                 words::rdh_cru::RdhCRU::<T>::rdh_header_text_with_indent_to_string(
                                     16,

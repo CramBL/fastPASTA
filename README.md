@@ -13,7 +13,7 @@ For extensive documentation of public facing source code, invoke ```cargo doc --
 
 To parse CRU Data Packets for protocol violations and report any errors
 
-## To start using fastPASTA, build the binary with `cargo build -r` and find it in ../target/release/fastpasta.
+## To start using fastPASTA, build the binary with `cargo build -r` and find it in ./target/release/fastpasta.
 ### See help, including examples of use
 
 ```shell
@@ -21,15 +21,20 @@ $ ./fastpasta -h
 ```
 
 ### Examples
-1. Read from file -> filter by link 0 -> validate -> output to file
+1. Read from file -> filter by link 0 -> validate with all checks enabled
 ```shell
-$ ./fastpasta input.raw --filter-link 0 --sanity-checks -o link0_output.raw
+$ ./fastpasta input.raw --filter-link 0 check all
 ```
-2. Read decompressed data from stdin -> filter link 3 & 4 -> pipe to validation checks
+2. Read decompressed data from stdin -> filter link 3 -> see a formatted view of RDHs
 ```shell
-$ lz4 -d input.raw | ./fastpasta --filter-link 3 4 | ./fastpasta --sanity-checks
-        ^^^^                   ^^^^                           ^^^^
-       INPUT    --->          FILTER             --->        VALIDATE
+$ lz4 -d input.raw -c | ./fastpasta --filter-link 3 | ./fastpasta view rdh
+         ^^^^                      ^^^^                       ^^^^
+        INPUT       --->          FILTER          --->        VIEW
+```
+
+Piping is often optional and avoiding it will improve performance. e.g. the following is equivalent to the previous example, but saves significant IO overhead, by using one less pipe.
+```shell
+$ lz4 -d input.raw -c | ./fastpasta --filter-link 3 view rdh
 ```
 
 ### Verbosity levels

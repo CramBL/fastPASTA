@@ -85,7 +85,7 @@ struct cfg {
 
 impl cfg {
     fn new(config: &impl crate::util::lib::Checks) -> Self {
-        use crate::util::lib::Check;
+        use crate::util::config::Check;
         match config.check() {
             Some(check) => match check {
                 Check::All(_) | Check::Running(_) => Self {
@@ -642,7 +642,8 @@ impl<T: RDH> CdpRunningValidator<T> {
 mod tests {
     use super::*;
     use crate::{
-        util::lib::{MockChecks, Target},
+        util::config::Target,
+        util::lib::MockChecks,
         words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7},
     };
     #[test]
@@ -769,7 +770,7 @@ mod tests {
         mock_cfg
             .expect_check()
             .times(1)
-            .returning(|| Option::Some(crate::util::lib::Check::All(Target { target: None })));
+            .returning(|| Option::Some(crate::util::config::Check::All(Target { target: None })));
         let mut validator = CdpRunningValidator::<RdhCRU<V7>>::default();
         validator.set_config(&mock_cfg);
         validator.stats_send_ch = send;
