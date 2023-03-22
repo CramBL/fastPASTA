@@ -142,13 +142,13 @@ pub enum Command {
 If no target is specified, all data will be checked.\n\
 Invoke `help [SUBCOMMAND]` for more information on possible targets.")]
 pub enum Check {
-    /// Perform all checks on target data.
+    /// Perform all checks on target data. If no target is specified, all data will be checked.
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
     All(Target),
-    /// Perform sanity checks on target data.
+    /// Perform sanity checks on target data. If no target is specified, all data will be checked.
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
     Sanity(Target),
-    /// Perform sanity & running checks on target data.
+    /// Perform sanity & running checks on target data. If no target is specified, all data will be checked.
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
     Running(Target),
 }
