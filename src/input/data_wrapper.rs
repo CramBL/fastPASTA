@@ -1,3 +1,48 @@
+//! A convenience vector-like wrapper struct for CDPs. Contains a vector of RDHs, a vector of payloads and a vector of memory positions.
+//!
+//! CdpChunk can be treated similarly to a `std::vec::Vec::<T>` where T is a tuple of `(impl RDH, vec<u8>, u64)`
+//!
+//!  # Examples
+//!
+//! ```
+//! # use fastpasta::input::data_wrapper::CdpChunk;
+//! # use fastpasta::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
+//! # use fastpasta::words::rdh_cru::{RdhCRU, V7};
+//! let mut chunk = CdpChunk::<RdhCRU<V7>>::new();
+//! let cdp_tup = (CORRECT_RDH_CRU_V7, vec![0; 10], 0);
+//!
+//! // Push a tuple of (RDH, payload, mem_pos)
+//! chunk.push_tuple(cdp_tup);
+//!
+//! // Push a tuple of (RDH, payload, mem_pos) using the push method
+//! let (rdh, payload, mem_pos) = (CORRECT_RDH_CRU_V7, vec![0; 10], 0);
+//! chunk.push(rdh, payload, mem_pos);
+//!
+//! // Get the length of the CdpChunk
+//! let len = chunk.len();
+//!
+//! // Check if the CdpChunk is empty
+//! let is_empty = chunk.is_empty();
+//!
+//! // Clear the CdpChunk
+//! chunk.clear();
+//!
+//!
+//! // Iterate over the CdpChunk using an immutable borrow (no copying)
+//! for (rdh, payload, mem_pos) in &chunk {
+//!   // Do something with the tuple
+//! }
+//!
+//! // Get a borrowed slice of the RDHs
+//! let rdh_slice = chunk.rdh_slice();
+//!
+//! // Iterate over the CdpChunk using a consuming iterator (no copying)
+//! chunk.into_iter()
+//!         .for_each(|(rdh, payload, mem_pos)| {
+//!            // Do something requiring ownership of the tuple
+//!        });
+//!```
+
 use crate::words::lib::RDH;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
@@ -22,7 +67,20 @@ impl<T: RDH> CdpChunk<T> {
             rdh_mem_pos: Vec::new(),
         }
     }
-
+    /// Construct a new, empty `CdpChunk<T: RDH>` with at least the specified capacity.
+    ///
+    /// The chunk will be able to hold at least `capacity` elements without reallocating.
+    ///
+    /// # Examples
+    /// ```
+    /// # use fastpasta::input::data_wrapper::CdpChunk;
+    /// # use fastpasta::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
+    /// # use fastpasta::words::rdh_cru::{RdhCRU, V7};
+    ///
+    /// let mut chunk = CdpChunk::<RdhCRU<V7>>::with_capacity(10);
+    /// assert!(chunk.len() == 0);
+    /// ```
+    ///
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             rdhs: Vec::with_capacity(capacity),
