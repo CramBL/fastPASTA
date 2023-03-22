@@ -1,9 +1,9 @@
-use super::stats_controller::Stats;
-use crate::util::config::Opt;
+use super::stats_controller::StatsController;
+use crate::util::lib::Config;
 use std::sync::atomic::AtomicBool;
 
 pub fn init_stats_controller(
-    config: &Opt,
+    config: &impl Config,
 ) -> (
     std::thread::JoinHandle<()>,
     std::sync::mpsc::Sender<super::stats_controller::StatType>,
@@ -14,7 +14,7 @@ pub fn init_stats_controller(
         std::sync::mpsc::Receiver<super::stats_controller::StatType>,
     ) = std::sync::mpsc::channel();
     let thread_stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    let mut stats = Stats::new(config, recv_stats_channel, thread_stop_flag.clone());
+    let mut stats = StatsController::new(config, recv_stats_channel, thread_stop_flag.clone());
     let stats_thread = std::thread::Builder::new()
         .name("stats_thread".to_string())
         .spawn(move || {

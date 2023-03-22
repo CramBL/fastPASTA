@@ -3,6 +3,7 @@ use fastpasta::input::{
 };
 use fastpasta::stats::{lib::init_stats_controller, stats_controller};
 use fastpasta::util::config::Opt;
+use fastpasta::util::lib::{Checks, Config, Views};
 use fastpasta::words::{
     lib::RdhSubWord,
     rdh::Rdh0,
@@ -14,12 +15,14 @@ use structopt::StructOpt;
 
 pub fn main() -> std::process::ExitCode {
     let config = get_config();
-    init_error_logger(&config);
+    init_error_logger(&*config);
     log::trace!("Starting fastpasta with args: {:#?}", config);
+    log::trace!("Checks enabled: {:#?}", config.check());
+    log::trace!("Views enabled: {:#?}", config.view());
 
     // Launch statistics thread
     // If max allowed errors is reached, stop the processing from the stats thread
-    let (stat_controller, stat_send_channel, stop_flag) = init_stats_controller(&config);
+    let (stat_controller, stat_send_channel, stop_flag) = init_stats_controller(&*config);
 
     let exit_code: std::process::ExitCode = match init_reader(&config) {
         Ok(readable) => init_processing(config, readable, stat_send_channel, stop_flag),
@@ -36,36 +39,28 @@ pub fn main() -> std::process::ExitCode {
     exit_code
 }
 
-fn init_error_logger(cfg: &Opt) {
+fn init_error_logger(cfg: &impl Config) {
     stderrlog::new()
         .module(module_path!())
         .verbosity(cfg.verbosity() as usize)
         .init()
         .expect("Failed to initialize logger");
     match cfg.output_mode() {
-        fastpasta::util::config::DataOutputMode::Stdout => log::trace!("Data ouput set to stdout"),
-        fastpasta::util::config::DataOutputMode::File => log::trace!("Data ouput set to file"),
-        fastpasta::util::config::DataOutputMode::None => {
+        fastpasta::util::lib::DataOutputMode::Stdout => log::trace!("Data ouput set to stdout"),
+        fastpasta::util::lib::DataOutputMode::File => log::trace!("Data ouput set to file"),
+        fastpasta::util::lib::DataOutputMode::None => {
             log::trace!("Data ouput set to suppressed")
         }
     }
 }
 
 fn get_config() -> Arc<Opt> {
-    let mut cfg = Opt::from_args();
-
-    if let Err(e) = cfg.arg_validate() {
-        eprintln!("{e}");
-        std::process::exit(1);
-    }
-
-    cfg.sort_link_args();
-
+    let cfg = Opt::from_args();
     Arc::new(cfg)
 }
 
 fn init_processing(
-    config: Arc<Opt>,
+    config: Arc<impl Config + 'static>,
     mut reader: Box<dyn BufferedReaderWrapper>,
     stat_send_channel: std::sync::mpsc::Sender<stats_controller::StatType>,
     thread_stopper: Arc<AtomicBool>,

@@ -1,7 +1,8 @@
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
+use crate::util::lib::Config;
 use crate::words::lib::RDH;
-use crate::{stats::stats_controller::StatType, util::config::Opt, words::rdh::Rdh0};
+use crate::{stats::stats_controller::StatType, words::rdh::Rdh0};
 use std::io::Read;
 
 /// Trait for a scanner that reads CDPs from a file or stdin
@@ -33,14 +34,14 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     reader: Box<R>,
     tracker: MemPosTracker,
     stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
-    link_to_filter: Option<Vec<u8>>,
+    link_to_filter: Option<u8>,
     unique_links_observed: Vec<u8>,
     initial_rdh0: Option<Rdh0>,
 }
 
 impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     pub fn new(
-        config: std::sync::Arc<Opt>,
+        config: std::sync::Arc<impl Config>,
         reader: Box<R>,
         tracker: MemPosTracker,
         stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
@@ -55,7 +56,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         }
     }
     pub fn new_from_rdh0(
-        config: std::sync::Arc<Opt>,
+        config: std::sync::Arc<impl Config>,
         reader: Box<R>,
         stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
         rdh0: Rdh0,
@@ -128,9 +129,9 @@ where
             &self.stats_controller_sender_ch,
         )?;
         // If we have a link filter set, check if the current link matches the filter
-        if let Some(x) = self.link_to_filter.as_ref() {
+        if let Some(x) = self.link_to_filter {
             // If it matches, return the RDH
-            if x.contains(&current_link_id) {
+            if x == current_link_id {
                 self.report_rdh_filtered();
                 // no jump. current pos -> start of payload
                 Ok(rdh)
@@ -173,7 +174,6 @@ where
     }
 
     fn load_next_rdh_to_filter<T: RDH>(&mut self) -> Result<T, std::io::Error> {
-        let links_to_filter = self.link_to_filter.as_ref().unwrap();
         loop {
             let rdh: T = RDH::load(&mut self.reader)?;
             log::debug!("Loaded RDH: \n      {rdh}");
@@ -189,7 +189,7 @@ where
                 self.unique_links_observed.push(current_link_id);
                 self.report_link_seen(current_link_id);
             }
-            if links_to_filter.contains(&current_link_id) {
+            if self.link_to_filter.unwrap() == current_link_id {
                 self.report_rdh_filtered();
                 return Ok(rdh);
             }
@@ -248,7 +248,9 @@ mod tests {
     use std::io::Write;
     use std::{fs::File, io::BufReader, path::PathBuf, thread::JoinHandle};
 
-    use crate::stats::stats_controller::Stats;
+    use crate::stats::stats_controller::StatsController;
+    use crate::util::config::Opt;
+    use crate::util::lib::InputOutput;
     use crate::words::lib::ByteSlice;
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
 
@@ -256,8 +258,14 @@ mod tests {
         path: &str,
     ) -> (InputScanner<BufReader<std::fs::File>>, JoinHandle<()>) {
         use super::*;
-        let config: Opt =
-            <Opt as structopt::StructOpt>::from_iter(&["fastpasta", path, "-s", "-f", "0"]);
+        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
+            "fastpasta",
+            path,
+            "-f",
+            "0",
+            "check",
+            "sanity",
+        ]);
         let (send_stats_controller_channel, recv_stats_controller_channel): (
             std::sync::mpsc::Sender<StatType>,
             std::sync::mpsc::Receiver<StatType>,
@@ -266,14 +274,14 @@ mod tests {
         let thread_stopper = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
         let mut stats_controller =
-            Stats::new(&config, recv_stats_controller_channel, thread_stopper);
+            StatsController::new(&config, recv_stats_controller_channel, thread_stopper);
         let stats_controller_thread = std::thread::spawn(move || {
             stats_controller.run();
         });
         let cfg = std::sync::Arc::new(config);
         let reader = std::fs::OpenOptions::new()
             .read(true)
-            .open(cfg.file().to_owned().unwrap())
+            .open(cfg.input_file().to_owned().unwrap())
             .expect("File not found");
         let bufreader = std::io::BufReader::new(reader);
 

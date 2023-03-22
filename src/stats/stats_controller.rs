@@ -1,12 +1,13 @@
-use crate::stats::report::{Report, StatSummary};
-use itertools::Itertools;
+use crate::{
+    stats::report::{Report, StatSummary},
+    util::lib::Config,
+};
 use log::{error, info};
 use std::sync::{
     atomic::{AtomicBool, AtomicU32},
     Arc,
 };
 
-use crate::util::config::Opt;
 pub enum StatType {
     Fatal(String), // Fatal error, stop processing
     Error(String),
@@ -22,7 +23,7 @@ pub enum StatType {
     LayerStaveSeen { layer: u8, stave: u8 },
 }
 
-pub struct Stats {
+pub struct StatsController {
     pub rdhs_seen: u64,
     pub rdhs_filtered: u64,
     pub payload_size: u64,
@@ -33,20 +34,20 @@ pub struct Stats {
     max_tolerate_errors: u32,
     recv_stats_channel: std::sync::mpsc::Receiver<StatType>,
     end_processing_flag: Arc<AtomicBool>,
-    links_to_filter: Vec<u8>,
+    link_to_filter: Option<u8>,
     rdh_version: u8,
     data_formats_observed: Vec<u8>,
     hbfs_seen: u32,
     fatal_error: Option<String>,
     layers_staves_seen: Vec<(u8, u8)>,
 }
-impl Stats {
+impl StatsController {
     pub fn new(
-        config: &Opt,
+        config: &impl Config,
         recv_stats_channel: std::sync::mpsc::Receiver<StatType>,
         end_processing_flag: Arc<AtomicBool>,
     ) -> Self {
-        Stats {
+        StatsController {
             rdhs_seen: 0,
             rdhs_filtered: 0,
             payload_size: 0,
@@ -57,11 +58,7 @@ impl Stats {
             non_atomic_total_errors: 0,
             recv_stats_channel,
             end_processing_flag,
-            links_to_filter: if let Some(links) = config.filter_link() {
-                links
-            } else {
-                Vec::new()
-            },
+            link_to_filter: config.filter_link(),
             rdh_version: 0,
             data_formats_observed: Vec::new(),
             hbfs_seen: 0,
@@ -202,7 +199,7 @@ impl Stats {
             _ => format!("{:.3} GiB", self.payload_size as f64 / 1073741824_f64),
         };
         // If no filtering, the HBFs seen is from the total RDHs
-        if self.links_to_filter.is_empty() {
+        if self.link_to_filter.is_none() {
             report.add_stat(StatSummary::new(
                 "Total HBFs".to_string(),
                 self.hbfs_seen.to_string(),
@@ -248,7 +245,7 @@ impl Stats {
                 None,
             ));
             let filtered_links =
-                summerize_filtered_links(&self.links_to_filter, self.links_observed.clone());
+                summerize_filtered_links(self.link_to_filter.unwrap(), self.links_observed.clone());
             filtered_stats.push(filtered_links);
             filtered_stats.push(StatSummary::new(
                 "Layers and Staves seen".to_string(),
@@ -283,41 +280,14 @@ impl Stats {
 }
 
 /// Helper functions to format the summary
-fn summerize_filtered_links(links_to_filter: &Vec<u8>, links_observed: Vec<u8>) -> StatSummary {
-    let mut filtered_links_stat = StatSummary::new("Link IDs".to_string(), "".to_string(), None);
+fn summerize_filtered_links(link_to_filter: u8, links_observed: Vec<u8>) -> StatSummary {
+    let mut filtered_links_stat = StatSummary::new("Link ID".to_string(), "".to_string(), None);
     // Format links that were filtered, separated by commas
-    let filter_links_res: String = links_to_filter
-        .iter()
-        .unique()
-        .filter(|x| links_observed.contains(x))
-        .map(|x| x.to_string())
-        .collect::<Vec<String>>()
-        .join(", ");
-
-    if filter_links_res.is_empty() {
-        // If no links specified by the user, all links were filtered
-        if links_to_filter.is_empty() {
-            filtered_links_stat.value = "<<all-links>>".to_string();
-        }
-        // If links were specified and none of those links were found, no links were filtered
-        else {
-            filtered_links_stat.value = "<<none>>".to_string();
-        }
+    if links_observed.contains(&link_to_filter) {
+        filtered_links_stat.value = link_to_filter.to_string();
     } else {
-        filtered_links_stat.value = filter_links_res;
-    }
-
-    // Format links that were specified but not found
-    let not_filtered = links_to_filter
-        .iter()
-        .filter(|x| !links_observed.contains(x))
-        .map(|x| x.to_string())
-        .collect::<Vec<String>>()
-        .join(", ");
-
-    if !not_filtered.is_empty() {
-        let not_filtered_str = format!("not found: {not_filtered}");
-        filtered_links_stat.notes = not_filtered_str;
+        filtered_links_stat.value = "<<none>>".to_string();
+        filtered_links_stat.notes = format!("not found: {link_to_filter}");
     }
     filtered_links_stat
 }

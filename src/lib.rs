@@ -1,3 +1,5 @@
+use util::lib::{Config, View};
+
 pub mod data_write;
 pub mod input;
 pub mod stats;
@@ -14,7 +16,7 @@ pub const CHANNEL_CDP_CAPACITY: usize = 100;
 // 2. Do checks on read data
 // 3. Write data out (file or stdout)
 pub fn process<T: words::lib::RDH + 'static>(
-    config: std::sync::Arc<util::config::Opt>,
+    config: std::sync::Arc<impl Config + 'static>,
     loader: input::input_scanner::InputScanner<
         impl input::bufreader_wrapper::BufferedReaderWrapper + ?Sized + std::marker::Send + 'static,
     >,
@@ -29,26 +31,93 @@ pub fn process<T: words::lib::RDH + 'static>(
     let (validator_handle, checker_rcv_channel) = validators::lib::spawn_validator::<T>(
         config.clone(),
         thread_stopper.clone(),
-        send_stats_ch,
-        reader_rcv_channel,
+        send_stats_ch.clone(),
+        reader_rcv_channel.clone(),
     );
 
-    // 3. Write data out
-    let writer_handle: Option<std::thread::JoinHandle<()>> = match config.output_mode() {
-        util::config::DataOutputMode::None => None,
-        _ => Some(data_write::lib::spawn_writer(
-            config.clone(),
+    // 3. Write data out or Print a view
+    let output_handle: Option<std::thread::JoinHandle<()>> = if config.view().is_none() {
+        // 3a. Write data out
+        match config.output_mode() {
+            util::lib::DataOutputMode::None => None,
+            _ => Some(data_write::lib::spawn_writer(
+                config.clone(),
+                thread_stopper,
+                checker_rcv_channel.expect("Checker receiver channel not initialized"),
+            )),
+        }
+    } else {
+        // 3b. Print a view
+        Some(spawn_view::<T>(
+            config,
             thread_stopper,
-            checker_rcv_channel.expect("Checker receiver channel not initialized"),
-        )),
+            reader_rcv_channel,
+            send_stats_ch,
+        ))
     };
 
     reader_handle.join().expect("Error joining reader thread");
     if let Err(e) = validator_handle.join() {
         log::error!("Validator thread terminated early: {:#?}\n", e);
     }
-    if let Some(writer) = writer_handle {
-        writer.join().expect("Could not join writer thread");
+    if let Some(output) = output_handle {
+        output.join().expect("Could not join writer thread");
     }
     Ok(())
+}
+
+fn spawn_view<T: words::lib::RDH + 'static>(
+    config: std::sync::Arc<impl Config + 'static>,
+    stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    data_channel: crossbeam_channel::Receiver<input::data_wrapper::CdpChunk<T>>,
+    send_stats_ch: std::sync::mpsc::Sender<stats::stats_controller::StatType>,
+) -> std::thread::JoinHandle<()> {
+    let view_thread = std::thread::Builder::new().name("View".to_string());
+    view_thread
+        .spawn({
+            move || loop {
+                // Receive chunk from checker
+                let cdps = match data_channel.recv() {
+                    Ok(cdp) => cdp,
+                    Err(e) => {
+                        debug_assert_eq!(e, crossbeam_channel::RecvError);
+                        break;
+                    }
+                };
+                if stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
+                    log::trace!("Stopping view thread");
+                    break;
+                }
+                // Print a view
+                if let Some(view) = config.view() {
+                    match view {
+                        View::Rdh => {
+                            let header_text =
+                                words::rdh_cru::RdhCRU::<T>::rdh_header_text_with_indent_to_string(
+                                    16,
+                                );
+                            let mut stdio_lock = std::io::stdout().lock();
+                            use std::io::Write;
+                            if let Err(e) = writeln!(stdio_lock, "             {header_text}") {
+                                send_stats_ch
+                                    .send(stats::stats_controller::StatType::Fatal(format!(
+                                        "Error while printing RDH header: {e}"
+                                    )))
+                                    .unwrap();
+                            }
+                            for (rdh, _, mem_pos) in &cdps {
+                                if let Err(e) = writeln!(stdio_lock, "{mem_pos:>8X}:{rdh}") {
+                                    send_stats_ch
+                                        .send(stats::stats_controller::StatType::Fatal(format!(
+                                            "Error while printing RDH header: {e}"
+                                        )))
+                                        .unwrap();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        })
+        .expect("Failed to spawn view thread")
 }

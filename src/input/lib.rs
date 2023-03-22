@@ -4,6 +4,7 @@ use super::input_scanner::{InputScanner, ScanCDP};
 use super::stdin_reader::StdInReaderSeeker;
 use super::util::buf_reader_with_capacity;
 use crate::util::config::Opt;
+use crate::util::lib::InputOutput;
 use crate::words;
 use crate::words::lib::RDH;
 use crossbeam_channel::Receiver;
@@ -11,7 +12,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[inline]
 pub fn init_reader(config: &Opt) -> Result<Box<dyn BufferedReaderWrapper>, std::io::Error> {
-    if let Some(path) = config.file() {
+    if let Some(path) = config.input_file() {
         log::trace!("Reading from file: {:?}", &path);
         let f = std::fs::OpenOptions::new().read(true).open(path)?;
         Ok(Box::new(buf_reader_with_capacity(f, 1024 * 50)))

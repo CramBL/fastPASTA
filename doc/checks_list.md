@@ -66,8 +66,6 @@ Additional checks related to state:
   * CDW index == 0
 * `When:` Data Word observed
   * lane in IHW active_lanes
-  * `When:` IB data word:
-    * Lane in data word ID matches chip_id
   * `When:` OB data word:
     * Input connector number < 7
 
