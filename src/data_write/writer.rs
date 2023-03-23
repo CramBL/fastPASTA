@@ -1,5 +1,5 @@
 use crate::input::data_wrapper::CdpChunk;
-use crate::util::config::Opt;
+use crate::util::lib::Config;
 use crate::words::lib::RDH;
 /// Writes data to file/stdout. Uses a buffer to minimize syscalls.
 ///
@@ -22,7 +22,7 @@ pub struct BufferedWriter<T: RDH> {
 }
 
 impl<T: RDH> BufferedWriter<T> {
-    pub fn new(config: &Opt, max_buffer_size: usize) -> Self {
+    pub fn new(config: &impl Config, max_buffer_size: usize) -> Self {
         // Create output file, and buf writer if specified
         let buf_writer = match config.output() {
             Some(path) if "stdout".eq(path.to_str().unwrap()) => None,
@@ -122,6 +122,7 @@ impl<T: RDH> Drop for BufferedWriter<T> {
 mod tests {
     use std::vec;
 
+    use crate::util::config::Opt;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
 
@@ -132,9 +133,10 @@ mod tests {
         let out_file_cmd = "-o test_filter_link.raw";
         let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
             "fastpasta",
-            "-s",
             "../fastpasta_test_files/data_ols_ul.raw",
             out_file_cmd,
+            "check",
+            "sanity",
         ]);
         {
             let writer = BufferedWriter::<RdhCRU<V6>>::new(&config, 10);
@@ -157,9 +159,10 @@ mod tests {
         let out_file_cmd = "-o test_filter_link.raw";
         let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
             "fastpasta",
-            "-s",
             "../fastpasta_test_files/data_ols_ul.raw",
             out_file_cmd,
+            "check",
+            "sanity",
         ]);
         let rdhs = vec![CORRECT_RDH_CRU_V7, CORRECT_RDH_CRU_V7];
         let length = rdhs.len();
@@ -183,9 +186,10 @@ mod tests {
         let out_file_cmd = "-o test_filter_link.raw";
         let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
             "fastpasta",
-            "-s",
             "../fastpasta_test_files/data_ols_ul.raw",
             out_file_cmd,
+            "check",
+            "sanity",
         ]);
         let mut cdp_chunk = CdpChunk::new();
 

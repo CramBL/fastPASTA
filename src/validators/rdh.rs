@@ -490,6 +490,23 @@ mod tests {
         println!("{res:?}");
         assert!(res.is_err());
     }
+
+    #[test]
+    fn validate_rdh0_non_its_system_id() {
+        let mut validator = Rdh0Validator::new(0x40, FEE_ID_SANITY_VALIDATOR, 0, None);
+        let rdh0 = Rdh0 {
+            header_id: 7,
+            header_size: 0x40,
+            fee_id: FeeId(0x502A),
+            priority_bit: 0,
+            system_id: 0x99,
+            reserved0: 0,
+        };
+        let res = validator.sanity_check(&rdh0);
+        println!("{res:?}");
+        assert!(res.is_ok());
+    }
+
     #[test]
     fn invalidate_rdh0_bad_reserved0() {
         let mut validator =
@@ -645,6 +662,29 @@ mod tests {
         rdh_cru.reserved2 = 0x1;
         let fee_id_invalid_layer_is_7 = FeeId(0b0111_0000_0000_0000);
         rdh_cru.rdh0.fee_id = fee_id_invalid_layer_is_7;
+        let res = validator.sanity_check(&rdh_cru);
+        println!("{res:?}");
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn allow_rdh_cru_v7_non_its_system_id() {
+        let mut validator = RdhCruSanityValidator::default();
+        let mut rdh_cru = CORRECT_RDH_CRU_V7;
+        rdh_cru.rdh0.system_id = 0x99;
+
+        let res = validator.sanity_check(&rdh_cru);
+        println!("{res:?}");
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn invalidate_rdh_cru_v7_its_specialized_bad_system_id() {
+        let mut validator = RdhCruSanityValidator::default();
+        validator.specialize(SpecializeChecks::ITS);
+        let mut rdh_cru = CORRECT_RDH_CRU_V7;
+        rdh_cru.rdh0.system_id = 0x99;
+
         let res = validator.sanity_check(&rdh_cru);
         println!("{res:?}");
         assert!(res.is_err());

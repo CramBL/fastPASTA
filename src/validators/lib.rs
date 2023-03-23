@@ -3,10 +3,9 @@ use super::rdh::RdhCruSanityValidator;
 use super::rdh_running::RdhCruRunningChecker;
 use crate::input::data_wrapper::CdpChunk;
 use crate::stats::stats_controller::StatType;
-use crate::util::config::Opt;
+use crate::util::lib::Config;
 use crate::words::lib::RDH;
 use crate::words::lib::{layer_from_feeid, stave_number_from_feeid};
-use crate::words::rdh_cru::RdhCRU;
 use crossbeam_channel::{bounded, Receiver, RecvError};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
@@ -14,7 +13,7 @@ use std::thread::JoinHandle;
 
 #[inline]
 pub fn spawn_validator<T: RDH + 'static>(
-    config: Arc<Opt>,
+    config: Arc<impl Config + 'static>,
     stop_flag: Arc<AtomicBool>,
     stats_sender_channel: mpsc::Sender<StatType>,
     data_channel: Receiver<CdpChunk<T>>,
@@ -26,9 +25,9 @@ pub fn spawn_validator<T: RDH + 'static>(
             let config = config.clone();
             move || {
                 let mut cdp_payload_running_validator =
-                    CdpRunningValidator::new(stats_sender_channel.clone());
+                    CdpRunningValidator::new(&*config, stats_sender_channel.clone());
                 let mut running_rdh_checker = RdhCruRunningChecker::new();
-                let mut sanity_rdh_checker = RdhCruSanityValidator::new();
+                let mut sanity_rdh_checker = RdhCruSanityValidator::default(); // Not specialized for ITS
 
                 while !stop_flag.load(Ordering::SeqCst) {
                     // Receive chunk from reader
@@ -52,8 +51,9 @@ pub fn spawn_validator<T: RDH + 'static>(
                             .unwrap();
                     });
 
-                    if config.any_checks() {
+                    if config.check().is_some() {
                         do_checks(
+                            &*config,
                             &cdp_chunk,
                             &stats_sender_channel,
                             &mut sanity_rdh_checker,
@@ -62,31 +62,9 @@ pub fn spawn_validator<T: RDH + 'static>(
                         );
                     }
 
-                    if config.print_rdhs() {
-                        let header_text = RdhCRU::<T>::rdh_header_text_with_indent_to_string(16);
-                        let mut stdio_lock = std::io::stdout().lock();
-                        use std::io::Write;
-                        if let Err(e) = writeln!(stdio_lock, "             {header_text}") {
-                            stats_sender_channel
-                                .send(StatType::Fatal(format!(
-                                    "Error while printing RDH header: {e}"
-                                )))
-                                .unwrap();
-                        }
-                        for (rdh, _, mem_pos) in &cdp_chunk {
-                            if let Err(e) = writeln!(stdio_lock, "{mem_pos:>8X}:{rdh}") {
-                                stats_sender_channel
-                                    .send(StatType::Fatal(format!(
-                                        "Error while printing RDH header: {e}"
-                                    )))
-                                    .unwrap();
-                            }
-                        }
-                    }
-
                     // Send chunk to the checker
                     match config.output_mode() {
-                        crate::util::config::DataOutputMode::None => {} // Do nothing
+                        crate::util::lib::DataOutputMode::None => {} // Do nothing
                         _ => {
                             if send_channel.send(cdp_chunk).is_err()
                                 && !stop_flag.load(Ordering::SeqCst)
@@ -102,13 +80,14 @@ pub fn spawn_validator<T: RDH + 'static>(
         .expect("Failed to spawn checker thread");
 
     match config.output_mode() {
-        crate::util::config::DataOutputMode::None => (validator_handle, None),
+        crate::util::lib::DataOutputMode::None => (validator_handle, None),
         _ => (validator_handle, Some(rcv_channel)),
     }
 }
 
 #[inline]
 fn do_checks<T: RDH>(
+    config: &impl Config,
     cdp_chunk: &CdpChunk<T>,
     stats_sender_ch_checker: &std::sync::mpsc::Sender<StatType>,
     rdh_sanity: &mut RdhCruSanityValidator<T>,
@@ -122,8 +101,8 @@ fn do_checks<T: RDH>(
             stats_sender_ch_checker
                 .send(StatType::DataFormat(rdh.data_format()))
                 .unwrap();
-
-            if let Err(mut e) = rdh_checks::do_rdh_checks(rdh, rdh_sanity, rdh_running) {
+            // 1. RDH sanity and running checks
+            if let Err(mut e) = rdh_checks::do_rdh_checks(config, rdh, rdh_sanity, rdh_running) {
                 e.push_str(crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(7).as_str());
                 let rdhs = cdp_chunk.rdh_slice();
                 match rdh_idx {
@@ -156,34 +135,73 @@ fn do_checks<T: RDH>(
                     .unwrap();
             }
 
-            payload_running.set_current_rdh(rdh, rdh_mem_pos);
-            if !payload.is_empty() {
-                payload_checks::do_payload_checks(
-                    payload,
-                    rdh.data_format(),
-                    payload_running,
-                    stats_sender_ch_checker,
-                );
-            } else {
-                log::debug!("Empty payload at {:#X}", rdh_mem_pos + 64);
+            // 2. Payload sanity and running checks
+            use crate::util::config::Check;
+            if let Some(check) = config.check() {
+                match check {
+                    // Only check if the target is not set (i.e. check all)
+                    Check::All(_) | Check::Sanity(_) | Check::Running(_) if check.target().is_none() => {
+                        payload_running.set_current_rdh(rdh, rdh_mem_pos);
+                        if !payload.is_empty() {
+                            payload_checks::do_payload_checks(
+                                payload,
+                                rdh.data_format(),
+                                payload_running,
+                                stats_sender_ch_checker,
+                            );
+                        } else {
+                            log::debug!("Empty payload at {:#X}", rdh_mem_pos + 64);
+                        }
+                }
+                    _ => {}
+                }
             }
         });
 }
 
 mod rdh_checks {
+    use crate::util::config::Data;
+    use crate::util::lib::Config;
     use crate::validators::rdh::RdhCruSanityValidator;
     use crate::validators::rdh_running::RdhCruRunningChecker;
     use crate::words::lib::RDH;
 
     #[inline]
     pub fn do_rdh_checks<T: RDH>(
+        config: &impl Config,
         rdh: &T,
         sanity_rdh_checker: &mut RdhCruSanityValidator<T>,
         running_rdh_checker: &mut RdhCruRunningChecker<T>,
     ) -> Result<(), String> {
-        sanity_rdh_checker.sanity_check(rdh)?;
-        // RDH CHECK: There is always page 0 + minimum page 1 + stop flag
-        running_rdh_checker.check(rdh)
+        // Check if any checks have been specified in the config
+        if let Some(check) = config.check() {
+            use crate::util::config::Check;
+            // Check if the check is for the current target (rdh)
+            //  then check if all checks are to be performed or just a specific one
+            match check {
+                Check::All(_) => match check.target() {
+                    // If target is Rdh or None (all targets) then we check
+                    Some(Data::Rdh) | None => {
+                        sanity_rdh_checker.sanity_check(rdh)?;
+                        running_rdh_checker.check(rdh)?;
+                    }
+                },
+                Check::Sanity(_) => match check.target() {
+                    // If target is Rdh or None (all targets) then we check
+                    Some(Data::Rdh) | None => {
+                        sanity_rdh_checker.sanity_check(rdh)?;
+                    }
+                },
+                Check::Running(_) => match check.target() {
+                    // If target is Rdh or None (all targets) then we check
+                    Some(Data::Rdh) | None => {
+                        running_rdh_checker.check(rdh)?;
+                    }
+                },
+            }
+        }
+
+        Ok(())
     }
 }
 
