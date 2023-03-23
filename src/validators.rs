@@ -1,7 +1,6 @@
-//! Function to spawn the validator thread, along with all validators used to perform checks on the data.
+//! Contains the LinkValidator struct that is the entry point for all data validation, also contains all the subvalidators.
 pub mod cdp_running;
 pub mod data_words;
-pub mod lib;
 pub mod link_validator;
 pub mod rdh;
 pub mod rdh_running;
