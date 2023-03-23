@@ -17,7 +17,7 @@ pub fn spawn_validator<T: RDH + 'static>(
     stop_flag: Arc<AtomicBool>,
     stats_sender_channel: mpsc::Sender<StatType>,
     data_channel: Receiver<CdpChunk<T>>,
-) -> (JoinHandle<()>, Option<Receiver<CdpChunk<T>>>) {
+) -> (Option<JoinHandle<()>>, Option<Receiver<CdpChunk<T>>>) {
     let validator_thread = std::thread::Builder::new().name("Validator".to_string());
     let (send_channel, rcv_channel) = bounded(crate::CHANNEL_CDP_CAPACITY);
     let validator_handle = validator_thread
@@ -62,14 +62,14 @@ pub fn spawn_validator<T: RDH + 'static>(
                         );
                     }
 
-                    // Send chunk to the checker
+                    // Send chunk to output handler
                     match config.output_mode() {
                         crate::util::lib::DataOutputMode::None => {} // Do nothing
                         _ => {
                             if send_channel.send(cdp_chunk).is_err()
                                 && !stop_flag.load(Ordering::SeqCst)
                             {
-                                log::trace!("Unexpected error while sending data to writer");
+                                log::trace!("Unexpected error while sending data from checker");
                                 break;
                             }
                         }
@@ -80,8 +80,8 @@ pub fn spawn_validator<T: RDH + 'static>(
         .expect("Failed to spawn checker thread");
 
     match config.output_mode() {
-        crate::util::lib::DataOutputMode::None => (validator_handle, None),
-        _ => (validator_handle, Some(rcv_channel)),
+        crate::util::lib::DataOutputMode::None => (Some(validator_handle), None),
+        _ => (Some(validator_handle), Some(rcv_channel)),
     }
 }
 

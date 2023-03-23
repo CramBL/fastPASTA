@@ -25,6 +25,7 @@ pub trait Views {
     fn view(&self) -> Option<View>;
 }
 
+#[derive(PartialEq)]
 pub enum DataOutputMode {
     File,
     Stdout,
