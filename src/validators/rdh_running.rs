@@ -56,11 +56,6 @@ impl<T: RDH> RdhCruRunningChecker<T> {
             rdh_errors.push(e);
         };
 
-        if let Err(e) = self.check_packet_counter_increments(rdh) {
-            err_cnt += 1;
-            rdh_errors.push(e);
-        }
-
         if let Err(e) = self.check_orbit_trigger_det_field_feeid_same_when_page_not_0(rdh) {
             err_cnt += 1;
             rdh_errors.push(e);
@@ -143,29 +138,6 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                 if last_rdh_cru.rdh1().orbit == current_orbit {
                     return Err(format!("Orbit same as previous {current_orbit}."));
                 }
-            }
-        }
-        Ok(())
-    }
-
-    /// The packet counter should increment, when it overflows it should be less than 3
-    #[inline]
-    fn check_packet_counter_increments(&mut self, rdh_cru: &T) -> Result<(), String> {
-        if let Some(last_rdh_cru) = &self.last_rdh_cru {
-            let current_packet_counter = rdh_cru.packet_counter();
-            // If it overflow from 255 the max it can be is 2 as there's 3 links.
-            // This allows the case where the last packet counter is a high value, where wrapping around to 0 is expected
-            //  but catches it when the current value is lower, but not as low as expected if it wrapped around correctly.
-            // Also catches the case where the last packet counter is a low value, but the current on is still lower or the same
-            if (current_packet_counter <= last_rdh_cru.packet_counter()
-                && current_packet_counter > 2)
-                || (last_rdh_cru.packet_counter() < 3
-                    && current_packet_counter <= last_rdh_cru.packet_counter())
-            {
-                return Err(format!(
-                    "Packet counter did not increment or reset as expected, Previous: {} Current: {current_packet_counter}.",
-                    last_rdh_cru.packet_counter()
-                ));
             }
         }
         Ok(())
