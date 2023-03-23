@@ -27,7 +27,7 @@ pub fn spawn_validator<T: RDH + 'static>(
                 let mut cdp_payload_running_validator =
                     CdpRunningValidator::new(&*config, stats_sender_channel.clone());
                 let mut running_rdh_checker = RdhCruRunningChecker::new();
-                let mut sanity_rdh_checker = RdhCruSanityValidator::new();
+                let mut sanity_rdh_checker = RdhCruSanityValidator::default(); // Not specialized for ITS
 
                 while !stop_flag.load(Ordering::SeqCst) {
                     // Receive chunk from reader
