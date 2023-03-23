@@ -248,12 +248,12 @@ fn spawn_action_thread<T: words::lib::RDH + 'static>(
                                         .spawn({
                                             let config = config.clone();
                                             let stats_sender_channel = stats_sender_channel.clone();
+                                            let mut link_validator = LinkValidator::new(
+                                                &*config.clone(),
+                                                stats_sender_channel,
+                                                recv_channel,
+                                            );
                                             move || {
-                                                let mut link_validator = LinkValidator::new(
-                                                    &*config.clone(),
-                                                    stats_sender_channel,
-                                                    recv_channel,
-                                                );
                                                 link_validator.run();
                                             }
                                         })
@@ -264,6 +264,7 @@ fn spawn_action_thread<T: words::lib::RDH + 'static>(
                     }
                 }
                 // Stop all threads
+                link_process_channels.clear();
                 validator_thread_handles.into_iter().for_each(|handle| {
                     handle.join().expect("Failed to join a validator thread");
                 });
