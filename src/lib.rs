@@ -1,3 +1,37 @@
+//! fast Protocol Analysis Scanner Tool for ALICE (fastPASTA), for reading and checking raw binary data from ALICE detectors
+//!
+//! # Usage
+//!
+//! ## Reading data from file and performing checks
+//!
+//! ```shell
+//! $ fastpasta <input_file> check all
+//! ```
+//!
+//! ## Reading data from stdin and performing all checks on only RDH
+//!
+//! ```shell
+//! $ cat <input_file> | fastpasta check all rdh
+//! ```
+//!
+//! ## reading data from one file and writing to another
+//!
+//! ```bash
+//! $ fastpasta <input_file> -o <output_file>
+//! ```
+//!
+//! ## Reading from stdin and filtering by link ID and writing to stdout
+//! Writing to stdout is implicit when no checks or views are specified
+//! ```bash
+//! $ fastpasta <input_file> --filter-link 1
+//! ```
+//!
+//! ## Reading from file and printing a view of RDHs
+//!
+//! ```bash
+//! $ fastpasta <input_file> view rdh
+//! ```
+
 use util::lib::Config;
 
 pub mod data_write;
