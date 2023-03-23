@@ -222,10 +222,6 @@ impl<T: RDH> CdpRunningValidator<T> {
     pub fn check(&mut self, gbt_word: &[u8]) {
         debug_assert!(gbt_word.len() == 10);
         self.gbt_word_counter += 1; // Tracks the number of GBT words seen in the current CDP
-        log::trace!(
-            "Processing GBT word: {gbt_word:X?} in memory position {:#X}",
-            self.calc_current_word_mem_pos(),
-        );
 
         use CDP_PAYLOAD_FSM_Continuous::Variant::*;
         use CDP_PAYLOAD_FSM_Continuous::*;

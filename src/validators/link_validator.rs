@@ -51,7 +51,7 @@ impl<T: RDH> LinkValidator<T> {
             send_stats_ch: send_stats_ch.clone(),
             data_rcv_channel,
             cdp_validator: crate::validators::cdp_running::CdpRunningValidator::new(
-                &*global_config,
+                global_config,
                 send_stats_ch,
             ),
             rdh_running_validator: crate::validators::rdh_running::RdhCruRunningChecker::default(),
@@ -89,13 +89,12 @@ impl<T: RDH> LinkValidator<T> {
     }
 
     fn do_rdh_checks(&mut self, rdh: &T, rdh_mem_pos: u64) {
-        log::info!("{mem_pos:>8X}:{rdh}", mem_pos = rdh_mem_pos, rdh = rdh);
-        if let Err(e) = self.rdh_sanity_validator.sanity_check(&rdh) {
-            self.report_rdh_error(&rdh, e, rdh_mem_pos);
+        if let Err(e) = self.rdh_sanity_validator.sanity_check(rdh) {
+            self.report_rdh_error(rdh, e, rdh_mem_pos);
         }
         if self.config.running_checks {
-            if let Err(e) = self.rdh_running_validator.check(&rdh) {
-                self.report_rdh_error(&rdh, e, rdh_mem_pos);
+            if let Err(e) = self.rdh_running_validator.check(rdh) {
+                self.report_rdh_error(rdh, e, rdh_mem_pos);
             }
         }
     }
@@ -107,11 +106,11 @@ impl<T: RDH> LinkValidator<T> {
         });
         error.push_str(&format!("{rdh} <--- Error occured here\n"));
 
-        // self.send_stats_ch
-        //     .send(crate::stats::stats_controller::StatType::Error(format!(
-        //         "{rdh_mem_pos:#X}: {error}"
-        //     )))
-        //     .unwrap();
+        self.send_stats_ch
+            .send(crate::stats::stats_controller::StatType::Error(format!(
+                "{rdh_mem_pos:#X}: {error}"
+            )))
+            .unwrap();
     }
 
     fn do_payload_checks(&mut self, payload: &[u8], data_format: u8) {

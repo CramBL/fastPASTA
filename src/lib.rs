@@ -33,7 +33,7 @@
 //! ```
 
 use crossbeam_channel::Receiver;
-use util::lib::Config;
+use util::lib::{Config, DataOutputMode};
 
 pub mod data_write;
 pub mod input;
@@ -58,22 +58,22 @@ pub fn process<T: words::lib::RDH + 'static>(
     send_stats_ch: std::sync::mpsc::Sender<stats::stats_controller::StatType>,
     thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
-    // 1. Read data from file or stdin
+    // 1. Launch reader thread to read data from file or stdin
     let (reader_handle, reader_rcv_channel): (
         std::thread::JoinHandle<()>,
         crossbeam_channel::Receiver<input::data_wrapper::CdpChunk<T>>,
     ) = input::lib::spawn_reader(thread_stopper.clone(), loader);
 
-    // 2. Launch action thread if an action is set (view or check)
-    let action_handle = if config.check().is_some() || config.view().is_some() {
+    // 2. Launch analysis thread if an analysis action is set (view or check)
+    let analysis_handle = if config.check().is_some() || config.view().is_some() {
         debug_assert!(
             config.output_mode() == util::lib::DataOutputMode::None
                 || config.filter_link().is_some()
         );
-        let handle = spawn_action_thread(
+        let handle = spawn_analysis(
             config.clone(),
             thread_stopper.clone(),
-            send_stats_ch.clone(),
+            send_stats_ch,
             reader_rcv_channel.clone(),
         );
         Some(handle)
@@ -81,36 +81,24 @@ pub fn process<T: words::lib::RDH + 'static>(
         None
     };
 
-    // let (validator_handle, checker_rcv_channel) = validators::lib::spawn_validator::<T>(
-    //     config.clone(),
-    //     thread_stopper.clone(),
-    //     send_stats_ch.clone(),
-    //     reader_rcv_channel.clone(),
-    // );
-
-    // 3. Write data out
-    let output_handle: Option<std::thread::JoinHandle<()>> = match config.output_mode() {
-        util::lib::DataOutputMode::None => None,
-        _ => Some(data_write::lib::spawn_writer(
-            config.clone(),
-            thread_stopper,
-            reader_rcv_channel,
-        )),
+    // 3. Write data out only in the case where no analysis is performed and a filter link is set
+    let output_handle: Option<std::thread::JoinHandle<()>> = match (
+        config.check(),
+        config.view(),
+        config.filter_link(),
+        config.output_mode(),
+    ) {
+        (None, None, Some(_), output_mode) if output_mode != DataOutputMode::None => Some(
+            data_write::lib::spawn_writer(config.clone(), thread_stopper, reader_rcv_channel),
+        ),
+        _ => None,
     };
-
-    // // 3b. Print a view
-    // Some(spawn_view::<T>(
-    //     config,
-    //     thread_stopper,
-    //     reader_rcv_channel,
-    //     send_stats_ch,
-    // ))
 
     reader_handle.join().expect("Error joining reader thread");
 
-    if let Some(handle) = action_handle {
+    if let Some(handle) = analysis_handle {
         if let Err(e) = handle.join() {
-            log::error!("Action thread terminated early: {:#?}\n", e);
+            log::error!("Analysis thread terminated early: {:#?}\n", e);
         }
     }
     if let Some(output) = output_handle {
@@ -119,73 +107,16 @@ pub fn process<T: words::lib::RDH + 'static>(
     Ok(())
 }
 
-fn spawn_view<T: words::lib::RDH + 'static>(
-    config: std::sync::Arc<impl Config + 'static>,
-    stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
-    data_channel: crossbeam_channel::Receiver<input::data_wrapper::CdpChunk<T>>,
-    send_stats_ch: std::sync::mpsc::Sender<stats::stats_controller::StatType>,
-) -> std::thread::JoinHandle<()> {
-    let view_thread = std::thread::Builder::new().name("View".to_string());
-    view_thread
-        .spawn({
-            move || loop {
-                // Receive chunk from checker
-                let cdps = match data_channel.recv() {
-                    Ok(cdp) => cdp,
-                    Err(e) => {
-                        debug_assert_eq!(e, crossbeam_channel::RecvError);
-                        break;
-                    }
-                };
-                if stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
-                    log::trace!("Stopping view thread");
-                    break;
-                }
-                // Print a view
-                if let Some(view) = config.view() {
-                    match view {
-                        util::config::View::Rdh => {
-                            let header_text =
-                                words::rdh_cru::RdhCRU::<T>::rdh_header_text_with_indent_to_string(
-                                    16,
-                                );
-                            let mut stdio_lock = std::io::stdout().lock();
-                            use std::io::Write;
-                            if let Err(e) = writeln!(stdio_lock, "             {header_text}") {
-                                send_stats_ch
-                                    .send(stats::stats_controller::StatType::Fatal(format!(
-                                        "Error while printing RDH header: {e}"
-                                    )))
-                                    .unwrap();
-                            }
-                            for (rdh, _, mem_pos) in &cdps {
-                                if let Err(e) = writeln!(stdio_lock, "{mem_pos:>8X}:{rdh}") {
-                                    send_stats_ch
-                                        .send(stats::stats_controller::StatType::Fatal(format!(
-                                            "Error while printing RDH header: {e}"
-                                        )))
-                                        .unwrap();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        })
-        .expect("Failed to spawn view thread")
-}
-
-fn spawn_action_thread<T: words::lib::RDH + 'static>(
+fn spawn_analysis<T: words::lib::RDH + 'static>(
     config: std::sync::Arc<impl Config + 'static>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
     stats_sender_channel: std::sync::mpsc::Sender<stats::stats_controller::StatType>,
     data_channel: Receiver<input::data_wrapper::CdpChunk<T>>,
 ) -> std::thread::JoinHandle<()> {
-    let action_thread = std::thread::Builder::new().name("Action".to_string());
+    let analysis_thread = std::thread::Builder::new().name("Analysis".to_string());
 
-    let action_handle = action_thread
+    analysis_thread
         .spawn({
-            let config = config.clone();
             move || {
                 type CdpTuple<T> = (T, Vec<u8>, u64);
                 let mut links: Vec<u8> = Vec::new();
@@ -224,19 +155,17 @@ fn spawn_action_thread<T: words::lib::RDH + 'static>(
                             .unwrap();
                     });
 
-                    // Do action
+                    // Do checks or view
                     if config.check().is_some() {
                         cdp_chunk.into_iter().for_each(|(rdh, data, mem_pos)| {
                             if let Some(link_index) = links.iter().position(|&x| x == rdh.link_id())
                             {
-                                //log::info!("Link {} already has a validator", rdh.link_id());
                                 link_process_channels
                                     .get(link_index)
                                     .unwrap()
                                     .send((rdh, data, mem_pos))
                                     .unwrap();
                             } else {
-                                //log::info!("Link {} has no validator, creating one", rdh.link_id());
                                 links.push(rdh.link_id());
                                 let (send_channel, recv_channel) =
                                     crossbeam_channel::bounded(crate::CHANNEL_CDP_CAPACITY);
@@ -249,7 +178,7 @@ fn spawn_action_thread<T: words::lib::RDH + 'static>(
                                             let config = config.clone();
                                             let stats_sender_channel = stats_sender_channel.clone();
                                             let mut link_validator = LinkValidator::new(
-                                                &*config.clone(),
+                                                &*config,
                                                 stats_sender_channel,
                                                 recv_channel,
                                             );
@@ -259,8 +188,15 @@ fn spawn_action_thread<T: words::lib::RDH + 'static>(
                                         })
                                         .expect("Failed to spawn link validator thread"),
                                 );
+                                link_process_channels
+                                    .last()
+                                    .unwrap()
+                                    .send((rdh, data, mem_pos))
+                                    .unwrap();
                             }
                         });
+                    } else if config.view().is_some() {
+                        generate_view(config.view().unwrap(), cdp_chunk, &stats_sender_channel);
                     }
                 }
                 // Stop all threads
@@ -270,7 +206,37 @@ fn spawn_action_thread<T: words::lib::RDH + 'static>(
                 });
             }
         })
-        .expect("Failed to spawn checker thread");
+        .expect("Failed to spawn checker thread")
+}
 
-    action_handle
+#[inline]
+fn generate_view<T: words::lib::RDH>(
+    view: util::config::View,
+    cdp_chunk: input::data_wrapper::CdpChunk<T>,
+    send_stats_ch: &std::sync::mpsc::Sender<stats::stats_controller::StatType>,
+) {
+    match view {
+        util::config::View::Rdh => {
+            let header_text =
+                words::rdh_cru::RdhCRU::<T>::rdh_header_text_with_indent_to_string(16);
+            let mut stdio_lock = std::io::stdout().lock();
+            use std::io::Write;
+            if let Err(e) = writeln!(stdio_lock, "             {header_text}") {
+                send_stats_ch
+                    .send(stats::stats_controller::StatType::Fatal(format!(
+                        "Error while printing RDH header: {e}"
+                    )))
+                    .unwrap();
+            }
+            for (rdh, _, mem_pos) in &cdp_chunk {
+                if let Err(e) = writeln!(stdio_lock, "{mem_pos:>8X}:{rdh}") {
+                    send_stats_ch
+                        .send(stats::stats_controller::StatType::Fatal(format!(
+                            "Error while printing RDH header: {e}"
+                        )))
+                        .unwrap();
+                }
+            }
+        }
+    }
 }
