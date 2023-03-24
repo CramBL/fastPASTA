@@ -1,42 +1,25 @@
-@startuml
-<style>
-title {
-  HorizontalAlignment right
-  FontSize 20
-  BackGroundColor #F0F0F0
-  Margin 1
-  Padding 0
-}
+@startuml fastPASTA_structural_diagram
+!theme toy from https://raw.githubusercontent.com/plantuml/plantuml/master/themes
+' Carto color palette
+' light blue       #88CCEE
+' light pink/red   #CC6677
+' light yellow     #DDCC77
+' dark green       #117733
+' Dark purple      #332288
+' Pink             #AA4499
+' Light blue/green #44AA99
+' Brown/yellow     #999933
+' Dark purple      #882255
+' Dark red         #661100
+' Medium blue      #6699CC
+' Grey             #888888
 
-header {
-  HorizontalAlignment center
-  FontSize 20
-  FontColor purple
-}
-
-footer {
-  HorizontalAlignment left
-  FontSize 28
-  FontColor red
-}
-
-legend {
-  FontSize 30
-  BackGroundColor yellow
-  Margin 30
-  Padding 50
-}
-
-caption {
-  FontSize 32
-}
-</style>
 Title <size:60>**fastPASTA Structural Diagram**</size>
 hide empty members
 hide empty methods
 
-package words #FF00FF {
-    interface RDH << trait >> {
+package words #FAFAFA {
+    interface RDH << trait >> ##[dashed]purple {
         + load <T>( reader : &T) : Result<RDH, Error>
         + load_from_rdh0<T>( reader : &T, rdh0 : Rdh0) : Result<RDH, Error>
         + version() : u8
@@ -45,7 +28,7 @@ package words #FF00FF {
         + rdh2() : &Rdh2
         + rdh3() : &Rdh3
     }
-    interface ByteSlice << trait >> {
+    interface ByteSlice << trait >>  ##[dashed]purple {
         + to_byte_slice() : &[u8]
     }
     RDH --> ByteSlice  : uses
@@ -65,7 +48,7 @@ As well as some <i>auto traits</i>:\n\
 }
 
 
-package "stats" #FFFF99 {
+package "stats" #FAFAFA {
     struct StatsController {
     }
 
@@ -77,7 +60,7 @@ package "stats" #FFFF99 {
 
 
 
-package "input" #99FFFF {
+package "input" #FAFAFA {
 ' Data wrapper
     struct CdpChunk<T implements RDH> {
         - rdhs: Vec<T>
@@ -85,7 +68,7 @@ package "input" #99FFFF {
         - rdh_mem_pos: Vec<u64>
     }
 ' Input module
-    interface ScanCDP<T implements RDH> << trait >> {
+    interface ScanCDP<T implements RDH> << trait >> ##[dashed]purple {
         + load_rdh_cru<T>() : Result<T, Error>
         + load_payload_raw( payload_size : usize) : Result<Vec<u8>, Error>
         + load_cdp<T>() : Result<CdpChunk<T>, Error>
@@ -114,7 +97,7 @@ package "input" #99FFFF {
     }
     InputScanner *-down- MemPosTracker : contains
 
-    interface BufferedReaderWrapper {
+    interface BufferedReaderWrapper ##[dashed]purple {
         + read_exact( buf : &[u8]) : std::io::Result<()>
         + seek_relative( offset : i64) : std::io::Result<()>
     }
@@ -127,8 +110,8 @@ package "input" #99FFFF {
 
 
 ' Output module
-package "data_write" #E5CCFF {
-    interface Writer<T implements RDH> << trait >> {
+package "data_write" #FAFAFA {
+    interface Writer<T implements RDH> << trait >>  ##[dashed]purple{
         + write( data : &[u8]) : std::io::Result<()>
         + push_rdhs( rdhs : Vec<T>)
         + push_payloads( payloads : Vec<Vec<u8>>)
@@ -142,15 +125,11 @@ package "data_write" #E5CCFF {
         - buf_writer: Option<BufWriter<File>>
     }
 Writer --> CdpChunk : uses
-note left of BufferedWriter::buf_writer
- if no output file is specified, buf_writer
- is **None** then all writes are to **stdout**
-end note
 }
 
 
 
-package "validators" #E5FFCC {
+package "validators" #FAFAFA {
     struct CdpRunningValidator<T implements RDH> {
         + reset_fsm()
         + check( gbt_word: &[u8])
@@ -170,7 +149,7 @@ package "validators" #E5FFCC {
     RdhCruSanityValidator -[hidden]up-> RdhCruRunningChecker
 }
 
-package "util" #FFE5CC {
+package "util" #FAFAFA {
     struct Config {
         + dump_rdhs() : bool
         + sanity_checks() : bool

@@ -1,36 +1,46 @@
 @startuml CDP_payload_StateMachine (continuous mode)
+!theme toy from https://raw.githubusercontent.com/plantuml/plantuml/master/themes
+' Carto color palette
+' light blue       #88CCEE
+' light pink/red   #CC6677
+' light yellow     #DDCC77
+' dark green       #117733
+' Dark purple      #332288
+' Pink             #AA4499
+' Light blue/green #44AA99
+' Brown/yellow     #999933
+' Dark purple      #882255
+' Dark red         #661100
+' Medium blue      #6699CC
+' Grey             #888888
+
 <style>
 title {
   HorizontalAlignment right
-  FontSize 50
-  BackGroundColor lightgrey
+  FontSize 40
+  BackGroundColor #F0F0F0
   Margin 1
   Padding 0
 }
-
-header {
-  HorizontalAlignment center
-  FontSize 20
-  FontColor purple
+stateDiagram {
+  arrow {
+    FontSize 15
+    FontStyle bold
+  }
 }
-
-footer {
-  HorizontalAlignment left
-  FontSize 28
-  FontColor red
-}
-
-legend {
-  FontSize 30
-  BackGroundColor yellow
-  Margin 30
-  Padding 50
-}
-
-caption {
-  FontSize 32
+diamond {
+    BackgroundColor #DDCC77
+    LineColor black
+    LineThickness 0.5
 }
 </style>
+skinparam RoundCorner 20
+skinparam State {
+  BackgroundColor #0072B2
+  FontSize 16
+  FontStyle bold
+}
+
 Title **CDP payload fsm** (continuous mode)
 hide empty description
 
@@ -73,7 +83,7 @@ after_TDT --> IHW : [packet_done == 1\n&& IHW]
 after_TDT --> Continuation : [packet_done == 0\n&& event page full]
 note right of after_TDT : IHW, TDH and DDW0\nare legal next words\nwhen **packet_done == 1**
 
-state Continuation #orange {
+state Continuation #DDCC77 {
   state after_c_Data <<choice>>
     [*] -left---> c_IHW
     c_IHW --> c_TDH : [stop_bit == 0\n&& Page >= 1]
