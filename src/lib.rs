@@ -2,28 +2,28 @@
 //!
 //! # Usage
 //!
-//! ## Reading data from file and performing checks
+//! ## Reading data from file and performing checks on RDHs
 //!
 //! ```shell
 //! $ fastpasta <input_file> check all
 //! ```
 //!
-//! ## Reading data from stdin and performing all checks on only RDH
+//! ## Reading data from stdin and performing all checks that applies to ITS
 //!
 //! ```shell
-//! $ cat <input_file> | fastpasta check all rdh
+//! $ cat <input_file> | fastpasta check all ITS
 //! ```
 //!
-//! ## reading data from one file and writing to another
+//! ## reading data from one file, filtering by link 3 and and writing to another
 //!
 //! ```bash
-//! $ fastpasta <input_file> -o <output_file>
+//! $ fastpasta <input_file> --filter-link 3 -o <output_file>
 //! ```
 //!
 //! ## Reading from stdin and filtering by link ID and writing to stdout
 //! Writing to stdout is implicit when no checks or views are specified
 //! ```bash
-//! $ fastpasta <input_file> --filter-link 1
+//! $ fastpasta <input_file> --filter-link 3
 //! ```
 //!
 //! ## Reading from file and printing a view of RDHs
@@ -42,10 +42,12 @@ pub mod util;
 pub mod validators;
 pub mod words;
 
-// Larger capacity means less overhead, but more memory usage
-// Too small capacity will cause the producer thread to block
-// Too large capacity will cause down stream consumers to block
-pub const CHANNEL_CDP_CAPACITY: usize = 100;
+/// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
+///
+///
+/// Larger capacity means less overhead, but more memory usage
+/// Too small capacity will cause the producer thread to block
+const CHANNEL_CDP_CAPACITY: usize = 100;
 
 // 1. Setup reading (file or stdin)
 // 2. Do checks on read data

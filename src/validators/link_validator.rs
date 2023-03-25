@@ -3,7 +3,7 @@ use ringbuffer::{AllocRingBuffer, RingBufferExt, RingBufferWrite};
 
 struct LinkValidatorConfig {
     running_checks: bool,
-    target: Option<crate::util::config::Data>,
+    target: Option<crate::util::config::System>,
 }
 
 impl LinkValidatorConfig {
@@ -11,7 +11,7 @@ impl LinkValidatorConfig {
         use crate::util::config::Check;
         match config.check() {
             Some(check) => match check {
-                Check::All(_) | Check::Running(_) => Self {
+                Check::All(_) => Self {
                     running_checks: true,
                     target: check.target(),
                 },
@@ -46,8 +46,20 @@ impl<T: RDH> LinkValidator<T> {
         send_stats_ch: std::sync::mpsc::Sender<crate::stats::stats_controller::StatType>,
         data_rcv_channel: crossbeam_channel::Receiver<CdpTuple<T>>,
     ) -> Self {
+        let local_cfg = LinkValidatorConfig::new(global_config);
+        let rdh_sanity_validator = if let Some(system) = local_cfg.target.clone() {
+            match system {
+                crate::util::config::System::ITS => {
+                    crate::validators::rdh::RdhCruSanityValidator::<T>::with_specialization(
+                        super::rdh::SpecializeChecks::ITS,
+                    )
+                }
+            }
+        } else {
+            crate::validators::rdh::RdhCruSanityValidator::default()
+        };
         Self {
-            config: LinkValidatorConfig::new(global_config),
+            config: local_cfg,
             send_stats_ch: send_stats_ch.clone(),
             data_rcv_channel,
             cdp_validator: crate::validators::cdp_running::CdpRunningValidator::new(
@@ -55,11 +67,12 @@ impl<T: RDH> LinkValidator<T> {
                 send_stats_ch,
             ),
             rdh_running_validator: crate::validators::rdh_running::RdhCruRunningChecker::default(),
-            rdh_sanity_validator: crate::validators::rdh::RdhCruSanityValidator::default(),
+            rdh_sanity_validator,
             prev_rdhs: AllocRingBuffer::with_capacity(2),
         }
     }
 
+    /// Event loop where data is received and validation starts
     pub fn run(&mut self) {
         loop {
             let cdp_tuple = match self.data_rcv_channel.recv() {
@@ -78,10 +91,14 @@ impl<T: RDH> LinkValidator<T> {
 
         self.do_rdh_checks(&rdh, rdh_mem_pos);
 
-        if self.config.target.is_none() {
-            self.cdp_validator.set_current_rdh(&rdh, rdh_mem_pos);
-            if !payload.is_empty() {
-                self.do_payload_checks(&payload, rdh.data_format());
+        if let Some(system) = &self.config.target {
+            match system {
+                crate::util::config::System::ITS => {
+                    self.cdp_validator.set_current_rdh(&rdh, rdh_mem_pos);
+                    if !payload.is_empty() {
+                        self.do_payload_checks(&payload, rdh.data_format());
+                    }
+                }
             }
         }
 

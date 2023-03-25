@@ -10,6 +10,9 @@ use crate::words::lib::RDH;
 use crossbeam_channel::Receiver;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+/// Depth of the FIFO where the CDP chunks inserted as they are read
+const CHANNEL_CDP_CHUNK_CAPACITY: usize = 100;
+
 #[inline]
 pub fn init_reader(config: &Opt) -> Result<Box<dyn BufferedReaderWrapper>, std::io::Error> {
     if let Some(path) = config.input_file() {
@@ -65,7 +68,7 @@ pub fn spawn_reader<T: RDH + 'static>(
     input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
 ) -> (std::thread::JoinHandle<()>, Receiver<CdpChunk<T>>) {
     let reader_thread = std::thread::Builder::new().name("Reader".to_string());
-    let (send_channel, rcv_channel) = crossbeam_channel::bounded(crate::CHANNEL_CDP_CAPACITY);
+    let (send_channel, rcv_channel) = crossbeam_channel::bounded(CHANNEL_CDP_CHUNK_CAPACITY);
     let mut local_stop_on_non_full_chunk = false;
     const CDP_CHUNK_SIZE: usize = 100;
     let thread_handle = reader_thread

@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use structopt::StructOpt;
+use structopt::{clap::arg_enum, StructOpt};
 
 use super::lib::{Checks, Config, DataOutputMode, Filter, InputOutput, Util, Views};
 /// StructOpt is a library that allows parsing command line arguments
@@ -23,6 +23,7 @@ pub struct Opt {
     #[structopt(name = "INPUT DATA", parse(from_os_str))]
     file: Option<PathBuf>,
 
+    /// Commands such as [Check] or [View] that accepts further subcommands
     #[structopt(subcommand)]
     cmd: Option<Command>,
 
@@ -30,8 +31,7 @@ pub struct Opt {
     #[structopt(short = "v", long = "verbosity", default_value = "0", global = true)]
     verbosity: u8,
 
-    /// Max tolerate errors before exiting,
-    /// if set to 0 -> no limit to errors
+    /// Max tolerate errors before exiting, if set to 0 -> no limit to errors
     #[structopt(short = "e", long = "max-errors", default_value = "0", global = true)]
     max_tolerate_errors: u32,
 
@@ -39,8 +39,7 @@ pub struct Opt {
     #[structopt(short = "f", long, global = true)]
     filter_link: Option<u8>,
 
-    /// Output raw data (default: stdout)
-    /// If checks are enabled, the output will be suppressed, unless this option is set explicitly
+    /// Output raw data (default: stdout), requires a link to filter by. If Checks or Views are enabled, the output is supressed.
     #[structopt(
         name = "OUTPUT DATA",
         short = "o",
@@ -84,7 +83,6 @@ impl Checks for Opt {
                 Command::Check(checks) => match checks {
                     Check::All(target) => Some(Check::All(target.clone())),
                     Check::Sanity(target) => Some(Check::Sanity(target.clone())),
-                    Check::Running(target) => Some(Check::Running(target.clone())),
                 },
                 Command::View(_) => None,
             }
@@ -145,27 +143,23 @@ pub enum Command {
 }
 
 #[derive(structopt::StructOpt, Debug, Clone)]
-#[structopt(setting = structopt::clap::AppSettings::ColoredHelp, about = "Enable validation checks, a target for the checks can be specified.\n\
-If no target is specified, all data will be checked.\n\
+#[structopt(setting = structopt::clap::AppSettings::ColoredHelp, about = "Enable validation checks, by default only RDHs are checked.\n\
+a target such as 'ITS' can be specified.\n\
 Invoke `help [SUBCOMMAND]` for more information on possible targets.")]
 pub enum Check {
-    /// Perform all checks on target data. If no target is specified, all data will be checked.
+    /// Perform sanity & running checks on RDH. If a target system is specified (e.g. 'ITS') checks implemented for the target is also performed. If no target system is specified, only the most generic checks are done.
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
     All(Target),
-    /// Perform sanity checks on target data. If no target is specified, all data will be checked.
+    /// Perform only sanity checks on RDH. If a target system is specified (e.g. 'ITS') checks implemented for the target is also performed. If no target system is specified, only the most generic checks are done.
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
     Sanity(Target),
-    /// Perform sanity & running checks on target data. If no target is specified, all data will be checked.
-    #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-    Running(Target),
 }
 
 impl Check {
-    pub fn target(&self) -> Option<Data> {
+    pub fn target(&self) -> Option<System> {
         match self {
-            Check::All(target) => target.target.clone(),
-            Check::Sanity(target) => target.target.clone(),
-            Check::Running(target) => target.target.clone(),
+            Check::All(target) => target.system.clone(),
+            Check::Sanity(target) => target.system.clone(),
         }
     }
 }
@@ -180,13 +174,13 @@ pub enum View {
 
 #[derive(structopt::StructOpt, Debug, Clone)]
 pub struct Target {
-    #[structopt(subcommand)]
-    pub target: Option<Data>,
+    #[structopt(possible_values = &System::variants(), case_insensitive = true)]
+    pub system: Option<System>,
 }
 
-#[derive(structopt::StructOpt, Debug, Clone)]
-pub enum Data {
-    /// Target RDHs with all enabled checks.
-    #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-    Rdh,
+arg_enum! {
+#[derive(Debug, Clone)]
+    pub enum System {
+        ITS,
+    }
 }

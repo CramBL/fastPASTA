@@ -43,6 +43,23 @@ impl<T: RDH> RdhCruSanityValidator<T> {
         }
     }
 
+    pub fn with_specialization(specialization: SpecializeChecks) -> Self {
+        match specialization {
+            SpecializeChecks::ITS => Self {
+                rdh0_validator: Rdh0Validator::new(
+                    0x40,
+                    FEE_ID_SANITY_VALIDATOR,
+                    0,
+                    Some(ITS_SYSTEM_ID),
+                ),
+                rdh1_validator: &RDH1_VALIDATOR,
+                rdh2_validator: &RDH2_VALIDATOR,
+                rdh3_validator: &RDH3_VALIDATOR,
+                _phantom: std::marker::PhantomData,
+            },
+        }
+    }
+
     pub fn specialize(&mut self, specialization: SpecializeChecks) {
         match specialization {
             SpecializeChecks::ITS => {
