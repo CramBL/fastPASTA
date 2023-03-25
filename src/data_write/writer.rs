@@ -127,24 +127,29 @@ mod tests {
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
 
     use super::*;
+
+    const OUTPUT_FILE_STR: &str = " test_filter_link.raw";
+    const OUTPUT_CMD: &str = "-o test_filter_link.raw";
+    const CONFIG_STR: [&str; 7] = [
+        "fastpasta",
+        "../fastpasta_test_files/data_ols_ul.raw",
+        OUTPUT_CMD,
+        "-f",
+        "2",
+        "check",
+        "sanity",
+    ];
+
     #[test]
     fn test_buffered_writer() {
-        let output_file_str = " test_filter_link.raw";
-        let out_file_cmd = "-o test_filter_link.raw";
-        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
-            "fastpasta",
-            "../fastpasta_test_files/data_ols_ul.raw",
-            out_file_cmd,
-            "check",
-            "sanity",
-        ]);
+        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&CONFIG_STR);
         {
             let writer = BufferedWriter::<RdhCRU<V6>>::new(&config, 10);
 
             assert!(writer.buf_writer.is_some());
         }
 
-        let filepath = std::path::PathBuf::from(output_file_str);
+        let filepath = std::path::PathBuf::from(OUTPUT_FILE_STR);
 
         // delete output file
         std::fs::remove_file(filepath).unwrap();
@@ -155,15 +160,7 @@ mod tests {
     // Should panic, Because when the writer is dropped, it flushes the buffer, which will panic because the number of RDHs and payloads are not equal
     // Empty payloads are counted.
     fn test_push_2_rdh_v7_buffer_is_2() {
-        let output_file_str = " test_filter_link.raw";
-        let out_file_cmd = "-o test_filter_link.raw";
-        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
-            "fastpasta",
-            "../fastpasta_test_files/data_ols_ul.raw",
-            out_file_cmd,
-            "check",
-            "sanity",
-        ]);
+        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&CONFIG_STR);
         let rdhs = vec![CORRECT_RDH_CRU_V7, CORRECT_RDH_CRU_V7];
         let length = rdhs.len();
         println!("length: {}", length);
@@ -174,7 +171,7 @@ mod tests {
             println!("buf_size: {}", buf_size);
             assert_eq!(buf_size, length);
             // Clean up before drop
-            let filepath = std::path::PathBuf::from(output_file_str);
+            let filepath = std::path::PathBuf::from(OUTPUT_FILE_STR);
             // delete output file
             std::fs::remove_file(filepath).unwrap();
         }
@@ -182,15 +179,7 @@ mod tests {
 
     #[test]
     fn test_push_2_rdh_v7_and_empty_payloads_buffers_are_2() {
-        let output_file_str = " test_filter_link.raw";
-        let out_file_cmd = "-o test_filter_link.raw";
-        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
-            "fastpasta",
-            "../fastpasta_test_files/data_ols_ul.raw",
-            out_file_cmd,
-            "check",
-            "sanity",
-        ]);
+        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&CONFIG_STR);
         let mut cdp_chunk = CdpChunk::new();
 
         cdp_chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
@@ -205,7 +194,7 @@ mod tests {
         }
 
         // CLEANUP
-        let filepath = std::path::PathBuf::from(output_file_str);
+        let filepath = std::path::PathBuf::from(OUTPUT_FILE_STR);
         // delete output file
         std::fs::remove_file(filepath).unwrap();
     }

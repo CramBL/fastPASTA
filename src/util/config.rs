@@ -27,21 +27,28 @@ pub struct Opt {
     cmd: Option<Command>,
 
     /// Verbosity level 0-4 (Errors, Warnings, Info, Debug, Trace)
-    #[structopt(short = "v", long = "verbosity", default_value = "0")]
+    #[structopt(short = "v", long = "verbosity", default_value = "0", global = true)]
     verbosity: u8,
 
     /// Max tolerate errors before exiting,
     /// if set to 0 -> no limit to errors
-    #[structopt(short = "e", long = "max-errors", default_value = "0")]
+    #[structopt(short = "e", long = "max-errors", default_value = "0", global = true)]
     max_tolerate_errors: u32,
 
     /// Set CRU link ID to filter by
-    #[structopt(short = "f", long)]
+    #[structopt(short = "f", long, global = true)]
     filter_link: Option<u8>,
 
     /// Output raw data (default: stdout)
     /// If checks are enabled, the output will be suppressed, unless this option is set explicitly
-    #[structopt(name = "OUTPUT DATA", short = "o", long = "output", parse(from_os_str))]
+    #[structopt(
+        name = "OUTPUT DATA",
+        short = "o",
+        long = "output",
+        parse(from_os_str),
+        global = true,
+        requires("filter-link")
+    )]
     output: Option<PathBuf>,
 }
 impl Config for Opt {}
