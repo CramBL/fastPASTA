@@ -6,6 +6,21 @@ use super::lib::ByteSlice;
 /// Definitions for status words
 /// `IHW`, `TDH`, `TDT`, `DDW0`, `CDW`
 
+pub mod util {
+    /// Takes a full TDH slice and returns if the no_data field is set
+    pub fn tdh_no_data(tdh_slice: &[u8]) -> bool {
+        debug_assert!(tdh_slice.len() == 10);
+        tdh_slice[1] & 0b10_0000 != 0
+    }
+    /// Takes a full TDH slice and returns if the continuation field is set
+
+    /// Takes a full TDT slice and returns if packet_done is 0 or 1
+    pub fn tdt_packet_done(tdt_slice: &[u8]) -> bool {
+        debug_assert!(tdt_slice.len() == 10);
+        tdt_slice[9] & 0b1 != 0
+    }
+}
+
 pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display {
     fn id(&self) -> u8;
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>

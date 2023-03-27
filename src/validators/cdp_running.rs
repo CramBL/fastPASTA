@@ -1,8 +1,7 @@
-#![allow(non_camel_case_types)] // An exception to the Rust naming convention, for the state machine macro types
-
-use self::CDP_PAYLOAD_FSM_Continuous::IHW_;
 use super::data_words::DATA_WORD_SANITY_CHECKER;
 use crate::util::lib::Config;
+use crate::validators::its_payload_fsm_cont::ItsPayloadFsmContinuous;
+use crate::validators::its_payload_fsm_cont::PayloadWord;
 use crate::words::data_words::{
     ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane,
 };
@@ -13,65 +12,7 @@ use crate::{
     validators::status_words::STATUS_WORD_SANITY_CHECKER,
     words::status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt},
 };
-use sm::sm;
-sm! {
-    // All states have the '_' suffix and events have '_' prefix so they show up as `STATE_BY_EVENT` in the generated code
-    // The statemachine macro notation goes like this:
-    // EventName { StateFrom => StateTo }
-    CDP_PAYLOAD_FSM_Continuous {
 
-        InitialStates { IHW_ } // RDH: stop_bit == 0 && page == 0
-
-        // No value is associated with the event
-        _Next {
-            c_IHW_ => c_TDH_, // RDH: stop_bit == 0 && page > 0
-            c_TDH_ => c_DATA_ // TDH continuation bit set
-        }
-
-        _NoDataTrue {
-            TDH_ => DDW0_or_TDH_,
-            DDW0_or_TDH_ => DDW0_or_TDH_,
-            DDW0_or_TDH_or_IHW_ => DDW0_or_TDH_
-        }
-
-        _NoDataFalse {
-            TDH_ => DATA_,
-            DDW0_or_TDH_ => DATA_,
-            DDW0_or_TDH_or_IHW_ => DATA_
-        }
-
-        // end of CDP
-        _WasDdw0 {
-            DDW0_ => IHW_,
-            DDW0_or_TDH_ => IHW_,
-            DDW0_or_TDH_or_IHW_ => IHW_
-
-        }
-
-        _WasData {
-            DATA_ => DATA_,
-            c_DATA_ => c_DATA_
-        }
-
-        _WasTDTpacketDoneFalse {
-            // Event Page Should be full (not strictly full to 512 GBT words apparently...)
-            DATA_ => c_IHW_,
-            c_DATA_ => c_IHW_
-        }
-
-        _WasTDTpacketDoneTrue {
-            DATA_ => DDW0_or_TDH_or_IHW_, // If TDH: should have internal trigger set
-                                          // If DDW0: RDH: stop_bit == 1 and Page > 0_
-                                          // If IHW: Page > 0 && stop_bit == 0
-            c_DATA_ => DDW0_or_TDH_or_IHW_ // RDH: stop_bit == 1 and Page > 0_
-        }
-
-        _WasIhw {
-            IHW_ => TDH_,
-            DDW0_or_TDH_or_IHW_ => TDH_
-        }
-    }
-}
 enum StatusWordKind<'a> {
     Ihw(&'a [u8]),
     Tdh(&'a [u8]),
@@ -79,11 +20,11 @@ enum StatusWordKind<'a> {
     Ddw0(&'a [u8]),
 }
 
-struct cfg {
+struct CdpRunningLocalConfig {
     running_checks: bool,
 }
 
-impl cfg {
+impl CdpRunningLocalConfig {
     fn new(config: &impl crate::util::lib::Checks) -> Self {
         use crate::util::config::Check;
         match config.check() {
@@ -98,8 +39,8 @@ impl cfg {
 }
 
 pub struct CdpRunningValidator<T: RDH> {
-    config: cfg,
-    sm: CDP_PAYLOAD_FSM_Continuous::Variant,
+    config: CdpRunningLocalConfig,
+    its_state_machine: ItsPayloadFsmContinuous,
     current_rdh: Option<T>,
     current_ihw: Option<Ihw>,
     current_tdh: Option<Tdh>,
@@ -117,10 +58,10 @@ pub struct CdpRunningValidator<T: RDH> {
 impl<T: RDH> Default for CdpRunningValidator<T> {
     fn default() -> Self {
         Self {
-            config: cfg {
+            config: CdpRunningLocalConfig {
                 running_checks: false,
             },
-            sm: CDP_PAYLOAD_FSM_Continuous::Machine::new(IHW_).as_enum(),
+            its_state_machine: ItsPayloadFsmContinuous::default(),
             current_rdh: None,
             current_ihw: None,
             current_tdh: None,
@@ -140,8 +81,8 @@ impl<T: RDH> Default for CdpRunningValidator<T> {
 impl<T: RDH> CdpRunningValidator<T> {
     pub fn new(config: &impl Config, stats_send_ch: std::sync::mpsc::Sender<StatType>) -> Self {
         Self {
-            config: cfg::new(config),
-            sm: CDP_PAYLOAD_FSM_Continuous::Machine::new(IHW_).as_enum(),
+            config: CdpRunningLocalConfig::new(config),
+            its_state_machine: ItsPayloadFsmContinuous::default(),
             current_rdh: None,
             current_ihw: None,
             current_tdh: None,
@@ -160,7 +101,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     // For testing configs
     #[allow(dead_code)]
     fn set_config(&mut self, config: &impl crate::util::lib::Checks) {
-        self.config = cfg::new(config);
+        self.config = CdpRunningLocalConfig::new(config);
     }
 
     /// Helper function to format and report an error
@@ -194,7 +135,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     #[inline]
     pub fn reset_fsm(&mut self) {
         log::warn!("Resetting CDP Payload FSM");
-        self.sm = CDP_PAYLOAD_FSM_Continuous::Machine::new(IHW_).as_enum();
+        self.its_state_machine.reset_fsm();
     }
 
     /// This function has to be called for every RDH
@@ -218,145 +159,35 @@ impl<T: RDH> CdpRunningValidator<T> {
         debug_assert!(gbt_word.len() == 10);
         self.gbt_word_counter += 1; // Tracks the number of GBT words seen in the current CDP
 
-        use CDP_PAYLOAD_FSM_Continuous::Variant::*;
-        use CDP_PAYLOAD_FSM_Continuous::*;
+        let current_word = self.its_state_machine.advance(gbt_word);
 
-        let current_st = self.sm.clone();
-
-        let nxt_st = match current_st {
-            InitialIHW_(m) => {
+        match current_word {
+            PayloadWord::IHW => {
                 self.process_status_word(StatusWordKind::Ihw(gbt_word));
                 self.check_rdh_at_initial_ihw(gbt_word);
-                m.transition(_WasIhw).as_enum()
             }
-
-            TDH_By_WasIhw(m) => {
+            PayloadWord::IHW_continuation => {
+                self.process_status_word(StatusWordKind::Ihw(gbt_word))
+            }
+            PayloadWord::TDH => {
                 self.process_status_word(StatusWordKind::Tdh(gbt_word));
                 self.check_tdh_no_continuation(gbt_word);
-                match self.current_tdh.as_ref().unwrap().no_data() {
-                    0 => m.transition(_NoDataFalse).as_enum(),
-                    1 => m.transition(_NoDataTrue).as_enum(),
-                    _ => unreachable!(),
-                }
-            }
-
-            DDW0_or_TDH_By_NoDataTrue(m) => {
-                if gbt_word[9] == 0xE8 {
-                    // TDH
-                    self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                    self.check_tdh_no_continuation(gbt_word);
-                    m.transition(_NoDataFalse).as_enum()
-                } else {
-                    debug_assert!(gbt_word[9] == 0xE4);
-                    self.process_status_word(StatusWordKind::Ddw0(gbt_word));
-
-                    m.transition(_WasDdw0).as_enum()
-                }
-            }
-
-            DATA_By_NoDataFalse(m) => {
-                if gbt_word[9] == 0xF0 {
-                    self.process_status_word(StatusWordKind::Tdt(gbt_word));
-
-                    // Next word is decided by if packet_done is 0 or 1
-                    // `current_tdt` is used as processing the status words overrides the previous tdt
-                    match self.current_tdt.as_ref().unwrap().packet_done() {
-                        false => m.transition(_WasTDTpacketDoneFalse).as_enum(),
-                        true => m.transition(_WasTDTpacketDoneTrue).as_enum(),
+                if let Some(current_tdt) = self.current_tdt.as_ref() {
+                    if current_tdt.packet_done() {
+                        self.check_tdh_by_was_tdt_packet_done_true(gbt_word);
                     }
-                } else {
-                    self.process_data_word(gbt_word);
-                    m.transition(_WasData).as_enum()
                 }
             }
-
-            DATA_By_WasData(m) => {
-                if gbt_word[9] == 0xF0 {
-                    // TDT ID
-                    self.process_status_word(StatusWordKind::Tdt(gbt_word));
-                    // Next word is decided by if packet_done is 0 or 1
-                    // `current_tdt` is used as processing the status words overrides the previous tdt
-                    match self.current_tdt.as_ref().unwrap().packet_done() {
-                        false => m.transition(_WasTDTpacketDoneFalse).as_enum(),
-                        true => m.transition(_WasTDTpacketDoneTrue).as_enum(),
-                    }
-                } else {
-                    self.process_data_word(gbt_word);
-                    m.transition(_WasData).as_enum()
-                }
-            }
-
-            c_IHW_By_WasTDTpacketDoneFalse(m) => {
-                self.process_status_word(StatusWordKind::Ihw(gbt_word));
-                m.transition(_Next).as_enum()
-            }
-
-            c_TDH_By_Next(m) => {
+            PayloadWord::TDH_continuation => {
                 self.process_status_word(StatusWordKind::Tdh(gbt_word));
                 self.check_tdh_continuation(gbt_word);
-
-                m.transition(_Next).as_enum()
             }
+            PayloadWord::TDT => self.process_status_word(StatusWordKind::Tdt(gbt_word)),
+            // DataWord and CDW are handled together
+            PayloadWord::CDW | PayloadWord::DataWord => self.process_data_word(gbt_word),
 
-            c_DATA_By_Next(m) => {
-                if gbt_word[9] == 0xF0 {
-                    // TDT ID
-                    self.process_status_word(StatusWordKind::Tdt(gbt_word));
-                    match self.current_tdt.as_ref().unwrap().packet_done() {
-                        false => m.transition(_WasTDTpacketDoneFalse).as_enum(),
-                        true => m.transition(_WasTDTpacketDoneTrue).as_enum(),
-                    }
-                } else {
-                    self.process_data_word(gbt_word);
-                    m.transition(_WasData).as_enum()
-                }
-            }
-
-            c_DATA_By_WasData(m) => {
-                if gbt_word[9] == 0xF0 {
-                    // TDT ID
-                    self.process_status_word(StatusWordKind::Tdt(gbt_word));
-                    match self.current_tdt.as_ref().unwrap().packet_done() {
-                        false => m.transition(_WasTDTpacketDoneFalse).as_enum(),
-                        true => m.transition(_WasTDTpacketDoneTrue).as_enum(),
-                    }
-                } else {
-                    self.process_data_word(gbt_word);
-                    m.transition(_WasData).as_enum()
-                }
-            }
-
-            DDW0_or_TDH_or_IHW_By_WasTDTpacketDoneTrue(m) => {
-                if gbt_word[9] == 0xE8 {
-                    // TDH
-                    self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                    self.check_tdh_by_was_tdt_packet_done_true(gbt_word);
-
-                    match self.current_tdh.as_ref().unwrap().no_data() {
-                        0 => m.transition(_NoDataFalse).as_enum(),
-                        1 => m.transition(_NoDataTrue).as_enum(),
-                        _ => unreachable!(),
-                    }
-                } else if gbt_word[9] == 0xE4 {
-                    // DDW0
-                    self.process_status_word(StatusWordKind::Ddw0(gbt_word));
-                    m.transition(_WasDdw0).as_enum()
-                } else {
-                    // IHW
-                    self.process_status_word(StatusWordKind::Ihw(gbt_word));
-                    self.check_rdh_at_initial_ihw(gbt_word);
-
-                    m.transition(_WasIhw).as_enum()
-                }
-            }
-            IHW_By_WasDdw0(m) => {
-                self.process_status_word(StatusWordKind::Ihw(gbt_word));
-                self.check_rdh_at_initial_ihw(gbt_word);
-                m.transition(_WasIhw).as_enum()
-            }
-        };
-
-        self.sm = nxt_st;
+            PayloadWord::DDW0 => self.process_status_word(StatusWordKind::Ddw0(gbt_word)),
+        }
     }
 
     /// Calculates the current position in the memory of the current word.

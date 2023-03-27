@@ -1,5 +1,5 @@
 use crate::words::lib::RDH;
-use crate::{input, stats::stats_controller, util, words};
+use crate::{input, stats::stats_controller, util};
 
 #[inline]
 pub fn generate_view<T: RDH>(
