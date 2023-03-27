@@ -122,10 +122,14 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
         .spawn({
             move || {
                 type CdpTuple<T> = (T, Vec<u8>, u64);
+                // Setup for check case
                 let mut links: Vec<u8> = Vec::new();
                 let mut link_process_channels: Vec<crossbeam_channel::Sender<CdpTuple<T>>> =
                     Vec::new();
                 let mut validator_thread_handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
+                // Setup for view case
+                let mut its_payload_fsm_cont =
+                    validators::its_payload_fsm_cont::ItsPayloadFsmContinuous::default();
                 while !stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
                     // Receive chunk from reader
                     let cdp_chunk = match data_channel.recv() {
@@ -137,7 +141,7 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                     };
                     // Collect global stats
                     // Send HBF seen if stop bit is 1
-                    cdp_chunk.rdh_slice().iter().for_each(|rdh| {
+                    for rdh in cdp_chunk.rdh_slice().iter() {
                         if rdh.stop_bit() == 1 {
                             stats_sender_channel
                                 .send(stats::stats_controller::StatType::HBFsSeen(1))
@@ -156,11 +160,11 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                                 rdh.data_format(),
                             ))
                             .unwrap();
-                    });
+                    }
 
                     // Do checks or view
                     if config.check().is_some() {
-                        cdp_chunk.into_iter().for_each(|(rdh, data, mem_pos)| {
+                        for (rdh, data, mem_pos) in cdp_chunk.into_iter() {
                             if let Some(link_index) = links.iter().position(|&x| x == rdh.link_id())
                             {
                                 link_process_channels
@@ -197,13 +201,18 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                                     .send((rdh, data, mem_pos))
                                     .unwrap();
                             }
-                        });
+                        }
                     } else if config.view().is_some() {
-                        view::lib::generate_view(
+                        if let Err(e) = view::lib::generate_view(
                             config.view().unwrap(),
                             cdp_chunk,
                             &stats_sender_channel,
-                        );
+                            &mut its_payload_fsm_cont,
+                        ) {
+                            stats_sender_channel
+                                .send(stats::stats_controller::StatType::Fatal(e.to_string()))
+                                .expect("Couldn't send to StatsController");
+                        }
                     }
                 }
                 // Stop all threads

@@ -144,7 +144,8 @@ impl<T: RDH> LinkValidator<T> {
         }
     }
 }
-fn preprocess_payload(
+
+pub fn preprocess_payload(
     payload: &[u8],
     data_format: u8,
 ) -> Result<impl Iterator<Item = &[u8]>, String> {

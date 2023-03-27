@@ -35,7 +35,7 @@ pub trait RDH:
     fn stop_bit(&self) -> u8;
     fn pages_counter(&self) -> u16;
     fn data_format(&self) -> u8;
-    fn is_hba(&self) -> bool;
+    fn trigger_type(&self) -> u32;
     fn fee_id(&self) -> u16;
     fn cru_id(&self) -> u16;
     fn dw(&self) -> u8;

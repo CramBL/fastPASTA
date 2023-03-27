@@ -59,6 +59,7 @@ impl Views for Opt {
             match sub_cmd {
                 Command::View(view) => match view {
                     View::Rdh => Some(View::Rdh),
+                    View::Hbf => Some(View::Hbf),
                 },
                 _ => None,
             }
@@ -170,6 +171,9 @@ pub enum View {
     /// Print formatted RDHs to stdout
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
     Rdh,
+    /// Print formatted HBFs to stdout
+    #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
+    Hbf,
 }
 
 #[derive(structopt::StructOpt, Debug, Clone)]

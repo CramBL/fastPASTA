@@ -83,7 +83,7 @@ fn init_processing(
             stat_send_channel.clone(),
             thread_stopper,
         ) {
-            Ok(_) => std::process::ExitCode::SUCCESS,
+            Ok(_) => exit_success(),
             Err(e) => {
                 stat_send_channel
                     .send(stats_controller::StatType::Fatal(e.to_string()))
@@ -97,7 +97,7 @@ fn init_processing(
             stat_send_channel.clone(),
             thread_stopper,
         ) {
-            Ok(_) => std::process::ExitCode::SUCCESS,
+            Ok(_) => exit_success(),
             Err(e) => {
                 stat_send_channel
                     .send(stats_controller::StatType::Fatal(e.to_string()))
@@ -114,4 +114,9 @@ fn init_processing(
             std::process::ExitCode::from(3)
         }
     }
+}
+
+fn exit_success() -> std::process::ExitCode {
+    log::info!("Exit successful");
+    std::process::ExitCode::SUCCESS
 }
