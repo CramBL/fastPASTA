@@ -40,6 +40,7 @@ pub mod input;
 pub mod stats;
 pub mod util;
 pub mod validators;
+mod view;
 pub mod words;
 
 /// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
@@ -198,7 +199,11 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                             }
                         });
                     } else if config.view().is_some() {
-                        generate_view(config.view().unwrap(), cdp_chunk, &stats_sender_channel);
+                        view::lib::generate_view(
+                            config.view().unwrap(),
+                            cdp_chunk,
+                            &stats_sender_channel,
+                        );
                     }
                 }
                 // Stop all threads
@@ -209,36 +214,4 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
             }
         })
         .expect("Failed to spawn checker thread")
-}
-
-#[inline]
-fn generate_view<T: words::lib::RDH>(
-    view: util::config::View,
-    cdp_chunk: input::data_wrapper::CdpChunk<T>,
-    send_stats_ch: &std::sync::mpsc::Sender<stats::stats_controller::StatType>,
-) {
-    match view {
-        util::config::View::Rdh => {
-            let header_text =
-                words::rdh_cru::RdhCRU::<T>::rdh_header_text_with_indent_to_string(16);
-            let mut stdio_lock = std::io::stdout().lock();
-            use std::io::Write;
-            if let Err(e) = writeln!(stdio_lock, "             {header_text}") {
-                send_stats_ch
-                    .send(stats::stats_controller::StatType::Fatal(format!(
-                        "Error while printing RDH header: {e}"
-                    )))
-                    .unwrap();
-            }
-            for (rdh, _, mem_pos) in &cdp_chunk {
-                if let Err(e) = writeln!(stdio_lock, "{mem_pos:>8X}:{rdh}") {
-                    send_stats_ch
-                        .send(stats::stats_controller::StatType::Fatal(format!(
-                            "Error while printing RDH header: {e}"
-                        )))
-                        .unwrap();
-                }
-            }
-        }
-    }
 }
