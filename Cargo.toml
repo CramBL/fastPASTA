@@ -1,7 +1,10 @@
 [package]
 name = "fastpasta"
-version = "0.1.1"
+version = "1.0.0"
 edition = "2021"
+readme = "README.md"
+repository = "https://gitlab.cern.ch/mkonig/fastpasta"
+license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -28,3 +31,7 @@ tabled = { version = "0.10.0", features = ["color"]}
 [[bench]]
 name = "io_benchmark"
 harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1

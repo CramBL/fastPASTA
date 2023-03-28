@@ -142,4 +142,3 @@ Additional checks related to state:
 
 Certain transitions are ambigious (marked by yellow notes), these are resolved based on the ID of the next received GBT word.
 ![CDP FSM for validation](CDP_payload_StateMachine%20(continuous%20mode).png)
-
