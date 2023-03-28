@@ -6,6 +6,138 @@ use super::lib::ByteSlice;
 /// Definitions for status words
 /// `IHW`, `TDH`, `TDT`, `DDW0`, `CDW`
 
+pub mod util {
+    /// These functions takes raw byte slices for performance reasons.
+    /// It is crucial that the word is known before being passed to any function here.
+
+    /// Takes a full TDH slice and returns a string description of the trigger field
+    pub fn tdh_trigger_as_string(tdh_slice: &[u8]) -> String {
+        if tdh_internal_trigger(tdh_slice) {
+            String::from("Internal")
+        } else if tdh_physics_trigger(tdh_slice) {
+            String::from("PhT     ")
+        } else {
+            String::from("Other   ")
+        }
+    }
+
+    /// Takes a full TDH slice and returns  a string description of the continuation field
+    pub fn tdh_continuation_as_string(tdh_slice: &[u8]) -> String {
+        debug_assert!(tdh_slice.len() == 10);
+        if tdh_continuation(tdh_slice) {
+            String::from("Cont.")
+        } else {
+            String::from("     ")
+        }
+    }
+
+    /// Takes a DDW0 or TDT slice and returns a string description of whether or not an error is reported by the DDW0
+    pub fn ddw0_tdt_lane_status_as_string(ddw0_tdt_slice: &[u8]) -> String {
+        if ddw0_tdt_lane_status_any_fatal(ddw0_tdt_slice) {
+            String::from("Fatal  ")
+        } else if ddw0_tdt_lane_status_any_error(ddw0_tdt_slice) {
+            String::from("Error  ")
+        } else if ddw0_tdt_lane_status_any_warning(ddw0_tdt_slice) {
+            String::from("Warning")
+        } else {
+            String::from("       ")
+        }
+    }
+
+    /// Takes a full TDH slice and returns if the no_data field is set
+    pub fn tdh_no_data(tdh_slice: &[u8]) -> bool {
+        debug_assert!(tdh_slice.len() == 10);
+        tdh_slice[1] & 0b10_0000 != 0
+    }
+    /// Takes a full TDH slice and returns if continuation bit is set
+    pub fn tdh_continuation(tdh_slice: &[u8]) -> bool {
+        debug_assert!(tdh_slice.len() == 10);
+        tdh_slice[1] & 0b100_0000 != 0
+    }
+
+    /// Takes a full TDH slice and returns if the internal trigger bit [12] is set
+    fn tdh_internal_trigger(tdh_slice: &[u8]) -> bool {
+        debug_assert!(tdh_slice.len() == 10);
+        tdh_slice[1] & 0b1_0000 != 0
+    }
+    /// Takes a full TDH slice and returns if the physics trigger bit [4] is set
+    fn tdh_physics_trigger(tdh_slice: &[u8]) -> bool {
+        debug_assert!(tdh_slice.len() == 10);
+        tdh_slice[0] & 0b1_0000 != 0
+    }
+
+    /// Takes a full TDT slice and returns if packet_done bit is set
+    pub fn tdt_packet_done(tdt_slice: &[u8]) -> bool {
+        debug_assert!(tdt_slice.len() == 10);
+        tdt_slice[8] & 0b1 != 0
+    }
+
+    pub fn tdt_packet_done_as_string(tdt_slice: &[u8]) -> String {
+        debug_assert!(tdt_slice.len() == 10);
+        if tdt_packet_done(tdt_slice) {
+            String::from("Complete")
+        } else {
+            String::from("Split   ")
+        }
+    }
+
+    /// Takes a DDW0 slice and returns true if any lanes status is not OK
+    #[allow(dead_code)]
+    fn ddw0_lane_status_not_ok(ddw0_slice: &[u8]) -> bool {
+        debug_assert!(ddw0_slice.len() == 10);
+        let first_7_bytes = &ddw0_slice[..7];
+        first_7_bytes.iter().any(|byte| *byte != 0)
+    }
+
+    /// Takes a DDW0 slice and returns true if any lanes status is warning
+    fn ddw0_tdt_lane_status_any_warning(ddw0_slice: &[u8]) -> bool {
+        debug_assert!(ddw0_slice.len() == 10);
+        const LANE_WARNING_MASK: u8 = 0b0101_0101;
+        let first_7_bytes = &ddw0_slice[..7];
+        first_7_bytes
+            .iter()
+            .any(|byte| *byte & LANE_WARNING_MASK != 0)
+    }
+
+    fn ddw0_tdt_lane_status_any_error(ddw0_slice: &[u8]) -> bool {
+        debug_assert!(ddw0_slice.len() == 10);
+        const LANE_ERROR_MASK: u8 = 0b1010_1010;
+        let first_7_bytes = &ddw0_slice[..7];
+        first_7_bytes
+            .iter()
+            .any(|byte| *byte & LANE_ERROR_MASK != 0)
+    }
+
+    fn ddw0_tdt_lane_status_any_fatal(ddw0_slice: &[u8]) -> bool {
+        debug_assert!(ddw0_slice.len() == 10);
+        const LANE_FATAL_MASK0: u8 = 0b0000_0011;
+        const LANE_FATAL_MASK1: u8 = 0b0000_1100;
+        const LANE_FATAL_MASK2: u8 = 0b0011_0000;
+        const LANE_FATAL_MASK3: u8 = 0b1100_0000;
+        let first_7_bytes = &ddw0_slice[..7];
+        first_7_bytes.iter().any(|byte| {
+            *byte & LANE_FATAL_MASK0 == LANE_FATAL_MASK0
+                || *byte & LANE_FATAL_MASK1 == LANE_FATAL_MASK1
+                || *byte & LANE_FATAL_MASK2 == LANE_FATAL_MASK2
+                || *byte & LANE_FATAL_MASK3 == LANE_FATAL_MASK3
+        })
+    }
+
+    /// Takes a DDW0 slice and returns if the lane_starts_violation bit [67] is set
+    #[allow(dead_code)]
+    fn ddw0_lane_starts_violation(ddw0_slice: &[u8]) -> bool {
+        debug_assert!(ddw0_slice.len() == 10);
+        ddw0_slice[8] & 0b1000 != 0
+    }
+
+    /// Takes a DDW0 slice and returns if the transmission timeout bit [65] is set
+    #[allow(dead_code)]
+    fn ddw0_transmission_timeout(ddw0_slice: &[u8]) -> bool {
+        debug_assert!(ddw0_slice.len() == 10);
+        ddw0_slice[8] & 0b10 != 0
+    }
+}
+
 pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display {
     fn id(&self) -> u8;
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>

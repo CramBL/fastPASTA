@@ -119,7 +119,7 @@ impl<T: RDH> LinkValidator<T> {
     fn report_rdh_error(&mut self, rdh: &T, mut error: String, rdh_mem_pos: u64) {
         error.push_str(crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(7).as_str());
         self.prev_rdhs.iter().for_each(|prev_rdh| {
-            error.push_str(&format!("{}\n", prev_rdh));
+            error.push_str(&format!("{prev_rdh}\n"));
         });
         error.push_str(&format!("{rdh} <--- Error occured here\n"));
 
@@ -144,7 +144,8 @@ impl<T: RDH> LinkValidator<T> {
         }
     }
 }
-fn preprocess_payload(
+
+pub fn preprocess_payload(
     payload: &[u8],
     data_format: u8,
 ) -> Result<impl Iterator<Item = &[u8]>, String> {

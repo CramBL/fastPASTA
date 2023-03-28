@@ -38,7 +38,6 @@ Uses the value of the stop_bit to determine if the page_counter is expected to i
   * Check page_counter == expected_page_counter
   * Reset expected_page_counter to 0
   * Check next RDH's orbit is different from the current RDH's orbit
-* Check that the RDH's packet_counter increments, and if it doesn't, check that it is less than 3.
 * `If page_counter != 0` check that these fields are same as previous RDH:
   * orbit
   * trigger

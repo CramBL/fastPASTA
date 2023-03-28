@@ -125,6 +125,10 @@ impl<T: RDH> CdpChunk<T> {
     pub fn rdh_slice(&self) -> &[T] {
         &self.rdhs
     }
+
+    pub fn rdh_mem_pos_slice(&self) -> &[u64] {
+        &self.rdh_mem_pos
+    }
 }
 
 /// Implementation of a consuming iterator for CdpChunk, with a helper struct

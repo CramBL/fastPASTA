@@ -40,6 +40,7 @@ pub mod input;
 pub mod stats;
 pub mod util;
 pub mod validators;
+mod view;
 pub mod words;
 
 /// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
@@ -49,9 +50,12 @@ pub mod words;
 /// Too small capacity will cause the producer thread to block
 const CHANNEL_CDP_CAPACITY: usize = 100;
 
-// 1. Setup reading (file or stdin)
-// 2. Do checks on read data
-// 3. Write data out (file or stdout)
+/// Entry point for scanning the input and delegating to checkers, view generators and/or writers depending on config
+///
+/// Follows these steps:
+/// 1. Setup reading (file or stdin)
+/// 2. Do checks or generate view on read data
+/// 3. Write data out (file, stdout or no output)
 pub fn process<T: words::lib::RDH + 'static>(
     config: std::sync::Arc<impl Config + 'static>,
     loader: input::input_scanner::InputScanner<
@@ -121,11 +125,19 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
         .spawn({
             move || {
                 type CdpTuple<T> = (T, Vec<u8>, u64);
+                // Setup for check case
                 let mut links: Vec<u8> = Vec::new();
                 let mut link_process_channels: Vec<crossbeam_channel::Sender<CdpTuple<T>>> =
                     Vec::new();
                 let mut validator_thread_handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
-                while !stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
+                // Setup for view case
+                let mut its_payload_fsm_cont =
+                    validators::its_payload_fsm_cont::ItsPayloadFsmContinuous::default();
+                loop {
+                    if stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
+                        log::warn!("Stopping reader thread on stop flag!");
+                        break;
+                    }
                     // Receive chunk from reader
                     let cdp_chunk = match data_channel.recv() {
                         Ok(cdp) => cdp,
@@ -136,7 +148,7 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                     };
                     // Collect global stats
                     // Send HBF seen if stop bit is 1
-                    cdp_chunk.rdh_slice().iter().for_each(|rdh| {
+                    for rdh in cdp_chunk.rdh_slice().iter() {
                         if rdh.stop_bit() == 1 {
                             stats_sender_channel
                                 .send(stats::stats_controller::StatType::HBFsSeen(1))
@@ -155,11 +167,11 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                                 rdh.data_format(),
                             ))
                             .unwrap();
-                    });
+                    }
 
                     // Do checks or view
                     if config.check().is_some() {
-                        cdp_chunk.into_iter().for_each(|(rdh, data, mem_pos)| {
+                        for (rdh, data, mem_pos) in cdp_chunk.into_iter() {
                             if let Some(link_index) = links.iter().position(|&x| x == rdh.link_id())
                             {
                                 link_process_channels
@@ -196,9 +208,18 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                                     .send((rdh, data, mem_pos))
                                     .unwrap();
                             }
-                        });
+                        }
                     } else if config.view().is_some() {
-                        generate_view(config.view().unwrap(), cdp_chunk, &stats_sender_channel);
+                        if let Err(e) = view::lib::generate_view(
+                            config.view().unwrap(),
+                            cdp_chunk,
+                            &stats_sender_channel,
+                            &mut its_payload_fsm_cont,
+                        ) {
+                            stats_sender_channel
+                                .send(stats::stats_controller::StatType::Fatal(e.to_string()))
+                                .expect("Couldn't send to StatsController");
+                        }
                     }
                 }
                 // Stop all threads
@@ -209,36 +230,4 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
             }
         })
         .expect("Failed to spawn checker thread")
-}
-
-#[inline]
-fn generate_view<T: words::lib::RDH>(
-    view: util::config::View,
-    cdp_chunk: input::data_wrapper::CdpChunk<T>,
-    send_stats_ch: &std::sync::mpsc::Sender<stats::stats_controller::StatType>,
-) {
-    match view {
-        util::config::View::Rdh => {
-            let header_text =
-                words::rdh_cru::RdhCRU::<T>::rdh_header_text_with_indent_to_string(16);
-            let mut stdio_lock = std::io::stdout().lock();
-            use std::io::Write;
-            if let Err(e) = writeln!(stdio_lock, "             {header_text}") {
-                send_stats_ch
-                    .send(stats::stats_controller::StatType::Fatal(format!(
-                        "Error while printing RDH header: {e}"
-                    )))
-                    .unwrap();
-            }
-            for (rdh, _, mem_pos) in &cdp_chunk {
-                if let Err(e) = writeln!(stdio_lock, "{mem_pos:>8X}:{rdh}") {
-                    send_stats_ch
-                        .send(stats::stats_controller::StatType::Fatal(format!(
-                            "Error while printing RDH header: {e}"
-                        )))
-                        .unwrap();
-                }
-            }
-        }
-    }
 }

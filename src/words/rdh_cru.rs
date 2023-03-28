@@ -31,7 +31,7 @@ impl<Version> Display for RdhCRU<Version> {
         let rdhcru_fields0 = format!("{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}");
         write!(
             f,
-            "       {}{rdhcru_fields0}{}{:<11}{}",
+            "{}{rdhcru_fields0}{}{:<11}{}",
             self.rdh0,
             self.rdh1,
             self.data_format(),
@@ -170,10 +170,8 @@ impl<Version: std::marker::Send + std::marker::Sync> super::lib::RDH for RdhCRU<
         self.data_format()
     }
     #[inline]
-    fn is_hba(&self) -> bool {
-        let trigger = self.rdh2.trigger_type;
-        // HBA is bit 1
-        trigger & 0b10 == 0b10
+    fn trigger_type(&self) -> u32 {
+        self.rdh2.trigger_type
     }
     #[inline]
     fn fee_id(&self) -> u16 {

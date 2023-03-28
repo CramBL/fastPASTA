@@ -35,7 +35,7 @@ pub trait RDH:
     fn stop_bit(&self) -> u8;
     fn pages_counter(&self) -> u16;
     fn data_format(&self) -> u8;
-    fn is_hba(&self) -> bool;
+    fn trigger_type(&self) -> u32;
     fn fee_id(&self) -> u16;
     fn cru_id(&self) -> u16;
     fn dw(&self) -> u8;
@@ -72,14 +72,14 @@ unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
 }
 
 // Utility functions to extract information from the FeeId
-/// Extracts stave_number from 6 LSB [5:0]
+/// Extracts stave_number from 6 LSB \[5:0\]
 pub fn stave_number_from_feeid(fee_id: u16) -> u8 {
     let stave_number_mask: u16 = 0b11_1111;
     (fee_id & stave_number_mask) as u8
 }
-/// Extracts layer number from 3 bits [14:12]
+/// Extracts layer number from 3 bits \[14:12\]
 pub fn layer_from_feeid(fee_id: u16) -> u8 {
-    // Extract layer from 3 bits [14:12]
+    // Extract layer from 3 bits 14:12
     let layer_mask: u16 = 0b0111;
     let layer_lsb_idx: u8 = 12;
     ((fee_id >> layer_lsb_idx) & layer_mask) as u8
