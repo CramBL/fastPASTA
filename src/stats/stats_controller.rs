@@ -40,6 +40,7 @@ pub struct StatsController {
     hbfs_seen: u32,
     fatal_error: Option<String>,
     layers_staves_seen: Vec<(u8, u8)>,
+    view_active: bool,
 }
 impl StatsController {
     pub fn new(
@@ -64,6 +65,7 @@ impl StatsController {
             hbfs_seen: 0,
             fatal_error: None,
             layers_staves_seen: Vec::new(),
+            view_active: config.view().is_some(),
         }
     }
 
@@ -72,7 +74,12 @@ impl StatsController {
             match self.recv_stats_channel.recv() {
                 Ok(stats_update) => self.update(stats_update),
                 Err(_) => {
-                    self.print();
+                    if self.view_active {
+                        // Avoid printing the report in the middle of a view
+                        log::info!("View active, skipping report summary printout.")
+                    } else {
+                        self.print();
+                    }
                     break;
                 }
             }
