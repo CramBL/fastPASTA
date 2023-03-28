@@ -35,6 +35,9 @@ To verify or view curated content of the scanned raw binary data from ALICE.
   - [Verbosity levels](#verbosity-levels)
 - [License](#license)
 - [Project status](#project-status)
+- [Benchmarks and comparisons](#benchmarks-and-comparisons)
+    - [Verifying all RDHs in 3.4GB file](#verifying-all-rdhs-in-34gb-file)
+    - [Verifying all RDHs in 500MB file](#verifying-all-rdhs-in-500mb-file)
 - [Need more performance?](#need-more-performance)
     - [Background](#background)
     - [To install the nightly toolchain (and check your installation)](#to-install-the-nightly-toolchain-and-check-your-installation)
@@ -128,6 +131,22 @@ Apache 2.0 or MIT at your option.
 
 # Project status
 Under development
+
+# Benchmarks and comparisons
+In the table below `fastPASTA` is compared with `rawdata-parser` in verifying each RDH on a 3.4GB large file with raw ITS data. `decode.py` does not support the new data format using UL, so it is run on a much smaller file 500MB file, but with similar data contents (except for dataformat), and the execution time is multiplied by 6. Hyperfine is used for benchmarking, but `rawdata-parser` is not compatible with hyperfine, and is therefor measured with the `time` command.
+### Verifying all RDHs in 3.4GB file
+| Tool | Command | Mean [s] | Min [s] | Max [s] |
+|:---|:---|---:|---:|---:|
+|fastPASTA| `./fastpasta data_ols_its-ul-v0.5_3.4GB check all` | 1.058 ± 0.021 | 1.031 | 1.101 |
+|rawdata-parser| `racket rawdata-parser.rkt --skip-packet-counter-checks data_ols_its-ul-v0.5_3.4GB` | 5.201 | N/A | N/A |
+|decode.py| `python3 decode.py -i 20522 -i 20778 -f data_ols_no_ul.raw --skip_data` | 79.26 ± 1.57 | 76.64 | 82.236 |
+
+### Verifying all RDHs in 500MB file
+| Tool | Command | Mean [s] | Min [s] | Max [s] |
+|:---|:---|---:|---:|---:|
+|fastPASTA| `./fastpasta data_ols_no_ul.raw check all` | 0.123 ± 0.023 | 0.119 | 0.126 |
+|rawdata-parser| `racket rawdata-parser.rkt --skip-packet-counter-checks data_ols_no_ul.raw ` | 1.580 | N/A | N/A |
+|decode.py| `python3 decode.py -i 20522 -i 20778 -f data_ols_no_ul.raw --skip_data` | 13.151 ± 0.217 | 12.870 | 13.634 |
 
 
 # Need more performance?
