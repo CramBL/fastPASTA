@@ -12,7 +12,9 @@ pub mod util {
 
     /// Takes a full TDH slice and returns a string description of the trigger field
     pub fn tdh_trigger_as_string(tdh_slice: &[u8]) -> String {
-        if tdh_internal_trigger(tdh_slice) {
+        if tdh_soc_trigger(tdh_slice) {
+            String::from("SOC     ")
+        } else if tdh_internal_trigger(tdh_slice) {
             String::from("Internal")
         } else if tdh_physics_trigger(tdh_slice) {
             String::from("PhT     ")
@@ -55,6 +57,12 @@ pub mod util {
         tdh_slice[1] & 0b100_0000 != 0
     }
 
+    /// Takes a full TDH slice and returns if the SOC trigger bit [9] is set
+    fn tdh_soc_trigger(tdh_slice: &[u8]) -> bool {
+        debug_assert!(tdh_slice.len() == 10);
+        const SOC_BIT_MASK: u8 = 0b10;
+        tdh_slice[1] & SOC_BIT_MASK != 0
+    }
     /// Takes a full TDH slice and returns if the internal trigger bit [12] is set
     fn tdh_internal_trigger(tdh_slice: &[u8]) -> bool {
         debug_assert!(tdh_slice.len() == 10);

@@ -140,12 +140,19 @@ fn print_rdh_hbf_view<T: RDH>(
 
 const PHT_BIT_MASK: u32 = 0b1_0000;
 const SOC_BIT_MASK: u32 = 0b10_0000_0000;
+const HB_BIT_MASK: u32 = 0b10;
 fn rdh_trigger_type_as_string<T: RDH>(rdh: &T) -> String {
     let trigger_type = rdh.trigger_type();
-    if trigger_type & PHT_BIT_MASK != 0 {
-        String::from("PhT  ")
-    } else if trigger_type & SOC_BIT_MASK != 0 {
+    // Priorities describing the trigger as follows:
+    // 1. SOC
+    // 2. HB
+    // 3. PhT
+    if trigger_type & SOC_BIT_MASK != 0 {
         String::from("SOC  ")
+    } else if trigger_type & HB_BIT_MASK != 0 {
+        String::from("HB   ")
+    } else if trigger_type & PHT_BIT_MASK != 0 {
+        String::from("PhT  ")
     } else {
         String::from("Other")
     }
