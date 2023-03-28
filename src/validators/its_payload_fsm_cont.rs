@@ -5,6 +5,7 @@ pub enum PayloadWord {
     IHW_continuation,
     TDH,
     TDH_continuation,
+    TDH_after_packet_done,
     TDT,
     CDW,
     DataWord,
@@ -175,12 +176,14 @@ impl ItsPayloadFsmContinuous {
             },
 
             DDW0_or_TDH_or_IHW_By_WasTDTpacketDoneTrue(m) => match gbt_word[9] {
-                0xE8 if status_words::util::tdh_no_data(gbt_word) => {
-                    (m.transition(_NoDataTrue).as_enum(), PayloadWord::TDH)
-                }
-                0xE8 if !status_words::util::tdh_no_data(gbt_word) => {
-                    (m.transition(_NoDataFalse).as_enum(), PayloadWord::TDH)
-                }
+                0xE8 if status_words::util::tdh_no_data(gbt_word) => (
+                    m.transition(_NoDataTrue).as_enum(),
+                    PayloadWord::TDH_after_packet_done,
+                ),
+                0xE8 if !status_words::util::tdh_no_data(gbt_word) => (
+                    m.transition(_NoDataFalse).as_enum(),
+                    PayloadWord::TDH_after_packet_done,
+                ),
                 0xE4 => (m.transition(_WasDdw0).as_enum(), PayloadWord::DDW0),
                 _ => (m.transition(_WasIhw).as_enum(), PayloadWord::IHW),
             },

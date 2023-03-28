@@ -50,9 +50,12 @@ pub mod words;
 /// Too small capacity will cause the producer thread to block
 const CHANNEL_CDP_CAPACITY: usize = 100;
 
-// 1. Setup reading (file or stdin)
-// 2. Do checks on read data
-// 3. Write data out (file or stdout)
+/// Entry point for scanning the input and delegating to checkers, view generators and/or writers depending on config
+///
+/// Follows these steps:
+/// 1. Setup reading (file or stdin)
+/// 2. Do checks or generate view on read data
+/// 3. Write data out (file, stdout or no output)
 pub fn process<T: words::lib::RDH + 'static>(
     config: std::sync::Arc<impl Config + 'static>,
     loader: input::input_scanner::InputScanner<
@@ -130,7 +133,11 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                 // Setup for view case
                 let mut its_payload_fsm_cont =
                     validators::its_payload_fsm_cont::ItsPayloadFsmContinuous::default();
-                while !stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
+                loop {
+                    if stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
+                        log::warn!("Stopping reader thread on stop flag!");
+                        break;
+                    }
                     // Receive chunk from reader
                     let cdp_chunk = match data_channel.recv() {
                         Ok(cdp) => cdp,

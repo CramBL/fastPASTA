@@ -65,7 +65,7 @@ fn hbf_view<T: RDH>(
                     PayloadWord::IHW | PayloadWord::IHW_continuation => {
                         writeln!(stdio_lock, "{mem_pos_str} IHW {word_slice_str}")?;
                     }
-                    PayloadWord::TDH => {
+                    PayloadWord::TDH | PayloadWord::TDH_after_packet_done => {
                         let trigger_str = tdh_trigger_as_string(gbt_word_slice);
                         let continuation_str = tdh_continuation_as_string(gbt_word_slice);
                         writeln!(

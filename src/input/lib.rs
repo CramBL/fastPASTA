@@ -95,25 +95,21 @@ pub fn spawn_reader<T: RDH + 'static>(
                                 log::trace!("Stopping reader thread on EOF");
                                 break;
                             } else {
-                                panic!("Unexpected Error reading CDP chunks: {e}");
+                                log::error!("Unexpected Error reading CDP chunks: {e}");
+                                break;
                             }
                         }
                     };
 
                     // Send a chunk to the checker
-                    if let Err(e) = send_channel.try_send(cdps) {
-                        if e.is_full() {
-                            log::trace!("Checker is too slow");
-                            if send_channel.send(e.into_inner()).is_err()
-                                && !stop_flag.load(Ordering::SeqCst)
-                            {
-                                log::trace!("Unexpected error while sending data to checker");
-                                break;
-                            }
-                        } else if stop_flag.load(Ordering::SeqCst) {
-                            log::trace!("Stopping reader thread");
+                    if let Err(e) = send_channel.send(cdps) {
+                        if !stop_flag.load(Ordering::SeqCst) {
+                            log::trace!("Unexpected error while sending data to checker: {e}");
                             break;
                         }
+                    } else if stop_flag.load(Ordering::SeqCst) {
+                        log::trace!("Stopping reader thread");
+                        break;
                     }
                 }
             }

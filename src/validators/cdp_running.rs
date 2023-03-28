@@ -145,7 +145,6 @@ impl<T: RDH> CdpRunningValidator<T> {
     #[inline]
     pub fn set_current_rdh(&mut self, rdh: &T, rdh_mem_pos: u64) {
         self.current_rdh = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
-        self.gbt_word_counter = 0;
         self.payload_mem_pos = rdh_mem_pos + 64;
         if rdh.data_format() == 0 {
             self.gbt_word_padding_size_bytes = 6;
@@ -153,6 +152,7 @@ impl<T: RDH> CdpRunningValidator<T> {
             self.gbt_word_padding_size_bytes = 0; // Data format 2
         }
         self.is_new_data = true;
+        self.gbt_word_counter = 0;
     }
 
     pub fn check(&mut self, gbt_word: &[u8]) {
@@ -172,15 +172,14 @@ impl<T: RDH> CdpRunningValidator<T> {
             PayloadWord::TDH => {
                 self.process_status_word(StatusWordKind::Tdh(gbt_word));
                 self.check_tdh_no_continuation(gbt_word);
-                if let Some(current_tdt) = self.current_tdt.as_ref() {
-                    if current_tdt.packet_done() {
-                        self.check_tdh_by_was_tdt_packet_done_true(gbt_word);
-                    }
-                }
             }
             PayloadWord::TDH_continuation => {
                 self.process_status_word(StatusWordKind::Tdh(gbt_word));
                 self.check_tdh_continuation(gbt_word);
+            }
+            PayloadWord::TDH_after_packet_done => {
+                self.process_status_word(StatusWordKind::Tdh(gbt_word));
+                self.check_tdh_by_was_tdt_packet_done_true(gbt_word);
             }
             PayloadWord::TDT => self.process_status_word(StatusWordKind::Tdt(gbt_word)),
             // DataWord and CDW are handled together

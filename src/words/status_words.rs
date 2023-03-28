@@ -15,9 +15,9 @@ pub mod util {
         if tdh_internal_trigger(tdh_slice) {
             String::from("Internal")
         } else if tdh_physics_trigger(tdh_slice) {
-            String::from("PhT")
+            String::from("PhT     ")
         } else {
-            String::from("Other")
+            String::from("Other   ")
         }
     }
 
@@ -39,7 +39,7 @@ pub mod util {
         {
             String::from("Error")
         } else {
-            String::from("")
+            String::from("     ")
         }
     }
 
