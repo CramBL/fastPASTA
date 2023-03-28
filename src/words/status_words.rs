@@ -23,7 +23,7 @@ pub mod util {
         }
     }
 
-    /// Takes a full TDH slice and returns  a string description of the continuation field
+    /// Takes a full TDH slice and returns a string description of the continuation field
     pub fn tdh_continuation_as_string(tdh_slice: &[u8]) -> String {
         debug_assert!(tdh_slice.len() == 10);
         if tdh_continuation(tdh_slice) {
@@ -43,6 +43,15 @@ pub mod util {
             String::from("Warning")
         } else {
             String::from("       ")
+        }
+    }
+
+    /// Takes a full TDH slice and returns a string description of whether the no_data field is 1 or 0
+    pub fn tdh_no_data_as_string(tdh_slice: &[u8]) -> String {
+        if tdh_no_data(tdh_slice) {
+            String::from("No data")
+        } else {
+            String::from("Data!  ")
         }
     }
 

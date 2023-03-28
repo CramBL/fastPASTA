@@ -68,9 +68,10 @@ fn hbf_view<T: RDH>(
                     PayloadWord::TDH | PayloadWord::TDH_after_packet_done => {
                         let trigger_str = tdh_trigger_as_string(gbt_word_slice);
                         let continuation_str = tdh_continuation_as_string(gbt_word_slice);
+                        let no_data_str = tdh_no_data_as_string(gbt_word_slice);
                         writeln!(
                             stdio_lock,
-                            "{mem_pos_str} TDH {word_slice_str} {trigger_str}  {continuation_str}"
+                            "{mem_pos_str} TDH {word_slice_str} {trigger_str}  {continuation_str}        {no_data_str}"
                         )?;
                     }
                     PayloadWord::TDH_continuation => {
@@ -86,7 +87,7 @@ fn hbf_view<T: RDH>(
                         let error_reporting_str = ddw0_tdt_lane_status_as_string(gbt_word_slice);
                         writeln!(
                             stdio_lock,
-                            "{mem_pos_str} TDT {word_slice_str} {packet_status_str:>18}                 {error_reporting_str}",
+                            "{mem_pos_str} TDT {word_slice_str} {packet_status_str:>18}                             {error_reporting_str}",
                         )?;
                     }
                     PayloadWord::DDW0 => {
@@ -94,7 +95,7 @@ fn hbf_view<T: RDH>(
 
                         writeln!(
                             stdio_lock,
-                            "{mem_pos_str} DDW {word_slice_str}                                    {error_reporting_str}",
+                            "{mem_pos_str} DDW {word_slice_str}                                                {error_reporting_str}",
                         )?;
                     }
                     // Ignore these cases
@@ -111,13 +112,13 @@ fn print_start_of_hbf_header_text(
 ) -> Result<(), std::io::Error> {
     writeln!(
         stdio_lock,
-        "\nMemory    Word{:>37}{:>12}{:>12}{:>12}",
-        "Trig.", "Packet", "Link", "Lane  "
+        "\nMemory    Word{:>37}{:>12}{:>12}{:>12}{:>12}",
+        "Trig.", "Packet", "Expect", "Link", "Lane  "
     )?;
     writeln!(
         stdio_lock,
-        "Position      {:>36} {:>12}{:>12}{:>12}\n",
-        "type", "status", "ID  ", "faults"
+        "Position  type{:>36} {:>12}{:>12}{:>12}{:>12}\n",
+        "type", "status", "Data? ", "ID  ", "faults"
     )?;
     Ok(())
 }
@@ -131,7 +132,7 @@ fn print_rdh_hbf_view<T: RDH>(
 
     writeln!(
         stdio_lock,
-        "{rdh_mem_pos:>8X}: RDH v{}       {trig_str:>28}                    #{:<18}",
+        "{rdh_mem_pos:>8X}: RDH v{}       {trig_str:>28}                                #{:<18}",
         rdh.version(),
         rdh.link_id()
     )?;
