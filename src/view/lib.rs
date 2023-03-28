@@ -83,17 +83,18 @@ fn hbf_view<T: RDH>(
                     }
                     PayloadWord::TDT => {
                         let packet_status_str = tdt_packet_done_as_string(gbt_word_slice);
+                        let error_reporting_str = ddw0_tdt_lane_status_as_string(gbt_word_slice);
                         writeln!(
                             stdio_lock,
-                            "{mem_pos_str} TDT {word_slice_str} {packet_status_str:>18}",
+                            "{mem_pos_str} TDT {word_slice_str} {packet_status_str:>18}                 {error_reporting_str}",
                         )?;
                     }
                     PayloadWord::DDW0 => {
-                        let error_reporting_str = ddw0_error_status_as_string(gbt_word_slice);
+                        let error_reporting_str = ddw0_tdt_lane_status_as_string(gbt_word_slice);
 
                         writeln!(
                             stdio_lock,
-                            "{mem_pos_str} DDW {word_slice_str} {error_reporting_str}",
+                            "{mem_pos_str} DDW {word_slice_str}                                    {error_reporting_str}",
                         )?;
                     }
                     // Ignore these cases
@@ -110,13 +111,13 @@ fn print_start_of_hbf_header_text(
 ) -> Result<(), std::io::Error> {
     writeln!(
         stdio_lock,
-        "Memory    Word{:>37}{:>12}{:>12}",
-        "Trig.", "Packet", "Link"
+        "\nMemory    Word{:>37}{:>12}{:>12}{:>12}",
+        "Trig.", "Packet", "Link", "Lane  "
     )?;
     writeln!(
         stdio_lock,
-        "Position      {:>36} {:>12}{:>12}\n",
-        "type", "status", "ID  "
+        "Position      {:>36} {:>12}{:>12}{:>12}\n",
+        "type", "status", "ID  ", "faults"
     )?;
     Ok(())
 }
@@ -130,7 +131,7 @@ fn print_rdh_hbf_view<T: RDH>(
 
     writeln!(
         stdio_lock,
-        "{rdh_mem_pos:>8X}: RDH v{}       {trig_str:>28}                      #{:<18}",
+        "{rdh_mem_pos:>8X}: RDH v{}       {trig_str:>28}                    #{:<18}",
         rdh.version(),
         rdh.link_id()
     )?;
