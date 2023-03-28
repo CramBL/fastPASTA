@@ -1,0 +1,14 @@
+cargo-features = ["profile-rustflags"]
+[unstable]
+profile-rustflags = true
+
+# Experimental build that is more performant
+# Can only be build with the nightly toolchain
+# e.g. $ cargo +nightly build --profile release-nightly
+[profile.release-nightly]
+inherits = "release"
+lto = true
+codegen-units = 1
+rustflags = [
+  "-C", "llvm-args=-inline-threshold=335"
+]
