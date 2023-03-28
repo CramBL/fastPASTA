@@ -1,4 +1,3 @@
 /target
 /test_files
-Cargo.lock
 .vscode/launch.json

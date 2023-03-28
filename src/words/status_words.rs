@@ -12,7 +12,9 @@ pub mod util {
 
     /// Takes a full TDH slice and returns a string description of the trigger field
     pub fn tdh_trigger_as_string(tdh_slice: &[u8]) -> String {
-        if tdh_internal_trigger(tdh_slice) {
+        if tdh_soc_trigger(tdh_slice) {
+            String::from("SOC     ")
+        } else if tdh_internal_trigger(tdh_slice) {
             String::from("Internal")
         } else if tdh_physics_trigger(tdh_slice) {
             String::from("PhT     ")
@@ -21,7 +23,7 @@ pub mod util {
         }
     }
 
-    /// Takes a full TDH slice and returns  a string description of the continuation field
+    /// Takes a full TDH slice and returns a string description of the continuation field
     pub fn tdh_continuation_as_string(tdh_slice: &[u8]) -> String {
         debug_assert!(tdh_slice.len() == 10);
         if tdh_continuation(tdh_slice) {
@@ -44,6 +46,15 @@ pub mod util {
         }
     }
 
+    /// Takes a full TDH slice and returns a string description of whether the no_data field is 1 or 0
+    pub fn tdh_no_data_as_string(tdh_slice: &[u8]) -> String {
+        if tdh_no_data(tdh_slice) {
+            String::from("No data")
+        } else {
+            String::from("Data!  ")
+        }
+    }
+
     /// Takes a full TDH slice and returns if the no_data field is set
     pub fn tdh_no_data(tdh_slice: &[u8]) -> bool {
         debug_assert!(tdh_slice.len() == 10);
@@ -55,6 +66,12 @@ pub mod util {
         tdh_slice[1] & 0b100_0000 != 0
     }
 
+    /// Takes a full TDH slice and returns if the SOC trigger bit [9] is set
+    fn tdh_soc_trigger(tdh_slice: &[u8]) -> bool {
+        debug_assert!(tdh_slice.len() == 10);
+        const SOC_BIT_MASK: u8 = 0b10;
+        tdh_slice[1] & SOC_BIT_MASK != 0
+    }
     /// Takes a full TDH slice and returns if the internal trigger bit [12] is set
     fn tdh_internal_trigger(tdh_slice: &[u8]) -> bool {
         debug_assert!(tdh_slice.len() == 10);
