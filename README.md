@@ -38,6 +38,7 @@ To verify or view curated content of the scanned raw binary data from ALICE.
 - [Benchmarks and comparisons](#benchmarks-and-comparisons)
     - [Verifying all RDHs of 260MB file with data from 1 link](#verifying-all-rdhs-of-260mb-file-with-data-from-1-link)
     - [Verifying all RDHs in 2GB file with data from 12 different links](#verifying-all-rdhs-in-2gb-file-with-data-from-12-different-links)
+    - [Verifying all RDHs and payloads in 260MB file with data from 1 link](#verifying-all-rdhs-and-payloads-in-260mb-file-with-data-from-1-link)
 - [Need more performance?](#need-more-performance)
     - [Background](#background)
     - [To install the nightly toolchain (and check your installation)](#to-install-the-nightly-toolchain-and-check-your-installation)
@@ -146,7 +147,14 @@ In the tables below `fastPASTA` is compared with `rawdata-parser` and `decode.py
 |:---|:---|---:|---:|---:|
 |fastPASTA| `./fastpasta its_ul05.raw check all` | 0.690 ± 0.014 | 0.674 | 0.719|
 |rawdata-parser| `./rawdata-parser.rkt --skip-packet-counter-checks its_ul05.raw` | 2.892 ± 0.063 | 2.829 | 3.020 |
-|decode.py| Verifying multiple links not supported | N/A | N/A | N/A |
+|decode.py| Verifying multiple links simultaneously is not supported | N/A | N/A | N/A |
+
+### Verifying all RDHs and payloads in 260MB file with data from 1 link
+| Tool | Command | Mean [s] | Min [s] | Max [s] |
+|:---|:---|---:|---:|---:|
+|fastPASTA| `./fastpasta input.raw check all ITS` | 0.106 ± 0.002 | 0.103 | 0.111 |
+|rawdata-parser| Verifying payloads is not supported  | N/A | N/A | N/A |
+|decode.py| `python3 decode.py -i 20522 -f input.raw` | 55.903 ± 0.571 | 54.561 | 56.837 |
 
 
 # Need more performance?
