@@ -146,7 +146,7 @@ In the tables below `fastPASTA` is compared with `rawdata-parser` and `decode.py
 |:---|:---|---:|---:|---:|
 |fastPASTA| `./fastpasta its_ul05.raw check all` | 0.690 ± 0.014 | 0.674 | 0.719|
 |rawdata-parser| `./rawdata-parser.rkt --skip-packet-counter-checks its_ul05.raw` | 2.892 ± 0.063 | 2.829 | 3.020 |
-|decode.py| Format not supported | N/A | N/A | N/A |
+|decode.py| Verifying multiple links not supported | N/A | N/A | N/A |
 
 
 # Need more performance?
