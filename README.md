@@ -36,8 +36,8 @@ To verify or view curated content of the scanned raw binary data from ALICE.
 - [License](#license)
 - [Project status](#project-status)
 - [Benchmarks and comparisons](#benchmarks-and-comparisons)
-    - [Verifying all RDHs in 3.4GB file](#verifying-all-rdhs-in-34gb-file)
-    - [Verifying all RDHs in 500MB file](#verifying-all-rdhs-in-500mb-file)
+    - [Verifying all RDHs of 260MB file with data from 1 link](#verifying-all-rdhs-of-260mb-file-with-data-from-1-link)
+    - [Verifying all RDHs in 2GB file with data from 12 different links](#verifying-all-rdhs-in-2gb-file-with-data-from-12-different-links)
 - [Need more performance?](#need-more-performance)
     - [Background](#background)
     - [To install the nightly toolchain (and check your installation)](#to-install-the-nightly-toolchain-and-check-your-installation)
@@ -133,20 +133,20 @@ Apache 2.0 or MIT at your option.
 Under development
 
 # Benchmarks and comparisons
-In the table below `fastPASTA` is compared with `rawdata-parser` in verifying each RDH on a 3.4GB large file with raw ITS data. `decode.py` does not support the new data format using UL, so it is run on a much smaller file 500MB file, but with similar data contents (except for dataformat), and the execution time is multiplied by 6. Hyperfine is used for benchmarking, but `rawdata-parser` is not compatible with hyperfine, and is therefor measured with the `time` command.
-### Verifying all RDHs in 3.4GB file
+In the tables below `fastPASTA` is compared with `rawdata-parser` and `decode.py` in typical verification tasks. Hyperfine is used for benchmarking, with `cache warmup`.
+### Verifying all RDHs of 260MB file with data from 1 link
 | Tool | Command | Mean [s] | Min [s] | Max [s] |
 |:---|:---|---:|---:|---:|
-|fastPASTA| `./fastpasta data_ols_its-ul-v0.5_3.4GB check all` | 1.058 ± 0.021 | 1.031 | 1.101 |
-|rawdata-parser| `racket rawdata-parser.rkt --skip-packet-counter-checks data_ols_its-ul-v0.5_3.4GB` | 5.201 | N/A | N/A |
-|decode.py| `python3 decode.py -i 20522 -i 20778 -f data_ols_no_ul.raw --skip_data` | 79.26 ± 1.57 | 76.64 | 82.236 |
+|fastPASTA| `./fastpasta input.raw check all` | 0.060 ± 0.001 | 0.058 | 0.063 |
+|rawdata-parser| `./rawdata-parser --skip-packet-counter-checks input.raw` | 0.369 ± 0.002 | 0.366 | 0.372|
+|decode.py| `python3 decode.py -i 20522 -f input.raw --skip_data` | 13.674 ± 0.386 | 13.610 | 14.499 |
 
-### Verifying all RDHs in 500MB file
+### Verifying all RDHs in 2GB file with data from 12 different links
 | Tool | Command | Mean [s] | Min [s] | Max [s] |
 |:---|:---|---:|---:|---:|
-|fastPASTA| `./fastpasta data_ols_no_ul.raw check all` | 0.123 ± 0.023 | 0.119 | 0.126 |
-|rawdata-parser| `racket rawdata-parser.rkt --skip-packet-counter-checks data_ols_no_ul.raw ` | 1.580 | N/A | N/A |
-|decode.py| `python3 decode.py -i 20522 -i 20778 -f data_ols_no_ul.raw --skip_data` | 13.151 ± 0.217 | 12.870 | 13.634 |
+|fastPASTA| `./fastpasta its_ul05.raw check all` | 0.690 ± 0.014 | 0.674 | 0.719|
+|rawdata-parser| `./rawdata-parser.rkt --skip-packet-counter-checks its_ul05.raw` | 2.892 ± 0.063 | 2.829 | 3.020 |
+|decode.py| Format not supported | N/A | N/A | N/A |
 
 
 # Need more performance?
