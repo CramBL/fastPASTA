@@ -145,8 +145,8 @@ In the tables below `fastPASTA` is compared with `rawdata-parser` and `decode.py
 ### Verifying all RDHs in 2GB file with data from 12 different links
 | Tool | Command | Mean [s] | Min [s] | Max [s] |
 |:---|:---|---:|---:|---:|
-|fastPASTA| `./fastpasta its_ul05.raw check all` | 0.690 ± 0.014 | 0.674 | 0.719|
-|rawdata-parser| `./rawdata-parser.rkt --skip-packet-counter-checks its_ul05.raw` | 2.892 ± 0.063 | 2.829 | 3.020 |
+|fastPASTA| `./fastpasta input.raw check all` | 0.690 ± 0.014 | 0.674 | 0.719|
+|rawdata-parser| `./rawdata-parser --skip-packet-counter-checks input.raw` | 2.892 ± 0.063 | 2.829 | 3.020 |
 |decode.py| Verifying multiple links simultaneously is not supported | N/A | N/A | N/A |
 
 ### Verifying all RDHs and payloads in 260MB file with data from 1 link
