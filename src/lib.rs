@@ -47,13 +47,13 @@
 use crossbeam_channel::Receiver;
 use util::lib::{Config, DataOutputMode};
 
-pub mod data_write;
 pub mod input;
 pub mod stats;
 pub mod util;
 pub mod validators;
 mod view;
 pub mod words;
+pub mod write;
 
 /// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
 ///
@@ -107,12 +107,12 @@ pub fn process<T: words::lib::RDH + 'static>(
         config.output_mode(),
     ) {
         (None, None, Some(_), output_mode) if output_mode != DataOutputMode::None => Some(
-            data_write::lib::spawn_writer(config.clone(), thread_stopper, reader_rcv_channel),
+            write::lib::spawn_writer(config.clone(), thread_stopper, reader_rcv_channel),
         ),
         (Some(_), None, _, output_mode) | (None, Some(_), _, output_mode)
             if output_mode != DataOutputMode::None =>
         {
-            log::error!(
+            log::warn!(
                 "Config: Output destination set when checks or views are also set -> output will be ignored!"
             );
             None
@@ -191,44 +191,14 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
 
                     // Do checks or view
                     if config.check().is_some() {
-                        for (rdh, data, mem_pos) in cdp_chunk.into_iter() {
-                            if let Some(link_index) = links.iter().position(|&x| x == rdh.link_id())
-                            {
-                                link_process_channels
-                                    .get(link_index)
-                                    .unwrap()
-                                    .send((rdh, data, mem_pos))
-                                    .unwrap();
-                            } else {
-                                links.push(rdh.link_id());
-                                let (send_channel, recv_channel) =
-                                    crossbeam_channel::bounded(crate::CHANNEL_CDP_CAPACITY);
-                                link_process_channels.push(send_channel);
-                                use crate::validators::link_validator::LinkValidator;
-                                validator_thread_handles.push(
-                                    std::thread::Builder::new()
-                                        .name(format!("Link {} Validator", rdh.link_id()))
-                                        .spawn({
-                                            let config = config.clone();
-                                            let stats_sender_channel = stats_sender_channel.clone();
-                                            let mut link_validator = LinkValidator::new(
-                                                &*config,
-                                                stats_sender_channel,
-                                                recv_channel,
-                                            );
-                                            move || {
-                                                link_validator.run();
-                                            }
-                                        })
-                                        .expect("Failed to spawn link validator thread"),
-                                );
-                                link_process_channels
-                                    .last()
-                                    .unwrap()
-                                    .send((rdh, data, mem_pos))
-                                    .unwrap();
-                            }
-                        }
+                        validators::lib::check_cdp_chunk(
+                            cdp_chunk,
+                            &mut links,
+                            &mut link_process_channels,
+                            &mut validator_thread_handles,
+                            config.clone(),
+                            stats_sender_channel.clone(),
+                        );
                     } else if config.view().is_some() {
                         if let Err(e) = view::lib::generate_view(
                             config.view().unwrap(),
