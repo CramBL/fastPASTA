@@ -109,6 +109,14 @@ pub fn process<T: words::lib::RDH + 'static>(
         (None, None, Some(_), output_mode) if output_mode != DataOutputMode::None => Some(
             data_write::lib::spawn_writer(config.clone(), thread_stopper, reader_rcv_channel),
         ),
+        (Some(_), None, _, output_mode) | (None, Some(_), _, output_mode)
+            if output_mode != DataOutputMode::None =>
+        {
+            log::error!(
+                "Config: Output destination set when checks or views are also set -> output will be ignored!"
+            );
+            None
+        }
         _ => None,
     };
 
