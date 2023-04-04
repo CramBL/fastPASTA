@@ -117,11 +117,12 @@ impl<T: RDH> LinkValidator<T> {
     }
 
     fn report_rdh_error(&mut self, rdh: &T, mut error: String, rdh_mem_pos: u64) {
-        error.push_str(crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(7).as_str());
+        error.push('\n');
+        error.push_str(crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(13).as_str());
         self.prev_rdhs.iter().for_each(|prev_rdh| {
-            error.push_str(&format!("{prev_rdh}\n"));
+            error.push_str(&format!("  previous:  {prev_rdh}\n"));
         });
-        error.push_str(&format!("{rdh} <--- Error occured here\n"));
+        error.push_str(&format!("  current :  {rdh} <--- Error detected here\n"));
 
         self.send_stats_ch
             .send(crate::stats::stats_controller::StatType::Error(format!(

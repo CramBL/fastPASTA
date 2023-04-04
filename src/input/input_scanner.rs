@@ -213,8 +213,8 @@ fn sanity_check_offset_next<T: RDH>(
     let next_rdh_memory_location = current_rdh_offset_to_next - 64;
     if next_rdh_memory_location < 0 {
         let error_string = format!(
-            "\n[{current_memory_address:#X}]:{rdh_header_text}{rdh}",
-            rdh_header_text = crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(7)
+            "\n[{current_memory_address:#X}]:\n{rdh_header_text}     {rdh}",
+            rdh_header_text = crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(5)
         );
         let fatal_error_string = format!(
             "RDH offset to next is {current_rdh_offset_to_next} (less than 64 bytes). {error_string}");
@@ -228,8 +228,8 @@ fn sanity_check_offset_next<T: RDH>(
     } else if next_rdh_memory_location > 0x4FFF {
         // VERY HIGH OFFSET
         let error_string = format!(
-            "\n[{current_memory_address:#X}]:{rdh_header_text}{rdh}",
-            rdh_header_text = crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(7)
+            "\n[{current_memory_address:#X}]:\n{rdh_header_text}     {rdh}",
+            rdh_header_text = crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(5)
         );
         let fatal_error_string = format!("RDH offset is larger than 20KB. {error_string}");
         stats_ch

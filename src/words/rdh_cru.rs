@@ -45,7 +45,7 @@ impl<Version> RdhCRU<Version> {
         let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop";
         let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit";
         format!(
-            "\n{:indent$}{header_text_top}\n{:indent2$}{header_text_bottom}\n",
+            "{:indent$}{header_text_top}\n{:indent2$}{header_text_bottom}\n",
             "",
             "",
             indent = indent,
