@@ -75,6 +75,19 @@ rust-nightly:
     - cargo test --verbose -- --test-threads=1 --nocapture
   allow_failure: true
 
+pages:
+  stage: build-and-test
+  only:
+    - master
+  script:
+    - cargo doc
+    - rm -rf public
+    - mkdir public
+    - cp -R target/doc/* public
+  artifacts:
+    paths:
+    - public
+
 test-coverage:
   image: rust:latest
   stage: build-and-test
