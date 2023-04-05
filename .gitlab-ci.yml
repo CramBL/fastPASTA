@@ -1,84 +1,12 @@
-image: "rust:latest"
-
-default:
-  before_script:
-    - hostname -I
-    - whoami
-    - rustc --version
-    - cargo --version
-
-# Setup a cache to cache job parts between jobs to ensure faster builds
-cache:
-  - key: "$CI_JOB_NAME"
-    untracked: true
-    paths:
-      - $CI_PROJECT_DIR/target/
-
-# Set any required environment variables here
-variables:
-  RUST_BACKTRACE: "FULL"
-
-stages:
-  - code-quality
-  - build-and-test
-  - test-safety
-  - release
-
-pre-commit:
-  image: python:3.9
-  stage: code-quality
-  before_script:
-    - pip install pre-commit
-  script:
-    - python3 --version
-    - pre-commit --version
-    - pre-commit run --all-files --show-diff-on-failure
-
-lint:
-  stage: code-quality
-  script:
-    - rustup component add clippy
-    - cargo check
-    - cargo clean
-    - cargo clippy -- -D warnings --no-deps
-
-format:
-  stage: code-quality
-  script:
-    - rustup component add rustfmt
-    - cargo fmt -- --check
-
-audit:
-  stage: code-quality
-  script:
-    - cargo install cargo-audit
-    - cargo audit
-
-rust-latest:
-  stage: build-and-test
-  image: rust:latest
-  script:
-    - cargo build --verbose
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
-  artifacts:
-    name: "debug_${CI_COMMIT_SHA}"
-    paths:
-    - ./target
-    expire_in: 1 mos
-
-rust-nightly:
-  stage: build-and-test
-  image: rustlang/rust:nightly
-  script:
-    - cargo build --verbose
-    - cargo test --verbose -- --test-threads=1 --nocapture
-  allow_failure: true
-
+# The Docker image that will be used to build your app
+image: rust:latest
+# Functions that should be executed before the build script is run
+before_script:
+  - hostname -I
+  - whoami
+  - rustc --version
+  - cargo --version
 pages:
-  stage: build-and-test
-  only:
-    - master
   script:
     - cargo doc
     - rm -rf public
@@ -86,83 +14,9 @@ pages:
     - cp -R target/doc/* public
   artifacts:
     paths:
-    - public
-
-test-coverage:
-  image: rust:latest
-  stage: build-and-test
-  variables:
-    RUSTFLAGS: "-C instrument-coverage"
-    LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
-  script:
-    - rustup component add llvm-tools-preview
-    - cargo build
-    - cargo test -- --test-threads=1 --nocapture
-    - cargo install grcov
-    # Generate HTML report which is available as an artifact
-    - grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing --ignore "*cargo*" -o ./coverage/
-    # Generate file for Gitlab coverage parsing (through the summary)
-    - grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "*cargo*" -o coverage.lcov
-    # directly generate cobertura file
-    - grcov . --binary-path ./target/debug/ -s . -t cobertura --branch --ignore-not-existing --ignore "*cargo*" -o coverage.xml
-    # Output coverage for Gitlab parser (uses regex in coverage key)
-    - apt-get update && apt-get install -y lcov
-    - lcov --summary coverage.lcov
-  coverage: /lines\.*:\s*([\d\.]+%)/
-  artifacts:
-    paths:
-      - 'coverage'
-    expire_in: 3 mos
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
-
-## For release build
-build-release-latest:
-  stage: release
+      # The folder that contains the files to be exposed at the Page URL
+      - public
   rules:
-    - if: $CI_COMMIT_TAG                 # Run this job when a tag is created
-  image: rust:latest
-  script:
-    - echo "running release job"
-    - cargo build -r --verbose
-  artifacts:
-    name: "release_${CI_COMMIT_TAG}"
-    paths:
-    - ./target
-
-## Safety
-# Only includes address and leak sanitizing now, as there's simply too many false positives with memory and thread sanitizing on Rust code...
-# Leak and address sanitizing is also bugged (see links below) but there's decent work arounds at the moment
-leak-sanitizer:
-  stage: test-safety
-  image: rustlang/rust:nightly
-  variables:
-    LSAN_OPTIONS: "suppressions=lsan-suppressions.txt"
-    RUSTFLAGS: "-Z sanitizer=leak"
-  script:
-    - rustup component add llvm-tools-preview
-    # to fix buggy leak analyzer:
-    # https://github.com/japaric/rust-san#unrealiable-leaksanitizer
-    - sed -i '/\[features\]/i [profile.dev]' Cargo.toml
-    - sed -i '/profile.dev/a opt-level = 1' Cargo.toml
-    - cat Cargo.toml
-    - rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-    - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
-    - cargo test --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
-  allow_failure: true
-
-address-sanitizer:
-  stage: test-safety
-  image: rustlang/rust:nightly
-  variables:
-    ASAN_OPTIONS: "detect_odr_violation=0:detect_leaks=0"
-    RUSTFLAGS: "-Z sanitizer=address"
-  script:
-    - rustup component add llvm-tools-preview
-    - rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-    - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
-    # only --lib --tests b/c of https://github.com/rust-lang/rust/issues/53945
-    - cargo test --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
-  allow_failure: true
+    # This ensures that only pushes to the default branch will trigger
+    # a pages deploy
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
