@@ -1,4 +1,4 @@
-use crate::words::lib::ByteSlice;
+//! Contains utility functions for working with data words in a CDP payload
 
 /// Takes an ob data word ID and returns the lane number
 #[inline]
@@ -40,16 +40,6 @@ fn ob_lane(ob_id: ObLane) -> u8 {
         // 21-27
         21 + (lane_id % VALID_OL_CONNECT3_ID_MIN_MAX.0)
     }
-}
-
-/// Trait for all data words to implement.
-pub trait DataWord: std::fmt::Display + PartialEq + Sized + ByteSlice {
-    /// Returns the lane number of the data word
-    fn lane(&self) -> u8;
-    /// Serializes the data word from a byte slice
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
-    where
-        Self: Sized;
 }
 
 // IDs are defined as follows:
