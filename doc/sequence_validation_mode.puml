@@ -15,7 +15,7 @@
 ' Grey             #888888
 skinparam style strictuml
 
-Title **<size:30>fastPASTA sequence diagram</size>**\n<<Validation mode>>
+Title **<size:30>fastPASTA sequence diagram</size>**\n<< Validation mode >>
 
 actor       User       as user
 
@@ -46,13 +46,13 @@ config -> inputscanner ** : Create with config \n& producer channels to\n<color 
 
     inputscanner -> inputscanner ++ #gold : run
 
-config -> linkvalidator ** : Create with config\n& consumer channel to <color #44AA99>**StatsData**</color>\n& producer channel to <color #6699CC>**InputData**</color>
+config -> linkvalidator ** : Create with config\n& producer channel to <color #44AA99>**StatsData**</color>\n& consumer channel to <color #6699CC>**InputData**</color>
     linkvalidator -> linkvalidator ++ #gold : run
 == <size:20>Processing</size> ==
 
 par
 
-    loop until end-of-file
+    loop !end-of-file
         inputscanner -> inputscanner : load data
         return
         inputscanner -> statsfifo : send stats
@@ -90,7 +90,7 @@ else
         statscontroller -> statsfifo : get stat
         return stat
         statscontroller -> statscontroller : record stat
-        opt stat is error
+        opt stat == error
             statscontroller -> statscontroller : print error
             return
         end
