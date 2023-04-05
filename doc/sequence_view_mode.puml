@@ -1,0 +1,103 @@
+@startuml sequence_view_mode
+!theme toy from https://raw.githubusercontent.com/plantuml/plantuml/master/themes
+' Carto color palette
+' light blue       #88CCEE
+' light pink/red   #CC6677
+' light yellow     #DDCC77
+' dark green       #117733
+' Dark purple      #332288
+' Pink             #AA4499
+' Light blue/green #44AA99
+' Brown/yellow     #999933
+' Dark purple      #882255
+' Dark red         #661100
+' Medium blue      #6699CC
+' Grey             #888888
+skinparam style strictuml
+
+Title **<size:30>fastPASTA sequence diagram</size>**\n<< View mode >>
+
+actor       User       as user
+
+participant Config  as config << util >>
+participant InputScanner as inputscanner << input >>
+queue InputData as inputfifo << FIFO >> #6699CC
+participant ViewGenerator as viewgenerator << view >>
+participant StatsController as statscontroller << stats >>
+queue StatsData as statsfifo << FIFO >> #44AA99
+
+
+
+
+autoactivate on
+
+user -> config ++ : Enter prompt for generating view
+== <size:20>Initialization</size> ==
+config -> config: Parse command-line arguments
+return
+config -> statsfifo ** : Create
+    statsfifo --> config : Multiple producer & single consumer channels to <color #44AA99>**self**</color>
+config -> statscontroller ** : Create with config & consumer channel to <color #44AA99>**StatsData**</color>
+    statscontroller -> statscontroller ++ #gold : run
+
+config -> inputfifo ** : Create
+    inputfifo --> config : single producer & consumer channels to <color #6699CC>**self**</color>
+config -> inputscanner ** : Create with config \n& producer channels to\n<color #44AA99>**StatsData**</color> & <color #6699CC>**InputData**</color>
+
+    inputscanner -> inputscanner ++ #gold : run
+
+config -> viewgenerator ** : Create with config & consumer channel to <color #6699CC>**InputData**</color>
+    viewgenerator -> viewgenerator ++ #gold : run
+== <size:20>Processing</size> ==
+
+par
+
+    loop !end-of-file
+        inputscanner -> inputscanner : load data
+        return
+        inputscanner -> statsfifo : send stats
+        return
+        inputscanner -> inputfifo : send data
+        return
+    end
+    inputscanner -> inputfifo : disconnect
+    return
+    inputscanner -> statsfifo : disconnect
+    return
+    inputscanner --> config : join
+else
+    loop
+        viewgenerator -> inputfifo : get data
+        return data
+        viewgenerator -> viewgenerator : Format & print data view
+        return
+        break <color #6699CC>**InputData**</color> empty && producer disconnected
+            destroy inputfifo
+            viewgenerator --> config -- : join
+        end
+    end
+
+else
+    loop
+        statscontroller -> statsfifo : get stat
+        return stat
+        statscontroller -> statscontroller : record stat
+        opt stat == error
+            statscontroller -> statscontroller : print error
+            return
+        end
+        return
+        break <color #44AA99>**StatsData**</color> empty && all producers disconnected
+            destroy statsfifo
+            statscontroller -> statscontroller : print summary
+            return
+            statscontroller --> config : join
+        end
+    end
+
+end
+
+
+
+
+@enduml
