@@ -1,3 +1,8 @@
+//! Contains the [LinkValidator] that contains all the subvalidators, and delegates all checks for a specific link.
+//!
+//! A [LinkValidator] is created for each link that is being checked.
+//! The [LinkValidator] is responsible for creating and running all the subvalidators.
+//! It also contains an [AllocRingBuffer] that is used to store the previous two [RDH]s, to be able to include them in error messages.
 use crate::{util::lib::Config, words::lib::RDH};
 use ringbuffer::{AllocRingBuffer, RingBufferExt, RingBufferWrite};
 
@@ -28,9 +33,14 @@ impl LinkValidatorConfig {
     }
 }
 
+/// Main validator that handles all checks on a specific link.
+///
+/// A [LinkValidator] is created for each link that is being checked.
 pub struct LinkValidator<T: RDH> {
     config: LinkValidatorConfig,
+    /// Producer channel to send stats through.
     pub send_stats_ch: std::sync::mpsc::Sender<crate::stats::stats_controller::StatType>,
+    /// Consumer channel to receive data from.
     pub data_rcv_channel: crossbeam_channel::Receiver<CdpTuple<T>>,
     cdp_validator: crate::validators::cdp_running::CdpRunningValidator<T>,
     rdh_running_validator: crate::validators::rdh_running::RdhCruRunningChecker<T>,
@@ -41,6 +51,7 @@ pub struct LinkValidator<T: RDH> {
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 impl<T: RDH> LinkValidator<T> {
+    /// Creates a new [LinkValidator] from a [Config] and a [StatType][crate::stats::stats_controller::StatType] producer channel.
     pub fn new(
         global_config: &impl Config,
         send_stats_ch: std::sync::mpsc::Sender<crate::stats::stats_controller::StatType>,
@@ -146,6 +157,7 @@ impl<T: RDH> LinkValidator<T> {
     }
 }
 
+/// Utility function to preprocess the payload and return an iterator over the GBT words
 pub fn preprocess_payload(
     payload: &[u8],
     data_format: u8,

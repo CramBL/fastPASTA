@@ -1,19 +1,28 @@
+//! Writes data to file/stdout. Uses a buffer to reduce the amount of syscalls.
+//!
+//! Receives data incrementally and once a certain amount is reached, it will
+//! write it out to file/stdout.
+//! Implements drop to flush the remaining data to the file once processing is done.
+
 use crate::input::data_wrapper::CdpChunk;
 use crate::util::lib::Config;
 use crate::words::lib::RDH;
-/// Writes data to file/stdout. Uses a buffer to minimize syscalls.
-///
-/// Receives data incrementally and once a certain amount is reached, it will
-/// write it out to file/stdout.
-/// Implements drop to flush the remaining data to the file once processing is done.
+
+/// Trait for a writer that can write ALICE readout data to file/stdout.
 pub trait Writer<T: RDH> {
+    /// Write data to file/stdout
     fn write(&mut self, data: &[u8]) -> std::io::Result<()>;
+    /// Push a vector of RDHs to the buffer
     fn push_rdhs(&mut self, rdhs: Vec<T>);
+    /// Push a vector of payloads to the buffer
     fn push_payload(&mut self, payload: Vec<u8>);
+    /// Push a CDP chunk to the buffer
     fn push_cdp_chunk(&mut self, cdp_chunk: CdpChunk<T>);
+    /// Flush the buffer to file/stdout
     fn flush(&mut self) -> std::io::Result<()>;
 }
 
+/// A writer that uses a buffer to reduce the amount of syscalls.
 pub struct BufferedWriter<T: RDH> {
     filtered_rdhs_buffer: Vec<T>,
     filtered_payload_buffers: Vec<Vec<u8>>, // 1 Linked list per payload
@@ -22,6 +31,7 @@ pub struct BufferedWriter<T: RDH> {
 }
 
 impl<T: RDH> BufferedWriter<T> {
+    /// Create a new BufferedWriter from a config and a max buffer size.
     pub fn new(config: &impl Config, max_buffer_size: usize) -> Self {
         // Create output file, and buf writer if specified
         let buf_writer = match config.output() {

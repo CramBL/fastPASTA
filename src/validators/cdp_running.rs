@@ -1,3 +1,6 @@
+//! Checks the CDP payload. Uses the [ItsPayloadFsmContinuous] state machine to determine which words to expect.
+//!
+//! [CdpRunningValidator] delegates sanity checks to word specific sanity checkers.
 use super::data_words::DATA_WORD_SANITY_CHECKER;
 use crate::util::lib::Config;
 use crate::validators::its_payload_fsm_cont::ItsPayloadFsmContinuous;
@@ -38,6 +41,7 @@ impl CdpRunningLocalConfig {
     }
 }
 
+/// Checks the CDP payload and reports any errors.
 pub struct CdpRunningValidator<T: RDH> {
     config: CdpRunningLocalConfig,
     its_state_machine: ItsPayloadFsmContinuous,
@@ -79,6 +83,7 @@ impl<T: RDH> Default for CdpRunningValidator<T> {
 }
 
 impl<T: RDH> CdpRunningValidator<T> {
+    /// Creates a new [CdpRunningValidator] from a [Config] and a [StatType] producer channel.
     pub fn new(config: &impl Config, stats_send_ch: std::sync::mpsc::Sender<StatType>) -> Self {
         Self {
             config: CdpRunningLocalConfig::new(config),
@@ -147,7 +152,7 @@ impl<T: RDH> CdpRunningValidator<T> {
         self.current_rdh = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
         self.payload_mem_pos = rdh_mem_pos + 64;
         if rdh.data_format() == 0 {
-            self.gbt_word_padding_size_bytes = 6;
+            self.gbt_word_padding_size_bytes = 6; // Data format 0
         } else {
             self.gbt_word_padding_size_bytes = 0; // Data format 2
         }
@@ -155,6 +160,8 @@ impl<T: RDH> CdpRunningValidator<T> {
         self.gbt_word_counter = 0;
     }
 
+    /// This function has to be called for every GBT word
+    #[inline]
     pub fn check(&mut self, gbt_word: &[u8]) {
         debug_assert!(gbt_word.len() == 10);
         self.gbt_word_counter += 1; // Tracks the number of GBT words seen in the current CDP

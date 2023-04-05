@@ -1,7 +1,9 @@
+//! Contains the entry point and dispatcher function [generate_view()] for generating data views.
 use crate::validators::its_payload_fsm_cont::ItsPayloadFsmContinuous;
 use crate::words::lib::RDH;
 use crate::{input, stats::stats_controller, util};
 
+/// Calls a specific view generator based on the [View][util::config::View] type.
 #[inline]
 pub fn generate_view<T: RDH>(
     view: crate::util::config::View,

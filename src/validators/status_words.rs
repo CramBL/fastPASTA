@@ -1,15 +1,14 @@
+//! Validators for status words: [IHW][Ihw], [TDH][Tdh], [TDT][Tdt] & [DDW0][Ddw0].
+//!
+//! Each validator is aggregated by the [StatusWordSanityChecker] struct.
+
 use crate::words::status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt};
 use std::fmt::Write;
 
-/// Validators for status words: `IHW`, `TDH`, `TDT`, `DDW0`
-///
-/// The `StatusWordValidator` trait is implemented for each status word type.
-///
-/// The `sanity_check` method is used to check the status word for errors.
-///
-/// Each validator is aggregated by the `StatusWordSanityChecker` struct.
-
+/// Convenience const for the [StatusWordSanityChecker].
 pub const STATUS_WORD_SANITY_CHECKER: StatusWordSanityChecker = StatusWordSanityChecker::new();
+
+/// Aggregates all status word validators.
 pub struct StatusWordSanityChecker {
     ihw_validator: IhwValidator,
     tdh_validator: TdhValidator,
@@ -17,6 +16,7 @@ pub struct StatusWordSanityChecker {
     ddw0_validator: Ddw0Validator,
 }
 impl StatusWordSanityChecker {
+    /// Creates a new [StatusWordSanityChecker] in a const context.
     pub const fn new() -> Self {
         Self {
             ihw_validator: IHW_VALIDATOR,
@@ -26,15 +26,19 @@ impl StatusWordSanityChecker {
         }
     }
 
+    /// Checks if argument is a valid [IHW][Ihw] status word.
     pub fn sanity_check_ihw(&self, ihw: &Ihw) -> Result<(), String> {
         self.ihw_validator.sanity_check(ihw)
     }
+    /// Checks if argument is a valid [TDH][Tdh] status word.
     pub fn sanity_check_tdh(&self, tdh: &Tdh) -> Result<(), String> {
         self.tdh_validator.sanity_check(tdh)
     }
+    /// Checks if argument is a valid [TDT][Tdt] status word.
     pub fn sanity_check_tdt(&self, tdt: &Tdt) -> Result<(), String> {
         self.tdt_validator.sanity_check(tdt)
     }
+    /// Checks if argument is a valid [DDW0][Ddw0] status word.
     pub fn sanity_check_ddw0(&self, ddw0: &Ddw0) -> Result<(), String> {
         self.ddw0_validator.sanity_check(ddw0)
     }

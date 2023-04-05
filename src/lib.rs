@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 //! fast Protocol Analysis Scanner Tool for ALICE (fastPASTA), for reading and checking raw binary data from ALICE detectors
 //!
 //! # Usage
@@ -7,7 +8,7 @@
 //! # Enable all generic checks: `sanity` (stateless) AND `running` (stateful)
 //! $ fastpasta <input_file> check all
 //!
-//! # Same as above but only enable `sanity` checks
+//! # Same as above but only enable `sanity` checks, and only check data from link 0
 //! $ fastpasta <input_file>  check sanity -f 0
 //!```
 //! ## Enable all `sanity` and `running` checks and include checks applicable to `ITS` only
@@ -51,12 +52,11 @@ pub mod input;
 pub mod stats;
 pub mod util;
 pub mod validators;
-mod view;
+pub mod view;
 pub mod words;
 pub mod write;
 
 /// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
-///
 ///
 /// Larger capacity means less overhead, but more memory usage
 /// Too small capacity will cause the producer thread to block
@@ -65,9 +65,11 @@ const CHANNEL_CDP_CAPACITY: usize = 100;
 /// Entry point for scanning the input and delegating to checkers, view generators and/or writers depending on config
 ///
 /// Follows these steps:
-/// 1. Setup reading (file or stdin)
-/// 2. Do checks or generate view on read data
-/// 3. Write data out (file, stdout or no output)
+/// 1. Setup reading (`file` or `stdin`) using [input::lib::spawn_reader].
+/// 2. Depending on [Config] do one of:
+///     - Validate data with [validators::lib::check_cdp_chunk].
+///     - Generate views of data with [view::lib::generate_view].
+///     - Write data to `file` or `stdout` with [write::lib::spawn_writer].
 pub fn process<T: words::lib::RDH + 'static>(
     config: std::sync::Arc<impl Config + 'static>,
     loader: input::input_scanner::InputScanner<
@@ -133,6 +135,7 @@ pub fn process<T: words::lib::RDH + 'static>(
     Ok(())
 }
 
+/// Analysis thread that performs checks with [validators::lib::check_cdp_chunk] or generate views with [view::lib::generate_view].
 fn spawn_analysis<T: words::lib::RDH + 'static>(
     config: std::sync::Arc<impl Config + 'static>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -220,4 +223,32 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
             }
         })
         .expect("Failed to spawn checker thread")
+}
+
+/// Start the [stderrlog] instance, and immediately use it to log the configured [DataOutputMode].
+pub fn init_error_logger(cfg: &impl Config) {
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(cfg.verbosity() as usize)
+        .init()
+        .expect("Failed to initialize logger");
+    match cfg.output_mode() {
+        util::lib::DataOutputMode::Stdout => log::trace!("Data ouput set to stdout"),
+        util::lib::DataOutputMode::File => log::trace!("Data ouput set to file"),
+        util::lib::DataOutputMode::None => {
+            log::trace!("Data ouput set to suppressed")
+        }
+    }
+}
+
+/// Get the [config][util::config::Opt] from the command line arguments and return it as an [Arc][std::sync::Arc].
+pub fn get_config() -> std::sync::Arc<util::config::Opt> {
+    let cfg = <util::config::Opt as structopt::StructOpt>::from_args();
+    std::sync::Arc::new(cfg)
+}
+
+/// Exit with [std::process::ExitCode] `SUCCESS`.
+pub fn exit_success() -> std::process::ExitCode {
+    log::info!("Exit successful");
+    std::process::ExitCode::SUCCESS
 }

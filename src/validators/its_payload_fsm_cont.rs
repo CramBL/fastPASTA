@@ -1,14 +1,25 @@
+//! State machine for ITS payload continuous mode
 #![allow(non_camel_case_types)] // An exception to the Rust naming convention, for the state machine macro types
 
+/// Payload word types
 pub enum PayloadWord {
+    /// ITS Header Word
     IHW,
+    /// ITS Header Word in continuation mode
     IHW_continuation,
+    /// Trigger Data Header
     TDH,
+    /// Trigger Data Header in continuation mode
     TDH_continuation,
+    /// Trigger Data Header succeeding a TDT with packet done flag set
     TDH_after_packet_done,
+    /// Trigger Data Trailer
     TDT,
+    /// Calibration Data Word
     CDW,
+    /// Data
     DataWord,
+    /// Diagnostic Data Word 0
     DDW0,
 }
 
@@ -73,6 +84,7 @@ sm! {
 }
 
 use self::ITS_Payload_Continuous::IHW_;
+/// State machine for ITS payload continuous mode.
 pub struct ItsPayloadFsmContinuous {
     state_machine: ITS_Payload_Continuous::Variant,
 }
@@ -84,16 +96,21 @@ impl Default for ItsPayloadFsmContinuous {
 }
 
 impl ItsPayloadFsmContinuous {
+    /// Create a new state machine in the initial state.
     pub fn new() -> Self {
         Self {
             state_machine: ITS_Payload_Continuous::Machine::new(IHW_).as_enum(),
         }
     }
-
+    /// Reset the state machine to the initial state.
     pub fn reset_fsm(&mut self) {
         self.state_machine = ITS_Payload_Continuous::Machine::new(IHW_).as_enum();
     }
 
+    /// Advance the state machine by one word.
+    ///
+    /// Takes a slice of 10 bytes representing the GBT word.
+    /// Returns the type of the word.
     pub fn advance(&mut self, gbt_word: &[u8]) -> PayloadWord {
         use crate::words::status_words;
         use ITS_Payload_Continuous::Variant::*;

@@ -1,8 +1,15 @@
+//! Contains the [Opt] struct that parses and stores the command line arguments
+//!
+//! [Opt] uses procedural macros from the [StructOpt] library to implement most of the argument parsing and validation logic.
+//! The [Opt] struct implements several options and subcommands, as well as convenience functions to get various parts of the configuration
+
+// Unfortunately needed because of the arg_enum macro not handling doc comments properly
+#![allow(missing_docs)]
 use std::path::PathBuf;
 use structopt::{clap::arg_enum, StructOpt};
 
 use super::lib::{Checks, Config, DataOutputMode, Filter, InputOutput, Util, Views};
-/// StructOpt is a library that allows parsing command line arguments
+/// The Opt struct uses the [StructOpt] procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
 #[derive(StructOpt, Debug)]
 #[structopt(setting = structopt::clap::AppSettings::ColoredHelp,
     name = "fastPASTA - fast Protocol Analysis Scanning Tool for ALICE",
@@ -50,6 +57,8 @@ pub struct Opt {
     )]
     output: Option<PathBuf>,
 }
+
+/// Implementing the config super trait requires implementing all the sub traits
 impl Config for Opt {}
 
 impl Views for Opt {
@@ -137,12 +146,16 @@ impl Util for Opt {
     }
 }
 
+/// Possible subcommands at the upper level
 #[derive(structopt::StructOpt, Debug, Clone)]
 pub enum Command {
+    /// [Check] subcommand to enable checks, needs to be followed by a [Check] type subcommand and a target system
     Check(Check),
+    /// [View] subcommand to enable views, needs to be followed by a [View] type subcommand
     View(View),
 }
 
+/// Check subcommand to enable checks, needs to be followed by a check type subcommand and a target system
 #[derive(structopt::StructOpt, Debug, Clone)]
 #[structopt(setting = structopt::clap::AppSettings::ColoredHelp, about = "Enable validation checks, by default only RDHs are checked.\n\
 a target such as 'ITS' can be specified.\n\
@@ -157,6 +170,7 @@ pub enum Check {
 }
 
 impl Check {
+    /// Get the target system for the check
     pub fn target(&self) -> Option<System> {
         match self {
             Check::All(target) => target.system.clone(),
@@ -165,6 +179,7 @@ impl Check {
     }
 }
 
+/// Data views that can be generated
 #[derive(structopt::StructOpt, Debug, Clone)]
 #[structopt(setting = structopt::clap::AppSettings::ColoredHelp, about = "Enable data views")]
 pub enum View {
@@ -176,13 +191,16 @@ pub enum View {
     Hbf,
 }
 
+/// Target system for checks
 #[derive(structopt::StructOpt, Debug, Clone)]
 pub struct Target {
+    /// Target system for checks
     #[structopt(possible_values = &System::variants(), case_insensitive = true)]
     pub system: Option<System>,
 }
 
 arg_enum! {
+/// List of supported systems to target for checks
 #[derive(Debug, Clone)]
     pub enum System {
         ITS,

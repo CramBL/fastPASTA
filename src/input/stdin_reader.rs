@@ -1,13 +1,18 @@
+//! Wrapper for a reader, implements [BufferedReaderWrapper].
+//!
+//! The wrapper can wrap both [std::io::BufReader] and [StdInReaderSeeker].
+//! Needed because [std::io::Stdin] does not implement seek_relative, and this serves as a convenient way to skip unwanted data.
+//! seek_relative is used to skip over unwanted bytes in the input stream, such as links unwanted by the user
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use std::io::{self, Read, SeekFrom};
-/// Wrapper for std::io::Stdin, implements BufferedReaderWrapper.
-///
-/// Needed (wanted) because std::io::Stdin does not implement seek_relative.
-/// seek_relative is used to skip over unwanted bytes in the input stream, such as links unwanted by the user
+
+/// Wrapper for a reader where input data can be read from, implements [BufferedReaderWrapper].
 pub struct StdInReaderSeeker<R> {
+    /// Generic reader that is wrapped
     pub reader: R,
 }
 
+/// Specialization for [std::io::Stdin]
 impl BufferedReaderWrapper for StdInReaderSeeker<std::io::Stdin> {
     fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
         // Seeking is not supported in stdin, so we have to read the bytes and discard them

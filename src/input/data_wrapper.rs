@@ -1,6 +1,6 @@
-//! A convenience vector-like wrapper struct for CDPs. Contains a vector of RDHs, a vector of payloads and a vector of memory positions.
+//! A convenience vector-like wrapper struct for CDPs. Contains a vector of [RDH]s, a vector of payloads and a vector of memory positions.
 //!
-//! CdpChunk can be treated similarly to a `std::vec::Vec::<T>` where T is a tuple of `(impl RDH, vec<u8>, u64)`
+//! [CdpChunk] can be treated similarly to a `std::vec::Vec::<T>` where `T` is a tuple of `(impl RDH, vec<u8>, u64)`
 //!
 //!  # Examples
 //!
@@ -47,6 +47,7 @@ use crate::words::lib::RDH;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
+/// The vector-like wrapper struct for CDPs
 pub struct CdpChunk<T: RDH> {
     rdhs: Vec<T>,
     payloads: Vec<Vec<u8>>,
@@ -60,6 +61,7 @@ impl<T: RDH> Default for CdpChunk<T> {
 }
 
 impl<T: RDH> CdpChunk<T> {
+    /// Construct a new, empty `CdpChunk<T: RDH>`.
     pub fn new() -> Self {
         Self {
             rdhs: Vec::new(),
@@ -89,6 +91,7 @@ impl<T: RDH> CdpChunk<T> {
         }
     }
 
+    /// Appends an [RDH], payload, and memory position to the back of the CdpChunk
     pub fn push(&mut self, rdh: T, payload: Vec<u8>, mem_pos: u64) {
         self.rdhs.push(rdh);
         self.payloads.push(payload);
@@ -104,28 +107,33 @@ impl<T: RDH> CdpChunk<T> {
         self.rdh_mem_pos.push(cdp_tuple.2);
     }
 
+    /// Get the length of the CdpChunk, corresponding to the number of CDPs
     pub fn len(&self) -> usize {
         debug_assert!(self.rdhs.len() == self.payloads.len());
         debug_assert!(self.rdhs.len() == self.rdh_mem_pos.len());
         self.rdhs.len()
     }
 
+    /// Check if the CdpChunk is empty
     pub fn is_empty(&self) -> bool {
         debug_assert!(self.rdhs.len() == self.payloads.len());
         debug_assert!(self.rdhs.len() == self.rdh_mem_pos.len());
         self.rdhs.is_empty()
     }
 
+    /// Clear the CdpChunk, removing all elements.
     pub fn clear(&mut self) {
         self.rdhs.clear();
         self.payloads.clear();
         self.rdh_mem_pos.clear();
     }
 
+    /// Get a borrowed slice of the [RDH]s
     pub fn rdh_slice(&self) -> &[T] {
         &self.rdhs
     }
 
+    /// Get a borrowed slice of the memory positions
     pub fn rdh_mem_pos_slice(&self) -> &[u64] {
         &self.rdh_mem_pos
     }
@@ -149,6 +157,7 @@ impl<T: RDH> IntoIterator for CdpChunk<T> {
         }
     }
 }
+/// Helper struct for the implementation of a consuming iterator
 pub struct IntoIterHelper<T: RDH> {
     iter: std::vec::IntoIter<CdpTuple<T>>,
 }
@@ -175,6 +184,7 @@ impl<'a, T: RDH> IntoIterator for &'a CdpChunk<T> {
     }
 }
 
+/// Helper struct for the implementation of a non-consuming iterator
 pub struct CdpChunkIter<'a, T: RDH> {
     cdp_chunk: &'a CdpChunk<T>,
     index: usize,

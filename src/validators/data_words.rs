@@ -1,10 +1,14 @@
+//! Performs sanity checks on data words
 use crate::words::data_words::*;
 use std::fmt::Write;
 
+/// Convenience const struct to avoid having to instantiate the struct elsewhere
 pub const DATA_WORD_SANITY_CHECKER: DataWordSanityChecker = DataWordSanityChecker {};
+/// Performs sanity checks on data words
 pub struct DataWordSanityChecker {}
 
 impl DataWordSanityChecker {
+    /// Checks is a valid IL/ML/OL data word
     #[inline]
     pub fn check_any(&self, data_word: &[u8]) -> Result<(), String> {
         let mut err_str = String::new();

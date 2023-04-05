@@ -1,33 +1,57 @@
+//! Contains the [StatsController] that collects stats and reports errors.
+//! It also controls the stop flag, which can be used to stop the program if a fatal error occurs, or if the config contains a max number of errors to tolerate.
+//! Finally when the event loop breaks (at the end of execution), it will print a summary of the stats collected, using the Report struct.
+
 use crate::{
     stats::report::{Report, StatSummary},
     util::lib::Config,
 };
-use log::{error, info};
+use log::error;
 use std::sync::{
     atomic::{AtomicBool, AtomicU32},
     Arc,
 };
 
+/// Possible stats that can be sent to the StatsController.
 pub enum StatType {
-    Fatal(String), // Fatal error, stop processing
+    /// Fatal error, stop processing.
+    Fatal(String),
+    /// Non-fatal error, reported but processing continues.
     Error(String),
+    /// Increment the total RDHs seen.
     RDHsSeen(u8),
+    /// Increment the total RDHs filtered.
     RDHsFiltered(u8),
+    /// Increment the total payload size.
     PayloadSize(u32),
+    /// Add a link to the list of links observed.
     LinksObserved(u8),
-    ProcessingTime,
+    /// Record the RDH version detected.
     RdhVersion(u8),
-    // TimeFrameLength(u32),
+    /// Record the data format detected.
     DataFormat(u8),
+    /// Increment the total HBFs seen.
     HBFsSeen(u32),
-    LayerStaveSeen { layer: u8, stave: u8 },
+    /// Record a layer/stave combination seen.
+    LayerStaveSeen {
+        /// The layer number.
+        layer: u8,
+        /// The stave number.
+        stave: u8,
+    },
 }
 
+/// The StatsController receives stats and builds a summary report that is printed at the end of execution.
 pub struct StatsController {
+    /// Total RDHs seen.
     pub rdhs_seen: u64,
+    /// Total RDHs filtered.
     pub rdhs_filtered: u64,
+    /// Total payload size.
     pub payload_size: u64,
+    /// Links observed.
     pub links_observed: Vec<u8>,
+    /// Time from [StatsController] is instantiated, to all data processing threads disconnected their [StatType] producer channel.
     pub processing_time: std::time::Instant,
     total_errors: AtomicU32,
     non_atomic_total_errors: u64,
@@ -43,6 +67,7 @@ pub struct StatsController {
     view_active: bool,
 }
 impl StatsController {
+    /// Creates a new StatsController from a [Config], a [std::sync::mpsc::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
     pub fn new(
         config: &impl Config,
         recv_stats_channel: std::sync::mpsc::Receiver<StatType>,
@@ -69,6 +94,8 @@ impl StatsController {
         }
     }
 
+    /// Starts the event loop for the StatsController
+    /// This function will block until the channel is closed
     pub fn run(&mut self) {
         loop {
             match self.recv_stats_channel.recv() {
@@ -86,7 +113,7 @@ impl StatsController {
         }
     }
 
-    pub fn update(&mut self, stat: StatType) {
+    fn update(&mut self, stat: StatType) {
         //self.print();
         match stat {
             StatType::Error(msg) => {
@@ -119,7 +146,6 @@ impl StatsController {
             StatType::RDHsFiltered(val) => self.rdhs_filtered += val as u64,
             StatType::PayloadSize(size) => self.payload_size += size as u64,
             StatType::LinksObserved(val) => self.links_observed.push(val),
-            StatType::ProcessingTime => info!("{:?}", self.processing_time.elapsed()),
             StatType::RdhVersion(version) => self.rdh_version = version,
             StatType::DataFormat(version) => {
                 if !self.data_formats_observed.contains(&version) {
@@ -147,7 +173,8 @@ impl StatsController {
         }
     }
 
-    pub fn print(&self) {
+    /// Builds and prints the report
+    fn print(&self) {
         let mut report = Report::new(self.processing_time.elapsed());
         if let Some(err) = &self.fatal_error {
             report.add_fatal_error(err.clone());
@@ -280,9 +307,6 @@ impl StatsController {
         report.add_detected_attribute("Data Format".to_string(), observed_data_formats_string);
 
         report.print();
-    }
-    pub fn print_time(&self) {
-        eprintln!("Processing time: {:?}", self.processing_time.elapsed());
     }
 }
 
