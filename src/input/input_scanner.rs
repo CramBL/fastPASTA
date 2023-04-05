@@ -1,3 +1,6 @@
+//! Contains the [InputScanner], [ScanCDP] trait, and [CdpWrapper] tuple. Responsible for reading and forwarding input data.
+//!
+//! The [InputScanner] implements the [ScanCDP] trait, and uses the [CdpWrapper] tuple for convenience to wrap an RDH, its payload and its memory position.
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
 use crate::util::lib::Config;
@@ -7,10 +10,15 @@ use std::io::Read;
 
 /// Trait for a scanner that reads CDPs from a file or stdin
 pub trait ScanCDP {
+    /// Loads the next [RDH] from the input and returns it
     fn load_rdh_cru<T: RDH>(&mut self) -> Result<T, std::io::Error>;
 
+    /// Loads the payload in the form of raw bytes from the input and returns it
+    ///
+    /// The size of the payload is given as an argument.
     fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error>;
 
+    /// Loads the next CDP ([RDH] and payload) from the input and returns it as a [CdpWrapper]
     fn load_cdp<T: RDH>(&mut self) -> Result<CdpWrapper<T>, std::io::Error> {
         let rdh: T = self.load_rdh_cru()?;
         let payload = self.load_payload_raw(rdh.payload_size() as usize)?;
@@ -19,17 +27,20 @@ pub trait ScanCDP {
         Ok(CdpWrapper(rdh, payload, mem_pos))
     }
 
+    /// Loads the next [RDH] that matches the user specified link from the input and returns it
     fn load_next_rdh_to_filter<T: RDH>(&mut self) -> Result<T, std::io::Error>;
 
+    /// Convenience function to return the current memory position in the input stream
     fn current_mem_pos(&self) -> u64;
 }
 
+/// Convenience tuple to wrap an [RDH], its payload and memory position.
 pub struct CdpWrapper<T: RDH>(pub T, pub Vec<u8>, pub u64);
 
-/// Scans data received through a BufferedReaderWrapper, tracks the position in memory and sends stats to the stats controller.
+/// Scans data received through a [BufferedReaderWrapper], tracks the position in memory and sends stats to the stats controller.
 ///
-/// Uses the config to filter for user specified links.
-/// Implements ScanCDP for a BufferedReaderWrapper.
+/// Uses the [Config] to filter for user specified links.
+/// Implements [ScanCDP] for a [BufferedReaderWrapper].
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     reader: Box<R>,
     tracker: MemPosTracker,
@@ -40,6 +51,7 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
 }
 
 impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
+    /// Creates a new [InputScanner] from a [Config], [BufferedReaderWrapper], [MemPosTracker] and a producer channel for [StatType].
     pub fn new(
         config: std::sync::Arc<impl Config>,
         reader: Box<R>,
@@ -55,6 +67,9 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             initial_rdh0: None,
         }
     }
+    /// Creates a new [InputScanner] from a [Config], [BufferedReaderWrapper], [MemPosTracker], a producer channel for [StatType] and an initial [Rdh0].
+    ///
+    /// The [Rdh0] is used to determine the RDH version before instantiating the [InputScanner].
     pub fn new_from_rdh0(
         config: std::sync::Arc<impl Config>,
         reader: Box<R>,

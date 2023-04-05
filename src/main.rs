@@ -2,8 +2,7 @@ use fastpasta::input::{
     bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner, lib::init_reader,
 };
 use fastpasta::stats::{lib::init_stats_controller, stats_controller};
-use fastpasta::util::config::Opt;
-use fastpasta::util::lib::{Checks, Config, Views};
+use fastpasta::util::lib::Config;
 use fastpasta::words::{
     lib::RdhSubWord,
     rdh::Rdh0,
@@ -11,14 +10,19 @@ use fastpasta::words::{
 };
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use structopt::StructOpt;
 
 pub fn main() -> std::process::ExitCode {
-    let config = get_config();
-    init_error_logger(&*config);
+    let config = fastpasta::get_config();
+    fastpasta::init_error_logger(&*config);
     log::trace!("Starting fastpasta with args: {:#?}", config);
-    log::trace!("Checks enabled: {:#?}", config.check());
-    log::trace!("Views enabled: {:#?}", config.view());
+    log::trace!(
+        "Checks enabled: {:#?}",
+        fastpasta::util::lib::Checks::check(&*config)
+    );
+    log::trace!(
+        "Views enabled: {:#?}",
+        fastpasta::util::lib::Views::view(&*config)
+    );
 
     // Launch statistics thread
     // If max allowed errors is reached, stop the processing from the stats thread
@@ -39,26 +43,6 @@ pub fn main() -> std::process::ExitCode {
     exit_code
 }
 
-fn init_error_logger(cfg: &impl Config) {
-    stderrlog::new()
-        .module(module_path!())
-        .verbosity(cfg.verbosity() as usize)
-        .init()
-        .expect("Failed to initialize logger");
-    match cfg.output_mode() {
-        fastpasta::util::lib::DataOutputMode::Stdout => log::trace!("Data ouput set to stdout"),
-        fastpasta::util::lib::DataOutputMode::File => log::trace!("Data ouput set to file"),
-        fastpasta::util::lib::DataOutputMode::None => {
-            log::trace!("Data ouput set to suppressed")
-        }
-    }
-}
-
-fn get_config() -> Arc<Opt> {
-    let cfg = Opt::from_args();
-    Arc::new(cfg)
-}
-
 fn init_processing(
     config: Arc<impl Config + 'static>,
     mut reader: Box<dyn BufferedReaderWrapper>,
@@ -68,9 +52,11 @@ fn init_processing(
     // Determine RDH version
     let rdh0 = Rdh0::load(&mut reader).expect("Failed to read first RDH0");
     let rdh_version = rdh0.header_id;
+    // Send RDH version to stats thread
     stat_send_channel
         .send(stats_controller::StatType::RdhVersion(rdh_version))
         .unwrap();
+    // Create input scanner from the already read RDH0 (to avoid seeking back and reading it twice, which would also break with stdin piping)
     let loader =
         InputScanner::new_from_rdh0(config.clone(), reader, stat_send_channel.clone(), rdh0);
 
@@ -83,7 +69,7 @@ fn init_processing(
             stat_send_channel.clone(),
             thread_stopper,
         ) {
-            Ok(_) => exit_success(),
+            Ok(_) => fastpasta::exit_success(),
             Err(e) => {
                 stat_send_channel
                     .send(stats_controller::StatType::Fatal(e.to_string()))
@@ -97,7 +83,7 @@ fn init_processing(
             stat_send_channel.clone(),
             thread_stopper,
         ) {
-            Ok(_) => exit_success(),
+            Ok(_) => fastpasta::exit_success(),
             Err(e) => {
                 stat_send_channel
                     .send(stats_controller::StatType::Fatal(e.to_string()))
@@ -114,9 +100,4 @@ fn init_processing(
             std::process::ExitCode::from(3)
         }
     }
-}
-
-fn exit_success() -> std::process::ExitCode {
-    log::info!("Exit successful");
-    std::process::ExitCode::SUCCESS
 }

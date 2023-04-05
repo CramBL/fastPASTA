@@ -1,8 +1,10 @@
+//! Performs running (stateful) checks on [RDH]s.
 use crate::words::{
     lib::RDH,
     rdh::{Rdh1, Rdh2},
 };
 use std::fmt::Write;
+/// Performs running (stateful) checks on [RDH]s.
 pub struct RdhCruRunningChecker<T: RDH> {
     expect_pages_counter: u16,
     // The first 2 RDHs are used to determine what the expected page counter increments are
@@ -19,6 +21,7 @@ impl<T: RDH> Default for RdhCruRunningChecker<T> {
 }
 
 impl<T: RDH> RdhCruRunningChecker<T> {
+    /// Creates a new [RdhCruRunningChecker]
     pub fn new() -> Self {
         Self {
             expect_pages_counter: 0,

@@ -1,7 +1,9 @@
+//! Contains the [init_stats_controller] function, which spawns a thread with the [StatsController] running, and returns the thread handle, the channel to send stats to, and the stop flag.
 use super::stats_controller::StatsController;
 use crate::util::lib::Config;
 use std::sync::atomic::AtomicBool;
 
+/// Spawns a thread with the StatsController running, and returns the thread handle, the channel to send stats to, and the stop flag.
 pub fn init_stats_controller(
     config: &impl Config,
 ) -> (

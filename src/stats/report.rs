@@ -7,6 +7,7 @@ use tabled::{
     object::{Columns, Rows},
     Alignment, Modify, Panel, Table, Tabled,
 };
+/// Describes the columns of the report table
 #[derive(Tabled)]
 pub struct StatSummary {
     pub statistic: String,
@@ -36,12 +37,16 @@ impl std::default::Default for StatSummary {
         }
     }
 }
+/// Describes the columns of the detected attributes table
 #[derive(Tabled)]
 struct DetectedAttribute {
     pub attribute: String,
     pub detected: String,
 }
 
+/// The Report struct is used by the StatsController to structure the report printed at the end of execution
+///
+/// Contains convenience methods to add stats to the report, and to generate the report table
 pub struct Report {
     pub(crate) stats: Vec<StatSummary>,
     filter_stats_table: Option<Table>,
@@ -120,6 +125,7 @@ impl Report {
     }
 }
 
+/// The super table is the table that contains all the other tables
 fn format_super_table(super_table: &Table, processing_time: std::time::Duration) -> Table {
     let mut modded_table = super_table.clone();
     let style = tabled::Style::modern()
@@ -240,23 +246,6 @@ fn format_sub_table(subtable: &Table, header: String, color: SubtableColor) -> T
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // macro_rules! assert_stdout_eq {
-    //     ($test:expr, $expected:literal) => {{
-    //         use gag::BufferRedirect;
-    //         use std::io::Read;
-
-    //         let mut buf = BufferRedirect::stdout().unwrap();
-
-    //         $test;
-
-    //         let mut output = String::new();
-    //         buf.read_to_string(&mut output).unwrap();
-    //         drop(buf);
-
-    //         assert_eq!(&output[..], $expected);
-    //     }};
-    // }
 
     macro_rules! assert_stderr_contains {
         ($test:expr, $expected:literal) => {{

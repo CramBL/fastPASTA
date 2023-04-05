@@ -1,5 +1,8 @@
+//! Contains the MemPosTracker struct that aids in tracking the memory position in the input data.
+
 /// Tracks the position by the value of RDH offsets received in the next() function.
 pub struct MemPosTracker {
+    /// The memory address in bytes of the current RDH.
     pub memory_address_bytes: u64,
     offset_next: i64,
     rdh_cru_size_bytes: u64,
@@ -12,6 +15,7 @@ impl Default for MemPosTracker {
 }
 
 impl MemPosTracker {
+    /// Create a new MemPosTracker.
     pub fn new() -> Self {
         MemPosTracker {
             offset_next: 0,
@@ -19,6 +23,10 @@ impl MemPosTracker {
             rdh_cru_size_bytes: 64, // RDH size in bytes
         }
     }
+    /// Get the relative offset of the next RDH.
+    ///
+    /// The offset is relative to the current RDH, and uses the RDH size as a base.
+    /// Takes the offset of the next RDH in bytes.
     pub fn next(&mut self, rdh_offset: u64) -> i64 {
         debug_assert!(
             rdh_offset >= self.rdh_cru_size_bytes,

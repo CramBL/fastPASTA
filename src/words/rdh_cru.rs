@@ -1,11 +1,18 @@
+//! Contains the definition of the [RDH CRU][RdhCRU].
 use super::lib::{ByteSlice, RdhSubWord};
 use crate::words::rdh::{CruidDw, DataformatReserved, Rdh0, Rdh1, Rdh2, Rdh3};
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::fmt::{self, Display};
 use std::{fmt::Debug, marker::PhantomData};
+/// Unit struct to mark a [RdhCRU] as version 6.
 pub struct V6;
+/// Unit struct to mark a [RdhCRU] as version 7.
 pub struct V7;
 
+/// The struct definition of the [RDH CRU][RdhCRU].
+///
+/// [PhantomData] is used to mark the version of the [RDH CRU][RdhCRU]. It's a zero cost abstraction.
+/// Among other things, it allows to have different implementations of the [RdhCRU] for different versions, but prevents the user from mixing them up.
 #[repr(packed)]
 pub struct RdhCRU<Version> {
     pub(crate) rdh0: Rdh0,
@@ -41,6 +48,11 @@ impl<Version> Display for RdhCRU<Version> {
 }
 
 impl<Version> RdhCRU<Version> {
+    /// Formats a [String] containing 2 lines that serve as a header, describing columns of key values for an [RDH CRU][RdhCRU].
+    ///
+    /// Can be used to print a header for a table of [RDH CRU][RdhCRU]s.
+    /// Takes an [usize] as an argument, which is the number of spaces to indent the 2 lines by.
+    #[inline]
     pub fn rdh_header_text_with_indent_to_string(indent: usize) -> String {
         let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop";
         let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit";
@@ -52,21 +64,25 @@ impl<Version> RdhCRU<Version> {
             indent2 = indent
         )
     }
+    /// Returns the value of the CRU ID field.
     #[inline]
     pub fn cru_id(&self) -> u16 {
         // Get the cru_id present in the 12 LSB
         self.cruid_dw.0 & 0x0FFF
     }
+    /// Returns the value of the DW field.
     #[inline]
     pub fn dw(&self) -> u8 {
         // Get the dw present in the 4 MSB
         ((self.cruid_dw.0 & 0xF000) >> 12) as u8
     }
+    /// Returns the value of the data format field.
     #[inline]
     pub fn data_format(&self) -> u8 {
         // Get the data_format present in the 8 LSB
         (self.dataformat_reserved0.0 & 0x00000000000000FF) as u8
     }
+    /// Returns the value of the reserved0 field.
     #[inline]
     pub fn reserved0(&self) -> u64 {
         // Get the reserved0 present in the 56 MSB
@@ -212,10 +228,12 @@ impl<Version: std::marker::Send + std::marker::Sync> super::lib::RDH for RdhCRU<
 }
 
 pub mod test_data {
+    //! Contains test data for testing functionality on a [RDH CRU][RdhCRU].
     use crate::words::rdh::{BcReserved, FeeId};
 
     // For testing
     use super::*;
+    /// Convenience struct of a [RDH CRU][RdhCRU] with the version [V7] used in tests.
     pub const CORRECT_RDH_CRU_V7: RdhCRU<V7> = RdhCRU::<V7> {
         rdh0: Rdh0 {
             header_id: 0x7,
@@ -251,6 +269,7 @@ pub mod test_data {
         version: PhantomData,
     };
 
+    /// Convenience struct of a [RDH CRU][RdhCRU] with the version [V6] used in tests.
     pub const CORRECT_RDH_CRU_V6: RdhCRU<V6> = RdhCRU::<V6> {
         rdh0: Rdh0 {
             header_id: 0x6,
@@ -286,6 +305,7 @@ pub mod test_data {
         version: PhantomData,
     };
 
+    /// Convenience struct of an [RDH CRU][RdhCRU] coming after an initial [RDH CRU][RdhCRU] with the version [V7] used in tests.
     pub const CORRECT_RDH_CRU_V7_NEXT: RdhCRU<V7> = RdhCRU::<V7> {
         rdh0: Rdh0 {
             header_id: 0x7,
@@ -320,6 +340,8 @@ pub mod test_data {
         reserved2: 0x0,
         version: PhantomData,
     };
+
+    /// Convenience struct of an [RDH CRU][RdhCRU] closing an HBF, used in tests.
     pub const CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP: RdhCRU<V7> = RdhCRU::<V7> {
         rdh0: Rdh0 {
             header_id: 0x7,

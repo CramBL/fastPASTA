@@ -1,14 +1,14 @@
+//! Definitions for status words: [IHW][Ihw], [TDH][Tdh], [TDT][Tdt], [DDW0][Ddw0] & [CDW][Cdw].
+
+use super::lib::ByteSlice;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::fmt::{Debug, Display};
 
-use super::lib::ByteSlice;
-
-/// Definitions for status words
-/// `IHW`, `TDH`, `TDT`, `DDW0`, `CDW`
-
 pub mod util {
-    /// These functions takes raw byte slices for performance reasons.
-    /// It is crucial that the word is known before being passed to any function here.
+    //! Functions for generating human readable text from information extracted from status words.
+    //!
+    //! These functions takes raw byte slices for performance reasons.
+    //! It is crucial that the word is known before being passed to any function here.
 
     /// Takes a full TDH slice and returns a string description of the trigger field
     pub fn tdh_trigger_as_string(tdh_slice: &[u8]) -> String {
@@ -89,6 +89,7 @@ pub mod util {
         tdt_slice[8] & 0b1 != 0
     }
 
+    /// Takes a full TDT slice and returns a string description of whether the packet_done bit is set
     pub fn tdt_packet_done_as_string(tdt_slice: &[u8]) -> String {
         debug_assert!(tdt_slice.len() == 10);
         if tdt_packet_done(tdt_slice) {
@@ -116,6 +117,7 @@ pub mod util {
             .any(|byte| *byte & LANE_WARNING_MASK != 0)
     }
 
+    /// Takes a DDW0 slice and returns true if any lanes status is error
     fn ddw0_tdt_lane_status_any_error(ddw0_slice: &[u8]) -> bool {
         debug_assert!(ddw0_slice.len() == 10);
         const LANE_ERROR_MASK: u8 = 0b1010_1010;
@@ -125,6 +127,7 @@ pub mod util {
             .any(|byte| *byte & LANE_ERROR_MASK != 0)
     }
 
+    /// Takes a DDW0 slice and returns true if any lanes status is fatal
     fn ddw0_tdt_lane_status_any_fatal(ddw0_slice: &[u8]) -> bool {
         debug_assert!(ddw0_slice.len() == 10);
         const LANE_FATAL_MASK0: u8 = 0b0000_0011;
@@ -155,11 +158,15 @@ pub mod util {
     }
 }
 
+/// Trait to implement for all status words
 pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display {
+    /// Returns the id of the status word
     fn id(&self) -> u8;
+    /// Deserializes the status word from a reader and a byte slice
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
     where
         Self: Sized;
+    /// Sanity check that returns true if all reserved bits are 0
     fn is_reserved_0(&self) -> bool;
 }
 
@@ -193,6 +200,7 @@ pub fn is_lane_active(lane: u8, active_lanes: u32) -> bool {
     let mask = 1 << lane;
     active_lanes & mask != 0
 }
+/// Struct to represent the IHW status word
 #[repr(packed)]
 pub struct Ihw {
     // Total of 80 bits
@@ -203,11 +211,13 @@ pub struct Ihw {
 }
 
 impl Ihw {
+    /// Returns the integer value of the reserved bits
     pub fn reserved(&self) -> u64 {
         let four_lsb: u8 = ((self.active_lanes >> 28) & 0xF) as u8;
         let eight_msb = self.id & 0xFF;
         (eight_msb as u64) << 36 | (self.reserved as u64) << 4 | (four_lsb as u64)
     }
+    /// Returns the integer value of the active lanes field
     pub fn active_lanes(&self) -> u32 {
         self.active_lanes & 0xFFFFFFF
     }
@@ -259,6 +269,7 @@ impl PartialEq for Ihw {
     }
 }
 
+/// Struct to represent the TDH status word
 #[repr(packed)]
 pub struct Tdh {
     // 11:0 trigger_type
@@ -270,41 +281,50 @@ pub struct Tdh {
     reserved0_id: u16, // 71:64 reserved, 79:72 id
 }
 impl Tdh {
+    /// Returns the integer value of the reserved0 field
     pub fn reserved0(&self) -> u16 {
         self.reserved0_id & 0xFF
     }
 
+    /// Returns the integer value of the reserved1 field
     pub fn reserved1(&self) -> u16 {
         self.trigger_bc_reserved1 & 0xF000 // doesn't need shift as it should just be checked if equal to 0
     }
 
+    /// Returns the integer value of the trigger_bc field
     pub fn trigger_bc(&self) -> u16 {
         self.trigger_bc_reserved1 & 0x0FFF
     }
 
+    /// Returns the integer value of the reserved2 field
     pub fn reserved2(&self) -> u16 {
         // 15th bit is reserved
         self.trigger_type_internal_trigger_no_data_continuation_reserved2 & 0b1000_0000_0000_0000
     }
 
+    /// Returns the integer value of the continuation field
     pub fn continuation(&self) -> u16 {
         // 14th bit is continuation
         (self.trigger_type_internal_trigger_no_data_continuation_reserved2 & 0b100_0000_0000_0000)
             >> 14
     }
 
+    /// Returns the integer value of the no_data field
     pub fn no_data(&self) -> u16 {
         // 13th bit is no_data
         (self.trigger_type_internal_trigger_no_data_continuation_reserved2 & 0b10_0000_0000_0000)
             >> 13
     }
 
+    /// Returns the integer value of the internal_trigger field
     pub fn internal_trigger(&self) -> u16 {
         // 12th bit is internal_trigger
         (self.trigger_type_internal_trigger_no_data_continuation_reserved2 & 0b1_0000_0000_0000)
             >> 12
     }
 
+    /// Returns the integer value of the trigger_type field
+    ///
     /// Beware! Only 12 LSB are valid!
     pub fn trigger_type(&self) -> u16 {
         // 11:0 is trigger_type
@@ -374,6 +394,7 @@ impl PartialEq for Tdh {
     }
 }
 
+/// Struct representing the TDT
 #[repr(packed)]
 pub struct Tdt {
     // 55:0 lane_status
@@ -390,39 +411,51 @@ pub struct Tdt {
 }
 
 impl Tdt {
+    /// Returns the integer value of the reserved0 field.
     pub fn reserved0(&self) -> u8 {
         self.res0_lane_starts_violation_res1_transmission_timeout_packet_done >> 4
     }
+    /// Returns true if the lane_starts_violation bit is set.
     pub fn lane_starts_violation(&self) -> bool {
         (self.res0_lane_starts_violation_res1_transmission_timeout_packet_done & 0b1000) != 0
     }
+    /// Returns the integer value of the reserved1 field.
     pub fn reserved1(&self) -> u8 {
         self.res0_lane_starts_violation_res1_transmission_timeout_packet_done & 0b0100
     }
+    /// Returns true if the transmission_timeout bit is set.
     pub fn transmission_timeout(&self) -> bool {
         (self.res0_lane_starts_violation_res1_transmission_timeout_packet_done & 0b0010) != 0
     }
+    /// Returns true if the packet_done bit is set.
     pub fn packet_done(&self) -> bool {
         (self.res0_lane_starts_violation_res1_transmission_timeout_packet_done & 0b0001) == 1
     }
+    /// Returns true if the timeout_to_start bit is set.
     pub fn timeout_to_start(&self) -> bool {
         (self.timeout_to_start_timeout_start_stop_timeout_in_idle_res2 & 0b1000_0000) != 0
     }
+    /// Returns true if the timeout_start_stop bit is set.
     pub fn timeout_start_stop(&self) -> bool {
         (self.timeout_to_start_timeout_start_stop_timeout_in_idle_res2 & 0b0100_0000) != 0
     }
+    /// Returns true if the timeout_in_idle bit is set.
     pub fn timeout_in_idle(&self) -> bool {
         (self.timeout_to_start_timeout_start_stop_timeout_in_idle_res2 & 0b0010_0000) != 0
     }
+    /// Returns the integer value of the reserved2 field.
     pub fn reserved2(&self) -> u8 {
         self.timeout_to_start_timeout_start_stop_timeout_in_idle_res2 & 0b0001_1111
     }
+    /// Returns the integer value of bits \[55:48\] of the lane_status field, corresponding to the status of lanes 27-24.
     pub fn lane_status_27_24(&self) -> u8 {
         self.lane_status_27_24
     }
+    /// Returns the integer value of bits \[47:32\] of the lane_status field, corresponding to the status of lanes 23-16.
     pub fn lane_status_23_16(&self) -> u16 {
         self.lane_status_23_16
     }
+    /// Returns the integer value of bits \[31:0\] of the lane_status field, corresponding to the status of lanes 15-0.
     pub fn lane_status_15_0(&self) -> u32 {
         self.lane_status_15_0
     }
@@ -503,8 +536,9 @@ impl PartialEq for Tdt {
             && self.lane_status_15_0 == other.lane_status_15_0
     }
 }
-#[repr(packed)]
 
+/// Struct representing the DDW0.
+#[repr(packed)]
 pub struct Ddw0 {
     // 64:56 reserved0, 55:0 lane_status
     res3_lane_status: u64,
@@ -515,22 +549,27 @@ pub struct Ddw0 {
 }
 
 impl Ddw0 {
+    /// Returns the integer value of the index field.
     pub fn index(&self) -> u8 {
         (self.index & 0xF0) >> 4
     }
+    /// Returns true if the lane_starts_violation bit is set.
     pub fn lane_starts_violation(&self) -> bool {
         (self.index & 0b1000) != 0
     }
+    /// Returns true if the transmission_timeout bit is set.
     pub fn transmission_timeout(&self) -> bool {
         (self.index & 0b10) != 0
     }
-
+    /// Returns the integer value of the lane_status field.
     pub fn lane_status(&self) -> u64 {
         self.res3_lane_status & 0x00ff_ffff_ffff_ffff
     }
+    /// Returns the 2 reserved bits 66 & 64 in position 2 & 0.
     pub fn reserved0_1(&self) -> u8 {
         self.index & 0b0000_0101
     }
+    /// Returns the 8 reserved bits 64:56 in position 7:0.
     pub fn reserved2(&self) -> u8 {
         ((self.res3_lane_status & 0xFF00_0000_0000_0000) >> 56) as u8
     }
@@ -587,8 +626,9 @@ impl PartialEq for Ddw0 {
             && self.res3_lane_status == other.res3_lane_status
     }
 }
-#[repr(packed)]
 
+/// Struct representing the CDW.
+#[repr(packed)]
 pub struct Cdw {
     calibration_word_index_lsb_calibration_user_fields: u64, // 63:48 calibration_word_index_LSB 47:0 calibration_user_fields
     calibration_word_index_msb: u8,                          // 71:64 calibration_word_index_MSB
@@ -597,10 +637,12 @@ pub struct Cdw {
 }
 
 impl Cdw {
+    /// Returns the integer value of the calibration_word_index field.
     pub fn calibration_word_index(&self) -> u32 {
         ((self.calibration_word_index_msb as u32) << 16)
             | ((self.calibration_word_index_lsb_calibration_user_fields >> 48) as u32)
     }
+    /// Returns the integer value of the calibration_user_fields field.
     pub fn calibration_user_fields(&self) -> u64 {
         self.calibration_word_index_lsb_calibration_user_fields & 0xffff_ffff_ffff
     }

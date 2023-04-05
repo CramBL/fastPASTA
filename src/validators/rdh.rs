@@ -1,11 +1,17 @@
+//! contains the [RdhCruSanityValidator] that contains all the sanity checks for an [RDH].
+//!
+//! The [RdhCruSanityValidator] is composed of multiple subvalidators, each checking an [RDH] subword.
 use crate::words::lib::RDH;
 use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3};
 use std::fmt::Write as _;
 
+/// Enum to specialize the checks performed by the [RdhCruSanityValidator] for a specific system.
 pub enum SpecializeChecks {
+    /// Specialize the checks for the Inner Tracking System.
     ITS,
 }
 
+/// Validator for the RDH CRU sanity checks.
 pub struct RdhCruSanityValidator<T: RDH> {
     rdh0_validator: Rdh0Validator,
     rdh1_validator: &'static Rdh1Validator,
@@ -33,6 +39,7 @@ const FEE_ID_SANITY_VALIDATOR: FeeIdSanityValidator = FeeIdSanityValidator::new(
 /// Specialized for ITS
 const ITS_SYSTEM_ID: u8 = 32;
 impl<T: RDH> RdhCruSanityValidator<T> {
+    /// Creates a new [RdhCruSanityValidator] with default values.
     pub fn new() -> Self {
         Self {
             rdh0_validator: Rdh0Validator::default(),
@@ -43,6 +50,7 @@ impl<T: RDH> RdhCruSanityValidator<T> {
         }
     }
 
+    /// Creates a new [RdhCruSanityValidator] specialized for a specific system.
     pub fn with_specialization(specialization: SpecializeChecks) -> Self {
         match specialization {
             SpecializeChecks::ITS => Self {
@@ -60,6 +68,7 @@ impl<T: RDH> RdhCruSanityValidator<T> {
         }
     }
 
+    /// Specializes the [RdhCruSanityValidator] for a specific system.
     pub fn specialize(&mut self, specialization: SpecializeChecks) {
         match specialization {
             SpecializeChecks::ITS => {
@@ -68,6 +77,8 @@ impl<T: RDH> RdhCruSanityValidator<T> {
         }
     }
 
+    /// Performs the sanity checks on an [RDH].
+    /// Returns [Ok] or an error type containing a [String] describing the error, if the sanity check failed.
     #[inline]
     pub fn sanity_check(&mut self, rdh: &T) -> Result<(), String> {
         let mut err_str = String::from("RDH sanity check failed: ");
@@ -284,6 +295,7 @@ impl Rdh0Validator {
     }
 }
 
+/// Validator for the [RDH] subword [RDH1][Rdh1].
 struct Rdh1Validator {
     valid_rdh1: Rdh1,
 }

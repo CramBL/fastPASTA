@@ -1,3 +1,4 @@
+//! Contains functionality for writing filtered data to disk or stdout.
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -10,8 +11,12 @@ use crate::input::data_wrapper::CdpChunk;
 use crate::util::lib::Config;
 use crate::words::lib::RDH;
 
+/// The size of the buffer used by the writer
+///
+/// This is the maximum amount of data that can be buffered before it is written to disk.
 const BUFFER_SIZE: usize = 1024 * 1024; // 1MB buffer
 
+/// Spawns a thread with the Writer running, and returns the thread handle.
 pub fn spawn_writer<T: RDH + 'static>(
     config: Arc<impl Config + 'static>,
     stop_flag: Arc<AtomicBool>,

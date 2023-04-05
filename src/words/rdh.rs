@@ -1,3 +1,4 @@
+//! Contains struct definitions of the RDH subwords: [RDH0][Rdh0], [RDH1][Rdh1], [RDH2][Rdh2], [RDH3][Rdh3].
 // ITS data format: https://gitlab.cern.ch/alice-its-wp10-firmware/RU_mainFPGA/-/wikis/ITS%20Data%20Format#Introduction
 use super::lib::RdhSubWord;
 use byteorder::{ByteOrder, LittleEndian};
@@ -18,14 +19,22 @@ pub(crate) struct DataformatReserved(pub(crate) u64); // 8 bit data_format, 56 b
 pub(crate) struct FeeId(pub(crate) u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
                                          // Exaxmple: L4_12 -> Layer 4 stave 12 = 0b0100_00XX_0000_1100
 
+/// Represents the RDH0 subword of the RDH.
+///
+/// The RDH0 is 64 bit long.
 #[repr(packed)]
 pub struct Rdh0 {
-    // Represents 64 bit
+    /// RDH header ID
     pub header_id: u8,
+    /// RDH header size
     pub header_size: u8,
+    /// RDH FEE ID
     pub(crate) fee_id: FeeId, // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
+    /// RDH priority bit
     pub priority_bit: u8,
+    /// RDH system ID
     pub system_id: u8,
+    /// RDH reserved0 bits
     pub reserved0: u16,
 }
 
@@ -86,25 +95,30 @@ impl PartialEq for Rdh0 {
     }
 }
 
+/// Represents the RDH1 subword of the RDH.
+///
+/// The RDH1 is 64 bit long.
 #[repr(packed)]
 pub struct Rdh1 {
-    // Rdh1 is 64 bit total
-    pub(crate) bc_reserved0: BcReserved, //bunch counter 12 bit + reserved 20 bit
-    pub orbit: u32,                      // 32 bit
+    /// RDH bunch counter 12 bit + reserved 20 bit
+    pub(crate) bc_reserved0: BcReserved,
+    /// RDH orbit number 32 bits
+    pub orbit: u32,
 }
 
 impl Rdh1 {
     // only meant for unit tests
-    pub const fn test_new(bc: u16, orbit: u32, reserved0: u32) -> Self {
+    pub(crate) const fn test_new(bc: u16, orbit: u32, reserved0: u32) -> Self {
         Rdh1 {
             bc_reserved0: BcReserved((bc as u32) | (reserved0 << 12)),
             orbit,
         }
     }
-
+    /// Returns the bunch counter.
     pub fn bc(&self) -> u16 {
         (self.bc_reserved0.0 & 0x0FFF) as u16
     }
+    /// Returns the reserved bits.
     pub fn reserved0(&self) -> u32 {
         self.bc_reserved0.0 >> 12
     }
@@ -155,17 +169,22 @@ impl Display for Rdh1 {
     }
 }
 
+/// Represents the RDH2 subword of the RDH.
 #[repr(packed)]
 #[derive(Clone, Copy)]
 pub struct Rdh2 {
-    pub trigger_type: u32, // 32 bit
+    /// RDH trigger type 32 bit.
+    pub trigger_type: u32,
+    /// RDH pages counter 16 bit.
     pub pages_counter: u16,
+    /// RDH stop bit 8 bit.
     pub stop_bit: u8,
+    /// RDH reserved 8 bit.
     pub reserved0: u8,
 }
 
 impl Rdh2 {
-    // Checks if the 4th bit of the trigger type is set
+    /// Checks if the 4th bit of the trigger type is set, which indicates that the trigger type is PhT.
     #[inline]
     pub fn is_pht_trigger(&self) -> bool {
         self.trigger_type >> 4 & 0x1 == 1
@@ -228,10 +247,14 @@ impl Display for Rdh2 {
     }
 }
 
+/// Represents the RDH3 subword of the RDH.
 #[repr(packed)]
 pub struct Rdh3 {
-    pub detector_field: u32, // 23:4 is reserved
+    /// RDH detector field 32 bit, but 23:4 are reserved bits.
+    pub detector_field: u32,
+    /// RDH parity bit 16 bit.
     pub par_bit: u16,
+    /// RDH reserved 16 bit.
     pub reserved0: u16,
 }
 impl RdhSubWord for Rdh3 {
