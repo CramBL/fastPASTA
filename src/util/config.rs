@@ -28,7 +28,7 @@ pub struct Opt {
     cmd: Option<Command>,
 
     /// Verbosity level 0-4 (Errors, Warnings, Info, Debug, Trace)
-    #[structopt(short = "v", long = "verbosity", default_value = "0", global = true)]
+    #[structopt(short = "v", long = "verbosity", default_value = "1", global = true)]
     verbosity: u8,
 
     /// Max tolerate errors before exiting, if set to 0 -> no limit to errors
