@@ -7,7 +7,7 @@
 ## fast Protocol Analysis Scanner Tool for ALICE
 fastPASTA uses [Semantic Versioning](https://semver.org/).
 
-For extensive documentation of public facing source code, invoke ```cargo doc --open```
+For extensive documentation of public facing source code see [documentation](https://docs.rs/fastpasta/1.0.1/fastpasta/) or invoke ```cargo doc --open```.
 
 For an exhaustive list of the data verification done via the `check` subcommand, see [list of checks](doc/checks_list.md).
 
