@@ -1,10 +1,17 @@
 [package]
 name = "fastpasta"
-version = "1.0.0"
+version = "1.0.1" # the current version, obeying semver
 edition = "2021"
 readme = "README.md"
 repository = "https://gitlab.cern.ch/mkonig/fastpasta"
 license = "MIT OR Apache-2.0"
+keywords = ["CLI", "parse", "Verification"]
+description = "CLI for verifying or examining readout data from the ALICE detector."
+categories = ["command-line-utilities"]
+authors = ["Marc Beck König <mbkj@tutamail.com>"]
+
+[badges]
+maintenance = { status = "passively-maintained" }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
