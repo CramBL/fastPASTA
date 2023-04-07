@@ -33,6 +33,7 @@ To verify or view curated content of the scanned raw binary data from ALICE.
     - [Example of failed RDH sanity check](#example-of-failed-rdh-sanity-check)
     - [Error codes are not unique](#error-codes-are-not-unique)
   - [Verbosity levels](#verbosity-levels)
+  - [Running tests](#running-tests)
 - [License](#license)
 - [Project status](#project-status)
 - [Benchmarks and comparisons](#benchmarks-and-comparisons)
@@ -127,11 +128,19 @@ The following is a list of error codes and their meaning, `x` is a placeholder f
 - 3: Errors, warnings, info and debug
 - 4: Errors, warnings, info, debug and trace
 
+
+## Running tests
+Run the full test suite with:
+```shell
+$ cargo test -- --test-threads=1 --nocapture
+```
+Passing `--test-threads=1` and `--nocapture` is necessary as several tests asserts that content written to stdout matches expectations, which will break when tests are run concurrently or writing to stdout is suppressed.
+
 # License
 Apache 2.0 or MIT at your option.
 
 # Project status
-Under development
+Passively Maintained. There are no plans for new features, but the maintainer intends to respond to issues that get filed.
 
 # Benchmarks and comparisons
 In the tables below `fastPASTA` is compared with `rawdata-parser` and `decode.py` in typical verification tasks. Hyperfine is used for benchmarking, with `cache warmup`.
