@@ -22,7 +22,8 @@ To verify or view curated content of the scanned raw binary data from ALICE.
 - [Table of Contents](#table-of-contents)
 - [Quickstart](#quickstart)
   - [Prerequisite](#prerequisite)
-  - [Build the binary with `cargo build -r` and find it in /target/release/fastpasta](#build-the-binary-with-cargo-build--r-and-find-it-in-targetreleasefastpasta)
+  - [Install via cargo (comes with Rust)](#install-via-cargo-comes-with-rust)
+  - [Building from source](#building-from-source)
   - [See help, including examples of use](#see-help-including-examples-of-use)
 - [Examples of use](#examples-of-use)
     - [Read from stdin -\> filter link -\> view RDHs](#read-from-stdin---filter-link---view-rdhs)
@@ -48,23 +49,30 @@ To verify or view curated content of the scanned raw binary data from ALICE.
 
 # Quickstart
 ## Prerequisite
-The [rust toolchain](https://www.rust-lang.org/tools/install) is required to compile the binary. On macOS, Linux or other Unix-like OS simply run
+The [rust toolchain](https://www.rust-lang.org/tools/install) is required to compile the binary. Use the link to download a Windows installer. On macOS, Linux or other Unix-like OS simply run
 ```shell
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 and follow the on-screen instructions.
-## Build the binary with `cargo build -r` and find it in /target/release/fastpasta
+
+## Install via cargo (comes with Rust)
+```shell
+cargo install fastpasta
+```
+Updating fastpasta simply requires rerunning `cargo install fastpasta`
+## Building from source
+Run `cargo build -r` and find the binary in /target/release/fastpasta
 ## See help, including examples of use
 
 ```shell
-$ ./fastpasta -h
+$ fastpasta -h
 ```
 
 # Examples of use
 ### Read from stdin -> filter link -> view RDHs
 ```shell
 
-$ lz4 -d input.raw -c | ./fastpasta --filter-link 3 | ./fastpasta view rdh
+$ lz4 -d input.raw -c | fastpasta --filter-link 3 | fastpasta view rdh
 #        ^^^^                      ^^^^                       ^^^^
 #       INPUT       --->          FILTER          --->        VIEW
 # Decompressing with `lz4`
@@ -72,29 +80,29 @@ $ lz4 -d input.raw -c | ./fastpasta --filter-link 3 | ./fastpasta view rdh
 
 Piping is often optional and avoiding it will improve performance. e.g. the following is equivalent to the previous example, but saves significant IO overhead, by using one less pipe.
 ```shell
-$ lz4 -d input.raw -c | ./fastpasta --filter-link 3 view rdh
+$ lz4 -d input.raw -c | fastpasta --filter-link 3 view rdh
 ```
 ### Read from file -> filter by link -> validate
 ```shell
 # Enable all generic checks: `sanity` (stateless) AND `running` (stateful)
-$ ./fastpasta input.raw --filter-link 0 check all
+$ fastpasta input.raw --filter-link 0 check all
 
 # Same as above but only enable `sanity` checks
-$ ./fastpasta input.raw check sanity -f 0
+$ fastpasta input.raw check sanity -f 0
 
 # Enable all `sanity` and `running` checks and include checks applicable to `ITS` only
-$ ./fastpasta input.raw check all ITS --filter-link 0
+$ fastpasta input.raw check all ITS --filter-link 0
 
 # Filter link 3 and check `sanity` include sanity checks specific to ITS
-$ ./fastpasta input.raw -f 3 check sanity its # target `its` is case-insensitive
+$ fastpasta input.raw -f 3 check sanity its # target `its` is case-insensitive
 ```
 
 ### Read from file -> view HBFs with `less`
 ```shell
 # Generate HBF view
-$ ./fastpasta input.raw view hbf | less
+$ fastpasta input.raw view hbf | less
 # View only HBFs from link #3
-$ ./fastpasta input.raw view hbf -f 3 | less
+$ fastpasta input.raw view hbf -f 3 | less
 ```
 
 # Error messages
@@ -147,21 +155,21 @@ In the tables below `fastPASTA` is compared with `rawdata-parser` and `decode.py
 ### Verifying all RDHs of 260MB file with data from 1 link
 | Tool | Command | Mean [s] | Min [s] | Max [s] |
 |:---|:---|---:|---:|---:|
-|fastPASTA| `./fastpasta input.raw check all` | 0.060 ± 0.001 | 0.058 | 0.063 |
+|fastPASTA| `fastpasta input.raw check all` | 0.060 ± 0.001 | 0.058 | 0.063 |
 |rawdata-parser| `./rawdata-parser --skip-packet-counter-checks input.raw` | 0.369 ± 0.002 | 0.366 | 0.372|
 |decode.py| `python3 decode.py -i 20522 -f input.raw --skip_data` | 13.674 ± 0.386 | 13.610 | 14.499 |
 
 ### Verifying all RDHs in 2GB file with data from 12 different links
 | Tool | Command | Mean [s] | Min [s] | Max [s] |
 |:---|:---|---:|---:|---:|
-|fastPASTA| `./fastpasta input.raw check all` | 0.690 ± 0.014 | 0.674 | 0.719|
+|fastPASTA| `fastpasta input.raw check all` | 0.690 ± 0.014 | 0.674 | 0.719|
 |rawdata-parser| `./rawdata-parser --skip-packet-counter-checks input.raw` | 2.892 ± 0.063 | 2.829 | 3.020 |
 |decode.py| Verifying multiple links simultaneously is not supported | N/A | N/A | N/A |
 
 ### Verifying all RDHs and payloads in 260MB file with data from 1 link
 | Tool | Command | Mean [s] | Min [s] | Max [s] |
 |:---|:---|---:|---:|---:|
-|fastPASTA| `./fastpasta input.raw check all ITS` | 0.106 ± 0.002 | 0.103 | 0.111 |
+|fastPASTA| `fastpasta input.raw check all ITS` | 0.106 ± 0.002 | 0.103 | 0.111 |
 |rawdata-parser| Verifying payloads is not supported  | N/A | N/A | N/A |
 |decode.py| `python3 decode.py -i 20522 -f input.raw` | 55.903 ± 0.571 | 54.561 | 56.837 |
 
