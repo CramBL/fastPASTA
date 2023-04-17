@@ -1,5 +1,4 @@
-@startuml CDP_payload_StateMachine (continuous mode)
-!theme toy from https://raw.githubusercontent.com/plantuml/plantuml/master/themes
+@startuml cdp_payload_fsm_continuous_mode
 ' Carto color palette
 ' light blue       #88CCEE
 ' light pink/red   #CC6677
@@ -18,7 +17,7 @@
 title {
   HorizontalAlignment right
   FontSize 40
-  BackGroundColor #F0F0F0
+  'BackGroundColor #F0F0F0
   Margin 1
   Padding 0
 }
@@ -29,17 +28,18 @@ stateDiagram {
   }
 }
 diamond {
-    BackgroundColor #DDCC77
+    BackgroundColor #gold
     LineColor black
     LineThickness 0.5
 }
 </style>
 skinparam RoundCorner 20
 skinparam State {
-  BackgroundColor #0072B2
+  BackgroundColor #44AA99
   FontSize 16
   FontStyle bold
 }
+
 
 Title **CDP payload fsm** (continuous mode)
 hide empty description
@@ -80,7 +80,7 @@ after_TDT --> IHW : [packet_done == 1\n&& IHW]
 after_TDT --> Continuation : [packet_done == 0\n&& event page full]
 'note right of after_TDT : IHW, TDH and DDW0\nare legal next words\nwhen **packet_done == 1**
 
-state Continuation #DDCC77 {
+state Continuation #6699CC {
   state after_c_Data <<choice>>
     [*] -left---> c_IHW
     c_IHW --> c_TDH : [stop_bit == 0\n&& Page >= 1]
