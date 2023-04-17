@@ -85,16 +85,10 @@ impl<T: RDH> LinkValidator<T> {
 
     /// Event loop where data is received and validation starts
     pub fn run(&mut self) {
-        loop {
-            let cdp_tuple = match self.data_rcv_channel.recv() {
-                Ok(data) => data,
-                Err(_) => {
-                    log::trace!("LinkValidator: No more data to process");
-                    break;
-                }
-            };
-            self.do_checks(cdp_tuple);
+        while let Ok(cdp) = self.data_rcv_channel.recv() {
+            self.do_checks(cdp);
         }
+        log::trace!("LinkValidator: No more data to process, shutting down");
     }
 
     fn do_checks(&mut self, cdp_tuple: CdpTuple<T>) {

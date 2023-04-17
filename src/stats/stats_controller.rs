@@ -97,19 +97,16 @@ impl StatsController {
     /// Starts the event loop for the StatsController
     /// This function will block until the channel is closed
     pub fn run(&mut self) {
-        loop {
-            match self.recv_stats_channel.recv() {
-                Ok(stats_update) => self.update(stats_update),
-                Err(_) => {
-                    if self.view_active {
-                        // Avoid printing the report in the middle of a view
-                        log::info!("View active, skipping report summary printout.")
-                    } else {
-                        self.print();
-                    }
-                    break;
-                }
-            }
+        // While loop breaks when an error is received from the channel, which means the channel is disconnected
+        while let Ok(stats_update) = self.recv_stats_channel.recv() {
+            self.update(stats_update);
+        }
+        // After processing all stats, print the summary report or don't if in view mode
+        if self.view_active {
+            // Avoid printing the report in the middle of a view
+            log::info!("View active, skipping report summary printout.")
+        } else {
+            self.print();
         }
     }
 
