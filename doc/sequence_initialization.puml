@@ -1,0 +1,55 @@
+@startuml sequence_initialization
+!theme toy from https://raw.githubusercontent.com/plantuml/plantuml/master/themes
+' Carto color palette
+' light blue       #88CCEE
+' light pink/red   #CC6677
+' light yellow     #DDCC77
+' dark green       #117733
+' Dark purple      #332288
+' Pink             #AA4499
+' Light blue/green #44AA99
+' Brown/yellow     #999933
+' Dark purple      #882255
+' Dark red         #661100
+' Medium blue      #6699CC
+' Grey             #888888
+skinparam style strictuml
+
+Title **<size:30>fastPASTA sequence diagram</size>**\n<< Initialization >>
+
+actor       User       as user
+
+participant Config  as config << util >>
+participant InputScanner as inputscanner << input >>
+queue InputData as inputfifo << FIFO >> #6699CC
+participant Analysis as analysis_thread << Validator/View >>
+queue StatsData as statsfifo << FIFO >> #44AA99
+participant StatsController as statscontroller << stats >>
+
+
+
+
+autoactivate on
+
+user -> config ++ : Prompt for validation/view
+
+config -> config: Parse command-line arguments
+return
+config -> statsfifo ** : Create
+    statsfifo --> config : Multiple producer & single consumer channels to <color #44AA99>**self**</color>
+config -> statscontroller ** : Create with config & consumer channel to <color #44AA99>**StatsData**</color>
+    config --> statscontroller ++ #gold : run()
+
+config -> inputfifo ** : Create
+    inputfifo --> config : single producer & consumer channels to <color #6699CC>**self**</color>
+config -> inputscanner ** : Create with config \n& producer channels to\n<color #44AA99>**StatsData**</color> & <color #6699CC>**InputData**</color>
+
+    config --> inputscanner ++ #gold : run()
+
+config -> analysis_thread ** : Create with config\n& producer channel to <color #44AA99>**StatsData**</color>\n& consumer channel to <color #6699CC>**InputData**</color>
+    config --> analysis_thread ++ #gold : run()
+
+
+
+
+@enduml
