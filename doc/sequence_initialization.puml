@@ -1,5 +1,21 @@
 @startuml sequence_initialization
-!theme toy from https://raw.githubusercontent.com/plantuml/plantuml/master/themes
+skinparam RoundCorner 7
+skinparam sequenceDivider {
+    BorderThickness 1
+}
+skinparam participant {
+    BackgroundColor FF6F61
+    'BorderColor 454645
+    FontColor White
+    BorderThickness 1.5
+}
+skinparam queue {
+    BackgroundColor FF6F61
+    BorderColor 454645
+    FontColor FFF
+    BorderThickness 1.5
+}
+skinparam style strictuml
 ' Carto color palette
 ' light blue       #88CCEE
 ' light pink/red   #CC6677
@@ -13,7 +29,6 @@
 ' Dark red         #661100
 ' Medium blue      #6699CC
 ' Grey             #888888
-skinparam style strictuml
 
 Title **<size:30>fastPASTA sequence diagram</size>**\n<< Initialization >>
 
@@ -29,12 +44,12 @@ participant StatsController as statscontroller << stats >>
 
 
 
-autoactivate on
+'autoactivate on
+user -> config ** : Prompt for validation/view
+    config -> config: Parse command-line arguments
+activate config
+deactivate config
 
-user -> config ++ : Prompt for validation/view
-
-config -> config: Parse command-line arguments
-return
 config -> statsfifo ** : Create
     statsfifo --> config : Multiple producer & single consumer channels to <color #44AA99>**self**</color>
 config -> statscontroller ** : Create with config & consumer channel to <color #44AA99>**StatsData**</color>
