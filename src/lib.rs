@@ -158,7 +158,7 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                     validators::its_payload_fsm_cont::ItsPayloadFsmContinuous::default();
                 loop {
                     if stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
-                        log::warn!("Stopping reader thread on stop flag!");
+                        log::trace!("Stopping reader thread on stop flag!");
                         break;
                     }
                     // Receive chunk from reader
