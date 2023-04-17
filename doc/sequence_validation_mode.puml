@@ -1,5 +1,21 @@
 @startuml sequence_validation_mode
-!theme toy from https://raw.githubusercontent.com/plantuml/plantuml/master/themes
+skinparam RoundCorner 7
+skinparam sequenceDivider {
+    BorderThickness 1
+}
+skinparam participant {
+    BackgroundColor FF6F61
+    'BorderColor 454645
+    FontColor White
+    BorderThickness 1.5
+}
+skinparam queue {
+    BackgroundColor FF6F61
+    BorderColor 454645
+    FontColor FFF
+    BorderThickness 1.5
+}
+skinparam style strictuml
 ' Carto color palette
 ' light blue       #88CCEE
 ' light pink/red   #CC6677
@@ -13,99 +29,60 @@
 ' Dark red         #661100
 ' Medium blue      #6699CC
 ' Grey             #888888
-skinparam style strictuml
+
 
 Title **<size:30>fastPASTA sequence diagram</size>**\n<< Validation mode >>
-
-actor       User       as user
-
-participant Config  as config << util >>
 participant InputScanner as inputscanner << input >>
 queue InputData as inputfifo << FIFO >> #6699CC
 participant LinkValidator as linkvalidator << validators >>
-participant StatsController as statscontroller << stats >>
 queue StatsData as statsfifo << FIFO >> #44AA99
-
-
-
-
-autoactivate on
-
-user -> config ++ : Enter prompt for validation
-== <size:20>Initialization</size> ==
-config -> config: Parse command-line arguments
-return
-config -> statsfifo ** : Create
-    statsfifo --> config : Multiple producer & single consumer channels to <color #44AA99>**self**</color>
-config -> statscontroller ** : Create with config & consumer channel to <color #44AA99>**StatsData**</color>
-    statscontroller -> statscontroller ++ #gold : run
-
-config -> inputfifo ** : Create
-    inputfifo --> config : single producer & consumer channels to <color #6699CC>**self**</color>
-config -> inputscanner ** : Create with config \n& producer channels to\n<color #44AA99>**StatsData**</color> & <color #6699CC>**InputData**</color>
-
-    inputscanner -> inputscanner ++ #gold : run
-
-config -> linkvalidator ** : Create with config\n& producer channel to <color #44AA99>**StatsData**</color>\n& consumer channel to <color #6699CC>**InputData**</color>
-    linkvalidator -> linkvalidator ++ #gold : run
-== <size:20>Processing</size> ==
+participant StatsController as statscontroller << stats >>
 
 par
 
     loop !end-of-file
+
         inputscanner -> inputscanner : load data
-        return
-        inputscanner -> statsfifo : send stats
-        return
-        inputscanner -> inputfifo : send data
-        return
+    activate inputscanner #gold
+        inputscanner --> statsfifo : send stats
+        inputscanner --> inputfifo : send data
+    deactivate inputscanner
     end
-    inputscanner -> inputfifo : disconnect
-    return
-    inputscanner -> statsfifo : disconnect
-    return
-    inputscanner --> config : join
-else
-    loop
-        linkvalidator -> inputfifo : get data
-        return data
-        linkvalidator -> linkvalidator : check data
-        linkvalidator -> statsfifo : send stats
-        return
-            opt check fails
-                linkvalidator -> statsfifo : report error
-                return
-            end
-        return
-        break <color #6699CC>**InputData**</color> empty && producer disconnected
-            destroy inputfifo
-            linkvalidator -> statsfifo : disconnect
-            return
-            linkvalidator --> config -- : join
-        end
-    end
+destroy inputscanner
 
 else
-    loop
+    loop !<color #6699CC>**InputData**</color> empty && <color #6699CC>**InputData**</color> connected
+
+        linkvalidator -> inputfifo : get data
+    activate linkvalidator #gold
+        inputfifo --> linkvalidator : data
+
+        linkvalidator -> linkvalidator : check data
+        linkvalidator --> statsfifo : send stats
+
+            opt check fails
+                linkvalidator --> statsfifo : report error
+    deactivate linkvalidator
+            end
+    end
+    destroy inputfifo
+destroy linkvalidator
+else
+    loop !<color #44AA99>**StatsData**</color> empty &&\n<color #44AA99>**StatsData**</color> connected
         statscontroller -> statsfifo : get stat
-        return stat
+    activate statscontroller #gold
+        statsfifo --> statscontroller : stat
         statscontroller -> statscontroller : record stat
         opt stat == error
-            statscontroller -> statscontroller : print error
-            return
-        end
-        return
-        break <color #44AA99>**StatsData**</color> empty && all producers disconnected
-            destroy statsfifo
-            statscontroller -> statscontroller : print summary
-            return
-            statscontroller --> config : join
+            statscontroller -> statscontroller : print error\nmessage
         end
     end
+    statscontroller -> statscontroller : print summary
+    deactivate statscontroller
+destroy statsfifo
+destroy statscontroller
 
 end
-
-
 
 
 @enduml
