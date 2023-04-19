@@ -99,9 +99,9 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             .send(StatType::LinksObserved(link_id))
             .unwrap();
     }
-    fn report_payload_size(&self, payload_size: usize) {
+    fn report_payload_size(&self, payload_size: u32) {
         self.stats_controller_sender_ch
-            .send(StatType::PayloadSize(payload_size as u32))
+            .send(StatType::PayloadSize(payload_size))
             .unwrap();
     }
     fn report_rdh_filtered(&self) {
@@ -136,6 +136,7 @@ where
         // Set the link ID and report another RDH seen
         let current_link_id = rdh.link_id();
         self.report_rdh_seen();
+        self.report_payload_size(rdh.payload_size() as u32);
 
         // If we haven't seen this link before, report it and add it to the list of unique links
         if !self.unique_links_observed.contains(&current_link_id) {
@@ -185,7 +186,6 @@ where
     fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error> {
         let mut payload = vec![0; payload_size];
         Read::read_exact(&mut self.reader, &mut payload)?;
-        self.report_payload_size(payload_size);
         Ok(payload)
     }
     /// Reads the next CDP from file
