@@ -45,6 +45,11 @@ lint:
 format:
   stage: code-quality
   script:
+    - echo "checking if Cargo.toml version matches lates git tag"
+    - echo "if this steps fails, update the Cargo.toml version number with the one from the newest git tag"
+    - tagdiff=$(diff <(git tag --list | grep -Po "(?<=v).*" | tail -1) <(cat Cargo.toml | grep -Po "(?<=^version = \").*(?=\")") | wc -l | grep "[0-9]")
+    - if [ "$tagdiff" -eq 0 ]; then echo "version numbers match";
+    - fi
     - rustup component add rustfmt
     - cargo fmt -- --check
 
@@ -105,11 +110,46 @@ test-coverage:
         coverage_format: cobertura
         path: coverage.xml
 
+## Regression tests
+regression-tests:
+  image: rust:latest
+  stage: build-and-test
+  before_script:
+    - |
+      TXT_RED="\e[31m";
+      TXT_YELLOW="\e[33m";
+      TXT_BRIGHT_YELLOW="\e[93m";
+      TXT_BRIGHT_CYAN="\e[96m";
+      TXT_CLEAR="\e[0m";
+      all_test_passed="echo all test passed!";
+    - cargo build
+    - test_1="cargo run -- ./test-data/readout.superpage.1.raw check all its -v2"
+    - pattern_1="Data Format.*2|((INFO -).*((EOF)|(Exit Successful))*)"
+    - test_2="cargo run -- ./test-data/readout.superpage.1.raw check sanity its"
+    - pattern_2="Data Format.*2";
+    - |
+      test_3="cargo run -- ./test-data/readout.superpage.1.raw view rdh"
+
+  script:
+    - |
+      echo -e "running test ${TXT_BRIGHT_YELLOW}$test_1${TXT_CLEAR}";
+      echo -e "3 lines should match ${TXT_BRIGHT_CYAN}$pattern_1";
+      test_out=$(eval "$test_1" 2>&1);
+      pattern_1_match=$(echo "$test_out" | egrep "$pattern_1" | wc -l)
+    - if [[ "$pattern_1_match" -ne 3 ]]; then echo -e "${TXT_RED}Test failed${TXT_CLEAR} $test_1"; all_test_passed="exit 1"; fi;
+    - |
+      echo -e "running test ${TXT_BRIGHT_YELLOW}$test_2${TXT_CLEAR}";
+      echo -e "1 line should match ${TXT_BRIGHT_CYAN}$pattern_2";
+      test_out=$(eval "$test_2" 2>&1);
+      pattern_2_match=$(echo "$test_out" | egrep "$pattern_2" | wc -l)
+    - if [[ "$pattern_2_match" -ne 1 ]]; then echo -e "${TXT_RED}Test failed${TXT_CLEAR} $test_2"; all_test_passed="exit 1"; fi;
+    - eval "$all_test_passed"
+
 ## For release build
 build-release-latest:
   stage: release
   rules:
-    - if: $CI_COMMIT_TAG                 # Run this job when a tag is created
+    - if: $CI_COMMIT_TAG  # Run this job when a tag is created
   image: rust:latest
   script:
     - echo "running release job"
