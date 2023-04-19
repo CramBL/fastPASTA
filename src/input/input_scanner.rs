@@ -149,7 +149,7 @@ where
             &self.stats_controller_sender_ch,
         )?;
         // If we have a link filter set, check if the current link matches the filter
-        let rdh = if let Some(x) = self.link_to_filter {
+        if let Some(x) = self.link_to_filter {
             // If it matches, return the RDH
             if x == current_link_id {
                 self.report_rdh_filtered();
@@ -166,19 +166,7 @@ where
         } else {
             // No filter set, return the RDH (nop)
             Ok(rdh)
-        };
-
-        // Current position is start of payload
-        if rdh.is_ok() && self.skip_payload {
-            // Only interested in RDHs, seek to next RDH
-            self.reader.seek_relative(
-                self.tracker
-                    .next(rdh.as_ref().unwrap().offset_to_next() as u64),
-            )?;
         }
-
-        // Return rdh
-        rdh
     }
 
     /// Reads the next payload from file, using the payload size from the RDH
@@ -195,7 +183,13 @@ where
         let loading_at_memory_offset = self.tracker.memory_address_bytes;
         let rdh: T = self.load_rdh_cru()?;
 
-        self.tracker.memory_address_bytes += rdh.offset_to_next() as u64;
+        if self.skip_payload {
+            // Only interested in RDHs, seek to next RDH
+            self.reader
+                .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
+        } else {
+            self.tracker.memory_address_bytes += rdh.offset_to_next() as u64;
+        }
 
         // If we want the payload, read it, otherwise return a vector that cannot allocate
         let payload = if !self.skip_payload {
