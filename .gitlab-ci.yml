@@ -45,6 +45,13 @@ lint:
 format:
   stage: code-quality
   script:
+    - echo "checking if Cargo.toml version matches lates git tag"
+    - >
+      if
+        diff <(git tag --list | grep -Po "(?<=v).*" | tail -1) <(cat Cargo.toml | grep -Po "(?<=^version = \").*(?=\")") | wc -l | grep "[0-9]";
+      then exit 1;
+      else exit 0;
+      fi
     - rustup component add rustfmt
     - cargo fmt -- --check
 
@@ -105,14 +112,56 @@ test-coverage:
         coverage_format: cobertura
         path: coverage.xml
 
+## Regression tests
+regression-tests:
+  image: rust:latest
+  stage: build-and-test
+  script:
+    - cargo build
+    - >
+      if
+        diff
+          <(git tag --list
+            | grep -Po "(?<=v).*"
+            | tail -1)
+          <(cat Cargo.toml
+            | grep -Po "(?<=^version = \").*(?=\")")
+            | wc -l
+            | grep "[0-9]";
+      then exit 1;
+      fi
+    - >
+      if
+        [[ "$(cargo run -- ./test-data/readout.superpage.1.raw check all its
+          2>&1
+          | rg -e "Data Format.*2"
+          | wc -l)" -lt 1
+        ]];
+      then
+        exit 1;
+      fi
+
 ## For release build
 build-release-latest:
   stage: release
   rules:
-    - if: $CI_COMMIT_TAG                 # Run this job when a tag is created
+    - if: $CI_COMMIT_TAG  # Run this job when a tag is created
   image: rust:latest
   script:
     - echo "running release job"
+    - echo "checking if Cargo.toml version matches lates git tag"
+    - >
+      if
+        diff
+          <(git tag --list
+            | grep -Po "(?<=v).*"
+            | tail -1)
+          <(cat Cargo.toml
+            | grep -Po "(?<=^version = \").*(?=\")")
+            | wc -l
+            | grep "[0-9]";
+      then exit 1;
+      fi
     - cargo build -r --verbose
   artifacts:
     name: "release_${CI_COMMIT_TAG}"
