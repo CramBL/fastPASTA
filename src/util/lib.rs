@@ -24,6 +24,8 @@ pub trait Filter {
 pub trait InputOutput {
     /// Input file to read from.
     fn input_file(&self) -> &Option<std::path::PathBuf>;
+    /// Determine from args if payload should be skipped at input
+    fn skip_payload(&self) -> bool;
     /// Output file to write to.
     fn output(&self) -> &Option<std::path::PathBuf>;
     /// Output mode of the data writing (file, stdout, none)

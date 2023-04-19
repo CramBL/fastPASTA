@@ -155,15 +155,15 @@ In the tables below `fastPASTA` is compared with `rawdata-parser` and `decode.py
 ### Verifying all RDHs of 260MB file with data from 1 link
 | Tool | Command | Mean [s] | Min [s] | Max [s] |
 |:---|:---|---:|---:|---:|
-|fastPASTA| `fastpasta input.raw check all` | 0.060 ± 0.001 | 0.058 | 0.063 |
-|rawdata-parser| `./rawdata-parser --skip-packet-counter-checks input.raw` | 0.369 ± 0.002 | 0.366 | 0.372|
+|fastPASTA| `fastpasta input.raw check all` | 0.039 ± 0.001 | 0.037 | 0.043 |
+|rawdata-parser| `./rawdata-parser --skip-packet-counter-checks input.raw` | 0.381 ± 0.012 | 0.356 | 0.438|
 |decode.py| `python3 decode.py -i 20522 -f input.raw --skip_data` | 13.674 ± 0.386 | 13.610 | 14.499 |
 
 ### Verifying all RDHs in 2GB file with data from 12 different links
 | Tool | Command | Mean [s] | Min [s] | Max [s] |
 |:---|:---|---:|---:|---:|
-|fastPASTA| `fastpasta input.raw check all` | 0.690 ± 0.014 | 0.674 | 0.719|
-|rawdata-parser| `./rawdata-parser --skip-packet-counter-checks input.raw` | 2.892 ± 0.063 | 2.829 | 3.020 |
+|fastPASTA| `fastpasta input.raw check all` | 0.459 ± 0.018 | 0.411 | 0.535 |
+|rawdata-parser| `./rawdata-parser --skip-packet-counter-checks input.raw` | 3.080 ± 0.047 | 3.005 | 3.178 |
 |decode.py| Verifying multiple links simultaneously is not supported | N/A | N/A | N/A |
 
 ### Verifying all RDHs and payloads in 260MB file with data from 1 link

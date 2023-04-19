@@ -1,6 +1,7 @@
 //! Contains the [InputScanner], [ScanCDP] trait, and [CdpWrapper] tuple. Responsible for reading and forwarding input data.
 //!
 //! The [InputScanner] implements the [ScanCDP] trait, and uses the [CdpWrapper] tuple for convenience to wrap an RDH, its payload and its memory position.
+
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
 use crate::util::lib::Config;
@@ -46,6 +47,7 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     tracker: MemPosTracker,
     stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
     link_to_filter: Option<u8>,
+    skip_payload: bool,
     unique_links_observed: Vec<u8>,
     initial_rdh0: Option<Rdh0>,
 }
@@ -63,6 +65,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             tracker,
             stats_controller_sender_ch,
             link_to_filter: config.filter_link(),
+            skip_payload: config.skip_payload(),
             unique_links_observed: vec![],
             initial_rdh0: None,
         }
@@ -81,6 +84,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             tracker: MemPosTracker::new(),
             stats_controller_sender_ch,
             link_to_filter: config.filter_link(),
+            skip_payload: config.skip_payload(),
             unique_links_observed: vec![],
             initial_rdh0: Some(rdh0),
         }
@@ -95,9 +99,9 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             .send(StatType::LinksObserved(link_id))
             .unwrap();
     }
-    fn report_payload_size(&self, payload_size: usize) {
+    fn report_payload_size(&self, payload_size: u32) {
         self.stats_controller_sender_ch
-            .send(StatType::PayloadSize(payload_size as u32))
+            .send(StatType::PayloadSize(payload_size))
             .unwrap();
     }
     fn report_rdh_filtered(&self) {
@@ -132,6 +136,7 @@ where
         // Set the link ID and report another RDH seen
         let current_link_id = rdh.link_id();
         self.report_rdh_seen();
+        self.report_payload_size(rdh.payload_size() as u32);
 
         // If we haven't seen this link before, report it and add it to the list of unique links
         if !self.unique_links_observed.contains(&current_link_id) {
@@ -144,7 +149,7 @@ where
             &self.stats_controller_sender_ch,
         )?;
         // If we have a link filter set, check if the current link matches the filter
-        if let Some(x) = self.link_to_filter {
+        let rdh = if let Some(x) = self.link_to_filter {
             // If it matches, return the RDH
             if x == current_link_id {
                 self.report_rdh_filtered();
@@ -159,10 +164,21 @@ where
                 self.load_next_rdh_to_filter()
             }
         } else {
-            // No filter set, return the RDH
-            // No jump, current position is start of payload
+            // No filter set, return the RDH (nop)
             Ok(rdh)
+        };
+
+        // Current position is start of payload
+        if rdh.is_ok() && self.skip_payload {
+            // Only interested in RDHs, seek to next RDH
+            self.reader.seek_relative(
+                self.tracker
+                    .next(rdh.as_ref().unwrap().offset_to_next() as u64),
+            )?;
         }
+
+        // Return rdh
+        rdh
     }
 
     /// Reads the next payload from file, using the payload size from the RDH
@@ -170,7 +186,6 @@ where
     fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error> {
         let mut payload = vec![0; payload_size];
         Read::read_exact(&mut self.reader, &mut payload)?;
-        self.report_payload_size(payload_size);
         Ok(payload)
     }
     /// Reads the next CDP from file
@@ -182,8 +197,13 @@ where
 
         self.tracker.memory_address_bytes += rdh.offset_to_next() as u64;
 
-        log::trace!("Attempting to load CDP - 2. loading Payload");
-        let payload = self.load_payload_raw(rdh.payload_size() as usize)?;
+        // If we want the payload, read it, otherwise return a vector that cannot allocate
+        let payload = if !self.skip_payload {
+            log::trace!("Attempting to load CDP - 2. loading Payload");
+            self.load_payload_raw(rdh.payload_size() as usize)?
+        } else {
+            Vec::with_capacity(0)
+        };
 
         Ok(CdpWrapper(rdh, payload, loading_at_memory_offset))
     }

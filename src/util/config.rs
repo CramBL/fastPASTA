@@ -133,6 +133,27 @@ impl InputOutput for Opt {
             DataOutputMode::Stdout
         }
     }
+
+    fn skip_payload(&self) -> bool {
+        match (self.view(), self.check(), self.output_mode()) {
+            (Some(View::Rdh), _, _) => true,
+            (_, Some(Check::All(target)), _) | (_, Some(Check::Sanity(target)), _)
+                if target.system.is_none() =>
+            {
+                true
+            }
+
+            (_, _, output) if output != DataOutputMode::None => false,
+            (_, Some(Check::All(target)), _) | (_, Some(Check::Sanity(target)), _)
+                if target.system.is_some() =>
+            {
+                false
+            }
+            _ => unreachable!(
+                "Unhandled case! Could not determine if payload should be skipped at input"
+            ),
+        }
+    }
 }
 
 impl Util for Opt {
