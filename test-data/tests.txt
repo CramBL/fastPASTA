@@ -1,0 +1,6 @@
+cargo run -- ./test-data/10_rdh.raw check sanity
+RDHs.*Version.*7
+-eq 1
+cargo run -- ./test-data/10_rdh.raw check sanity
+Total.*RDHs.*10
+-eq 1
