@@ -2,10 +2,11 @@
 TXT_RED="\e[31m"
 TXT_YELLOW="\e[33m"
 TXT_GREEN="\e[32m"
+TXT_BLUE="\e[34m"
 TXT_BRIGHT_YELLOW="\e[93m"
 TXT_BRIGHT_CYAN="\e[96m"
 TXT_BRIGHT_MAGENTA="\e[95m"
-TXT_BRIGHT_BLACK="\e[90m"
+TXT_BRIGHT_GREEN="\e[92m"
 TXT_CLEAR="\e[0m"
 failed_tests=()
 failed_matches=()
@@ -39,7 +40,7 @@ test4=(
 )
 test5=(
     "cargo run -- ./test-data/10_rdh.raw check sanity"
-    "Total.*hbfs.*10"
+    "Total.*hbfs.*5"
     1
 )
 test6=(
@@ -96,7 +97,7 @@ for test in "${tests_array[@]}"; do
     pattern=${current_test[1]}
     cond=${current_test[2]}
     echo -e "running ${TXT_BRIGHT_MAGENTA}${test}${TXT_CLEAR}: ${TXT_BRIGHT_YELLOW}${test_case}${TXT_CLEAR}"
-    echo -e "Condition is: ${TXT_BRIGHT_BLACK}[number of matches]${TXT_CLEAR} == ${TXT_BRIGHT_YELLOW}${cond}${TXT_CLEAR}, for pattern: ${TXT_BRIGHT_CYAN}${pattern}${TXT_CLEAR}"
+    echo -e "Condition is: ${TXT_BLUE}[number of matches] == ${cond}${TXT_CLEAR}, for pattern: ${TXT_BRIGHT_CYAN}${pattern}${TXT_CLEAR}"
     test_out=$(eval ${test_case} 2>&1)
     matches=$(echo "${test_out}" | egrep -i -c "${pattern}")
     #echo -e "matches:${matches}";
@@ -113,7 +114,7 @@ done
 
 if  [[ "${#failed_tests[@]}" == 0 ]];
 then
-    echo -e "${TXT_BRIGHT_CYAN}All tests passed${TXT_CLEAR}"
+    echo -e "${TXT_BRIGHT_GREEN}ALL TESTS PASSED! :)${TXT_CLEAR}"
     exit 0
 else
     echo

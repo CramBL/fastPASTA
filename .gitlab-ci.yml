@@ -120,7 +120,7 @@ regression-tests:
     - cargo build
 
   script:
-    - test-data/run_regression.sh
+    - test-data/regression_tests.sh
 
 ## For release build
 build-release-latest:
