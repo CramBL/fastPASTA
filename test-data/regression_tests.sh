@@ -77,6 +77,9 @@ test_1_multi_0=(
     # Check the right amount of RDHs is detected
     "total rdhs.*6"
     1
+    # Check that no errors are detected
+    "error - "
+    0
 )
 ## Test 1_5: `check all its` - Check the right amount of HBFs is detected
 test_1_3=(
@@ -132,6 +135,12 @@ test_2_multi_0=(
     # Check the right number of HBFs is detected
     "Total.*hbfs.*5"
     1
+    # Check that no errors are detected
+    "error - "
+    0
+    # Check that no warnings are generated
+    "warn - "
+    0
 )
 ## Test 2_4: `view rdh` - Check the right number of RDHs is shown
 test_2_1=(
