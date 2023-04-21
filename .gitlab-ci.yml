@@ -20,10 +20,15 @@ variables:
 
 stages:
   - code-quality
-  - build-and-test
-  - test-safety
+  - build
+  - test
   - release
 
+### Code quality ###
+# * pre-commit
+# * lint
+# * format
+# * audit
 pre-commit:
   image: python:3.9
   stage: code-quality
@@ -42,7 +47,6 @@ lint:
     - cargo clean
     - cargo clippy -- -D warnings --no-deps
 
-
 format:
   stage: code-quality
   script:
@@ -59,10 +63,13 @@ audit:
   script:
     - cargo install cargo-audit
     - cargo audit
+### end of stage: code-quality
 
+### build ###
+
+# Build a binary with debug enabled if pushed to master branch
 rust-latest:
-  stage: build-and-test
-  image: rust:latest
+  stage: build
   script:
     - cargo build --verbose
   rules:
@@ -73,23 +80,54 @@ rust-latest:
     - ./target
     expire_in: 1 mos
 
-rust-nightly:
-  stage: build-and-test
+# Build a binary with nightly rust for later jobs
+rust-nightly-build:
+  stage: build
   image: rustlang/rust:nightly
   script:
     - cargo build --verbose
+  allow_failure: true
+  artifacts:
+    paths:
+      - $CI_PROJECT_DIR/target/
+    untracked: true
+    when: on_success
+    expire_in: 50 mins
+  cache: []
+
+# build latest rust with instrument coverage for the test coverage job
+rust-latest-build:
+  stage: build
+  script:
+    - cargo build --verbose
+  artifacts:
+    paths:
+      - $CI_PROJECT_DIR/target/
+    untracked: true
+    when: on_success
+    expire_in: 50 mins
+
+### test ###
+
+# Run unit tests with nightly build
+rust-nightly-test:
+  stage: test
+  image: rustlang/rust:nightly
+  script:
     - cargo test --verbose -- --test-threads=1 --nocapture
   allow_failure: true
+  dependencies:
+    - rust-nightly-build
+  cache: []
 
+# Run unit tests and calculate coverage
 test-coverage:
-  image: rust:latest
-  stage: build-and-test
+  stage: test
   variables:
     RUSTFLAGS: "-C instrument-coverage"
     LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
   script:
     - rustup component add llvm-tools-preview
-    - cargo build
     - cargo test -- --test-threads=1 --nocapture
     - cargo install grcov
     # Generate HTML report which is available as an artifact
@@ -102,10 +140,11 @@ test-coverage:
     - apt-get update && apt-get install -y lcov
     - lcov --summary coverage.lcov
   coverage: /lines\.*:\s*([\d\.]+%)/
+  dependencies: []
   artifacts:
     paths:
       - 'coverage'
-    expire_in: 3 mos
+    expire_in: 2 mos
     reports:
       coverage_report:
         coverage_format: cobertura
@@ -113,35 +152,19 @@ test-coverage:
 
 ## Regression tests
 regression-tests:
-  image: rust:latest
-  stage: build-and-test
+  stage: test
   before_script:
     - ls test-data/
-    - cargo build
-
   script:
     - test-data/regression_tests.sh
-
-## For release build
-build-release-latest:
-  stage: release
-  rules:
-    - if: $CI_COMMIT_TAG  # Run this job when a tag is created
-  image: rust:latest
-  script:
-    - echo "running release job"
-    - cargo build -r --verbose
-    - cargo publish
-  artifacts:
-    name: "release_${CI_COMMIT_TAG}"
-    paths:
-    - ./target
+  dependencies:
+    - rust-latest-build
 
 ## Safety
 # Only includes address and leak sanitizing now, as there's simply too many false positives with memory and thread sanitizing on Rust code...
 # Leak and address sanitizing is also bugged (see links below) but there's decent work arounds at the moment
 leak-sanitizer:
-  stage: test-safety
+  stage: test
   image: rustlang/rust:nightly
   variables:
     LSAN_OPTIONS: "suppressions=lsan-suppressions.txt"
@@ -157,9 +180,11 @@ leak-sanitizer:
     - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
     - cargo test --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
   allow_failure: true
+  dependencies: []
+  cache: []
 
 address-sanitizer:
-  stage: test-safety
+  stage: test
   image: rustlang/rust:nightly
   variables:
     ASAN_OPTIONS: "detect_odr_violation=0:detect_leaks=0"
@@ -171,10 +196,12 @@ address-sanitizer:
     # only --lib --tests b/c of https://github.com/rust-lang/rust/issues/53945
     - cargo test --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu -- --test-threads=1 --nocapture
   allow_failure: true
+  dependencies: []
+  cache: []
 
 # Job for building docs and publishing to Gitlab Pages
 pages:
-  stage: build-and-test
+  stage: build
   script:
     - cargo doc
     - rm -rf public
@@ -188,3 +215,17 @@ pages:
     # This ensures that only pushes to the default branch will trigger
     # a pages deploy
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+
+## For release build
+build-release-latest:
+  stage: release
+  rules:
+    - if: $CI_COMMIT_TAG  # Run this job when a tag is created
+  script:
+    - echo "running release job"
+    - cargo build -r --verbose
+    - cargo publish
+  artifacts:
+    name: "release_${CI_COMMIT_TAG}"
+    paths:
+    - ./target
