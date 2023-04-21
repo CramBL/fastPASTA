@@ -1,10 +1,15 @@
 #!/bin/bash
 TXT_RED="\e[31m"
 TXT_YELLOW="\e[33m"
+TXT_GREEN="\e[32m"
 TXT_BRIGHT_YELLOW="\e[93m"
 TXT_BRIGHT_CYAN="\e[96m"
+TXT_BRIGHT_MAGENTA="\e[95m"
+TXT_BRIGHT_BLACK="\e[90m"
 TXT_CLEAR="\e[0m"
-any_failed_tests=false
+failed_tests=()
+failed_matches=()
+failed_results=()
 
 # Array of tests
 # Each test is an array of 3 elements
@@ -90,25 +95,36 @@ for test in "${tests_array[@]}"; do
     test_case=${current_test[0]}
     pattern=${current_test[1]}
     cond=${current_test[2]}
-    echo -e "running $test ${TXT_BRIGHT_YELLOW}${test_case}${TXT_CLEAR}"
-    echo -e "Condition == ${TXT_BRIGHT_YELLOW} ${cond} ${TXT_CLEAR} for ${TXT_BRIGHT_CYAN} ${pattern}${TXT_CLEAR}"
+    echo -e "running ${TXT_BRIGHT_MAGENTA}${test}${TXT_CLEAR}: ${TXT_BRIGHT_YELLOW}${test_case}${TXT_CLEAR}"
+    echo -e "Condition is: ${TXT_BRIGHT_BLACK}[number of matches]${TXT_CLEAR} == ${TXT_BRIGHT_YELLOW}${cond}${TXT_CLEAR}, for pattern: ${TXT_BRIGHT_CYAN}${pattern}${TXT_CLEAR}"
     test_out=$(eval ${test_case} 2>&1)
     matches=$(echo "${test_out}" | egrep -i -c "${pattern}")
-    echo -e "matches:${matches}";
+    #echo -e "matches:${matches}";
     if (( "${matches}" == "${cond}" ));
     then
-        echo -e "${TXT_BRIGHT_CYAN}Test passed${TXT_CLEAR}"
+        echo -e "${TXT_GREEN}Test passed${TXT_CLEAR}"
     else
         echo -e "${TXT_RED}Test failed${TXT_CLEAR}"
-        any_failed_tests=true
+        failed_tests+=("${test}")
+        failed_matches+=("${matches}")
+        failed_output+=("${test_out}")
     fi;
 done
 
-if  [[ "${any_failed_tests}" == "false" ]];
+if  [[ "${#failed_tests[@]}" == 0 ]];
 then
     echo -e "${TXT_BRIGHT_CYAN}All tests passed${TXT_CLEAR}"
     exit 0
 else
-    echo -e "${TXT_RED}Some tests failed${TXT_CLEAR}"
+    echo
+    echo -e "${TXT_RED}${#failed_tests[@]} Failed test(s):${TXT_CLEAR}"
+    for (( i = 0; i < ${#failed_tests[@]}; i++ )); do
+        declare -n failed_test=${failed_tests[i]}
+        echo -e "${TXT_RED}${failed_tests[i]}${TXT_CLEAR}: ${failed_test[0]}"
+        echo -e "${TXT_BRIGHT_CYAN}Pattern: ${TXT_CLEAR}${failed_test[1]}"
+        echo -e "${TXT_BRIGHT_YELLOW}Expected:${TXT_CLEAR} ${failed_test[2]} ${TXT_BRIGHT_YELLOW}Got:${TXT_CLEAR} ${failed_matches[i]}"
+        echo -e "${TXT_BRIGHT_MAGENTA}Test output: ${TXT_CLEAR}"
+        echo -e "${failed_output[i]}"
+    done
     exit 1
 fi
