@@ -116,45 +116,12 @@ regression-tests:
   image: rust:latest
   stage: build-and-test
   before_script:
-    - |
-      TXT_RED="\e[31m";
-      TXT_YELLOW="\e[33m";
-      TXT_BRIGHT_YELLOW="\e[93m";
-      TXT_BRIGHT_CYAN="\e[96m";
-      TXT_CLEAR="\e[0m";
-      ig="egrep -i" # Case insensitive egrep
-      all_test_passed="echo all test passed!";
-    - cat test-data/tests.txt
-    - test_cmds="test-data/tests.txt"
-    - readarray -t cmd_list < "$test_cmds"
+    - ls test-data/
     - cargo build
 
 
   script:
-    - |+
-      echo "Running the following tests...";
-      for (( i=0; i<${#cmd_list[@]}; i+=3 ));
-      do test=${cmd_list[i]};
-        echo "   ${test}";
-      done;
-    - |-
-      for (( i=0; i<${#cmd_list[@]}; i+=3 ));
-      do
-        test=${cmd_list[i]};
-        pattern=${cmd_list[i+1]};
-        cond=${cmd_list[i+2]};
-        echo -e "running test ${TXT_BRIGHT_YELLOW}${test}${TXT_CLEAR}";
-        echo -e "Condition ${TXT_BRIGHT_YELLOW}${cond}${TXT_CLEAR} for ${TXT_BRIGHT_CYAN}${pattern}";
-        test_out=$(eval ${test} 2>&1);
-        matches=$(echo "${test_out}" | egrep -i -c "${pattern}");
-        if (( "${matches} ${cond}" )); then
-          echo -e "${TXT_BRIGHT_CYAN}Test passed${TXT_CLEAR}";
-          else
-            echo -e "${TXT_RED}Test failed${TXT_CLEAR}";
-            all_test_passed="exit 1";
-        fi;
-      done
-    - eval "$all_test_passed"
+    - test-data/run_regression.sh
 
 ## For release build
 build-release-latest:
