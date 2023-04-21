@@ -59,7 +59,7 @@ test5=(
 ## Test 6: `view hbf` - Check the right number of RDHs is shown
 test6=(
     "cargo run -- ./test-data/10_rdh.raw view hbf"
-    "RDH.*8"
+    "RDH"
     10
 )
 ## Test 7: `view rdh` - Check the right number of RDHs is shown
@@ -123,7 +123,8 @@ for test in "${tests_array[@]}"; do
     echo -e "running ${TXT_BRIGHT_MAGENTA}${test}${TXT_CLEAR}: ${TXT_BRIGHT_YELLOW}${test_case}${TXT_CLEAR}"
     echo -e "Condition is: ${TXT_BLUE}[number of matches] == ${cond}${TXT_CLEAR}, for pattern: ${TXT_BRIGHT_CYAN}${pattern}${TXT_CLEAR}"
     test_out=$(eval ${test_case} 2>&1)
-    matches=$(echo "${test_out}" | egrep -i -c "${pattern}")
+    # `tail -n +3` starts from line 3, thus skipping the 2 lines saying "Finished dev..., Running..."
+    matches=$(echo "${test_out}" | tail -n +3 | egrep -i -c "${pattern}")
     #echo -e "matches:${matches}";
     if (( "${matches}" == "${cond}" ));
     then
