@@ -19,6 +19,10 @@ cmd_prefix="cargo run -- ./test-data/"
 # Arrays to store the failed tests
 ## The index of each array corresponds to the index of the failed test in the tests_array
 failed_tests=()
+## The patterns of each failed test
+failed_patterns=()
+## Expected number of matches of each failed test
+failed_expected_matches=()
 ## The matches of each failed test
 failed_matches=()
 ## The output of each failed test
@@ -33,16 +37,17 @@ re_eof="((INFO -).*((EOF)|(Exit Successful))*)"
 re_rdhs_in_rdh_view=": .* (7|6) .* 64 .* (0|2)"
 
 # Tests are structured in an array of arrays
-# Each test is an array of 3 elements
+# Each test is an array of at least 3 elements
 tests_array=(
-    test_1_0 test_1_1 test_1_2 test_1_3 test_1_4 test_1_5 test_1_6 test_1_7 test_1_8 test_1_9 test_1_10 test_1_11
-    test_2_0 test_2_1 test_2_2 test_2_3 test_2_4 test_2_5 test_2_6 test_2_7 test_2_8 test_2_9
-    test_3_0 test_3_1 test_3_2 test_3_3 test_3_4 test_3_5 test_3_6 test_3_7 test_3_8
+    test_1_0 test_1_1 test_1_2 test_1_3 test_1_4 test_1_5 test_1_multi_0 test_1_multi_1
+    test_2_0 test_2_multi_0 test_2_1 test_2_multi_1
+    test_3_0 test_3_1 test_3_2 test_3_3 test_3_multi_0
 )
 # The 3 elements of a test is:
 # 0: Command to run
 # 1: Regex to match against stdout
 # 2: Number of matches expected
+# (optional) repeat pattern and number of matches for each additional test on the same file and command
 
 ### Tests on the `readout.superpage.1.raw` file
 ## Test 1_0: `check sanity` - Check that the program reached EOF and exits successfully
@@ -63,57 +68,47 @@ test_1_2=(
     "rdh version.*7"
     1
 )
-## Test 1_3: `check all` - Check the right link is detected
-test_1_3=(
+## Test 1_multi_0: `check all`
+test_1_multi_0=(
     "readout.superpage.1.raw check all"
+    # Check the right link is detected
     "links .*2"
     1
-)
-## Test 1_3: `check all its` - Check the right amount of RDHs is detected
-test_1_4=(
-    "readout.superpage.1.raw check all"
+    # Check the right amount of RDHs is detected
     "total rdhs.*6"
     1
 )
 ## Test 1_5: `check all its` - Check the right amount of HBFs is detected
-test_1_5=(
+test_1_3=(
     "readout.superpage.1.raw check all its"
     "total hbfs.*3"
     1
 )
 ## Test 1_6: `check sanity` - Check the right layers and staves are detected
-test_1_6=(
+test_1_4=(
     "readout.superpage.1.raw check sanity"
     "((layers)|(staves)).*((layers)|(staves)).*L1_6"
     1
 )
 ## Test 1_7: `view rdh` - Check the right amount of RDHs is shown
-test_1_7=(
+test_1_5=(
     "readout.superpage.1.raw view rdh"
     "$re_rdhs_in_rdh_view"
     6
 )
-## Test 1_8 `view hbf` - Check the right amount of IHWs is shown
-test_1_8=(
+## Test 1_multi_1 `view hbf`
+test_1_multi_1=(
     "readout.superpage.1.raw view hbf"
+    # Check the right amount of IHWs is shown
     ": IHW "
     3
-)
-## Test 1_9 `view hbf` - Check the right amount of TDHs is shown
-test_1_9=(
-    "readout.superpage.1.raw view hbf"
+    # Check the right amount of TDH is shown
     ": TDH "
     3
-)
-## Test 1_10 `view hbf` - Check the right amount of TDTs is shown
-test_1_10=(
-    "readout.superpage.1.raw view hbf"
+    # Check the right amount of TDT is shown
     ": TDT "
     3
-)
-## Test 1_11 `view hbf` - Check the right amount of DDWs is shown
-test_1_11=(
-    "readout.superpage.1.raw view hbf"
+    # Check the right amount of DDW is shown
     ": DDW "
     3
 )
@@ -125,60 +120,45 @@ test_2_0=(
     "${re_eof}"
     2
 )
-## Test 2_1: `check sanity` - Check the right RDH version is detected
-test_2_1=(
+## Test 2_multi_0: `check sanity`
+test_2_multi_0=(
     "10_rdh.raw check sanity"
+    # Check the right RDH version is detected
     "RDH.*Version.*7"
     1
-)
-## Test 2_2: `check sanity` - Check the right number of RDHs is detected
-test_2_2=(
-    "10_rdh.raw check sanity"
+    # Check the right number of RDHs is detected
     "Total.*RDHs.*10"
     1
-)
-## Test 2_3: `check sanity` - Check the right number of HBFs is detected
-test_2_3=(
-    "10_rdh.raw check sanity"
+    # Check the right number of HBFs is detected
     "Total.*hbfs.*5"
     1
 )
 ## Test 2_4: `view rdh` - Check the right number of RDHs is shown
-test_2_4=(
+test_2_1=(
     "10_rdh.raw view rdh"
     "$re_rdhs_in_rdh_view"
     10
 )
-## Test 2_5: `view hbf` - Check the right number of RDHs is shown
-test_2_5=(
+## Test 2_multi_1: `view hbf` -
+test_2_multi_1=(
     "10_rdh.raw view hbf"
+    # Check the right number of RDHs is shown
     ": RDH"
     10
-)
-## Test 2_6: `view hbf` - Check the right number of IHWs is shown
-test_2_6=(
-    "10_rdh.raw view hbf"
+    # Check the right number of IHWs is shown
     ": IHW"
     5
-)
-## Test 2_7: `view hbf` - Check the right number of TDHs is shown
-test_2_7=(
-    "10_rdh.raw view hbf"
+    # Check the right number of TDHs is shown
     ": TDH"
     5
-)
-## Test 2_8: `view hbf` - Check the right number of TDTs is shown
-test_2_8=(
-    "10_rdh.raw view hbf"
+    # Check the right number of TDTs is shown
     ": TDT"
     5
-)
-## Test 2_9: `view hbf` - Check the right number of DDWs is shown
-test_2_9=(
-    "10_rdh.raw view hbf"
+    # Check the right number of DDWs is shown
     ": DDW"
     5
 )
+
 
 # Tests on the `err_not_hbf.raw` file
 ## Test 3_0: sanity check that the file is parsed successfully
@@ -205,45 +185,34 @@ test_3_3=(
     "$re_rdhs_in_rdh_view"
     2
 )
-## Test 3_4: `view hbf` - Check the right number of RDHs is shown
-test_3_4=(
+## Test 3_multi_0: `view hbf`
+test_3_multi_0=(
     "err_not_hbf.raw view hbf"
+    # Check the right number of RDHs is shown
     ": RDH "
     2
-)
-## Test 3_5: `view hbf` - Check the right number of IHWs is shown
-test_3_5=(
-    "err_not_hbf.raw view hbf"
+    # Check the right number of IHWs is shown
     ": IHW "
     2
-)
-## Test 3_6: `view hbf` - Check the right number of TDHs is shown
-test_3_6=(
-    "err_not_hbf.raw view hbf"
+    # Check the right number of TDHs is shown
     ": TDH "
     2
-)
-## Test 3_7: `view hbf` - Check the right number of TDTs is shown
-test_3_7=(
-    "err_not_hbf.raw view hbf"
+    # Check the right number of TDTs is shown
     ": TDT "
     2
-)
-## Test 3_8: `view hbf` - Check the right number of DDWs is shown
-test_3_8=(
-    "err_not_hbf.raw view hbf"
+    # Check the right number of DDWs is shown
     ": DDW "
     0 # There are no DDWs in this file as it is an erroneous file
 )
 
-echo -e "Running ${TXT_BRIGHT_YELLOW}${#tests_array[@]}${TXT_CLEAR} regression tests"
-
-for test in "${tests_array[@]}"; do
-    declare -n current_test=$test
-    test_case=${current_test[0]}
-    pattern=${current_test[1]}
-    cond=${current_test[2]}
-    echo -e "running ${TXT_BRIGHT_MAGENTA}${test}${TXT_CLEAR}: ${TXT_BRIGHT_YELLOW}${test_case}${TXT_CLEAR}"
+# Run a single test
+function run_test {
+    test_var_name=$1
+    test_case=$2
+    pattern=$3
+    cond=$4
+    echo "Running test: $test_case"
+    echo -e "running ${TXT_BRIGHT_MAGENTA}${test_var_name}${TXT_CLEAR}: ${TXT_BRIGHT_YELLOW}${test_case}${TXT_CLEAR}"
     echo -e "Condition is: ${TXT_BLUE}[number of matches] == ${cond}${TXT_CLEAR}, for pattern: ${TXT_BRIGHT_CYAN}${pattern}${TXT_CLEAR}"
     # Run the test, redirecting stderr to stdout, and skipping the first 2 lines (which are the "Finished dev..., Running..." lines)
     test_out=$(eval ${cmd_prefix}${test_case} 2>&1 | tail -n +3 )
@@ -255,13 +224,44 @@ for test in "${tests_array[@]}"; do
     else
         echo -e "${TXT_RED}Test failed${TXT_CLEAR}"
         failed_tests+=("${test}")
+        failed_patterns+=("${pattern}")
+        failed_expected_matches+=("${cond}")
         failed_matches+=("${matches}")
         failed_output+=("${test_out}")
-    fi;
+    fi
+}
+
+# Run all the tests in a test array
+function do_tests {
+    declare -n test_arr=$1
+    test_case=${test_arr[0]}
+    for ((i=1; i<${#test_arr[@]}; i+=2)); do
+        pattern=${test_arr[$i]}
+        cond=${test_arr[$((i+1))]}
+        run_test $1 "$test_case" "$pattern" "$cond"
+    done
+}
+
+# Calculate the total number of tests in a test array
+function how_many_tests_in_test {
+    declare -n test_arr=$1
+    return $(( (${#test_arr[@]} - 1) / 2 ))
+}
+
+total_tests=0
+for test in "${tests_array[@]}"; do
+    how_many_tests_in_test $test
+    total_tests=$((total_tests + $?))
+done
+echo -e "Running ${TXT_BRIGHT_YELLOW}${total_tests}${TXT_CLEAR} regression tests"
+
+# Run the tests
+for test in "${tests_array[@]}"; do
+    do_tests $test
 done
 
 echo
-if  [[ "${#failed_tests[@]}" == 0 ]];
+if  (( "${#failed_tests[@]}" == 0 ));
 then
     echo -e "${TXT_BRIGHT_GREEN}ALL TESTS PASSED! :)${TXT_CLEAR}"
     exit 0
@@ -270,8 +270,8 @@ else
     for (( i = 0; i < ${#failed_tests[@]}; i++ )); do
         declare -n failed_test=${failed_tests[i]}
         echo -e "${TXT_RED}${failed_tests[i]}${TXT_CLEAR}: ${failed_test[0]}"
-        echo -e "${TXT_BRIGHT_CYAN}Pattern: ${TXT_CLEAR}${failed_test[1]}"
-        echo -e "${TXT_BRIGHT_YELLOW}Expected:${TXT_CLEAR} ${failed_test[2]} ${TXT_BRIGHT_YELLOW}Got:${TXT_CLEAR} ${failed_matches[i]}"
+        echo -e "${TXT_BRIGHT_CYAN}Pattern: ${TXT_CLEAR}${failed_patterns[i]}"
+        echo -e "${TXT_BRIGHT_YELLOW}Expected:${TXT_CLEAR} ${failed_expected_matches[i]} ${TXT_BRIGHT_YELLOW}Got:${TXT_CLEAR} ${failed_matches[i]}"
         echo -e "${TXT_BRIGHT_MAGENTA}Test output: ${TXT_CLEAR}"
         echo -e "${failed_output[i]}"
     done
