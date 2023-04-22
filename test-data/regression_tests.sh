@@ -1,7 +1,12 @@
 #!/bin/bash
-
-# This script runs the binary fastPASTA and compares the output to the expected output
-
+###########
+#### This script runs the binary fastPASTA and compares the output to the expected output
+####
+#### The output is compared using (case insensitive) regex patterns, counting the lines that match the pattern
+####
+#### CI Tip: Make shell scripts executable on CI with `git update-index --chmod=+x regression_tests.sh`
+####
+###########
 TXT_RED="\e[31m"
 TXT_YELLOW="\e[33m"
 TXT_GREEN="\e[32m"
@@ -220,18 +225,19 @@ function run_test {
     test_case=$2
     pattern=$3
     cond=$4
-    echo "Running test: $test_case"
     echo -e "running ${TXT_BRIGHT_MAGENTA}${test_var_name}${TXT_CLEAR}: ${TXT_BRIGHT_YELLOW}${test_case}${TXT_CLEAR}"
     echo -e "Condition is: ${TXT_BLUE}[number of matches] == ${cond}${TXT_CLEAR}, for pattern: ${TXT_BRIGHT_CYAN}${pattern}${TXT_CLEAR}"
     # Run the test, redirecting stderr to stdout, and skipping the first 2 lines (which are the "Finished dev..., Running..." lines)
     test_out=$(eval ${cmd_prefix}${test_case} 2>&1 | tail -n +3 )
+    # Count the number of matches
     matches=$(echo "${test_out}" | egrep -i -c "${pattern}")
-    #echo -e "matches:${matches}";
+    # Check if the number of matches is the same as the expected number of matches
     if (( "${matches}" == "${cond}" ));
     then
         echo -e "${TXT_GREEN}Test passed${TXT_CLEAR}"
     else
         echo -e "${TXT_RED}Test failed${TXT_CLEAR}"
+        # Add the test info to the failed tests arrays
         failed_tests+=("${test}")
         failed_patterns+=("${pattern}")
         failed_expected_matches+=("${cond}")
@@ -242,8 +248,11 @@ function run_test {
 
 # Run all the tests in a test array
 function do_tests {
+    # The test array is passed by name, so we need to use declare -n to get the array
     declare -n test_arr=$1
+    # The first element of the array is the test case (cmd)
     test_case=${test_arr[0]}
+    # Run all the tests in the array (skipping the first element, which is the test case)
     for ((i=1; i<${#test_arr[@]}; i+=2)); do
         pattern=${test_arr[$i]}
         cond=${test_arr[$((i+1))]}
@@ -254,8 +263,11 @@ function do_tests {
 # Calculate the total number of tests in a test array
 function how_many_tests_in_test {
     declare -n test_arr=$1
+    # The number of tests is half the number of elements in the array minus 1 (the test case)
     return $(( (${#test_arr[@]} - 1) / 2 ))
 }
+
+### Main ###
 
 total_tests=0
 for test in "${tests_array[@]}"; do
