@@ -78,7 +78,7 @@ rust-latest:
     name: "debug_${CI_COMMIT_SHA}"
     paths:
     - ./target
-    expire_in: 1 mos
+    expire_in: 2 weeks
 
 # Build a binary with nightly rust for later jobs
 rust-nightly-build:
@@ -223,10 +223,8 @@ build-release-latest:
   rules:
     - if: $CI_COMMIT_TAG  # Run this job when a tag is created
   script:
-    - echo "running release job"
+    - echo "Running release job"
+    - echo "Testing release build profile"
     - cargo build -r --verbose
+    - echo "Publishing the new version to crates.io"
     - cargo publish
-  artifacts:
-    name: "release_${CI_COMMIT_TAG}"
-    paths:
-    - ./target
