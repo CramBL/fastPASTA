@@ -11,12 +11,9 @@ pub fn init_stats_controller(
     std::sync::mpsc::Sender<super::stats_controller::StatType>,
     std::sync::Arc<AtomicBool>,
 ) {
-    let (send_stats_channel, recv_stats_channel): (
-        std::sync::mpsc::Sender<super::stats_controller::StatType>,
-        std::sync::mpsc::Receiver<super::stats_controller::StatType>,
-    ) = std::sync::mpsc::channel();
-    let thread_stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    let mut stats = StatsController::new(config, recv_stats_channel, thread_stop_flag.clone());
+    let mut stats = StatsController::new(config);
+    let send_stats_channel = stats.send_channel();
+    let thread_stop_flag = stats.end_processing_flag();
     let stats_thread = std::thread::Builder::new()
         .name("stats_thread".to_string())
         .spawn(move || {
