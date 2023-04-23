@@ -51,12 +51,11 @@ pub struct LinkValidator<T: RDH> {
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 impl<T: RDH> LinkValidator<T> {
-    /// Creates a new [LinkValidator] from a [Config] and a [StatType][crate::stats::stats_controller::StatType] producer channel.
+    /// Creates a new [LinkValidator] and the [StatType][crate::stats::stats_controller::StatType] sender channel to it, from a [Config].
     pub fn new(
         global_config: &impl Config,
         send_stats_ch: std::sync::mpsc::Sender<crate::stats::stats_controller::StatType>,
-        data_rcv_channel: crossbeam_channel::Receiver<CdpTuple<T>>,
-    ) -> Self {
+    ) -> (Self, crossbeam_channel::Sender<CdpTuple<T>>) {
         let local_cfg = LinkValidatorConfig::new(global_config);
         let rdh_sanity_validator = if let Some(system) = local_cfg.target.clone() {
             match system {
@@ -69,18 +68,24 @@ impl<T: RDH> LinkValidator<T> {
         } else {
             crate::validators::rdh::RdhCruSanityValidator::default()
         };
-        Self {
-            config: local_cfg,
-            send_stats_ch: send_stats_ch.clone(),
-            data_rcv_channel,
-            cdp_validator: crate::validators::cdp_running::CdpRunningValidator::new(
-                global_config,
-                send_stats_ch,
-            ),
-            rdh_running_validator: crate::validators::rdh_running::RdhCruRunningChecker::default(),
-            rdh_sanity_validator,
-            prev_rdhs: AllocRingBuffer::with_capacity(2),
-        }
+        let (send_channel, data_rcv_channel) =
+            crossbeam_channel::bounded(crate::CHANNEL_CDP_CAPACITY);
+        (
+            Self {
+                config: local_cfg,
+                send_stats_ch: send_stats_ch.clone(),
+                data_rcv_channel,
+                cdp_validator: crate::validators::cdp_running::CdpRunningValidator::new(
+                    global_config,
+                    send_stats_ch,
+                ),
+                rdh_running_validator:
+                    crate::validators::rdh_running::RdhCruRunningChecker::default(),
+                rdh_sanity_validator,
+                prev_rdhs: AllocRingBuffer::with_capacity(2),
+            },
+            send_channel,
+        )
     }
 
     /// Event loop where data is received and validation starts
