@@ -156,11 +156,8 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                 // Setup for view case
                 let mut its_payload_fsm_cont =
                     validators::its_payload_fsm_cont::ItsPayloadFsmContinuous::default();
-                loop {
-                    if stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
-                        log::trace!("Stopping reader thread on stop flag!");
-                        break;
-                    }
+                // Start analysis
+                while !stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
                     // Receive chunk from reader
                     let cdp_chunk = match data_channel.recv() {
                         Ok(cdp) => cdp,

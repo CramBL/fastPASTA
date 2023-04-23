@@ -59,11 +59,7 @@ pub fn spawn_reader<T: RDH + 'static>(
                 let mut input_scanner = input_scanner;
 
                 // Automatically extracts link to filter if one is supplied
-                loop {
-                    if stop_flag.load(Ordering::SeqCst) || local_stop_on_non_full_chunk {
-                        log::trace!("Stopping reader thread on stop flag");
-                        break;
-                    }
+                while !stop_flag.load(Ordering::SeqCst) && !local_stop_on_non_full_chunk {
                     let cdps = match get_chunk::<T>(&mut input_scanner, CDP_CHUNK_SIZE) {
                         Ok(cdp) => {
                             if cdp.len() < CDP_CHUNK_SIZE {
@@ -89,9 +85,6 @@ pub fn spawn_reader<T: RDH + 'static>(
                             log::trace!("Unexpected error while sending data to checker: {e}");
                             break;
                         }
-                    } else if stop_flag.load(Ordering::SeqCst) {
-                        log::trace!("Stopping reader thread");
-                        break;
                     }
                 }
             }

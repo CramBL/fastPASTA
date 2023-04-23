@@ -57,6 +57,8 @@ format:
     - fi
     - rustup component add rustfmt
     - cargo fmt -- --check
+    - echo "checking if documentation builts"
+    - cargo doc
 
 audit:
   stage: code-quality

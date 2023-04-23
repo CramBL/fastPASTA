@@ -30,18 +30,17 @@ pub fn check_cdp_chunk<T: RDH + 'static>(
                 .unwrap();
         } else {
             links.push(rdh.link_id());
-            let (send_channel, recv_channel) =
-                crossbeam_channel::bounded(crate::CHANNEL_CDP_CAPACITY);
+            // Create a new link validator thread
+            let (mut link_validator, send_channel) =
+                LinkValidator::new(&*config.clone(), stats_sender_channel.clone());
+            // Add the send channel to the new link validator
             link_process_channels.push(send_channel);
 
+            // Spawn a thread where the newly created link validator will run
             validator_thread_handles.push(
                 std::thread::Builder::new()
                     .name(format!("Link {} Validator", rdh.link_id()))
                     .spawn({
-                        let config = config.clone();
-                        let stats_sender_channel = stats_sender_channel.clone();
-                        let mut link_validator =
-                            LinkValidator::new(&*config, stats_sender_channel, recv_channel);
                         move || {
                             link_validator.run();
                         }

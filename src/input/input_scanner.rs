@@ -92,22 +92,22 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     fn report_rdh_seen(&self) {
         self.stats_controller_sender_ch
             .send(StatType::RDHsSeen(1))
-            .unwrap();
+            .expect("Failed to send stats, reiver was dropped")
     }
     fn report_link_seen(&self, link_id: u8) {
         self.stats_controller_sender_ch
             .send(StatType::LinksObserved(link_id))
-            .unwrap();
+            .expect("Failed to send stats, reiver was dropped")
     }
     fn report_payload_size(&self, payload_size: u32) {
         self.stats_controller_sender_ch
             .send(StatType::PayloadSize(payload_size))
-            .unwrap();
+            .expect("Failed to send stats, reiver was dropped")
     }
     fn report_rdh_filtered(&self) {
         self.stats_controller_sender_ch
             .send(StatType::RDHsFiltered(1))
-            .unwrap();
+            .expect("Failed to send stats, reiver was dropped")
     }
 }
 
@@ -275,9 +275,8 @@ fn sanity_check_offset_next<T: RDH>(
 #[cfg(test)]
 mod tests {
     use std::io::Write;
-    use std::{fs::File, io::BufReader, path::PathBuf, thread::JoinHandle};
+    use std::{fs::File, io::BufReader, path::PathBuf};
 
-    use crate::stats::stats_controller::StatsController;
     use crate::util::config::Opt;
     use crate::util::lib::InputOutput;
     use crate::words::lib::ByteSlice;
@@ -285,7 +284,10 @@ mod tests {
 
     fn setup_scanner_for_file(
         path: &str,
-    ) -> (InputScanner<BufReader<std::fs::File>>, JoinHandle<()>) {
+    ) -> (
+        InputScanner<BufReader<std::fs::File>>,
+        std::sync::mpsc::Receiver<StatType>,
+    ) {
         use super::*;
         let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
             "fastpasta",
@@ -300,13 +302,6 @@ mod tests {
             std::sync::mpsc::Receiver<StatType>,
         ) = std::sync::mpsc::channel();
 
-        let thread_stopper = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-
-        let mut stats_controller =
-            StatsController::new(&config, recv_stats_controller_channel, thread_stopper);
-        let stats_controller_thread = std::thread::spawn(move || {
-            stats_controller.run();
-        });
         let cfg = std::sync::Arc::new(config);
         let reader = std::fs::OpenOptions::new()
             .read(true)
@@ -321,7 +316,8 @@ mod tests {
                 MemPosTracker::new(),
                 send_stats_controller_channel,
             ),
-            stats_controller_thread,
+            // Has to be returned so it lives long enough for the test. Otherwise it will be dropped, and inputscanner will panic when trying to report stats.
+            recv_stats_controller_channel,
         )
     }
 
@@ -337,14 +333,11 @@ mod tests {
         // Write to file for testing
         file.write_all(test_data.to_byte_slice()).unwrap();
 
-        let stats_handle_super: Option<JoinHandle<()>>;
         {
-            let (mut scanner, stats_handle) = setup_scanner_for_file("test.raw");
-            stats_handle_super = Some(stats_handle);
+            let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
             let rdh = scanner.load_rdh_cru::<RdhCRU<V7>>().unwrap();
             assert_eq!(test_data, rdh);
         }
-        stats_handle_super.unwrap().join().unwrap();
 
         // delete output file
         std::fs::remove_file(filepath).unwrap();
@@ -361,15 +354,13 @@ mod tests {
         // Write to file for testing
         file.write_all(test_data.to_byte_slice()).unwrap();
 
-        let stats_handle_super: Option<JoinHandle<()>>;
         {
-            let (mut scanner, stats_handle) = setup_scanner_for_file("test.raw");
-            stats_handle_super = Some(stats_handle);
+            let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
             let rdh = scanner.load_rdh_cru::<RdhCRU<V7>>();
             assert!(rdh.is_err());
             assert!(rdh.unwrap_err().kind() == std::io::ErrorKind::UnexpectedEof);
         }
-        stats_handle_super.unwrap().join().unwrap();
+
         // delete output file
         std::fs::remove_file(filepath).unwrap();
     }
@@ -385,14 +376,11 @@ mod tests {
         // Write to file for testing
         file.write_all(test_data.to_byte_slice()).unwrap();
 
-        let stats_handle_super: Option<JoinHandle<()>>;
         {
-            let (mut scanner, stats_handle) = setup_scanner_for_file("test.raw");
-            stats_handle_super = Some(stats_handle);
+            let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
             let rdh = scanner.load_rdh_cru::<RdhCRU<V6>>().unwrap();
             assert_eq!(test_data, rdh);
         }
-        stats_handle_super.unwrap().join().unwrap();
         // delete output file
         std::fs::remove_file(filepath).unwrap();
     }
@@ -408,14 +396,11 @@ mod tests {
         // Write to file for testing
         file.write_all(test_data.to_byte_slice()).unwrap();
 
-        let stats_handle_super: Option<JoinHandle<()>>;
         {
-            let (mut scanner, stats_handle) = setup_scanner_for_file("test.raw");
-            stats_handle_super = Some(stats_handle);
+            let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
             let rdh = scanner.load_rdh_cru::<RdhCRU<V6>>();
             assert!(rdh.is_err());
             assert!(rdh.unwrap_err().kind() == std::io::ErrorKind::UnexpectedEof);
         }
-        stats_handle_super.unwrap().join().unwrap();
     }
 }

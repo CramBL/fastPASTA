@@ -56,7 +56,13 @@ pub struct StatsController {
     total_errors: AtomicU32,
     non_atomic_total_errors: u64,
     max_tolerate_errors: u32,
+    // The channel where stats are received from other threads.
     recv_stats_channel: std::sync::mpsc::Receiver<StatType>,
+    // The channel stats are sent through, stored so that a clone of the channel can be returned easily
+    // Has to be an option so that it can be set to None when the event loop starts.
+    // Once run is called no producers that don't already have a channel to send stats through, will be able to get one.
+    // This is because the event loop breaks when all sender channels are dropped, and if the StatsController keeps a reference to the channel, it will cause a deadlock.
+    send_stats_channel: Option<std::sync::mpsc::Sender<StatType>>,
     end_processing_flag: Arc<AtomicBool>,
     link_to_filter: Option<u8>,
     rdh_version: u8,
@@ -68,11 +74,11 @@ pub struct StatsController {
 }
 impl StatsController {
     /// Creates a new StatsController from a [Config], a [std::sync::mpsc::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
-    pub fn new(
-        config: &impl Config,
-        recv_stats_channel: std::sync::mpsc::Receiver<StatType>,
-        end_processing_flag: Arc<AtomicBool>,
-    ) -> Self {
+    pub fn new(config: &impl Config) -> Self {
+        let (send_stats_channel, recv_stats_channel): (
+            std::sync::mpsc::Sender<StatType>,
+            std::sync::mpsc::Receiver<StatType>,
+        ) = std::sync::mpsc::channel();
         StatsController {
             rdhs_seen: 0,
             rdhs_filtered: 0,
@@ -83,7 +89,8 @@ impl StatsController {
             max_tolerate_errors: config.max_tolerate_errors(),
             non_atomic_total_errors: 0,
             recv_stats_channel,
-            end_processing_flag,
+            send_stats_channel: Some(send_stats_channel),
+            end_processing_flag: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             link_to_filter: config.filter_link(),
             rdh_version: 0,
             data_formats_observed: Vec::new(),
@@ -94,9 +101,26 @@ impl StatsController {
         }
     }
 
+    /// Returns a clone of the channel that is used to send stats to the StatsController.
+    pub fn send_channel(&self) -> std::sync::mpsc::Sender<StatType> {
+        if self.send_stats_channel.is_none() {
+            log::error!("StatsController send channel is none, most likely it is already running and does not accept new producers");
+            panic!("StatsController send channel is none, most likely it is already running and does not accept new producers");
+        }
+        self.send_stats_channel.as_ref().unwrap().clone()
+    }
+
+    /// Returns a cloned reference to the end processing flag.
+    pub fn end_processing_flag(&self) -> Arc<AtomicBool> {
+        self.end_processing_flag.clone()
+    }
+
     /// Starts the event loop for the StatsController
     /// This function will block until the channel is closed
     pub fn run(&mut self) {
+        // Set the send stats channel to none so that no new producers can be added, and so the loop breaks when all producers have dropped their channel.
+        self.send_stats_channel = None;
+
         // While loop breaks when an error is received from the channel, which means the channel is disconnected
         while let Ok(stats_update) = self.recv_stats_channel.recv() {
             self.update(stats_update);
