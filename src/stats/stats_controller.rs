@@ -59,7 +59,10 @@ pub struct StatsController {
     // The channel where stats are received from other threads.
     recv_stats_channel: std::sync::mpsc::Receiver<StatType>,
     // The channel stats are sent through, stored so that a clone of the channel can be returned easily
-    send_stats_channel: std::sync::mpsc::Sender<StatType>,
+    // Has to be an option so that it can be set to None when the event loop starts.
+    // Once run is called no producers that don't already have a channel to send stats through, will be able to get one.
+    // This is because the event loop breaks when all sender channels are dropped, and if the StatsController keeps a reference to the channel, it will cause a deadlock.
+    send_stats_channel: Option<std::sync::mpsc::Sender<StatType>>,
     end_processing_flag: Arc<AtomicBool>,
     link_to_filter: Option<u8>,
     rdh_version: u8,
@@ -86,7 +89,7 @@ impl StatsController {
             max_tolerate_errors: config.max_tolerate_errors(),
             non_atomic_total_errors: 0,
             recv_stats_channel,
-            send_stats_channel,
+            send_stats_channel: Some(send_stats_channel),
             end_processing_flag: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             link_to_filter: config.filter_link(),
             rdh_version: 0,
@@ -100,7 +103,11 @@ impl StatsController {
 
     /// Returns a clone of the channel that is used to send stats to the StatsController.
     pub fn send_channel(&self) -> std::sync::mpsc::Sender<StatType> {
-        self.send_stats_channel.clone()
+        if self.send_stats_channel.is_none() {
+            log::error!("StatsController send channel is none, most likely it is already running and does not accept new producers");
+            panic!("StatsController send channel is none, most likely it is already running and does not accept new producers");
+        }
+        self.send_stats_channel.as_ref().unwrap().clone()
     }
 
     /// Returns a cloned reference to the end processing flag.
@@ -111,6 +118,9 @@ impl StatsController {
     /// Starts the event loop for the StatsController
     /// This function will block until the channel is closed
     pub fn run(&mut self) {
+        // Set the send stats channel to none so that no new producers can be added, and so the loop breaks when all producers have dropped their channel.
+        self.send_stats_channel = None;
+
         // While loop breaks when an error is received from the channel, which means the channel is disconnected
         while let Ok(stats_update) = self.recv_stats_channel.recv() {
             self.update(stats_update);
