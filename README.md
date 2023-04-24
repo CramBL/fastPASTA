@@ -128,6 +128,7 @@ The following is a list of error codes and their meaning, `x` is a placeholder f
 * [E6x] - DDW0
 * [E7x] - Data word (Even number: IB, Odd number: OB) E70 is sanity check for both IB/OB.
 * [E8x] - CDW
+* [E99] - Miscellaneous, such as error in ID when 2 or more words could be valid in the current state.
 
 ## Verbosity levels
 - 0: Errors
