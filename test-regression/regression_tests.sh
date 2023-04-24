@@ -47,6 +47,8 @@ tests_array=(
     test_1_0 test_1_1 test_1_2 test_1_3 test_1_4 test_1_5 test_1_multi_0 test_1_multi_1
     test_2_0 test_2_multi_0 test_2_1 test_2_multi_1
     test_3_0 test_3_1 test_3_2 test_3_3 test_3_multi_0
+    test_bad_ihw_tdh_detect_invalid_ids
+    test_bad_dw_ddw0_detect_invalid_ids
 )
 # The 3 elements of a test is:
 # 0: Command to run
@@ -217,6 +219,37 @@ test_3_multi_0=(
     # Check the right number of DDWs is shown
     ": DDW "
     0 # There are no DDWs in this file as it is an erroneous file
+)
+
+### Tests on the 1_hbf_bad_ihw_tdh.raw file
+###
+### This file contains a single HBF with an IHW with an invalid ID (0xE1) and a TDH with invalid ID (0xE9)
+test_bad_ihw_tdh_detect_invalid_ids=(
+    "1_hbf_bad_ihw_tdh.raw check sanity its"
+    # Check the error is detected in the right position with the right error code and message
+    "error - 0x40: \[E30\].*ID.*0xe1"
+    1
+    # Check the error is detected in the right position with the right error code and message
+    "error - 0x50: \[E40\].*ID.*0xe9"
+    1
+)
+
+### Tests on the 1_hbf_bad_dw_ddw0.raw file
+###
+### This file contains a single HBF with a Data word with invalid ID (0x1) a DDW0 with invalid ID (0xE5)
+test_bad_dw_ddw0_detect_invalid_ids=(
+    "1_hbf_bad_dw_ddw0.raw check sanity its"
+    # Check the error is detected in the right position with the right error code and message
+    # Should give an unregonized ID errors as it is in an ambigiuous position where several words could be valid
+    # Checks that it ends with `01]` as it should print the GBT bytes which would end with the wrong ID (01)
+    "error - 0x80: \[E99\] Unrecognized ID.*01\]"
+    1
+    # Same as above but for the DDW0 error
+    "error - 0xE0: \[E99\] Unrecognized ID.*E5\]"
+    1
+    # Check that 2 Invalid ID errors are also detected in those two positions
+    "error - (0x80|0xE0): \[E.0\].*ID" # Just checks its related to a sanity check regarding ID by checking the error code is Ex0
+    2
 )
 
 # Run a single test
