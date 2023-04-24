@@ -11,6 +11,8 @@ For extensive documentation of public facing source code see [documentation](htt
 
 For an exhaustive list of the data verification done via the `check` subcommand, see [list of checks](doc/checks_list.md).
 
+Releases and associated changelogs can be found at [releases](https://gitlab.cern.ch/mkonig/fastpasta/-/releases).
+
 ## Purpose
 
 To verify or view curated content of the scanned raw binary data from ALICE.
