@@ -168,31 +168,55 @@ impl<T: RDH> CdpRunningValidator<T> {
 
         let current_word = self.its_state_machine.advance(gbt_word);
 
+        // Match the result of the FSM trying to determine the word
+        // If the ID is not recognized as valid, the FSM takes a best guess among the
+        // valid words in the current state and returns it as an error, that is handled below
         match current_word {
-            PayloadWord::IHW => {
-                self.process_status_word(StatusWordKind::Ihw(gbt_word));
-                self.check_rdh_at_initial_ihw(gbt_word);
-            }
-            PayloadWord::IHW_continuation => {
-                self.process_status_word(StatusWordKind::Ihw(gbt_word))
-            }
-            PayloadWord::TDH => {
-                self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                self.check_tdh_no_continuation(gbt_word);
-            }
-            PayloadWord::TDH_continuation => {
-                self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                self.check_tdh_continuation(gbt_word);
-            }
-            PayloadWord::TDH_after_packet_done => {
-                self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                self.check_tdh_by_was_tdt_packet_done_true(gbt_word);
-            }
-            PayloadWord::TDT => self.process_status_word(StatusWordKind::Tdt(gbt_word)),
-            // DataWord and CDW are handled together
-            PayloadWord::CDW | PayloadWord::DataWord => self.process_data_word(gbt_word),
+            Ok(word) => match word {
+                PayloadWord::IHW => {
+                    self.process_status_word(StatusWordKind::Ihw(gbt_word));
+                    self.check_rdh_at_initial_ihw(gbt_word);
+                }
+                PayloadWord::IHW_continuation => {
+                    self.process_status_word(StatusWordKind::Ihw(gbt_word))
+                }
 
-            PayloadWord::DDW0 => self.process_status_word(StatusWordKind::Ddw0(gbt_word)),
+                PayloadWord::TDH => {
+                    self.process_status_word(StatusWordKind::Tdh(gbt_word));
+                    self.check_tdh_no_continuation(gbt_word);
+                }
+                PayloadWord::TDH_continuation => {
+                    self.process_status_word(StatusWordKind::Tdh(gbt_word));
+                    self.check_tdh_continuation(gbt_word);
+                }
+                PayloadWord::TDH_after_packet_done => {
+                    self.process_status_word(StatusWordKind::Tdh(gbt_word));
+                    self.check_tdh_by_was_tdt_packet_done_true(gbt_word);
+                }
+                PayloadWord::TDT => self.process_status_word(StatusWordKind::Tdt(gbt_word)),
+                // DataWord and CDW are handled together
+                PayloadWord::CDW | PayloadWord::DataWord => self.process_data_word(gbt_word),
+
+                PayloadWord::DDW0 => self.process_status_word(StatusWordKind::Ddw0(gbt_word)),
+            },
+
+            Err(ambigious_word) => match ambigious_word {
+                crate::validators::its_payload_fsm_cont::AmbigiousError::TDH_or_DDW0 => {
+                    self.report_error(
+                    "[E99] Unrecognized ID in ITS payload, could be TDH/DDW0 based on current state, attempting to parse as TDH",
+                    gbt_word,
+                );
+                    self.process_status_word(StatusWordKind::Tdh(gbt_word));
+                }
+                crate::validators::its_payload_fsm_cont::AmbigiousError::DW_or_TDT_CDW => {
+                    self.report_error("[E99] Unrecognized ID in ITS payload, could be Data Word/TDT/CDW based on current state, attempting to parse as Data Word", gbt_word);
+                    self.process_data_word(gbt_word);
+                }
+                crate::validators::its_payload_fsm_cont::AmbigiousError::DDW0_or_TDH_IHW => {
+                    self.report_error("[E99] Unrecognized ID in ITS payload, could be DDW0/TDH/IHW based on current state, attempting to parse as DDW0", gbt_word);
+                    self.process_status_word(StatusWordKind::Ddw0(gbt_word));
+                }
+            },
         }
     }
 
@@ -641,7 +665,18 @@ mod tests {
         }
         match stats_recv_ch.recv() {
             Ok(StatType::Error(msg)) => {
-                // Data word error
+                // Amibiguous error, could be several different data words
+                assert_eq!(
+                    msg,
+                    "0x54: [E99] Unrecognized ID in ITS payload, could be Data Word/TDT/CDW based on current state, attempting to parse as Data Word [00 00 00 00 00 00 00 00 01 F3]"
+                );
+                println!("{msg}");
+            }
+            _ => unreachable!(),
+        }
+        match stats_recv_ch.recv() {
+            Ok(StatType::Error(msg)) => {
+                // Amibiguous error, could be several different data words
                 assert_eq!(
                     msg,
                     "0x54: [E70] ID is invalid: 0xF3 [00 00 00 00 00 00 00 00 01 F3]"
