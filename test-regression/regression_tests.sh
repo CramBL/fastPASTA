@@ -49,6 +49,7 @@ tests_array=(
     test_3_0 test_3_1 test_3_2 test_3_3 test_3_multi_0
     test_bad_ihw_tdh_detect_invalid_ids
     test_bad_dw_ddw0_detect_invalid_ids
+    test_bad_tdt_detect_invalid_id
 )
 # The 3 elements of a test is:
 # 0: Command to run
@@ -251,6 +252,18 @@ test_bad_dw_ddw0_detect_invalid_ids=(
     "error - (0x80|0xE0): \[E.0\].*ID" # Just checks its related to a sanity check regarding ID by checking the error code is Ex0
     2
 )
+
+### Tests on the 1_hbf_bad_tdt.raw file
+###
+### This file contains a single HBF with a TDT with invalid ID (0xF1)
+test_bad_tdt_detect_invalid_id=(
+    "1_hbf_bad_tdt.raw check sanity its"
+    # Check the error is detected in the right position with the right error code and message
+    "error - 0x90: \[E99\].*ID.*f1"
+    1
+)
+
+
 
 # Run a single test
 function run_test {
