@@ -156,7 +156,7 @@ test-coverage:
 regression-tests:
   stage: test
   before_script:
-    - ls test-data/
+    - ls test-regression/
   script:
     - cargo build
     - test-regression/regression_tests.sh
