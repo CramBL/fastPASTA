@@ -50,6 +50,7 @@ tests_array=(
     test_bad_ihw_tdh_detect_invalid_ids
     test_bad_dw_ddw0_detect_invalid_ids
     test_bad_tdt_detect_invalid_id
+    test_bad_cdp_structure test_bad_cdp_structure_view_rdh test_bad_cdp_structure_detected
 )
 # The 3 elements of a test is:
 # 0: Command to run
@@ -263,7 +264,40 @@ test_bad_tdt_detect_invalid_id=(
     1
 )
 
+### Tests on the 1_hbf_bad_cdp_structure.raw file
+###
+### This file contains a single HBF with a CDP with invalid structure because the RDH preceding a DDW0 does not have stop bit set
+test_bad_cdp_structure=(
+    "1_hbf_bad_cdp_structure.raw check sanity its -v2"
+    # Check the file is parsed successfully
+    "${re_eof}"
+    2
+    # Check the error is not detected as this is just a sanity check.
+    "error -"
+    0
+    "Total Errors.*0"
+    1
+    "Total RDHs.*2"
+    1
+    "Total HBFs.*0"
+    1
+)
 
+test_bad_cdp_structure_view_rdh=(
+    "1_hbf_bad_cdp_structure.raw view rdh"
+    # Check the view contains 2 RDHs
+    "$re_rdhs_in_rdh_view"
+    2
+)
+
+test_bad_cdp_structure_detected=(
+    "1_hbf_bad_cdp_structure.raw check all its"
+    # Check the error is detected
+    "error - 0xE0: \[E..\].*RDH.*stop.bit"
+    1
+    "Total Errors.*1"
+    1
+)
 
 # Run a single test
 function run_test {
