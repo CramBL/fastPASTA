@@ -51,6 +51,7 @@ tests_array=(
     test_bad_dw_ddw0_detect_invalid_ids
     test_bad_tdt_detect_invalid_id
     test_bad_cdp_structure test_bad_cdp_structure_view_rdh test_bad_cdp_structure_detected
+    test_bad_its_payload test_bad_its_payload_errors_detected
 )
 # The 3 elements of a test is:
 # 0: Command to run
@@ -298,6 +299,37 @@ test_bad_cdp_structure_detected=(
     "Total Errors.*1"
     1
 )
+
+### Tests on the 1_hbf_bad_its_payload.raw file
+###
+### This file contains a single HBF with an invalid ITS payload, containing 2 errors:
+###     - an IHW ID comes instead of the TDH that should come after the first IHW.
+###     - The IHW does not have lane 8 set in the active_lanes field, so data from lane 8 should generate an error
+test_bad_its_payload=(
+    "1_hbf_bad_its_payload.raw check sanity its -v2"
+    # Check the file is parsed successfully
+    "${re_eof}"
+    2
+    # Check the error with 2 IHWs in a row is detected
+    "error - 0x50: \[E..\].*ID"
+    1
+    # Check that it is the only error detected, by using negated character classes (should probably just start support lookarounds)
+    "error - 0x([^5].|5[^0]):"
+    0
+)
+
+test_bad_its_payload_errors_detected=(
+    "1_hbf_bad_its_payload.raw check all its"
+    # Check the invalid 2nd IHW is detected
+    "error - 0x50: \[E..\].*ID"
+    1
+    # Check the error that there's data from lane 8 but the IHW does not have lane 8 set as active
+    "error - 0x70: \[E..\].*lane 8.*IHW" # Checks that the error is detected the right place, and that it has something with lane 8 and IHW
+    1
+    "Total Errors.*2"
+    1
+)
+
 
 # Run a single test
 function run_test {
