@@ -159,7 +159,7 @@ regression-tests:
     - ls test-data/
   script:
     - cargo build
-    - test-data/regression_tests.sh
+    - test-regression/regression_tests.sh
   dependencies:
     - rust-latest-build
 
