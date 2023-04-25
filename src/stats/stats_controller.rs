@@ -313,11 +313,6 @@ impl StatsController {
             None,
         ));
         filtered_stats.push(StatSummary::new(
-            "HBFs".to_string(),
-            self.hbfs_seen.to_string(),
-            None,
-        ));
-        filtered_stats.push(StatSummary::new(
             "Total Payload Size".to_string(),
             format_payload(self.payload_size),
             None,
@@ -326,11 +321,7 @@ impl StatsController {
         let filtered_links =
             summerize_filtered_links(self.link_to_filter.unwrap(), self.links_observed.clone());
         filtered_stats.push(filtered_links);
-        filtered_stats.push(StatSummary::new(
-            "Layers and Staves seen".to_string(),
-            format_layers_and_staves(self.layers_staves_seen.clone()),
-            None,
-        ));
+
         filtered_stats
     }
 }
