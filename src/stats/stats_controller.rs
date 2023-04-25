@@ -18,6 +18,10 @@ pub enum StatType {
     Fatal(String),
     /// Non-fatal error, reported but processing continues.
     Error(String),
+    /// The first trigger type observed is the type of run the data comes from
+    ///
+    /// Contains the raw value and the string description summarizing the trigger type
+    RunTriggerType((u32, String)),
     /// Increment the total RDHs seen.
     RDHsSeen(u8),
     /// Increment the total RDHs filtered.
@@ -71,6 +75,7 @@ pub struct StatsController {
     fatal_error: Option<String>,
     layers_staves_seen: Vec<(u8, u8)>,
     view_active: bool,
+    run_trigger_type: (u32, String),
 }
 impl StatsController {
     /// Creates a new StatsController from a [Config], a [std::sync::mpsc::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
@@ -98,6 +103,7 @@ impl StatsController {
             fatal_error: None,
             layers_staves_seen: Vec::new(),
             view_active: config.view().is_some(),
+            run_trigger_type: (0, String::from("")),
         }
     }
 
@@ -191,6 +197,22 @@ impl StatsController {
                     self.layers_staves_seen.push((layer, stave));
                 }
             }
+            StatType::RunTriggerType((raw_trigger_type, trigger_type_str)) => {
+                let (raw_val, string_descr) = self.run_trigger_type.to_owned();
+                if raw_val == 0 && string_descr.is_empty() {
+                    log::debug!(
+                        "Run trigger type determined to be {raw_trigger_type}: {trigger_type_str}"
+                    );
+                    self.run_trigger_type = (raw_trigger_type, trigger_type_str);
+                } else {
+                    // Error happened, the run trigger type should only be reported once
+                    let error = String::from("Run trigger type reported more than once!");
+                    self.end_processing_flag
+                        .store(true, std::sync::atomic::Ordering::SeqCst);
+                    log::error!("FATAL: {error}\nShutting down...");
+                    self.fatal_error = Some(error);
+                }
+            }
         }
     }
 
@@ -216,6 +238,12 @@ impl StatsController {
                 None,
             ));
         }
+        let trigger_type_raw = self.run_trigger_type.0.to_owned();
+        report.add_stat(StatSummary {
+            statistic: "Run Trigger Type".to_string(),
+            value: format!("{trigger_type_raw:#02X}"),
+            notes: self.run_trigger_type.1.to_owned(),
+        });
         report.add_stat(StatSummary::new(
             "Total RDHs".to_string(),
             self.rdhs_seen.to_string(),
@@ -285,11 +313,6 @@ impl StatsController {
             None,
         ));
         filtered_stats.push(StatSummary::new(
-            "HBFs".to_string(),
-            self.hbfs_seen.to_string(),
-            None,
-        ));
-        filtered_stats.push(StatSummary::new(
             "Total Payload Size".to_string(),
             format_payload(self.payload_size),
             None,
@@ -298,11 +321,7 @@ impl StatsController {
         let filtered_links =
             summerize_filtered_links(self.link_to_filter.unwrap(), self.links_observed.clone());
         filtered_stats.push(filtered_links);
-        filtered_stats.push(StatSummary::new(
-            "Layers and Staves seen".to_string(),
-            format_layers_and_staves(self.layers_staves_seen.clone()),
-            None,
-        ));
+
         filtered_stats
     }
 }

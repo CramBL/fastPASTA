@@ -1,6 +1,6 @@
 use crate::input;
 use crate::stats::stats_controller;
-use crate::validators::its_payload_fsm_cont::ItsPayloadFsmContinuous;
+use crate::validators::its_payload_fsm_cont::{ItsPayloadFsmContinuous, PayloadWord};
 use crate::validators::link_validator::preprocess_payload;
 use crate::words::lib::RDH;
 use std::io::Write;
@@ -29,7 +29,28 @@ pub(crate) fn hbf_view<T: RDH>(
         if let Some(gbt_words) = gbt_word_chunks {
             for (idx, gbt_word) in gbt_words.enumerate() {
                 let gbt_word_slice = &gbt_word[..10];
-                let current_word_type = its_payload_fsm_cont.advance(gbt_word_slice);
+                // Advance the FSM to find out how to display the current GBT word
+                let current_word_type = match its_payload_fsm_cont.advance(gbt_word_slice) {
+                    Ok(word) => word,
+                    // If the ID is not among the valid IDs for the current state, display a warning and attempt to handle it.
+                    Err(ambigious_word) => {
+                        match ambigious_word {
+                            crate::validators::its_payload_fsm_cont::AmbigiousError::TDH_or_DDW0 => {
+                                log::warn!("The ID of the current word did not match an expected ID. Displaying it as TDH, but it could be incorrect!");
+                                PayloadWord::TDH
+                            },
+                            crate::validators::its_payload_fsm_cont::AmbigiousError::DW_or_TDT_CDW => {
+                                log::warn!("The ID of the current word did not match an expected ID. Treating it as a Data Word (not displayed), but it could be incorrect!");
+                                PayloadWord::DataWord
+                            },
+                            crate::validators::its_payload_fsm_cont::AmbigiousError::DDW0_or_TDH_IHW => {
+                                log::warn!("The ID of the current word did not match an expected ID. Displaying it as DDW0, but it could be incorrect!");
+                                PayloadWord::DDW0
+                            },
+                        }
+
+                    },
+                };
                 let current_mem_pos =
                     calc_current_word_mem_pos(idx, rdh.data_format(), rdh_mem_pos);
                 let mem_pos_str = format!("{current_mem_pos:>8X}:");
@@ -66,7 +87,7 @@ fn print_rdh_hbf_view<T: RDH>(
     rdh_mem_pos: &u64,
     stdio_lock: &mut std::io::StdoutLock,
 ) -> Result<(), std::io::Error> {
-    let trig_str = rdh_trigger_type_as_string(rdh);
+    let trig_str = super::lib::rdh_trigger_type_as_string(rdh);
 
     writeln!(
         stdio_lock,
@@ -75,26 +96,6 @@ fn print_rdh_hbf_view<T: RDH>(
         rdh.link_id()
     )?;
     Ok(())
-}
-
-const PHT_BIT_MASK: u32 = 0b1_0000;
-const SOC_BIT_MASK: u32 = 0b10_0000_0000;
-const HB_BIT_MASK: u32 = 0b10;
-fn rdh_trigger_type_as_string<T: RDH>(rdh: &T) -> String {
-    let trigger_type = rdh.trigger_type();
-    // Priorities describing the trigger as follows:
-    // 1. SOC
-    // 2. HB
-    // 3. PhT
-    if trigger_type & SOC_BIT_MASK != 0 {
-        String::from("SOC  ")
-    } else if trigger_type & HB_BIT_MASK != 0 {
-        String::from("HB   ")
-    } else if trigger_type & PHT_BIT_MASK != 0 {
-        String::from("PhT  ")
-    } else {
-        String::from("Other")
-    }
 }
 
 /// Calculates the current position in the memory of the current word.
@@ -124,7 +125,6 @@ fn generate_payload_word_view(
     mem_pos_str: String,
     stdio_lock: &mut std::io::StdoutLock,
 ) -> Result<(), std::io::Error> {
-    use crate::validators::its_payload_fsm_cont::PayloadWord;
     use crate::words::status_words::util::*;
 
     let word_slice_str = format_word_slice(gbt_word_slice);

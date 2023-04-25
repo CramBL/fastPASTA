@@ -92,22 +92,32 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     fn report_rdh_seen(&self) {
         self.stats_controller_sender_ch
             .send(StatType::RDHsSeen(1))
-            .expect("Failed to send stats, reiver was dropped")
+            .expect("Failed to send stats, receiver was dropped")
     }
     fn report_link_seen(&self, link_id: u8) {
         self.stats_controller_sender_ch
             .send(StatType::LinksObserved(link_id))
-            .expect("Failed to send stats, reiver was dropped")
+            .expect("Failed to send stats, receiver was dropped")
     }
     fn report_payload_size(&self, payload_size: u32) {
         self.stats_controller_sender_ch
             .send(StatType::PayloadSize(payload_size))
-            .expect("Failed to send stats, reiver was dropped")
+            .expect("Failed to send stats, receiver was dropped")
     }
     fn report_rdh_filtered(&self) {
         self.stats_controller_sender_ch
             .send(StatType::RDHsFiltered(1))
-            .expect("Failed to send stats, reiver was dropped")
+            .expect("Failed to send stats, receiver was dropped")
+    }
+    fn report_run_trigger_type<T: RDH>(&self, rdh: &T) {
+        let raw_trigger_type = rdh.trigger_type();
+        let run_trigger_type_str = crate::view::lib::rdh_trigger_type_as_string(rdh);
+        self.stats_controller_sender_ch
+            .send(StatType::RunTriggerType((
+                raw_trigger_type,
+                run_trigger_type_str,
+            )))
+            .expect("Failed to send stats, receiver was dropped")
     }
 }
 
@@ -124,7 +134,12 @@ where
         // If it is the first time we get an RDH, we would already have loaded the initial RDH0
         //  from the input. If so, we use it to create the first RDH.
         let rdh: T = match self.initial_rdh0.is_some() {
-            true => RDH::load_from_rdh0(&mut self.reader, self.initial_rdh0.take().unwrap())?,
+            true => {
+                let rdh = RDH::load_from_rdh0(&mut self.reader, self.initial_rdh0.take().unwrap())?;
+                // Report the trigger type as the RunTriggerType describing the type of run the data is from
+                self.report_run_trigger_type(&rdh);
+                rdh
+            }
             false => RDH::load(&mut self.reader)?,
         };
         log::debug!(

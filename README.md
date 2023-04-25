@@ -11,6 +11,8 @@ For extensive documentation of public facing source code see [documentation](htt
 
 For an exhaustive list of the data verification done via the `check` subcommand, see [list of checks](doc/checks_list.md).
 
+Releases and associated changelogs can be found at [releases](https://gitlab.cern.ch/mkonig/fastpasta/-/releases).
+
 ## Purpose
 
 To verify or view curated content of the scanned raw binary data from ALICE.
@@ -128,6 +130,7 @@ The following is a list of error codes and their meaning, `x` is a placeholder f
 * [E6x] - DDW0
 * [E7x] - Data word (Even number: IB, Odd number: OB) E70 is sanity check for both IB/OB.
 * [E8x] - CDW
+* [E99] - Miscellaneous, such as error in ID when 2 or more words could be valid in the current state.
 
 ## Verbosity levels
 - 0: Errors

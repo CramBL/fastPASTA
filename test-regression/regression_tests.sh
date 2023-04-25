@@ -19,7 +19,7 @@ TXT_CLEAR="\e[0m"
 
 # Prefix for each command.
 ## Run the binary and go to the test-data folder
-cmd_prefix="cargo run -- ./test-data/"
+cmd_prefix="cargo run -- ./test-regression/test-data/"
 
 # Arrays to store the failed tests
 ## The index of each array corresponds to the index of the failed test in the tests_array
@@ -47,6 +47,12 @@ tests_array=(
     test_1_0 test_1_1 test_1_2 test_1_3 test_1_4 test_1_5 test_1_multi_0 test_1_multi_1
     test_2_0 test_2_multi_0 test_2_1 test_2_multi_1
     test_3_0 test_3_1 test_3_2 test_3_3 test_3_multi_0
+    test_bad_ihw_tdh_detect_invalid_ids
+    test_bad_dw_ddw0_detect_invalid_ids
+    test_bad_tdt_detect_invalid_id
+    test_bad_cdp_structure test_bad_cdp_structure_view_rdh test_bad_cdp_structure_detected
+    test_bad_its_payload test_bad_its_payload_errors_detected
+    test_thrs_cdw_3_links
 )
 # The 3 elements of a test is:
 # 0: Command to run
@@ -71,6 +77,10 @@ test_1_1=(
 test_1_2=(
     "readout.superpage.1.raw check sanity its"
     "rdh version.*7"
+    1
+    "Trigger Type.*0x4813"
+    1
+    "Trigger Type.*HB"
     1
 )
 ## Test 1_multi_0: `check all`
@@ -131,6 +141,12 @@ test_2_0=(
 ## Test 2_multi_0: `check sanity`
 test_2_multi_0=(
     "10_rdh.raw check sanity"
+    # Check the right run trigger type is detected
+    "Trigger Type.*0x6A03"
+    1
+    # Check the right description of the trigger is printed
+    "Trigger Type.*SOC"
+    1
     # Check the right RDH version is detected
     "RDH.*Version.*7"
     1
@@ -139,6 +155,9 @@ test_2_multi_0=(
     1
     # Check the right number of HBFs is detected
     "Total.*hbfs.*5"
+    1
+    # Check the right layers and staves are detected
+    "((layers)|(staves)).*((layers)|(staves)).*L0_12"
     1
     # Check that no errors are detected
     "error - "
@@ -219,6 +238,144 @@ test_3_multi_0=(
     0 # There are no DDWs in this file as it is an erroneous file
 )
 
+### Tests on the 1_hbf_bad_ihw_tdh.raw file
+###
+### This file contains a single HBF with an IHW with an invalid ID (0xE1) and a TDH with invalid ID (0xE9)
+test_bad_ihw_tdh_detect_invalid_ids=(
+    "1_hbf_bad_ihw_tdh.raw check sanity its"
+    # Check the error is detected in the right position with the right error code and message
+    "error - 0x40: \[E30\].*ID.*0xe1"
+    1
+    # Check the error is detected in the right position with the right error code and message
+    "error - 0x50: \[E40\].*ID.*0xe9"
+    1
+)
+
+### Tests on the 1_hbf_bad_dw_ddw0.raw file
+###
+### This file contains a single HBF with a Data word with invalid ID (0x1) a DDW0 with invalid ID (0xE5)
+test_bad_dw_ddw0_detect_invalid_ids=(
+    "1_hbf_bad_dw_ddw0.raw check sanity its"
+    # Check the error is detected in the right position with the right error code and message
+    # Should give an unregonized ID errors as it is in an ambigiuous position where several words could be valid
+    # Checks that it ends with `01]` as it should print the GBT bytes which would end with the wrong ID (01)
+    "error - 0x80: \[E99\] Unrecognized ID.*01\]"
+    1
+    # Same as above but for the DDW0 error
+    "error - 0xE0: \[E99\] Unrecognized ID.*E5\]"
+    1
+    # Check that 2 Invalid ID errors are also detected in those two positions
+    "error - (0x80|0xE0): \[E.0\].*ID" # Just checks its related to a sanity check regarding ID by checking the error code is Ex0
+    2
+)
+
+### Tests on the 1_hbf_bad_tdt.raw file
+###
+### This file contains a single HBF with a TDT with invalid ID (0xF1)
+test_bad_tdt_detect_invalid_id=(
+    "1_hbf_bad_tdt.raw check sanity its"
+    # Check the error is detected in the right position with the right error code and message
+    "error - 0x90: \[E99\].*ID.*f1"
+    1
+)
+
+### Tests on the 1_hbf_bad_cdp_structure.raw file
+###
+### This file contains a single HBF with a CDP with invalid structure because the RDH preceding a DDW0 does not have stop bit set
+test_bad_cdp_structure=(
+    "1_hbf_bad_cdp_structure.raw check sanity its -v2"
+    # Check the file is parsed successfully
+    "${re_eof}"
+    2
+    # Check the error is not detected as this is just a sanity check.
+    "error -"
+    0
+    "Total Errors.*0"
+    1
+    "Total RDHs.*2"
+    1
+    "Total HBFs.*0"
+    1
+)
+
+test_bad_cdp_structure_view_rdh=(
+    "1_hbf_bad_cdp_structure.raw view rdh"
+    # Check the view contains 2 RDHs
+    "$re_rdhs_in_rdh_view"
+    2
+)
+
+test_bad_cdp_structure_detected=(
+    "1_hbf_bad_cdp_structure.raw check all its"
+    # Check the error is detected
+    "error - 0xE0: \[E..\].*RDH.*stop.bit"
+    1
+    "Total Errors.*1"
+    1
+)
+
+### Tests on the 1_hbf_bad_its_payload.raw file
+###
+### This file contains a single HBF with an invalid ITS payload, containing 2 errors:
+###     - an IHW ID comes instead of the TDH that should come after the first IHW.
+###     - The IHW does not have lane 8 set in the active_lanes field, so data from lane 8 should generate an error
+test_bad_its_payload=(
+    "1_hbf_bad_its_payload.raw check sanity its -v2"
+    # Check the file is parsed successfully
+    "${re_eof}"
+    2
+    # Check the error with 2 IHWs in a row is detected
+    "error - 0x50: \[E..\].*ID"
+    1
+    # Check that it is the only error detected, by using negated character classes (should probably just start support lookarounds)
+    "error - 0x([^5].|5[^0]):"
+    0
+)
+
+test_bad_its_payload_errors_detected=(
+    "1_hbf_bad_its_payload.raw check all its"
+    # Check the invalid 2nd IHW is detected
+    "error - 0x50: \[E..\].*ID"
+    1
+    # Check the error that there's data from lane 8 but the IHW does not have lane 8 set as active
+    "error - 0x70: \[E..\].*lane 8.*IHW" # Checks that the error is detected the right place, and that it has something with lane 8 and IHW
+    1
+    "Total Errors.*2"
+    1
+)
+
+### Tests on the thrs_cdw_links.raw file
+###
+### This file contains raw data from an IBS threshold scan, from link 8, 9, and 11.
+test_thrs_cdw_3_links=(
+    "thrs_cdw_links.raw check sanity its -v2"
+    # Check the file is parsed successfully
+    "${re_eof}"
+    2
+    # Confirm no error count
+    "Total errors.*0"
+    1
+    # Check that there are no errors
+    "error -"
+    0
+    # Confirm RDH count
+    "Total RDHs.*6"
+    1
+    # Confirm HBF count
+    "Total HBFs.*3"
+    1
+    # Check that the 3 links are observed
+    "Links observed.*8"
+    1
+    "Links observed.*9"
+    1
+    "Links observed.*11"
+    1
+)
+
+
+
+
 # Run a single test
 function run_test {
     test_var_name=$1
@@ -284,7 +441,7 @@ done
 echo
 if  (( "${#failed_tests[@]}" == 0 ));
 then
-    echo -e "${TXT_BRIGHT_GREEN}ALL TESTS PASSED! :)${TXT_CLEAR}"
+    echo -e "${TXT_BRIGHT_GREEN}ALL ${total_tests} TESTS PASSED! :)${TXT_CLEAR}"
     exit 0
 else
     echo -e "${TXT_RED}${#failed_tests[@]} Failed test(s):${TXT_CLEAR}"
