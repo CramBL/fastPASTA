@@ -78,6 +78,10 @@ test_1_2=(
     "readout.superpage.1.raw check sanity its"
     "rdh version.*7"
     1
+    "Trigger Type.*0x4813"
+    1
+    "Trigger Type.*HB"
+    1
 )
 ## Test 1_multi_0: `check all`
 test_1_multi_0=(
@@ -137,6 +141,12 @@ test_2_0=(
 ## Test 2_multi_0: `check sanity`
 test_2_multi_0=(
     "10_rdh.raw check sanity"
+    # Check the right run trigger type is detected
+    "Trigger Type.*0x6A03"
+    1
+    # Check the right description of the trigger is printed
+    "Trigger Type.*SOC"
+    1
     # Check the right RDH version is detected
     "RDH.*Version.*7"
     1
@@ -145,6 +155,9 @@ test_2_multi_0=(
     1
     # Check the right number of HBFs is detected
     "Total.*hbfs.*5"
+    1
+    # Check the right layers and staves are detected
+    "((layers)|(staves)).*((layers)|(staves)).*L0_12"
     1
     # Check that no errors are detected
     "error - "
@@ -428,7 +441,7 @@ done
 echo
 if  (( "${#failed_tests[@]}" == 0 ));
 then
-    echo -e "${TXT_BRIGHT_GREEN}ALL TESTS PASSED! :)${TXT_CLEAR}"
+    echo -e "${TXT_BRIGHT_GREEN}ALL ${total_tests} TESTS PASSED! :)${TXT_CLEAR}"
     exit 0
 else
     echo -e "${TXT_RED}${#failed_tests[@]} Failed test(s):${TXT_CLEAR}"
