@@ -52,6 +52,7 @@ tests_array=(
     test_bad_tdt_detect_invalid_id
     test_bad_cdp_structure test_bad_cdp_structure_view_rdh test_bad_cdp_structure_detected
     test_bad_its_payload test_bad_its_payload_errors_detected
+    test_thrs_cdw_3_links
 )
 # The 3 elements of a test is:
 # 0: Command to run
@@ -329,6 +330,37 @@ test_bad_its_payload_errors_detected=(
     "Total Errors.*2"
     1
 )
+
+### Tests on the thrs_cdw_links.raw file
+###
+### This file contains raw data from an IBS threshold scan, from link 8, 9, and 11.
+test_thrs_cdw_3_links=(
+    "thrs_cdw_links.raw check sanity its -v2"
+    # Check the file is parsed successfully
+    "${re_eof}"
+    2
+    # Confirm no error count
+    "Total errors.*0"
+    1
+    # Check that there are no errors
+    "error -"
+    0
+    # Confirm RDH count
+    "Total RDHs.*6"
+    1
+    # Confirm HBF count
+    "Total HBFs.*3"
+    1
+    # Check that the 3 links are observed
+    "Links observed.*8"
+    1
+    "Links observed.*9"
+    1
+    "Links observed.*11"
+    1
+)
+
+
 
 
 # Run a single test
