@@ -281,3 +281,105 @@ fn exit_fatal(
         .unwrap();
     std::process::ExitCode::from(exit_code)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{path::PathBuf, sync::Arc};
+
+    use super::*;
+    use crate::input::data_wrapper::CdpChunk;
+    use crate::words::rdh_cru::test_data::*;
+    use crate::{input::lib::init_reader, util::lib::test_util::MockConfig};
+
+    #[test]
+    fn test_init_processing() {
+        // Setup Mock Config
+        let mut mock_config = MockConfig::default();
+        // Set input file from one of the files used for regression testing
+        mock_config.input_file = Some(PathBuf::from("test-regression/test-data/10_rdh.raw"));
+        let mock_config = Arc::new(mock_config);
+        // Setup a reader
+        let reader = init_reader(&*mock_config).unwrap();
+
+        let (sender, receiver): (
+            std::sync::mpsc::Sender<StatType>,
+            std::sync::mpsc::Receiver<StatType>,
+        ) = std::sync::mpsc::channel();
+
+        let stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+
+        // Act
+        init_processing(mock_config, reader, sender, stop_flag.clone());
+
+        // Receive all messages
+        let mut stats: Vec<StatType> = Vec::new();
+
+        while let Ok(stat) = receiver.recv() {
+            stats.push(stat);
+        }
+
+        // Assert
+        let mut is_rdh_version_detected_7 = false;
+        let mut how_many_rdh_seen = 0;
+
+        // Print all stats
+        for stat in stats {
+            match stat {
+                StatType::RdhVersion(7) => is_rdh_version_detected_7 = true,
+                StatType::RDHsSeen(count) => how_many_rdh_seen += count,
+                StatType::Error(e) | StatType::Fatal(e) => {
+                    panic!("Error or Fatal: {}", e)
+                }
+                _ => (),
+            }
+        }
+
+        assert!(is_rdh_version_detected_7);
+        assert_eq!(how_many_rdh_seen, 10);
+        assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));
+    }
+
+    #[test]
+    fn test_spawn_analysis() {
+        // Setup Mock Config, no checks or views to be done
+        let mock_config = MockConfig::default();
+        let mock_config = Arc::new(mock_config);
+        let (stat_sender, stat_receiver): (
+            std::sync::mpsc::Sender<StatType>,
+            std::sync::mpsc::Receiver<StatType>,
+        ) = std::sync::mpsc::channel();
+        let (data_sender, data_receiver): (
+            crossbeam_channel::Sender<CdpChunk<RdhCRU<V7>>>,
+            crossbeam_channel::Receiver<CdpChunk<RdhCRU<V7>>>,
+        ) = crossbeam_channel::unbounded();
+        let stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let mut cdp_chunk: CdpChunk<RdhCRU<V7>> = CdpChunk::default();
+        cdp_chunk.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);
+
+        // Act
+        spawn_analysis(mock_config, stop_flag.clone(), stat_sender, data_receiver);
+        data_sender.send(cdp_chunk).unwrap();
+        drop(data_sender);
+        // Sleep to give the thread time to process the data
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        stop_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+
+        // Receive all messages
+        let mut stats: Vec<StatType> = Vec::new();
+        while let Ok(stat) = stat_receiver.recv() {
+            stats.push(stat);
+        }
+
+        // Assert
+        let mut detected_its = false;
+
+        // Iterate through all stats, should only be one about the detected system ID
+        for stat in stats {
+            match stat {
+                StatType::SystemId(SystemId::ITS) => detected_its = true,
+                x => panic!("Unexpected stat: {:?}", x),
+            }
+        }
+        assert!(detected_its);
+    }
+}
