@@ -45,6 +45,12 @@ pub struct LinkValidator<T: RDH, C: Config> {
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 impl<T: RDH, C: Config> LinkValidator<T, C> {
+    /// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
+    ///
+    /// Larger capacity means less overhead, but more memory usage
+    /// Too small capacity will cause the producer thread to block
+    const CHANNEL_CDP_CAPACITY: usize = 100; // associated constant
+
     /// Creates a new [LinkValidator] and the [StatType] sender channel to it, from a [Config].
     pub fn new(
         global_config: std::sync::Arc<C>,
@@ -60,7 +66,7 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
             RdhCruSanityValidator::default()
         };
         let (send_channel, data_rcv_channel) =
-            crossbeam_channel::bounded(crate::CHANNEL_CDP_CAPACITY);
+            crossbeam_channel::bounded(Self::CHANNEL_CDP_CAPACITY);
         (
             Self {
                 config: global_config.clone(),
@@ -154,8 +160,9 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::config::Target;
+    use crate::util::config::{System, Target};
     use crate::util::lib::test_util::MockConfig;
+    use crate::words::its::test_payloads::*;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
 
     #[test]
@@ -190,6 +197,137 @@ mod tests {
         // Check that the link validator has not sent any errors
         let stats_msg = rcv_stats_ch.try_recv();
         assert!(stats_msg.is_err());
+    }
+
+    #[test]
+    fn test_valid_payloads_flavor_0() {
+        let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
+        let mut mock_config = MockConfig::default();
+        mock_config.check = Some(Check::Sanity(Target {
+            system: Some(System::ITS),
+        }));
+
+        let (mut link_validator, cdp_tuple_send_ch): (
+            LinkValidator<RdhCRU<V7>, MockConfig>,
+            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
+        ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
+
+        assert_eq!(link_validator.running_checks, false);
+
+        // Spawn the link validator in a thread
+        let _handle = std::thread::spawn(move || {
+            link_validator.run();
+        });
+
+        let mut payload = START_PAYLOAD_FLAVOR_0.to_vec();
+        payload.extend_from_slice(&MIDDLE_PAYLOAD_FLAVOR_0);
+        payload.extend_from_slice(&END_PAYLOAD_FLAVOR_0);
+
+        // Send a CDP to the link validator
+        let cdp = (CORRECT_RDH_CRU_V7, payload, 0);
+
+        cdp_tuple_send_ch.send(cdp).unwrap();
+
+        // Wait for the link validator to process the CDP
+        std::thread::sleep(std::time::Duration::from_millis(100));
+
+        // Check that the link validator has not sent any errors
+        while let Ok(stats_msg) = rcv_stats_ch.try_recv() {
+            match stats_msg {
+                StatType::Error(_) => panic!("Received error message: {:?}", stats_msg),
+                _ => println!("Received stats message: {:?}", stats_msg),
+            }
+        }
+    }
+
+    #[test]
+    fn test_valid_payloads_flavor_2() {
+        let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
+        let mut mock_config = MockConfig::default();
+        mock_config.check = Some(Check::Sanity(Target {
+            system: Some(System::ITS),
+        }));
+
+        let (mut link_validator, cdp_tuple_send_ch): (
+            LinkValidator<RdhCRU<V7>, MockConfig>,
+            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
+        ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
+
+        assert_eq!(link_validator.running_checks, false);
+
+        // Spawn the link validator in a thread
+        let _handle = std::thread::spawn(move || {
+            link_validator.run();
+        });
+
+        let mut payload = START_PAYLOAD_FLAVOR_2.to_vec();
+        payload.extend_from_slice(&MIDDLE_PAYLOAD_FLAVOR_2);
+        payload.extend_from_slice(&END_PAYLOAD_FLAVOR_2);
+
+        // Send a CDP to the link validator
+        let cdp = (CORRECT_RDH_CRU_V7, payload, 0);
+
+        cdp_tuple_send_ch.send(cdp).unwrap();
+
+        // Wait for the link validator to process the CDP
+        std::thread::sleep(std::time::Duration::from_millis(100));
+
+        // Check that the link validator has not sent any errors
+        while let Ok(stats_msg) = rcv_stats_ch.try_recv() {
+            match stats_msg {
+                StatType::Error(_) => panic!("Received error message: {:?}", stats_msg),
+                _ => println!("Received stats message: {:?}", stats_msg),
+            }
+        }
+    }
+
+    #[test]
+    fn test_invalid_payloads_flavor_2_bad_tdh_one_error() {
+        let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
+        let mut mock_config = MockConfig::default();
+        mock_config.check = Some(Check::Sanity(Target {
+            system: Some(System::ITS),
+        }));
+
+        let (mut link_validator, cdp_tuple_send_ch): (
+            LinkValidator<RdhCRU<V7>, MockConfig>,
+            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
+        ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
+
+        assert_eq!(link_validator.running_checks, false);
+
+        // Spawn the link validator in a thread
+        let _handle = std::thread::spawn(move || {
+            link_validator.run();
+        });
+
+        let mut payload = START_PAYLOAD_FLAVOR_2.to_vec();
+        payload.extend_from_slice(&MIDDLE_PAYLOAD_FLAVOR_2);
+        payload.extend_from_slice(&END_PAYLOAD_FLAVOR_2);
+        payload[19] = 0xE9; // Change the TDH to an invalid value
+
+        // Send a CDP to the link validator
+        let cdp = (CORRECT_RDH_CRU_V7, payload, 0);
+
+        cdp_tuple_send_ch.send(cdp).unwrap();
+
+        // Wait for the link validator to process the CDP
+        std::thread::sleep(std::time::Duration::from_millis(100));
+
+        // Check that the link validator has sent an error
+        let stats_msg = rcv_stats_ch.try_recv().unwrap();
+        match stats_msg {
+            StatType::Error(_) => println!("Received error message: {:?}", stats_msg),
+            _ => panic!("Received stats message: {:?}", stats_msg),
+        }
+
+        // Check that the link validator has not sent any more errors
+        while let Ok(stats_msg) = rcv_stats_ch.try_recv() {
+            match stats_msg {
+                StatType::Error(_) => panic!("Received error message: {:?}", stats_msg),
+                _ => println!("Received stats message: {:?}", stats_msg),
+            }
+        }
     }
 
     #[test]

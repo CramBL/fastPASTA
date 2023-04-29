@@ -176,9 +176,9 @@ fn chunkify_payload<'a>(
 #[cfg(test)]
 mod tests {
     use crate::input::data_wrapper::CdpChunk;
-    use crate::words::rdh_cru::{RdhCRU, V7};
-
+    use crate::words::its::test_payloads::*;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
+    use crate::words::rdh_cru::{RdhCRU, V7};
 
     use super::*;
 
@@ -203,25 +203,6 @@ mod tests {
         disp.join();
     }
 
-    // Test values
-    const START_PAYLOAD_FLAVOR_0: [u8; 32] = [
-        0xC0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x03, 0x1a, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0xE8, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00,
-    ];
-    const START_PAYLOAD_FLAVOR_2: [u8; 20] = [
-        0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe0, 0x13, 0x08, 0x00, 0x00, 0x00,
-        0xD7, 0x39, 0x9B, 0x00, 0xE8,
-    ];
-    // Flavor 0 has no 0xFF padding, this is just a TDT followed by the 0x00 padding
-    const END_PAYLOAD_FLAVOR_0: [u8; 14] = [
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    ];
-    // TDT and 0xFF padding
-    const END_PAYLOAD_FLAVOR_1: [u8; 14] = [
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe4, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    ];
-
     #[test]
     fn test_preprocess_payload_flavors() {
         let word_chunk_f0 = preprocess_payload(&START_PAYLOAD_FLAVOR_0).unwrap();
@@ -238,11 +219,11 @@ mod tests {
     fn test_extract_payload_padding() {
         let end_payload_flavor_0_padding =
             extract_payload_ff_padding(&END_PAYLOAD_FLAVOR_0).unwrap();
-        let end_payload_flavor_1_padding =
-            extract_payload_ff_padding(&END_PAYLOAD_FLAVOR_1).unwrap();
+        let end_payload_flavor_2_padding =
+            extract_payload_ff_padding(&END_PAYLOAD_FLAVOR_2).unwrap();
 
         assert!(end_payload_flavor_0_padding.is_empty());
-        assert_eq!(end_payload_flavor_1_padding.len(), 6);
+        assert_eq!(end_payload_flavor_2_padding.len(), 6);
     }
 
     #[test]
