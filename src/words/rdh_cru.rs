@@ -464,7 +464,7 @@ mod tests {
         let rdh_v7 = RdhCRU::<V7> {
             rdh0: rdh_0,
             offset_new_packet: 0,
-            memory_size: 0,
+            memory_size: 0x40,
             link_id: 0,
             packet_counter: 0,
             cruid_dw: CruidDw(0),
