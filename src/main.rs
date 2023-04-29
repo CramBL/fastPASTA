@@ -1,12 +1,14 @@
-use fastpasta::input::{
-    bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner, lib::init_reader,
-};
-use fastpasta::stats::{lib::init_stats_controller, stats_controller};
-use fastpasta::util::lib::Config;
-use fastpasta::words::{
-    lib::RdhSubWord,
-    rdh::Rdh0,
-    rdh_cru::{RdhCRU, V6, V7},
+use fastpasta::{
+    input::{
+        bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner, lib::init_reader,
+    },
+    stats::{lib::init_stats_controller, stats_controller},
+    util::lib::Config,
+    words::{
+        lib::RdhSubWord,
+        rdh::Rdh0,
+        rdh_cru::{RdhCRU, V6, V7},
+    },
 };
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -52,10 +54,12 @@ fn init_processing(
     // Determine RDH version
     let rdh0 = Rdh0::load(&mut reader).expect("Failed to read first RDH0");
     let rdh_version = rdh0.header_id;
+
     // Send RDH version to stats thread
     stat_send_channel
         .send(stats_controller::StatType::RdhVersion(rdh_version))
         .unwrap();
+
     // Create input scanner from the already read RDH0 (to avoid seeking back and reading it twice, which would also break with stdin piping)
     let loader =
         InputScanner::new_from_rdh0(config.clone(), reader, stat_send_channel.clone(), rdh0);
@@ -70,12 +74,7 @@ fn init_processing(
             thread_stopper,
         ) {
             Ok(_) => fastpasta::exit_success(),
-            Err(e) => {
-                stat_send_channel
-                    .send(stats_controller::StatType::Fatal(e.to_string()))
-                    .unwrap();
-                std::process::ExitCode::from(2)
-            }
+            Err(e) => exit_fatal(stat_send_channel, e.to_string(), 2),
         },
         7 => match fastpasta::process::<RdhCRU<V7>>(
             config,
@@ -84,20 +83,23 @@ fn init_processing(
             thread_stopper,
         ) {
             Ok(_) => fastpasta::exit_success(),
-            Err(e) => {
-                stat_send_channel
-                    .send(stats_controller::StatType::Fatal(e.to_string()))
-                    .unwrap();
-                std::process::ExitCode::from(2)
-            }
+            Err(e) => exit_fatal(stat_send_channel, e.to_string(), 2),
         },
-        _ => {
-            stat_send_channel
-                .send(stats_controller::StatType::Fatal(format!(
-                    "Unknown RDH version: {rdh_version}",
-                )))
-                .unwrap();
-            std::process::ExitCode::from(3)
-        }
+        _ => exit_fatal(
+            stat_send_channel,
+            format!("Unknown RDH version: {rdh_version}"),
+            3,
+        ),
     }
+}
+
+fn exit_fatal(
+    stat_send_channel: std::sync::mpsc::Sender<stats_controller::StatType>,
+    error_string: String,
+    exit_code: u8,
+) -> std::process::ExitCode {
+    stat_send_channel
+        .send(stats_controller::StatType::Fatal(error_string))
+        .unwrap();
+    std::process::ExitCode::from(exit_code)
 }
