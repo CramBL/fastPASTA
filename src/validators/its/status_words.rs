@@ -2,7 +2,7 @@
 //!
 //! Each validator is aggregated by the [StatusWordSanityChecker] struct.
 
-use crate::words::status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt};
+use crate::words::its::status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt};
 use std::fmt::Write;
 
 /// Convenience const for the [StatusWordSanityChecker].
@@ -194,7 +194,7 @@ impl StatusWordValidator<Ddw0> for Ddw0Validator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::words::status_words::{Ihw, StatusWord, Tdh, Tdt};
+    use crate::words::its::status_words::{Ihw, StatusWord, Tdh, Tdt};
 
     #[test]
     fn test_ihw_validator() {

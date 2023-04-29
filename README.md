@@ -85,25 +85,30 @@ Piping is often optional and avoiding it will improve performance. e.g. the foll
 $ lz4 -d input.raw -c | fastpasta --filter-link 3 view rdh
 ```
 ### Read from file -> filter by link -> validate
+Enable all generic checks: `sanity` (stateless) AND `running` (stateful)
 ```shell
-# Enable all generic checks: `sanity` (stateless) AND `running` (stateful)
 $ fastpasta input.raw --filter-link 0 check all
-
-# Same as above but only enable `sanity` checks
+```
+Same as above but only enable `sanity` checks
+```shell
 $ fastpasta input.raw check sanity -f 0
-
-# Enable all `sanity` and `running` checks and include checks applicable to `ITS` only
+```
+Enable all `sanity` and `running` checks and include checks applicable to `ITS` only
+```shell
 $ fastpasta input.raw check all ITS --filter-link 0
-
-# Filter link 3 and check `sanity` include sanity checks specific to ITS
+```
+Filter link 3 and check `sanity` include sanity checks specific to ITS
+```shell
 $ fastpasta input.raw -f 3 check sanity its # target `its` is case-insensitive
 ```
 
 ### Read from file -> view HBFs with `less`
+Generate HBF view
 ```shell
-# Generate HBF view
 $ fastpasta input.raw view hbf | less
-# View only HBFs from link #3
+```
+View only HBFs from link #3
+```shell
 $ fastpasta input.raw view hbf -f 3 | less
 ```
 

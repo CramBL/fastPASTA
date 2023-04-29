@@ -1,13 +1,17 @@
-use crate::input;
-use crate::stats::stats_controller;
-use crate::validators::its_payload_fsm_cont::{ItsPayloadFsmContinuous, PayloadWord};
-use crate::validators::link_validator::preprocess_payload;
-use crate::words::lib::RDH;
+use crate::{
+    input,
+    stats::lib::StatType,
+    validators::{
+        its::its_payload_fsm_cont::{self, ItsPayloadFsmContinuous, PayloadWord},
+        lib::preprocess_payload,
+    },
+    words::lib::RDH,
+};
 use std::io::Write;
 
 pub(crate) fn hbf_view<T: RDH>(
     cdp_chunk: input::data_wrapper::CdpChunk<T>,
-    send_stats_ch: &std::sync::mpsc::Sender<stats_controller::StatType>,
+    send_stats_ch: &std::sync::mpsc::Sender<StatType>,
     its_payload_fsm_cont: &mut ItsPayloadFsmContinuous,
 ) -> Result<(), std::io::Error> {
     let mut stdio_lock = std::io::stdout().lock();
@@ -15,12 +19,10 @@ pub(crate) fn hbf_view<T: RDH>(
     for (rdh, payload, rdh_mem_pos) in cdp_chunk.into_iter() {
         print_rdh_hbf_view(&rdh, &rdh_mem_pos, &mut stdio_lock)?;
 
-        let gbt_word_chunks = match preprocess_payload(&payload, rdh.data_format()) {
+        let gbt_word_chunks = match preprocess_payload(&payload) {
             Ok(gbt_word_chunks) => Some(gbt_word_chunks),
             Err(e) => {
-                send_stats_ch
-                    .send(stats_controller::StatType::Error(e))
-                    .unwrap();
+                send_stats_ch.send(StatType::Error(e)).unwrap();
                 its_payload_fsm_cont.reset_fsm();
                 None
             }
@@ -33,22 +35,19 @@ pub(crate) fn hbf_view<T: RDH>(
                 let current_word_type = match its_payload_fsm_cont.advance(gbt_word_slice) {
                     Ok(word) => word,
                     // If the ID is not among the valid IDs for the current state, display a warning and attempt to handle it.
-                    Err(ambigious_word) => {
-                        match ambigious_word {
-                            crate::validators::its_payload_fsm_cont::AmbigiousError::TDH_or_DDW0 => {
-                                log::warn!("The ID of the current word did not match an expected ID. Displaying it as TDH, but it could be incorrect!");
-                                PayloadWord::TDH
-                            },
-                            crate::validators::its_payload_fsm_cont::AmbigiousError::DW_or_TDT_CDW => {
-                                log::warn!("The ID of the current word did not match an expected ID. Treating it as a Data Word (not displayed), but it could be incorrect!");
-                                PayloadWord::DataWord
-                            },
-                            crate::validators::its_payload_fsm_cont::AmbigiousError::DDW0_or_TDH_IHW => {
-                                log::warn!("The ID of the current word did not match an expected ID. Displaying it as DDW0, but it could be incorrect!");
-                                PayloadWord::DDW0
-                            },
+                    Err(ambigious_word) => match ambigious_word {
+                        its_payload_fsm_cont::AmbigiousError::TDH_or_DDW0 => {
+                            log::warn!("The ID of the current word did not match an expected ID. Displaying it as TDH, but it could be incorrect!");
+                            PayloadWord::TDH
                         }
-
+                        its_payload_fsm_cont::AmbigiousError::DW_or_TDT_CDW => {
+                            log::warn!("The ID of the current word did not match an expected ID. Treating it as a Data Word (not displayed), but it could be incorrect!");
+                            PayloadWord::DataWord
+                        }
+                        its_payload_fsm_cont::AmbigiousError::DDW0_or_TDH_IHW => {
+                            log::warn!("The ID of the current word did not match an expected ID. Displaying it as DDW0, but it could be incorrect!");
+                            PayloadWord::DDW0
+                        }
                     },
                 };
                 let current_mem_pos =
@@ -121,11 +120,11 @@ fn calc_current_word_mem_pos(word_idx: usize, data_format: u8, rdh_mem_pos: u64)
 
 fn generate_payload_word_view(
     gbt_word_slice: &[u8],
-    word_type: crate::validators::its_payload_fsm_cont::PayloadWord,
+    word_type: its_payload_fsm_cont::PayloadWord,
     mem_pos_str: String,
     stdio_lock: &mut std::io::StdoutLock,
 ) -> Result<(), std::io::Error> {
-    use crate::words::status_words::util::*;
+    use crate::words::its::status_words::util::*;
 
     let word_slice_str = format_word_slice(gbt_word_slice);
     match word_type {

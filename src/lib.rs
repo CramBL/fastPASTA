@@ -46,7 +46,15 @@
 //! ```
 
 use crossbeam_channel::Receiver;
+use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
+use stats::lib::{self, StatType, SystemId};
 use util::lib::{Config, DataOutputMode};
+use validators::{its::its_payload_fsm_cont::ItsPayloadFsmContinuous, lib::ValidatorDispatcher};
+use words::{
+    lib::RdhSubWord,
+    rdh::Rdh0,
+    rdh_cru::{RdhCRU, V6, V7},
+};
 
 pub mod input;
 pub mod stats;
@@ -56,26 +64,59 @@ pub mod view;
 pub mod words;
 pub mod write;
 
-/// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
-///
-/// Larger capacity means less overhead, but more memory usage
-/// Too small capacity will cause the producer thread to block
-const CHANNEL_CDP_CAPACITY: usize = 100;
+/// Does the initial setup for input data processing
+pub fn init_processing(
+    config: std::sync::Arc<impl Config + 'static>,
+    mut reader: Box<dyn BufferedReaderWrapper>,
+    stat_send_channel: std::sync::mpsc::Sender<StatType>,
+    thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
+) -> std::process::ExitCode {
+    // Determine RDH version
+    let rdh0 = Rdh0::load(&mut reader).expect("Failed to read first RDH0");
+    let rdh_version = rdh0.header_id;
 
-/// Entry point for scanning the input and delegating to checkers, view generators and/or writers depending on config
+    // Send RDH version to stats thread
+    stat_send_channel
+        .send(StatType::RdhVersion(rdh_version))
+        .unwrap();
+
+    // Create input scanner from the already read RDH0 (to avoid seeking back and reading it twice, which would also break with stdin piping)
+    let loader =
+        InputScanner::new_from_rdh0(config.clone(), reader, stat_send_channel.clone(), rdh0);
+
+    // Choose the rest of the execution based on the RDH version
+    // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
+    match rdh_version {
+        6 => match process::<RdhCRU<V6>>(config, loader, stat_send_channel.clone(), thread_stopper)
+        {
+            Ok(_) => exit_success(),
+            Err(e) => exit_fatal(stat_send_channel, e.to_string(), 2),
+        },
+        7 => match process::<RdhCRU<V7>>(config, loader, stat_send_channel.clone(), thread_stopper)
+        {
+            Ok(_) => exit_success(),
+            Err(e) => exit_fatal(stat_send_channel, e.to_string(), 2),
+        },
+        _ => exit_fatal(
+            stat_send_channel,
+            format!("Unknown RDH version: {rdh_version}"),
+            3,
+        ),
+    }
+}
+
+/// Entry point for scanning the input and delegating to checkers, view generators and/or writers depending on [Config]
 ///
 /// Follows these steps:
 /// 1. Setup reading (`file` or `stdin`) using [input::lib::spawn_reader].
 /// 2. Depending on [Config] do one of:
-///     - Validate data with [validators::lib::check_cdp_chunk].
+///     - Validate data by dispatching it to validators with [validators::lib::ValidatorDispatcher].
 ///     - Generate views of data with [view::lib::generate_view].
 ///     - Write data to `file` or `stdout` with [write::lib::spawn_writer].
 pub fn process<T: words::lib::RDH + 'static>(
     config: std::sync::Arc<impl Config + 'static>,
-    loader: input::input_scanner::InputScanner<
-        impl input::bufreader_wrapper::BufferedReaderWrapper + ?Sized + std::marker::Send + 'static,
-    >,
-    send_stats_ch: std::sync::mpsc::Sender<stats::stats_controller::StatType>,
+    loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
+    send_stats_ch: std::sync::mpsc::Sender<StatType>,
     thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
     // 1. Launch reader thread to read data from file or stdin
@@ -139,23 +180,19 @@ pub fn process<T: words::lib::RDH + 'static>(
 fn spawn_analysis<T: words::lib::RDH + 'static>(
     config: std::sync::Arc<impl Config + 'static>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
-    stats_sender_channel: std::sync::mpsc::Sender<stats::stats_controller::StatType>,
+    stats_sender_channel: std::sync::mpsc::Sender<StatType>,
     data_channel: Receiver<input::data_wrapper::CdpChunk<T>>,
 ) -> std::thread::JoinHandle<()> {
     let analysis_thread = std::thread::Builder::new().name("Analysis".to_string());
-
+    let mut system_id: Option<SystemId> = None; // System ID is only set once
     analysis_thread
         .spawn({
             move || {
-                type CdpTuple<T> = (T, Vec<u8>, u64);
                 // Setup for check case
-                let mut links: Vec<u8> = Vec::new();
-                let mut link_process_channels: Vec<crossbeam_channel::Sender<CdpTuple<T>>> =
-                    Vec::new();
-                let mut validator_thread_handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
+                let mut validator_dispatcher =
+                    ValidatorDispatcher::new(config.clone(), stats_sender_channel.clone());
                 // Setup for view case
-                let mut its_payload_fsm_cont =
-                    validators::its_payload_fsm_cont::ItsPayloadFsmContinuous::default();
+                let mut its_payload_fsm_cont = ItsPayloadFsmContinuous::default();
                 // Start analysis
                 while !stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
                     // Receive chunk from reader
@@ -170,35 +207,22 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                     // Send HBF seen if stop bit is 1
                     for rdh in cdp_chunk.rdh_slice().iter() {
                         if rdh.stop_bit() == 1 {
-                            stats_sender_channel
-                                .send(stats::stats_controller::StatType::HBFsSeen(1))
-                                .unwrap();
+                            stats_sender_channel.send(StatType::HBFsSeen(1)).unwrap();
                         }
-                        let layer = words::lib::layer_from_feeid(rdh.fee_id());
-                        let stave = words::lib::stave_number_from_feeid(rdh.fee_id());
-                        stats_sender_channel
-                            .send(stats::stats_controller::StatType::LayerStaveSeen {
-                                layer,
-                                stave,
-                            })
-                            .unwrap();
-                        stats_sender_channel
-                            .send(stats::stats_controller::StatType::DataFormat(
-                                rdh.data_format(),
-                            ))
-                            .unwrap();
+                        if let Err(e) = lib::collect_system_specific_stats(
+                            rdh,
+                            &mut system_id,
+                            &stats_sender_channel,
+                        ) {
+                            // Send error and break, stop processing
+                            stats_sender_channel.send(StatType::Fatal(e)).unwrap();
+                            break; // Fatal error
+                        }
                     }
 
                     // Do checks or view
                     if config.check().is_some() {
-                        validators::lib::check_cdp_chunk(
-                            cdp_chunk,
-                            &mut links,
-                            &mut link_process_channels,
-                            &mut validator_thread_handles,
-                            config.clone(),
-                            stats_sender_channel.clone(),
-                        );
+                        validator_dispatcher.dispatch_cdp_chunk(cdp_chunk);
                     } else if config.view().is_some() {
                         if let Err(e) = view::lib::generate_view(
                             config.view().unwrap(),
@@ -207,16 +231,13 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                             &mut its_payload_fsm_cont,
                         ) {
                             stats_sender_channel
-                                .send(stats::stats_controller::StatType::Fatal(e.to_string()))
+                                .send(StatType::Fatal(e.to_string()))
                                 .expect("Couldn't send to StatsController");
                         }
                     }
                 }
-                // Stop all threads
-                link_process_channels.clear();
-                validator_thread_handles.into_iter().for_each(|handle| {
-                    handle.join().expect("Failed to join a validator thread");
-                });
+                // Join all threads the dispatcher spawned
+                validator_dispatcher.join();
             }
         })
         .expect("Failed to spawn checker thread")
@@ -245,7 +266,18 @@ pub fn get_config() -> std::sync::Arc<util::config::Opt> {
 }
 
 /// Exit with [std::process::ExitCode] `SUCCESS`.
-pub fn exit_success() -> std::process::ExitCode {
+fn exit_success() -> std::process::ExitCode {
     log::info!("Exit successful");
     std::process::ExitCode::SUCCESS
+}
+
+fn exit_fatal(
+    stat_send_channel: std::sync::mpsc::Sender<StatType>,
+    error_string: String,
+    exit_code: u8,
+) -> std::process::ExitCode {
+    stat_send_channel
+        .send(StatType::Fatal(error_string))
+        .unwrap();
+    std::process::ExitCode::from(exit_code)
 }

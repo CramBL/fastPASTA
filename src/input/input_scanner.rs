@@ -6,7 +6,7 @@ use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
 use crate::util::lib::Config;
 use crate::words::lib::RDH;
-use crate::{stats::stats_controller::StatType, words::rdh::Rdh0};
+use crate::{stats::lib::StatType, words::rdh::Rdh0};
 use std::io::Read;
 
 /// Trait for a scanner that reads CDPs from a file or stdin

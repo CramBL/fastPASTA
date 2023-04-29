@@ -129,7 +129,7 @@ impl ItsPayloadFsmContinuous {
     /// Returns the type of the word wrapped in an OK if the ID was identified.
     /// If the ID could not be determined, a best guess is returned wrapped in an error type to be handled by the caller
     pub fn advance(&mut self, gbt_word: &[u8]) -> Result<PayloadWord, AmbigiousError> {
-        use crate::words::status_words;
+        use crate::words::its::status_words;
         use ITS_Payload_Continuous::Variant::*;
         use ITS_Payload_Continuous::*;
 

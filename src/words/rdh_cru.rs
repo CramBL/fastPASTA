@@ -395,6 +395,30 @@ mod tests {
     }
 
     #[test]
+    fn test_correct_rdh_fields() {
+        let rdh = CORRECT_RDH_CRU_V7;
+
+        assert_eq!(rdh.rdh0.header_id, 0x7);
+        assert_eq!(rdh.rdh0.header_size, 0x40);
+        assert_eq!(rdh.rdh0.fee_id, FeeId(0x502A));
+        assert_eq!(rdh.rdh0.priority_bit, 0x0);
+        assert_eq!(rdh.rdh0.system_id, 0x20);
+        let pages_counter = rdh.rdh2.pages_counter;
+        assert_eq!(pages_counter, 0x0);
+        assert_eq!(rdh.rdh2().stop_bit, 0x0);
+        let trigger_type = rdh.rdh2.trigger_type;
+        assert_eq!(trigger_type, 0x00006a03);
+        assert_eq!(rdh.reserved0(), 0);
+        assert_eq!(rdh.payload_size(), 0x13E0 - 0x40); // 0x40 is the header size
+        assert_eq!(rdh.trigger_type(), 0x00006a03);
+        assert_eq!(rdh.pages_counter(), 0);
+        assert_eq!(rdh.fee_id(), 0x502A);
+        assert_eq!(rdh.version(), 7);
+        assert_eq!(rdh.cru_id(), 0x0018);
+        assert_eq!(rdh.packet_counter(), 0);
+    }
+
+    #[test]
     fn test_rdh_v6() {
         let rdhv6 = RdhCRU::<V6> {
             rdh0: Rdh0 {
@@ -440,7 +464,7 @@ mod tests {
         let rdh_v7 = RdhCRU::<V7> {
             rdh0: rdh_0,
             offset_new_packet: 0,
-            memory_size: 0,
+            memory_size: 0x40,
             link_id: 0,
             packet_counter: 0,
             cruid_dw: CruidDw(0),
@@ -465,6 +489,9 @@ mod tests {
             version: PhantomData,
         };
         assert_eq!(rdh_v7.data_format(), 2);
+        assert_eq!(rdh_v7.cru_id(), 0);
+        assert_eq!(rdh_v7.reserved0(), 0);
+        assert_eq!(rdh_v7.payload_size(), 0);
     }
 
     #[test]

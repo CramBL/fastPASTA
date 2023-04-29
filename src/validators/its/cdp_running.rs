@@ -1,19 +1,22 @@
 //! Checks the CDP payload. Uses the [ItsPayloadFsmContinuous] state machine to determine which words to expect.
 //!
 //! [CdpRunningValidator] delegates sanity checks to word specific sanity checkers.
-use super::data_words::DATA_WORD_SANITY_CHECKER;
-use crate::util::lib::Config;
-use crate::validators::its_payload_fsm_cont::ItsPayloadFsmContinuous;
-use crate::validators::its_payload_fsm_cont::PayloadWord;
-use crate::words::data_words::{
-    ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane,
+
+use super::{
+    data_words::DATA_WORD_SANITY_CHECKER,
+    its_payload_fsm_cont::{self, ItsPayloadFsmContinuous, PayloadWord},
+    status_words::STATUS_WORD_SANITY_CHECKER,
 };
-use crate::words::lib::RDH;
-use crate::words::status_words::{is_lane_active, Cdw};
 use crate::{
-    stats::stats_controller::StatType,
-    validators::status_words::STATUS_WORD_SANITY_CHECKER,
-    words::status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt},
+    stats::lib::StatType,
+    util::{self, lib::Config},
+    words::{
+        its::{
+            data_words::{ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane},
+            status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
+        },
+        lib::RDH,
+    },
 };
 
 enum StatusWordKind<'a> {
@@ -23,27 +26,10 @@ enum StatusWordKind<'a> {
     Ddw0(&'a [u8]),
 }
 
-struct CdpRunningLocalConfig {
-    running_checks: bool,
-}
-
-impl CdpRunningLocalConfig {
-    fn new(config: &impl crate::util::lib::Checks) -> Self {
-        use crate::util::config::Check;
-        match config.check() {
-            Some(Check::All(_)) => Self {
-                running_checks: true,
-            },
-            _ => Self {
-                running_checks: false,
-            },
-        }
-    }
-}
-
 /// Checks the CDP payload and reports any errors.
-pub struct CdpRunningValidator<T: RDH> {
-    config: CdpRunningLocalConfig,
+pub struct CdpRunningValidator<T: RDH, C: Config> {
+    config: std::sync::Arc<C>,
+    running_checks: bool,
     its_state_machine: ItsPayloadFsmContinuous,
     current_rdh: Option<T>,
     current_ihw: Option<Ihw>,
@@ -59,34 +45,15 @@ pub struct CdpRunningValidator<T: RDH> {
     is_new_data: bool, // Flag used to indicate start of new CDP payload where a CDW is valid
 }
 
-impl<T: RDH> Default for CdpRunningValidator<T> {
-    fn default() -> Self {
-        Self {
-            config: CdpRunningLocalConfig {
-                running_checks: false,
-            },
-            its_state_machine: ItsPayloadFsmContinuous::default(),
-            current_rdh: None,
-            current_ihw: None,
-            current_tdh: None,
-            previous_tdh: None,
-            current_tdt: None,
-            current_ddw0: None,
-            previous_cdw: None,
-            gbt_word_counter: 0,
-            stats_send_ch: std::sync::mpsc::channel().0,
-            payload_mem_pos: 0,
-            gbt_word_padding_size_bytes: 0,
-            is_new_data: false,
-        }
-    }
-}
-
-impl<T: RDH> CdpRunningValidator<T> {
+impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
     /// Creates a new [CdpRunningValidator] from a [Config] and a [StatType] producer channel.
-    pub fn new(config: &impl Config, stats_send_ch: std::sync::mpsc::Sender<StatType>) -> Self {
+    pub fn new(
+        config: std::sync::Arc<C>,
+        stats_send_ch: std::sync::mpsc::Sender<StatType>,
+    ) -> Self {
         Self {
-            config: CdpRunningLocalConfig::new(config),
+            config: config.clone(),
+            running_checks: matches!(config.check(), Some(util::config::Check::All(_))),
             its_state_machine: ItsPayloadFsmContinuous::default(),
             current_rdh: None,
             current_ihw: None,
@@ -105,8 +72,8 @@ impl<T: RDH> CdpRunningValidator<T> {
 
     // For testing configs
     #[allow(dead_code)]
-    fn set_config(&mut self, config: &impl crate::util::lib::Checks) {
-        self.config = CdpRunningLocalConfig::new(config);
+    fn set_config(&mut self, config: C) {
+        self.config = std::sync::Arc::new(config);
     }
 
     /// Helper function to format and report an error
@@ -201,18 +168,18 @@ impl<T: RDH> CdpRunningValidator<T> {
             },
 
             Err(ambigious_word) => match ambigious_word {
-                crate::validators::its_payload_fsm_cont::AmbigiousError::TDH_or_DDW0 => {
+                its_payload_fsm_cont::AmbigiousError::TDH_or_DDW0 => {
                     self.report_error(
                     "[E99] Unrecognized ID in ITS payload, could be TDH/DDW0 based on current state, attempting to parse as TDH",
                     gbt_word,
                 );
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
                 }
-                crate::validators::its_payload_fsm_cont::AmbigiousError::DW_or_TDT_CDW => {
+                its_payload_fsm_cont::AmbigiousError::DW_or_TDT_CDW => {
                     self.report_error("[E99] Unrecognized ID in ITS payload, could be Data Word/TDT/CDW based on current state, attempting to parse as Data Word", gbt_word);
                     self.process_data_word(gbt_word);
                 }
-                crate::validators::its_payload_fsm_cont::AmbigiousError::DDW0_or_TDH_IHW => {
+                its_payload_fsm_cont::AmbigiousError::DDW0_or_TDH_IHW => {
                     self.report_error("[E99] Unrecognized ID in ITS payload, could be DDW0/TDH/IHW based on current state, attempting to parse as DDW0", gbt_word);
                     self.process_status_word(StatusWordKind::Ddw0(gbt_word));
                 }
@@ -309,7 +276,7 @@ impl<T: RDH> CdpRunningValidator<T> {
 
     #[inline]
     fn process_ib_data_word(&mut self, ib_slice: &[u8]) {
-        if !self.config.running_checks {
+        if !self.running_checks {
             return;
         }
         let lane_id = ib_slice[9] & 0x1F;
@@ -325,7 +292,7 @@ impl<T: RDH> CdpRunningValidator<T> {
 
     #[inline]
     fn process_ob_data_word(&mut self, ob_slice: &[u8]) {
-        if !self.config.running_checks {
+        if !self.running_checks {
             return;
         }
         let lane_id = ob_data_word_id_to_lane(ob_slice[9]);
@@ -350,7 +317,7 @@ impl<T: RDH> CdpRunningValidator<T> {
 
     #[inline]
     fn process_cdw(&mut self, cdw_slice: &[u8]) {
-        if !self.config.running_checks {
+        if !self.running_checks {
             return;
         }
         let cdw = Cdw::load(&mut <&[u8]>::clone(&cdw_slice)).unwrap();
@@ -372,7 +339,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     /// Checks TDH trigger and continuation following a TDT packet_done = 1
     #[inline]
     fn check_tdh_by_was_tdt_packet_done_true(&mut self, tdh_slice: &[u8]) {
-        if !self.config.running_checks {
+        if !self.running_checks {
             return;
         }
         if self.current_tdh.as_ref().unwrap().internal_trigger() != 1 {
@@ -397,7 +364,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     /// Checks RDH stop_bit and pages_counter when a DDW0 is observed
     #[inline]
     fn check_rdh_at_ddw0(&mut self, ddw0_slice: &[u8]) {
-        if !self.config.running_checks {
+        if !self.running_checks {
             return;
         }
         if self.current_rdh.as_ref().unwrap().stop_bit() != 1 {
@@ -410,7 +377,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     /// Checks RDH stop_bit and pages_counter when an initial IHW is observed (not IHW during continuation)
     #[inline]
     fn check_rdh_at_initial_ihw(&mut self, ihw_slice: &[u8]) {
-        if !self.config.running_checks {
+        if !self.running_checks {
             return;
         }
         if self.current_rdh.as_ref().unwrap().stop_bit() != 0 {
@@ -421,7 +388,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     /// Checks TDH when continuation is expected (Previous TDT packet_done = 0)
     #[inline]
     fn check_tdh_continuation(&mut self, tdh_slice: &[u8]) {
-        if !self.config.running_checks {
+        if !self.running_checks {
             return;
         }
         if self.current_tdh.as_ref().unwrap().continuation() != 1 {
@@ -444,7 +411,7 @@ impl<T: RDH> CdpRunningValidator<T> {
     /// Checks TDH continuation, orbit when the TDH immediately follows an IHW
     #[inline]
     fn check_tdh_no_continuation(&mut self, tdh_slice: &[u8]) {
-        if !self.config.running_checks {
+        if !self.running_checks {
             return;
         }
         let current_rdh = self.current_rdh.as_ref().expect("RDH should be set");
@@ -493,11 +460,14 @@ impl<T: RDH> CdpRunningValidator<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::util::lib::test_util::MockConfig;
     use crate::{
+        util::config::Check,
         util::config::Target,
-        util::lib::MockChecks,
         words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7},
     };
+    use std::sync::Arc;
+
     #[test]
     fn test_validate_ihw() {
         const VALID_ID: u8 = 0xE0;
@@ -507,8 +477,9 @@ mod tests {
         ];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::<RdhCRU<V7>>::default();
-        validator.stats_send_ch = send;
+        let mock_config = MockConfig::default();
+        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
+            CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos);
@@ -526,8 +497,9 @@ mod tests {
         ];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::<RdhCRU<V7>>::default();
-        validator.stats_send_ch = send;
+        let mock_config = MockConfig::default();
+        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
+            CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0x0;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos);
@@ -552,8 +524,9 @@ mod tests {
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::<RdhCRU<V7>>::default();
-        validator.stats_send_ch = send;
+        let mock_config = MockConfig::default();
+        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
+            CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
@@ -579,8 +552,9 @@ mod tests {
         let raw_data_tdt_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF2];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut validator = CdpRunningValidator::<RdhCRU<V7>>::default();
-        validator.stats_send_ch = send;
+        let mock_config = MockConfig::default();
+        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
+            CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
@@ -618,14 +592,11 @@ mod tests {
         let raw_data_tdt_next_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF3];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut mock_cfg = MockChecks::new();
-        mock_cfg
-            .expect_check()
-            .times(1)
-            .returning(|| Option::Some(crate::util::config::Check::All(Target { system: None })));
-        let mut validator = CdpRunningValidator::<RdhCRU<V7>>::default();
-        validator.set_config(&mock_cfg);
-        validator.stats_send_ch = send;
+        let mut mock_config = MockConfig::default();
+        mock_config.check = Some(Check::All(Target { system: None }));
+
+        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
+            CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2

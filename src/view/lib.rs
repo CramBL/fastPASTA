@@ -1,14 +1,15 @@
 //! Contains the entry point and dispatcher function [generate_view()] for generating data views.
-use crate::validators::its_payload_fsm_cont::ItsPayloadFsmContinuous;
-use crate::words::lib::RDH;
-use crate::{input, stats::stats_controller, util};
+use crate::{
+    input, stats::lib::StatType, util,
+    validators::its::its_payload_fsm_cont::ItsPayloadFsmContinuous, words::lib::RDH,
+};
 
 /// Calls a specific view generator based on the [View][util::config::View] type.
 #[inline]
 pub fn generate_view<T: RDH>(
     view: crate::util::config::View,
     cdp_chunk: input::data_wrapper::CdpChunk<T>,
-    send_stats_ch: &std::sync::mpsc::Sender<stats_controller::StatType>,
+    send_stats_ch: &std::sync::mpsc::Sender<StatType>,
     its_payload_fsm_cont: &mut ItsPayloadFsmContinuous,
 ) -> Result<(), std::io::Error> {
     match view {

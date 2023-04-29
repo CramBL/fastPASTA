@@ -236,5 +236,4 @@ build-release-latest:
     - echo "Running release job"
     - echo "Testing release build profile"
     - cargo build -r --verbose
-    - echo "Publishing the new version to crates.io"
-    - cargo publish
+    - echo "Publishing has to be done manually :)"
