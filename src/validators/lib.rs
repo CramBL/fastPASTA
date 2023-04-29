@@ -1,58 +1,85 @@
 //! Contains the [check_cdp_chunk] function, which iterates over and comnsumes a [`data_wrapper::CdpChunk<T>`], dispatching the data to the correct thread based on the Link ID running an instance of [LinkValidator].
 use super::link_validator::LinkValidator;
-use crate::{input::data_wrapper, util, words::lib::RDH};
+use crate::{input::data_wrapper, stats::stats_controller::StatType, util, words::lib::RDH};
 type CdpTuple<T> = (T, Vec<u8>, u64);
-/// Iterates over and consumes a [`data_wrapper::CdpChunk<T>`], dispatching the data to the correct thread running an instance of [LinkValidator].
-///
-/// If a link validator thread does not exist for the link id of the current rdh, a new one is spawned
-///
-/// Arguments:
-/// * `cdp_chunk` - The cdp chunk to be processed
-/// * `links` - A vector of link ids that have been seen so far
-/// * `link_process_channels` - A vector of producer channels to send data to the link validator threads
-/// * `validator_thread_handles` - A vector of handles to the link validator threads
-/// * `config` - The config object
-/// * `stats_sender_channel` - The producer channel to send stats to the stats controller
-pub fn check_cdp_chunk<T: RDH + 'static>(
-    cdp_chunk: data_wrapper::CdpChunk<T>,
-    links: &mut Vec<u8>,
-    link_process_channels: &mut Vec<crossbeam_channel::Sender<CdpTuple<T>>>,
-    validator_thread_handles: &mut Vec<std::thread::JoinHandle<()>>,
-    config: std::sync::Arc<impl util::lib::Config + 'static>,
-    stats_sender_channel: std::sync::mpsc::Sender<crate::stats::stats_controller::StatType>,
-) {
-    for (rdh, data, mem_pos) in cdp_chunk.into_iter() {
-        if let Some(link_index) = links.iter().position(|&x| x == rdh.link_id()) {
-            link_process_channels
-                .get(link_index)
-                .unwrap()
-                .send((rdh, data, mem_pos))
-                .unwrap();
-        } else {
-            links.push(rdh.link_id());
-            // Create a new link validator thread
-            let (mut link_validator, send_channel) =
-                LinkValidator::new(&*config.clone(), stats_sender_channel.clone());
-            // Add the send channel to the new link validator
-            link_process_channels.push(send_channel);
 
-            // Spawn a thread where the newly created link validator will run
-            validator_thread_handles.push(
-                std::thread::Builder::new()
-                    .name(format!("Link {} Validator", rdh.link_id()))
-                    .spawn({
-                        move || {
-                            link_validator.run();
-                        }
-                    })
-                    .expect("Failed to spawn link validator thread"),
-            );
-            link_process_channels
-                .last()
-                .unwrap()
-                .send((rdh, data, mem_pos))
-                .unwrap();
+/// The [ValidatorDispatcher] is responsible for creating and managing the [LinkValidator] threads.
+///
+/// It receives a [`data_wrapper::CdpChunk<T>`] and dispatches the data to the correct thread running an instance of [LinkValidator].
+pub struct ValidatorDispatcher<T: RDH, C: util::lib::Config> {
+    links: Vec<u8>,
+    link_process_channels: Vec<crossbeam_channel::Sender<CdpTuple<T>>>,
+    validator_thread_handles: Vec<std::thread::JoinHandle<()>>,
+    stats_sender: std::sync::mpsc::Sender<StatType>,
+    global_config: std::sync::Arc<C>,
+}
+
+impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C> {
+    /// Create a new ValidatorDispatcher from a Config and a stats sender channel
+    pub fn new(
+        global_config: std::sync::Arc<C>,
+        stats_sender: std::sync::mpsc::Sender<StatType>,
+    ) -> Self {
+        Self {
+            links: Vec::new(),
+            link_process_channels: Vec::new(),
+            validator_thread_handles: Vec::new(),
+            stats_sender,
+            global_config,
         }
+    }
+
+    /// Iterates over and consumes a [`data_wrapper::CdpChunk<T>`], dispatching the data to the correct thread running an instance of [LinkValidator].
+    ///
+    /// If a link validator thread does not exist for the link id of the current rdh, a new one is spawned
+    pub fn dispatch_cdp_chunk(&mut self, cdp_chunk: data_wrapper::CdpChunk<T>) {
+        cdp_chunk.into_iter().for_each(|(rdh, data, mem_pos)| {
+            if let Some(link_index) = self.links.iter().position(|&link| link == rdh.link_id()) {
+                self.link_process_channels
+                    .get(link_index)
+                    .unwrap()
+                    .send((rdh, data, mem_pos))
+                    .unwrap();
+            } else {
+                // If the link wasn't found, add it to the list of links
+                self.links.push(rdh.link_id());
+
+                // Create a new link validator thread to handle the new link
+                let (mut link_validator, send_channel) = LinkValidator::<T, C>::new(
+                    self.global_config.clone(),
+                    self.stats_sender.clone(),
+                );
+
+                // Add the send channel to the new link validator
+                self.link_process_channels.push(send_channel);
+
+                // Spawn a thread where the newly created link validator will run
+                self.validator_thread_handles.push(
+                    std::thread::Builder::new()
+                        .name(format!("Link {} Validator", rdh.link_id()))
+                        .spawn({
+                            move || {
+                                link_validator.run();
+                            }
+                        })
+                        .expect("Failed to spawn link validator thread"),
+                );
+                // Send the data through the newly created link validator's channel, by taking the last element of the vector
+                self.link_process_channels
+                    .last()
+                    .unwrap()
+                    .send((rdh, data, mem_pos))
+                    .unwrap();
+            }
+        });
+    }
+
+    /// Disconnects all the link validator's receiver channels and joins all link validator threads
+    pub fn join(&mut self) {
+        self.link_process_channels.clear();
+        self.validator_thread_handles.drain(..).for_each(|handle| {
+            handle.join().expect("Failed to join a validator thread");
+        });
     }
 }
 
@@ -150,7 +177,33 @@ fn chunkify_payload<'a>(
 
 #[cfg(test)]
 mod tests {
+    use crate::input::data_wrapper::CdpChunk;
+    use crate::words::rdh_cru::{RdhCRU, V7};
+
+    use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
+
     use super::*;
+
+    #[test]
+    fn test_dispacter() {
+        let config = <util::config::Opt as structopt::StructOpt>::from_iter(&[
+            "fastpasta",
+            "check",
+            "sanity",
+        ]);
+
+        let mut disp: ValidatorDispatcher<RdhCRU<V7>, util::config::Opt> =
+            ValidatorDispatcher::new(std::sync::Arc::new(config), std::sync::mpsc::channel().0);
+
+        let cdp_tuple: CdpTuple<RdhCRU<V7>> = (CORRECT_RDH_CRU_V7, vec![0; 100], 0);
+
+        let mut cdp_chunk = CdpChunk::new();
+        cdp_chunk.push_tuple(cdp_tuple);
+
+        disp.dispatch_cdp_chunk(cdp_chunk);
+
+        disp.join();
+    }
 
     // Test values
     const START_PAYLOAD_FLAVOR_0: [u8; 32] = [

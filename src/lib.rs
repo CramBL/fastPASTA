@@ -147,12 +147,11 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
     analysis_thread
         .spawn({
             move || {
-                type CdpTuple<T> = (T, Vec<u8>, u64);
                 // Setup for check case
-                let mut links: Vec<u8> = Vec::new();
-                let mut link_process_channels: Vec<crossbeam_channel::Sender<CdpTuple<T>>> =
-                    Vec::new();
-                let mut validator_thread_handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
+                let mut validator_dispatcher = validators::lib::ValidatorDispatcher::new(
+                    config.clone(),
+                    stats_sender_channel.clone(),
+                );
                 // Setup for view case
                 let mut its_payload_fsm_cont =
                     validators::its_payload_fsm_cont::ItsPayloadFsmContinuous::default();
@@ -191,14 +190,7 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
 
                     // Do checks or view
                     if config.check().is_some() {
-                        validators::lib::check_cdp_chunk(
-                            cdp_chunk,
-                            &mut links,
-                            &mut link_process_channels,
-                            &mut validator_thread_handles,
-                            config.clone(),
-                            stats_sender_channel.clone(),
-                        );
+                        validator_dispatcher.dispatch_cdp_chunk(cdp_chunk);
                     } else if config.view().is_some() {
                         if let Err(e) = view::lib::generate_view(
                             config.view().unwrap(),
@@ -212,11 +204,8 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                         }
                     }
                 }
-                // Stop all threads
-                link_process_channels.clear();
-                validator_thread_handles.into_iter().for_each(|handle| {
-                    handle.join().expect("Failed to join a validator thread");
-                });
+                // Join all threads the dispatcher spawned
+                validator_dispatcher.join();
             }
         })
         .expect("Failed to spawn checker thread")
