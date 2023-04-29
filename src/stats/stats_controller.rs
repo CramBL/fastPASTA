@@ -46,7 +46,7 @@ pub enum StatType {
 }
 
 /// The StatsController receives stats and builds a summary report that is printed at the end of execution.
-pub struct StatsController {
+pub struct StatsController<C: Config> {
     /// Total RDHs seen.
     pub rdhs_seen: u64,
     /// Total RDHs filtered.
@@ -57,6 +57,7 @@ pub struct StatsController {
     pub links_observed: Vec<u8>,
     /// Time from [StatsController] is instantiated, to all data processing threads disconnected their [StatType] producer channel.
     pub processing_time: std::time::Instant,
+    config: std::sync::Arc<C>,
     total_errors: AtomicU32,
     non_atomic_total_errors: u64,
     max_tolerate_errors: u32,
@@ -68,18 +69,16 @@ pub struct StatsController {
     // This is because the event loop breaks when all sender channels are dropped, and if the StatsController keeps a reference to the channel, it will cause a deadlock.
     send_stats_channel: Option<std::sync::mpsc::Sender<StatType>>,
     end_processing_flag: Arc<AtomicBool>,
-    link_to_filter: Option<u8>,
     rdh_version: u8,
     data_formats_observed: Vec<u8>,
     hbfs_seen: u32,
     fatal_error: Option<String>,
     layers_staves_seen: Vec<(u8, u8)>,
-    view_active: bool,
     run_trigger_type: (u32, String),
 }
-impl StatsController {
+impl<C: Config> StatsController<C> {
     /// Creates a new StatsController from a [Config], a [std::sync::mpsc::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
-    pub fn new(config: &impl Config) -> Self {
+    pub fn new(global_config: std::sync::Arc<C>) -> Self {
         let (send_stats_channel, recv_stats_channel): (
             std::sync::mpsc::Sender<StatType>,
             std::sync::mpsc::Receiver<StatType>,
@@ -88,21 +87,20 @@ impl StatsController {
             rdhs_seen: 0,
             rdhs_filtered: 0,
             payload_size: 0,
+            config: global_config.clone(),
             links_observed: Vec::new(),
             processing_time: std::time::Instant::now(),
             total_errors: AtomicU32::new(0),
-            max_tolerate_errors: config.max_tolerate_errors(),
             non_atomic_total_errors: 0,
+            max_tolerate_errors: global_config.max_tolerate_errors(),
             recv_stats_channel,
             send_stats_channel: Some(send_stats_channel),
             end_processing_flag: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
-            link_to_filter: config.filter_link(),
             rdh_version: 0,
             data_formats_observed: Vec::new(),
             hbfs_seen: 0,
             fatal_error: None,
             layers_staves_seen: Vec::new(),
-            view_active: config.view().is_some(),
             run_trigger_type: (0, String::from("")),
         }
     }
@@ -132,7 +130,7 @@ impl StatsController {
             self.update(stats_update);
         }
         // After processing all stats, print the summary report or don't if in view mode
-        if self.view_active {
+        if self.config.view().is_some() {
             // Avoid printing the report in the middle of a view
             log::info!("View active, skipping report summary printout.")
         } else {
@@ -255,7 +253,7 @@ impl StatsController {
             None,
         ));
 
-        if self.link_to_filter.is_none() {
+        if self.config.filter_link().is_none() {
             // If no filtering, the HBFs seen is from the total RDHs
             report.add_stat(StatSummary::new(
                 "Total HBFs".to_string(),
@@ -318,8 +316,10 @@ impl StatsController {
             None,
         ));
 
-        let filtered_links =
-            summerize_filtered_links(self.link_to_filter.unwrap(), self.links_observed.clone());
+        let filtered_links = summerize_filtered_links(
+            self.config.filter_link().unwrap(),
+            self.links_observed.clone(),
+        );
         filtered_stats.push(filtered_links);
 
         filtered_stats

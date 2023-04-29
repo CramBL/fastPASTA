@@ -178,7 +178,7 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                             config.check().and_then(|check| check.target()),
                             Some(util::config::System::ITS)
                         ) {
-                            collect_its_stats(rdh, &stats_sender_channel);
+                            stats::lib::collect_its_stats(rdh, &stats_sender_channel);
                         }
                     }
 
@@ -231,18 +231,4 @@ pub fn get_config() -> std::sync::Arc<util::config::Opt> {
 pub fn exit_success() -> std::process::ExitCode {
     log::info!("Exit successful");
     std::process::ExitCode::SUCCESS
-}
-
-fn collect_its_stats<T: words::lib::RDH>(
-    rdh: &T,
-    stats_sender_channel: &std::sync::mpsc::Sender<stats_controller::StatType>,
-) {
-    let layer = words::its::layer_from_feeid(rdh.fee_id());
-    let stave = words::its::stave_number_from_feeid(rdh.fee_id());
-    stats_sender_channel
-        .send(stats_controller::StatType::LayerStaveSeen { layer, stave })
-        .unwrap();
-    stats_sender_channel
-        .send(stats_controller::StatType::DataFormat(rdh.data_format()))
-        .unwrap();
 }
