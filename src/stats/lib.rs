@@ -26,7 +26,7 @@ pub fn init_stats_controller<C: Config + 'static>(
 // Stat collection functionality
 
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 /// Enums to represent each subsystem in the ALICE DAQ from the System ID.
 pub enum SystemId {
     // ignore missing docs
@@ -202,4 +202,49 @@ fn collect_its_stats<T: words::lib::RDH>(
     stats_sender_channel
         .send(StatType::DataFormat(rdh.data_format()))
         .unwrap();
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::words::lib::RDH;
+
+    use super::*;
+
+    #[test]
+    fn test_collect_its_stats() {
+        let (stats_sender, stats_receiver) = std::sync::mpsc::channel::<StatType>();
+        let rdh = crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
+
+        let expect_layer = crate::words::its::layer_from_feeid(rdh.fee_id());
+        let expect_stave = crate::words::its::stave_number_from_feeid(rdh.fee_id());
+
+        collect_its_stats(&rdh, &stats_sender);
+
+        let stats = stats_receiver.recv().unwrap();
+
+        match stats {
+            StatType::LayerStaveSeen { layer, stave } => {
+                assert_eq!(layer, expect_layer);
+                assert_eq!(stave, expect_stave);
+            }
+            _ => panic!("Wrong stat type received"),
+        }
+    }
+
+    #[test]
+    fn test_collect_system_specific_stats() {
+        let (stats_sender, stats_receiver) = std::sync::mpsc::channel::<StatType>();
+        let mut system_id = None;
+
+        let rdh = crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
+
+        collect_system_specific_stats(&rdh, &mut system_id, &stats_sender).unwrap();
+
+        let stats = stats_receiver.recv().unwrap();
+
+        match stats {
+            StatType::SystemId(id) => assert_eq!(id, SystemId::ITS),
+            _ => panic!("Wrong stat type received"),
+        }
+    }
 }
