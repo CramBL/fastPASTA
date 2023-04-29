@@ -121,10 +121,10 @@ rust-latest-build:
 regression-tests:
   stage: build
   before_script:
-    - ls -l test-regression/
+    - ls -l tests/regression/
   script:
     - cargo build
-    - test-regression/regression_tests.sh
+    - tests/regression/regression_tests.sh
   dependencies:
     - rust-latest-build
 
@@ -157,7 +157,7 @@ test-coverage:
     - cargo test -- --test-threads=1 --nocapture
     - mkdir -p target/coverage
     - ls -l target/coverage
-    - grcov target/coverage --binary-path target/debug -s . --output-types html,cobertura,lcov --branch --ignore-not-existing --ignore '../* --ignore "/*" --ignore "$HOME/.cargo/**" --ignore "*cargo*" -o target/coverage --keep-only 'src/*'
+    - grcov target/coverage --binary-path target/debug -s . --output-types html,cobertura,lcov --branch --ignore-not-existing --ignore '../*' --ignore "/*" --ignore "$HOME/.cargo/**" --ignore "*cargo*" -o target/coverage --keep-only 'src/*'
     - echo "Coverage files generated"
     - ls -l target/coverage
     - lcov --summary coverage.lcov

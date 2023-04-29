@@ -296,7 +296,7 @@ mod tests {
         // Setup Mock Config
         let mut mock_config = MockConfig::default();
         // Set input file from one of the files used for regression testing
-        mock_config.input_file = Some(PathBuf::from("test-regression/test-data/10_rdh.raw"));
+        mock_config.input_file = Some(PathBuf::from("tests/regression/test-data/10_rdh.raw"));
         let mock_config = Arc::new(mock_config);
         // Setup a reader
         let reader = init_reader(&*mock_config).unwrap();
