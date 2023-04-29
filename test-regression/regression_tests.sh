@@ -37,7 +37,8 @@ failed_results=()
 
 ## Matches the EOF and Exit Successful messages
 ## Needs -v2 to show "INFO -" prints
-re_eof="((INFO -).*((EOF)|(Exit Successful))*)"
+re_eof="(INFO -).*EOF"
+re_exit_success="(INFO -).*Exit success"
 ## Matches the RDHs in the `view rdh` command, by going from the `:` in the memory offset to the version, header size, and data format.
 re_rdhs_in_rdh_view=": .* (7|6) .* 64 .* (0|2)"
 
@@ -65,7 +66,9 @@ tests_array=(
 test_1_0=(
     "readout.superpage.1.raw check sanity -v2"
     "${re_eof}"
-    2
+    1
+    "${re_exit_success}"
+    1
 )
 ## Test 1_1: `check sanity` - Check the right data format is detected
 test_1_1=(
@@ -136,7 +139,9 @@ test_1_multi_1=(
 test_2_0=(
     "10_rdh.raw check sanity -v2"
     "${re_eof}"
-    2
+    1
+    "${re_exit_success}"
+    1
 )
 ## Test 2_multi_0: `check sanity`
 test_2_multi_0=(
@@ -198,7 +203,9 @@ test_2_multi_1=(
 test_3_0=(
     "err_not_hbf.raw check sanity -v2"
     "${re_eof}"
-    2
+    1
+    "${re_exit_success}"
+    1
 )
 ## Test 3_1: `check all` - Check the right number of errors are detected
 test_3_1=(
@@ -286,7 +293,9 @@ test_bad_cdp_structure=(
     "1_hbf_bad_cdp_structure.raw check sanity its -v2"
     # Check the file is parsed successfully
     "${re_eof}"
-    2
+    1
+    "${re_exit_success}"
+    1
     # Check the error is not detected as this is just a sanity check.
     "error -"
     0
@@ -323,7 +332,9 @@ test_bad_its_payload=(
     "1_hbf_bad_its_payload.raw check sanity its -v2"
     # Check the file is parsed successfully
     "${re_eof}"
-    2
+    1
+    "${re_exit_success}"
+    1
     # Check the error with 2 IHWs in a row is detected
     "error - 0x50: \[E..\].*ID"
     1
@@ -351,7 +362,9 @@ test_thrs_cdw_3_links=(
     "thrs_cdw_links.raw check sanity its -v2"
     # Check the file is parsed successfully
     "${re_eof}"
-    2
+    1
+    "${re_exit_success}"
+    1
     # Confirm no error count
     "Total errors.*0"
     1
