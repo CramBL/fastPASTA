@@ -150,3 +150,59 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
             .unwrap();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::util::config::Target;
+    use crate::util::lib::test_util::MockConfig;
+    use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
+
+    #[test]
+    fn test_run_link_validator() {
+        let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
+        let mut mock_config = MockConfig::default();
+        mock_config.check = Some(Check::Sanity(Target { system: None }));
+
+        let (mut link_validator, _cdp_tuple_send_ch): (
+            LinkValidator<RdhCRU<V7>, MockConfig>,
+            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
+        ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
+
+        assert_eq!(link_validator.running_checks, false);
+
+        // Spawn the link validator in a thread
+        let _handle = std::thread::spawn(move || {
+            link_validator.run();
+        });
+
+        // Send a CDP to the link validator
+        let cdp = (
+            CORRECT_RDH_CRU_V7,
+            vec![0x00, 0x01, 0x02],
+            0x0000_0000_0000_0000,
+        );
+        _cdp_tuple_send_ch.send(cdp).unwrap();
+
+        // Wait for the link validator to process the CDP
+        std::thread::sleep(std::time::Duration::from_millis(100));
+
+        // Check that the link validator has not sent any errors
+        let stats_msg = rcv_stats_ch.try_recv();
+        assert!(stats_msg.is_err());
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_init_link_validator_no_checks_enabled() {
+        // Should panic because no checks are enabled in the config, doesn't make sense to run the link validator
+        let (send_stats_ch, _) = std::sync::mpsc::channel();
+        let mut mock_config = MockConfig::default();
+        mock_config.check = None; // No checks enabled in the config
+
+        let (mut _link_validator, _cdp_tuple_send_ch): (
+            LinkValidator<RdhCRU<V7>, MockConfig>,
+            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
+        ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
+    }
+}
