@@ -1,6 +1,6 @@
 //! Definitions for status words: [IHW][Ihw], [TDH][Tdh], [TDT][Tdt], [DDW0][Ddw0] & [CDW][Cdw].
 
-use super::lib::ByteSlice;
+use super::super::lib::ByteSlice;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::fmt::{Debug, Display};
 

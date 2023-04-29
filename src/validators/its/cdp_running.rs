@@ -11,9 +11,11 @@ use crate::{
     stats::stats_controller::StatType,
     util::{self, lib::Config},
     words::{
-        data_words::{ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane},
+        its::{
+            data_words::{ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane},
+            status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
+        },
         lib::RDH,
-        status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
     },
 };
 

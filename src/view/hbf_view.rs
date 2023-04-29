@@ -122,7 +122,7 @@ fn generate_payload_word_view(
     mem_pos_str: String,
     stdio_lock: &mut std::io::StdoutLock,
 ) -> Result<(), std::io::Error> {
-    use crate::words::status_words::util::*;
+    use crate::words::its::status_words::util::*;
 
     let word_slice_str = format_word_slice(gbt_word_slice);
     match word_type {

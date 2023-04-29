@@ -1,5 +1,5 @@
 //! Performs sanity checks on data words
-use crate::words::data_words::*;
+use crate::words::its::data_words::*;
 use std::fmt::Write;
 
 /// Convenience const struct to avoid having to instantiate the struct elsewhere

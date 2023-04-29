@@ -179,7 +179,7 @@ impl FeeIdSanityValidator {
             .unwrap();
         }
         // Extract stave_number from 6 LSB [5:0]
-        let stave_number = crate::words::lib::stave_number_from_feeid(fee_id.0);
+        let stave_number = crate::words::its::stave_number_from_feeid(fee_id.0);
         if stave_number < self.stave_number_min_max.0 || stave_number > self.stave_number_min_max.1
         {
             err_cnt += 1;
@@ -187,7 +187,7 @@ impl FeeIdSanityValidator {
         }
 
         // Extract layer from 3 bits [14:12]
-        let layer = crate::words::lib::layer_from_feeid(fee_id.0);
+        let layer = crate::words::its::layer_from_feeid(fee_id.0);
 
         if layer < self.layer_min_max.0 || layer > self.layer_min_max.1 {
             err_cnt += 1;
