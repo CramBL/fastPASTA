@@ -12,38 +12,7 @@ use std::sync::{
     Arc,
 };
 
-/// Possible stats that can be sent to the StatsController.
-pub enum StatType {
-    /// Fatal error, stop processing.
-    Fatal(String),
-    /// Non-fatal error, reported but processing continues.
-    Error(String),
-    /// The first trigger type observed is the type of run the data comes from
-    ///
-    /// Contains the raw value and the string description summarizing the trigger type
-    RunTriggerType((u32, String)),
-    /// Increment the total RDHs seen.
-    RDHsSeen(u8),
-    /// Increment the total RDHs filtered.
-    RDHsFiltered(u8),
-    /// Increment the total payload size.
-    PayloadSize(u32),
-    /// Add a link to the list of links observed.
-    LinksObserved(u8),
-    /// Record the RDH version detected.
-    RdhVersion(u8),
-    /// Record the data format detected.
-    DataFormat(u8),
-    /// Increment the total HBFs seen.
-    HBFsSeen(u32),
-    /// Record a layer/stave combination seen.
-    LayerStaveSeen {
-        /// The layer number.
-        layer: u8,
-        /// The stave number.
-        stave: u8,
-    },
-}
+use super::lib::StatType;
 
 /// The StatsController receives stats and builds a summary report that is printed at the end of execution.
 pub struct StatsController<C: Config> {

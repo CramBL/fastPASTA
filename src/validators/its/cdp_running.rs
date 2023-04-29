@@ -8,7 +8,7 @@ use super::{
     status_words::STATUS_WORD_SANITY_CHECKER,
 };
 use crate::{
-    stats::stats_controller::StatType,
+    stats::lib::StatType,
     util::{self, lib::Config},
     words::{
         its::{

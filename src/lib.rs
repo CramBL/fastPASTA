@@ -47,7 +47,7 @@
 
 use crossbeam_channel::Receiver;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
-use stats::stats_controller;
+use stats::lib::StatType;
 use util::lib::{Config, DataOutputMode};
 use validators::{its::its_payload_fsm_cont::ItsPayloadFsmContinuous, lib::ValidatorDispatcher};
 
@@ -76,7 +76,7 @@ const CHANNEL_CDP_CAPACITY: usize = 100;
 pub fn process<T: words::lib::RDH + 'static>(
     config: std::sync::Arc<impl Config + 'static>,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
-    send_stats_ch: std::sync::mpsc::Sender<stats_controller::StatType>,
+    send_stats_ch: std::sync::mpsc::Sender<StatType>,
     thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
     // 1. Launch reader thread to read data from file or stdin
@@ -140,7 +140,7 @@ pub fn process<T: words::lib::RDH + 'static>(
 fn spawn_analysis<T: words::lib::RDH + 'static>(
     config: std::sync::Arc<impl Config + 'static>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
-    stats_sender_channel: std::sync::mpsc::Sender<stats::stats_controller::StatType>,
+    stats_sender_channel: std::sync::mpsc::Sender<StatType>,
     data_channel: Receiver<input::data_wrapper::CdpChunk<T>>,
 ) -> std::thread::JoinHandle<()> {
     let analysis_thread = std::thread::Builder::new().name("Analysis".to_string());
@@ -167,9 +167,7 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                     // Send HBF seen if stop bit is 1
                     for rdh in cdp_chunk.rdh_slice().iter() {
                         if rdh.stop_bit() == 1 {
-                            stats_sender_channel
-                                .send(stats_controller::StatType::HBFsSeen(1))
-                                .unwrap();
+                            stats_sender_channel.send(StatType::HBFsSeen(1)).unwrap();
                         }
 
                         // Check if the target is ITS and collect ITS specific stats if it is
@@ -193,7 +191,7 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                             &mut its_payload_fsm_cont,
                         ) {
                             stats_sender_channel
-                                .send(stats_controller::StatType::Fatal(e.to_string()))
+                                .send(StatType::Fatal(e.to_string()))
                                 .expect("Couldn't send to StatsController");
                         }
                     }

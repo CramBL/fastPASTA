@@ -1,6 +1,6 @@
 //! Contains the [ValidatorDispatcher], that manages [LinkValidator]s and iterates over and comnsumes a [`data_wrapper::CdpChunk<T>`], dispatching the data to the correct thread based on the Link ID running an instance of [LinkValidator].
 use super::link_validator::LinkValidator;
-use crate::{input::data_wrapper, stats::stats_controller::StatType, util, words::lib::RDH};
+use crate::{input::data_wrapper, stats::lib::StatType, util, words::lib::RDH};
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 /// The [ValidatorDispatcher] is responsible for creating and managing the [LinkValidator] threads.

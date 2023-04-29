@@ -8,7 +8,7 @@ pub(crate) use super::{
     its::cdp_running::CdpRunningValidator, rdh, rdh_running::RdhCruRunningChecker,
 };
 use crate::{
-    stats::stats_controller,
+    stats::{lib::StatType, stats_controller},
     util::{
         config::{self, Check},
         lib::Config,
@@ -28,7 +28,7 @@ pub struct LinkValidator<T: RDH, C: Config> {
     config: std::sync::Arc<C>,
     running_checks: bool,
     /// Producer channel to send stats through.
-    pub send_stats_ch: std::sync::mpsc::Sender<stats_controller::StatType>,
+    pub send_stats_ch: std::sync::mpsc::Sender<StatType>,
     /// Consumer channel to receive data from.
     pub data_rcv_channel: crossbeam_channel::Receiver<CdpTuple<T>>,
     cdp_validator: CdpRunningValidator<T, C>,
@@ -40,10 +40,10 @@ pub struct LinkValidator<T: RDH, C: Config> {
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 impl<T: RDH, C: Config> LinkValidator<T, C> {
-    /// Creates a new [LinkValidator] and the [StatType][crate::stats::stats_controller::StatType] sender channel to it, from a [Config].
+    /// Creates a new [LinkValidator] and the [StatType][crate::stats::StatType] sender channel to it, from a [Config].
     pub fn new(
         global_config: std::sync::Arc<C>,
-        send_stats_ch: std::sync::mpsc::Sender<stats_controller::StatType>,
+        send_stats_ch: std::sync::mpsc::Sender<StatType>,
     ) -> (Self, crossbeam_channel::Sender<CdpTuple<T>>) {
         let rdh_sanity_validator = if let Some(system) = global_config.check().unwrap().target() {
             match system {
@@ -123,9 +123,7 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
         error.push_str(&format!("  current :  {rdh} <--- Error detected here\n"));
 
         self.send_stats_ch
-            .send(stats_controller::StatType::Error(format!(
-                "{rdh_mem_pos:#X}: {error}"
-            )))
+            .send(StatType::Error(format!("{rdh_mem_pos:#X}: {error}")))
             .unwrap();
     }
 
@@ -135,9 +133,7 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
                 self.cdp_validator.check(&gbt_word[..10]); // Take 10 bytes as flavor 0 would have additional 6 bytes of padding
             }),
             Err(e) => {
-                self.send_stats_ch
-                    .send(stats_controller::StatType::Error(e))
-                    .unwrap();
+                self.send_stats_ch.send(StatType::Error(e)).unwrap();
                 self.cdp_validator.reset_fsm();
             }
         }

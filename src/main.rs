@@ -2,7 +2,7 @@ use fastpasta::{
     input::{
         bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner, lib::init_reader,
     },
-    stats::{lib::init_stats_controller, stats_controller},
+    stats::lib::{init_stats_controller, StatType},
     util::lib::Config,
     words::{
         lib::RdhSubWord,
@@ -34,7 +34,7 @@ pub fn main() -> std::process::ExitCode {
         Ok(readable) => init_processing(config, readable, stat_send_channel, stop_flag),
         Err(e) => {
             stat_send_channel
-                .send(stats_controller::StatType::Fatal(e.to_string()))
+                .send(StatType::Fatal(e.to_string()))
                 .unwrap();
             drop(stat_send_channel);
             std::process::ExitCode::from(1)
@@ -48,7 +48,7 @@ pub fn main() -> std::process::ExitCode {
 fn init_processing(
     config: Arc<impl Config + 'static>,
     mut reader: Box<dyn BufferedReaderWrapper>,
-    stat_send_channel: std::sync::mpsc::Sender<stats_controller::StatType>,
+    stat_send_channel: std::sync::mpsc::Sender<StatType>,
     thread_stopper: Arc<AtomicBool>,
 ) -> std::process::ExitCode {
     // Determine RDH version
@@ -57,7 +57,7 @@ fn init_processing(
 
     // Send RDH version to stats thread
     stat_send_channel
-        .send(stats_controller::StatType::RdhVersion(rdh_version))
+        .send(StatType::RdhVersion(rdh_version))
         .unwrap();
 
     // Create input scanner from the already read RDH0 (to avoid seeking back and reading it twice, which would also break with stdin piping)
@@ -94,12 +94,12 @@ fn init_processing(
 }
 
 fn exit_fatal(
-    stat_send_channel: std::sync::mpsc::Sender<stats_controller::StatType>,
+    stat_send_channel: std::sync::mpsc::Sender<StatType>,
     error_string: String,
     exit_code: u8,
 ) -> std::process::ExitCode {
     stat_send_channel
-        .send(stats_controller::StatType::Fatal(error_string))
+        .send(StatType::Fatal(error_string))
         .unwrap();
     std::process::ExitCode::from(exit_code)
 }

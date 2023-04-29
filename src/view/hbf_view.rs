@@ -1,13 +1,17 @@
-use crate::input;
-use crate::stats::stats_controller;
-use crate::validators::its::its_payload_fsm_cont::{self, ItsPayloadFsmContinuous, PayloadWord};
-use crate::validators::lib::preprocess_payload;
-use crate::words::lib::RDH;
+use crate::{
+    input,
+    stats::lib::StatType,
+    validators::{
+        its::its_payload_fsm_cont::{self, ItsPayloadFsmContinuous, PayloadWord},
+        lib::preprocess_payload,
+    },
+    words::lib::RDH,
+};
 use std::io::Write;
 
 pub(crate) fn hbf_view<T: RDH>(
     cdp_chunk: input::data_wrapper::CdpChunk<T>,
-    send_stats_ch: &std::sync::mpsc::Sender<stats_controller::StatType>,
+    send_stats_ch: &std::sync::mpsc::Sender<StatType>,
     its_payload_fsm_cont: &mut ItsPayloadFsmContinuous,
 ) -> Result<(), std::io::Error> {
     let mut stdio_lock = std::io::stdout().lock();
@@ -18,9 +22,7 @@ pub(crate) fn hbf_view<T: RDH>(
         let gbt_word_chunks = match preprocess_payload(&payload, rdh.data_format()) {
             Ok(gbt_word_chunks) => Some(gbt_word_chunks),
             Err(e) => {
-                send_stats_ch
-                    .send(stats_controller::StatType::Error(e))
-                    .unwrap();
+                send_stats_ch.send(StatType::Error(e)).unwrap();
                 its_payload_fsm_cont.reset_fsm();
                 None
             }
