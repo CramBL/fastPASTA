@@ -93,7 +93,7 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
                 config::System::ITS => {
                     self.cdp_validator.set_current_rdh(&rdh, rdh_mem_pos);
                     if !payload.is_empty() {
-                        self.do_payload_checks(&payload, rdh.data_format());
+                        self.do_payload_checks(&payload);
                     }
                 }
             }
@@ -127,8 +127,8 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
             .unwrap();
     }
 
-    fn do_payload_checks(&mut self, payload: &[u8], data_format: u8) {
-        match super::lib::preprocess_payload(payload, data_format) {
+    fn do_payload_checks(&mut self, payload: &[u8]) {
+        match super::lib::preprocess_payload(payload) {
             Ok(gbt_word_chunks) => gbt_word_chunks.for_each(|gbt_word| {
                 self.cdp_validator.check(&gbt_word[..10]); // Take 10 bytes as flavor 0 would have additional 6 bytes of padding
             }),

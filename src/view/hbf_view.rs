@@ -19,7 +19,7 @@ pub(crate) fn hbf_view<T: RDH>(
     for (rdh, payload, rdh_mem_pos) in cdp_chunk.into_iter() {
         print_rdh_hbf_view(&rdh, &rdh_mem_pos, &mut stdio_lock)?;
 
-        let gbt_word_chunks = match preprocess_payload(&payload, rdh.data_format()) {
+        let gbt_word_chunks = match preprocess_payload(&payload) {
             Ok(gbt_word_chunks) => Some(gbt_word_chunks),
             Err(e) => {
                 send_stats_ch.send(StatType::Error(e)).unwrap();

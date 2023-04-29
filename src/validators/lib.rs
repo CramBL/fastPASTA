@@ -95,18 +95,13 @@ impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C>
 ///
 /// Arguments:
 /// * `payload` - The payload to be processed
-/// * `data_format` - The data format of the payload from the RDH, only used to cross check with the detected data format in debug mode
 /// Returns:
 /// * An iterator over the GBT words
-pub fn preprocess_payload(
-    payload: &[u8],
-    data_format: u8,
-) -> Result<impl Iterator<Item = &[u8]>, String> {
+pub fn preprocess_payload(payload: &[u8]) -> Result<impl Iterator<Item = &[u8]>, String> {
     let ff_padding = extract_payload_ff_padding(payload)?;
 
     // Determine if padding is flavor 0 (6 bytes of 0x00 padding following GBT words) or flavor 1 (no padding)
     let detected_data_format = detect_payload_data_format(payload);
-    debug_assert_eq!(data_format, detected_data_format);
 
     let gbt_word_chunks = chunkify_payload(payload, detected_data_format, ff_padding);
     Ok(gbt_word_chunks)
@@ -229,8 +224,8 @@ mod tests {
 
     #[test]
     fn test_preprocess_payload_flavors() {
-        let word_chunk_f0 = preprocess_payload(&START_PAYLOAD_FLAVOR_0, 0).unwrap();
-        let word_chunks_f2 = preprocess_payload(&START_PAYLOAD_FLAVOR_2, 2).unwrap();
+        let word_chunk_f0 = preprocess_payload(&START_PAYLOAD_FLAVOR_0).unwrap();
+        let word_chunks_f2 = preprocess_payload(&START_PAYLOAD_FLAVOR_2).unwrap();
 
         let word_count = word_chunk_f0.count();
         let word_count_f2 = word_chunks_f2.count();
