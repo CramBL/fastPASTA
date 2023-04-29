@@ -4,43 +4,53 @@
 //! The [LinkValidator] is responsible for creating and running all the subvalidators.
 //! It also contains an [AllocRingBuffer] that is used to store the previous two [RDH]s, to be able to include them in error messages.
 
-use crate::{util::config::Check, words::lib::RDH};
+use super::{cdp_running::CdpRunningValidator, rdh, rdh_running::RdhCruRunningChecker};
+use crate::{
+    stats::stats_controller,
+    util::{
+        config::{self, Check},
+        lib::Config,
+    },
+    validators::rdh::RdhCruSanityValidator,
+    words::{
+        lib::RDH,
+        rdh_cru::{RdhCRU, V7},
+    },
+};
 use ringbuffer::{AllocRingBuffer, RingBufferExt, RingBufferWrite};
 
 /// Main validator that handles all checks on a specific link.
 ///
 /// A [LinkValidator] is created for each link that is being checked.
-pub struct LinkValidator<T: RDH, C: crate::util::lib::Config> {
+pub struct LinkValidator<T: RDH, C: Config> {
     config: std::sync::Arc<C>,
     running_checks: bool,
     /// Producer channel to send stats through.
-    pub send_stats_ch: std::sync::mpsc::Sender<crate::stats::stats_controller::StatType>,
+    pub send_stats_ch: std::sync::mpsc::Sender<stats_controller::StatType>,
     /// Consumer channel to receive data from.
     pub data_rcv_channel: crossbeam_channel::Receiver<CdpTuple<T>>,
-    cdp_validator: crate::validators::cdp_running::CdpRunningValidator<T, C>,
-    rdh_running_validator: crate::validators::rdh_running::RdhCruRunningChecker<T>,
-    rdh_sanity_validator: crate::validators::rdh::RdhCruSanityValidator<T>,
+    cdp_validator: CdpRunningValidator<T, C>,
+    rdh_running_validator: RdhCruRunningChecker<T>,
+    rdh_sanity_validator: RdhCruSanityValidator<T>,
     prev_rdhs: AllocRingBuffer<T>,
 }
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
-impl<T: RDH, C: crate::util::lib::Config> LinkValidator<T, C> {
+impl<T: RDH, C: Config> LinkValidator<T, C> {
     /// Creates a new [LinkValidator] and the [StatType][crate::stats::stats_controller::StatType] sender channel to it, from a [Config].
     pub fn new(
         global_config: std::sync::Arc<C>,
-        send_stats_ch: std::sync::mpsc::Sender<crate::stats::stats_controller::StatType>,
+        send_stats_ch: std::sync::mpsc::Sender<stats_controller::StatType>,
     ) -> (Self, crossbeam_channel::Sender<CdpTuple<T>>) {
         let rdh_sanity_validator = if let Some(system) = global_config.check().unwrap().target() {
             match system {
-                crate::util::config::System::ITS => {
-                    crate::validators::rdh::RdhCruSanityValidator::<T>::with_specialization(
-                        super::rdh::SpecializeChecks::ITS,
-                    )
+                config::System::ITS => {
+                    RdhCruSanityValidator::<T>::with_specialization(rdh::SpecializeChecks::ITS)
                 }
             }
         } else {
-            crate::validators::rdh::RdhCruSanityValidator::default()
+            RdhCruSanityValidator::default()
         };
         let (send_channel, data_rcv_channel) =
             crossbeam_channel::bounded(crate::CHANNEL_CDP_CAPACITY);
@@ -54,12 +64,8 @@ impl<T: RDH, C: crate::util::lib::Config> LinkValidator<T, C> {
 
                 send_stats_ch: send_stats_ch.clone(),
                 data_rcv_channel,
-                cdp_validator: crate::validators::cdp_running::CdpRunningValidator::new(
-                    global_config.clone(),
-                    send_stats_ch,
-                ),
-                rdh_running_validator:
-                    crate::validators::rdh_running::RdhCruRunningChecker::default(),
+                cdp_validator: CdpRunningValidator::new(global_config.clone(), send_stats_ch),
+                rdh_running_validator: RdhCruRunningChecker::default(),
                 rdh_sanity_validator,
                 prev_rdhs: AllocRingBuffer::with_capacity(2),
             },
@@ -82,7 +88,7 @@ impl<T: RDH, C: crate::util::lib::Config> LinkValidator<T, C> {
 
         if let Some(system) = self.config.check().unwrap().target() {
             match system {
-                crate::util::config::System::ITS => {
+                config::System::ITS => {
                     self.cdp_validator.set_current_rdh(&rdh, rdh_mem_pos);
                     if !payload.is_empty() {
                         self.do_payload_checks(&payload, rdh.data_format());
@@ -108,14 +114,14 @@ impl<T: RDH, C: crate::util::lib::Config> LinkValidator<T, C> {
 
     fn report_rdh_error(&mut self, rdh: &T, mut error: String, rdh_mem_pos: u64) {
         error.push('\n');
-        error.push_str(crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(13).as_str());
+        error.push_str(RdhCRU::<V7>::rdh_header_text_with_indent_to_string(13).as_str());
         self.prev_rdhs.iter().for_each(|prev_rdh| {
             error.push_str(&format!("  previous:  {prev_rdh}\n"));
         });
         error.push_str(&format!("  current :  {rdh} <--- Error detected here\n"));
 
         self.send_stats_ch
-            .send(crate::stats::stats_controller::StatType::Error(format!(
+            .send(stats_controller::StatType::Error(format!(
                 "{rdh_mem_pos:#X}: {error}"
             )))
             .unwrap();
@@ -128,7 +134,7 @@ impl<T: RDH, C: crate::util::lib::Config> LinkValidator<T, C> {
             }),
             Err(e) => {
                 self.send_stats_ch
-                    .send(crate::stats::stats_controller::StatType::Error(e))
+                    .send(stats_controller::StatType::Error(e))
                     .unwrap();
                 self.cdp_validator.reset_fsm();
             }
