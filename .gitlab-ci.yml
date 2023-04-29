@@ -117,8 +117,18 @@ rust-latest-build:
     when: on_success
     expire_in: 50 mins
 
-### test ###
+## Regression tests
+regression-tests:
+  stage: build
+  before_script:
+    - ls -l test-regression/
+  script:
+    - cargo build
+    - test-regression/regression_tests.sh
+  dependencies:
+    - rust-latest-build
 
+### Tests and safety ###
 # Run unit tests with nightly build
 rust-nightly-test:
   stage: test
@@ -137,28 +147,21 @@ test-coverage:
     RUSTFLAGS: "-C instrument-coverage"
     LLVM_PROFILE_FILE: "target/coverage/%p-%m.profraw"
   script:
+    - echo "${LLVM_PROFILE_FILE}"
+    - echo "${RUSTFLAGS}"
     - rustup component add llvm-tools-preview
+    - cargo install grcov
+    - apt-get update && apt-get install -y lcov
     - cargo build
     # Rust-based tests
     - cargo test -- --test-threads=1 --nocapture
-    # Regression tests
-    - test-regression/regression_tests.sh
-    - cargo install grcov
     - mkdir -p target/coverage
-    - |
-      grcov
-      target/coverage
-      --binary-path target/debug
-      -s .
-      --ignore-not-existing --ignore "*cargo*"
-      -o target/coverage
-      --keep-only 'src/*'
-      --output-types html,cobertura
-    - Echo "Coverage files generated"
-    # Extract just the top-level coverage number from the XML report.
-    - |
-      xmllint --xpath "concat('Coverage: ', 100 * string(//coverage/@line-rate), '%')" target/coverage/cobertura.xml
-  coverage: '/Coverage: \d+(?:\.\d+)?/'
+    - ls -l target/coverage
+    - grcov target/coverage --binary-path target/debug -s . --output-types html,cobertura,lcov --branch --ignore-not-existing --ignore '../* --ignore "/*" --ignore "$HOME/.cargo/**" --ignore "*cargo*" -o target/coverage --keep-only 'src/*'
+    - echo "Coverage files generated"
+    - ls -l target/coverage
+    - lcov --summary coverage.lcov
+  coverage: /lines\.*:\s*([\d\.]+%)/
   dependencies: []
   artifacts:
     paths:
@@ -166,18 +169,8 @@ test-coverage:
     reports:
       coverage_report:
         coverage_format: cobertura
-        path: target/coverage.xml
+        path: target/coverage/cobertura.xml
 
-## Regression tests
-regression-tests:
-  stage: test
-  before_script:
-    - ls test-regression/
-  script:
-    - cargo build
-    - test-regression/regression_tests.sh
-  dependencies:
-    - rust-latest-build
 
 ## Safety
 # Only includes address and leak sanitizing now, as there's simply too many false positives with memory and thread sanitizing on Rust code...
