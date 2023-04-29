@@ -49,7 +49,7 @@ use crossbeam_channel::Receiver;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
 use stats::stats_controller;
 use util::lib::{Config, DataOutputMode};
-use validators::{its_payload_fsm_cont::ItsPayloadFsmContinuous, lib::ValidatorDispatcher};
+use validators::{its::its_payload_fsm_cont::ItsPayloadFsmContinuous, lib::ValidatorDispatcher};
 
 pub mod input;
 pub mod stats;

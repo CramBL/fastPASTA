@@ -1,6 +1,6 @@
 use crate::input;
 use crate::stats::stats_controller;
-use crate::validators::its_payload_fsm_cont::{ItsPayloadFsmContinuous, PayloadWord};
+use crate::validators::its::its_payload_fsm_cont::{self, ItsPayloadFsmContinuous, PayloadWord};
 use crate::validators::lib::preprocess_payload;
 use crate::words::lib::RDH;
 use std::io::Write;
@@ -33,22 +33,19 @@ pub(crate) fn hbf_view<T: RDH>(
                 let current_word_type = match its_payload_fsm_cont.advance(gbt_word_slice) {
                     Ok(word) => word,
                     // If the ID is not among the valid IDs for the current state, display a warning and attempt to handle it.
-                    Err(ambigious_word) => {
-                        match ambigious_word {
-                            crate::validators::its_payload_fsm_cont::AmbigiousError::TDH_or_DDW0 => {
-                                log::warn!("The ID of the current word did not match an expected ID. Displaying it as TDH, but it could be incorrect!");
-                                PayloadWord::TDH
-                            },
-                            crate::validators::its_payload_fsm_cont::AmbigiousError::DW_or_TDT_CDW => {
-                                log::warn!("The ID of the current word did not match an expected ID. Treating it as a Data Word (not displayed), but it could be incorrect!");
-                                PayloadWord::DataWord
-                            },
-                            crate::validators::its_payload_fsm_cont::AmbigiousError::DDW0_or_TDH_IHW => {
-                                log::warn!("The ID of the current word did not match an expected ID. Displaying it as DDW0, but it could be incorrect!");
-                                PayloadWord::DDW0
-                            },
+                    Err(ambigious_word) => match ambigious_word {
+                        its_payload_fsm_cont::AmbigiousError::TDH_or_DDW0 => {
+                            log::warn!("The ID of the current word did not match an expected ID. Displaying it as TDH, but it could be incorrect!");
+                            PayloadWord::TDH
                         }
-
+                        its_payload_fsm_cont::AmbigiousError::DW_or_TDT_CDW => {
+                            log::warn!("The ID of the current word did not match an expected ID. Treating it as a Data Word (not displayed), but it could be incorrect!");
+                            PayloadWord::DataWord
+                        }
+                        its_payload_fsm_cont::AmbigiousError::DDW0_or_TDH_IHW => {
+                            log::warn!("The ID of the current word did not match an expected ID. Displaying it as DDW0, but it could be incorrect!");
+                            PayloadWord::DDW0
+                        }
                     },
                 };
                 let current_mem_pos =
@@ -121,7 +118,7 @@ fn calc_current_word_mem_pos(word_idx: usize, data_format: u8, rdh_mem_pos: u64)
 
 fn generate_payload_word_view(
     gbt_word_slice: &[u8],
-    word_type: crate::validators::its_payload_fsm_cont::PayloadWord,
+    word_type: its_payload_fsm_cont::PayloadWord,
     mem_pos_str: String,
     stdio_lock: &mut std::io::StdoutLock,
 ) -> Result<(), std::io::Error> {

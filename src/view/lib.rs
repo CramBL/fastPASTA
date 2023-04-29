@@ -1,5 +1,5 @@
 //! Contains the entry point and dispatcher function [generate_view()] for generating data views.
-use crate::validators::its_payload_fsm_cont::ItsPayloadFsmContinuous;
+use crate::validators::its::its_payload_fsm_cont::ItsPayloadFsmContinuous;
 use crate::words::lib::RDH;
 use crate::{input, stats::stats_controller, util};
 

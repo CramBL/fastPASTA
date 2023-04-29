@@ -4,7 +4,9 @@
 //! The [LinkValidator] is responsible for creating and running all the subvalidators.
 //! It also contains an [AllocRingBuffer] that is used to store the previous two [RDH]s, to be able to include them in error messages.
 
-use super::{cdp_running::CdpRunningValidator, rdh, rdh_running::RdhCruRunningChecker};
+pub(crate) use super::{
+    its::cdp_running::CdpRunningValidator, rdh, rdh_running::RdhCruRunningChecker,
+};
 use crate::{
     stats::stats_controller,
     util::{

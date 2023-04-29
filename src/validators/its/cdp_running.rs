@@ -2,14 +2,14 @@
 //!
 //! [CdpRunningValidator] delegates sanity checks to word specific sanity checkers.
 
-use super::data_words::DATA_WORD_SANITY_CHECKER;
+use super::{
+    data_words::DATA_WORD_SANITY_CHECKER,
+    its_payload_fsm_cont::{self, ItsPayloadFsmContinuous, PayloadWord},
+    status_words::STATUS_WORD_SANITY_CHECKER,
+};
 use crate::{
     stats::stats_controller::StatType,
     util::{self, lib::Config},
-    validators::{
-        its_payload_fsm_cont::{self, ItsPayloadFsmContinuous, PayloadWord},
-        status_words::STATUS_WORD_SANITY_CHECKER,
-    },
     words::{
         data_words::{ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane},
         lib::RDH,
