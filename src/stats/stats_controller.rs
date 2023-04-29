@@ -260,7 +260,7 @@ impl<C: Config> StatsController<C> {
         report.add_detected_attribute("Data Format".to_string(), observed_data_formats_string);
         report.add_detected_attribute(
             "System ID".to_string(),
-            self.system_id_observed.unwrap().to_string(),
+            self.system_id_observed.unwrap_or(SystemId::TST).to_string(), // Default to TST for unit tests where no RDHs are seen
         );
 
         report.print();
