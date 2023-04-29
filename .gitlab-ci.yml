@@ -130,35 +130,43 @@ rust-nightly-test:
     - rust-nightly-build
   cache: []
 
-# Run unit tests and calculate coverage
+# Run tests and calculate code coverage
 test-coverage:
   stage: test
   variables:
     RUSTFLAGS: "-C instrument-coverage"
-    LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
+    LLVM_PROFILE_FILE: "target/coverage/%p-%m.profraw"
   script:
     - rustup component add llvm-tools-preview
+    - cargo build
+    # Rust-based tests
     - cargo test -- --test-threads=1 --nocapture
+    # Regression tests
+    - test-regression/regression_tests.sh
     - cargo install grcov
-    # Generate HTML report which is available as an artifact
-    - grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing --ignore "*cargo*" -o ./coverage/
-    # Generate file for Gitlab coverage parsing (through the summary)
-    - grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "*cargo*" -o coverage.lcov
-    # directly generate cobertura file
-    - grcov . --binary-path ./target/debug/ -s . -t cobertura --branch --ignore-not-existing --ignore "*cargo*" -o coverage.xml
-    # Output coverage for Gitlab parser (uses regex in coverage key)
-    - apt-get update && apt-get install -y lcov
-    - lcov --summary coverage.lcov
-  coverage: /lines\.*:\s*([\d\.]+%)/
+    - mkdir -p target/coverage
+    - |
+      grcov
+      target/coverage
+      --binary-path target/debug
+      -s .
+      --ignore-not-existing --ignore "*cargo*"
+      -o target/coverage
+      --keep-only 'src/*'
+      --output-types html,cobertura
+    - Echo "Coverage files generated"
+    # Extract just the top-level coverage number from the XML report.
+    - |
+      xmllint --xpath "concat('Coverage: ', 100 * string(//coverage/@line-rate), '%')" target/coverage/cobertura.xml
+  coverage: '/Coverage: \d+(?:\.\d+)?/'
   dependencies: []
   artifacts:
     paths:
-      - 'coverage'
-    expire_in: 2 mos
+      - target/coverage/
     reports:
       coverage_report:
         coverage_format: cobertura
-        path: coverage.xml
+        path: target/coverage.xml
 
 ## Regression tests
 regression-tests:
