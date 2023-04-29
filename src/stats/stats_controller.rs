@@ -260,7 +260,7 @@ impl<C: Config> StatsController<C> {
         report.add_detected_attribute("Data Format".to_string(), observed_data_formats_string);
         report.add_detected_attribute(
             "System ID".to_string(),
-            self.system_id_observed.clone().unwrap().to_string(),
+            self.system_id_observed.unwrap().to_string(),
         );
 
         report.print();

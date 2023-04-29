@@ -47,7 +47,7 @@
 
 use crossbeam_channel::Receiver;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
-use stats::lib::{StatType, SystemId};
+use stats::lib::{self, StatType, SystemId};
 use util::lib::{Config, DataOutputMode};
 use validators::{its::its_payload_fsm_cont::ItsPayloadFsmContinuous, lib::ValidatorDispatcher};
 
@@ -169,35 +169,14 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                         if rdh.stop_bit() == 1 {
                             stats_sender_channel.send(StatType::HBFsSeen(1)).unwrap();
                         }
-
-                        if system_id.is_none() {
-                            let observed_sys_id =
-                                match SystemId::from_system_id(rdh.rdh0().system_id) {
-                                    Ok(id) => id,
-                                    Err(e) => {
-                                        // Send error and break, stop processing
-                                        stats_sender_channel.send(StatType::Fatal(e)).unwrap();
-                                        break;
-                                    }
-                                };
-                            stats_sender_channel
-                                .send(StatType::SystemId(observed_sys_id))
-                                .unwrap();
-                            system_id = Some(observed_sys_id);
-                        }
-
-                        // Determine the system ID and collect system specific stats
-                        match SystemId::from_system_id(rdh.rdh0().system_id) {
-                            Ok(id) => {
-                                match id {
-                                    // Collect stats for each system
-                                    SystemId::ITS => {
-                                        stats::lib::collect_its_stats(rdh, &stats_sender_channel)
-                                    }
-                                    _ => (), // Not implemented
-                                }
-                            }
-                            Err(e) => stats_sender_channel.send(StatType::Error(e)).unwrap(),
+                        if let Err(e) = lib::collect_system_specific_stats(
+                            rdh,
+                            &mut system_id,
+                            &stats_sender_channel,
+                        ) {
+                            // Send error and break, stop processing
+                            stats_sender_channel.send(StatType::Fatal(e)).unwrap();
+                            break; // Fatal error
                         }
                     }
 

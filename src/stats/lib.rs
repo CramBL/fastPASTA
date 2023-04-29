@@ -23,22 +23,7 @@ pub fn init_stats_controller<C: Config + 'static>(
     (stats_thread, send_stats_channel, thread_stop_flag)
 }
 
-// Stat collection functions
-
-/// Collects stats specific to ITS from the given [RDH][words::lib::RDH] and sends them to the [StatsController].
-pub fn collect_its_stats<T: words::lib::RDH>(
-    rdh: &T,
-    stats_sender_channel: &std::sync::mpsc::Sender<StatType>,
-) {
-    let layer = words::its::layer_from_feeid(rdh.fee_id());
-    let stave = words::its::stave_number_from_feeid(rdh.fee_id());
-    stats_sender_channel
-        .send(StatType::LayerStaveSeen { layer, stave })
-        .unwrap();
-    stats_sender_channel
-        .send(StatType::DataFormat(rdh.data_format()))
-        .unwrap();
-}
+// Stat collection functionality
 
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Copy)]
@@ -94,30 +79,31 @@ impl SystemId {
             _ => Err(format!("Unknown system ID {sys_id}")),
         }
     }
+}
 
-    /// Convert a System ID enum to a string
-    pub fn to_string(&self) -> String {
-        match *self {
-            SystemId::TPC => format!("TPC"),
-            SystemId::TRD => format!("TRD"),
-            SystemId::TOF => format!("TOF"),
-            SystemId::HMP => format!("HMP"),
-            SystemId::PHS => format!("PHS"),
-            SystemId::CPV => format!("CPV"),
-            SystemId::MCH => format!("MCH"),
-            SystemId::ZDC => format!("ZDC"),
-            SystemId::TRG => format!("TRG"),
-            SystemId::EMC => format!("EMC"),
-            SystemId::TST => format!("TST"),
-            SystemId::ITS => format!("ITS"),
-            SystemId::FDD => format!("FDD"),
-            SystemId::FT0 => format!("FT0"),
-            SystemId::FV0 => format!("FV0"),
-            SystemId::MFT => format!("MFT"),
-            SystemId::MID => format!("MID"),
-            SystemId::DCS => format!("DCS"),
-            SystemId::FOC => format!("FOC"),
-            SystemId::Unloaded => format!("Unloaded"),
+impl std::fmt::Display for SystemId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SystemId::TPC => write!(f, "TPC"),
+            SystemId::TRD => write!(f, "TRD"),
+            SystemId::TOF => write!(f, "TOF"),
+            SystemId::HMP => write!(f, "HMP"),
+            SystemId::PHS => write!(f, "PHS"),
+            SystemId::CPV => write!(f, "CPV"),
+            SystemId::MCH => write!(f, "MCH"),
+            SystemId::ZDC => write!(f, "ZDC"),
+            SystemId::TRG => write!(f, "TRG"),
+            SystemId::EMC => write!(f, "EMC"),
+            SystemId::TST => write!(f, "TST"),
+            SystemId::ITS => write!(f, "ITS"),
+            SystemId::FDD => write!(f, "FDD"),
+            SystemId::FT0 => write!(f, "FT0"),
+            SystemId::FV0 => write!(f, "FV0"),
+            SystemId::MFT => write!(f, "MFT"),
+            SystemId::MID => write!(f, "MID"),
+            SystemId::DCS => write!(f, "DCS"),
+            SystemId::FOC => write!(f, "FOC"),
+            SystemId::Unloaded => write!(f, "Unloaded"),
         }
     }
 }
@@ -155,4 +141,65 @@ pub enum StatType {
         /// The stave number.
         stave: u8,
     },
+}
+
+/// Takes an [RDH](words::lib::RDH) and determines the [SystemId] and collects system specific stats.
+/// Uses the received [Option<SystemId>] to check if the system ID has already been determined,
+/// otherwise it will determine the [SystemId] and send it to the [StatsController](StatsController) via the channel [std::sync::mpsc::Sender<StatType>].
+///
+/// # Arguments
+/// * `rdh` - The [RDH](words::lib::RDH) to collect stats from.
+/// * `system_id` - The [Option<SystemId>] to check if the system ID has already been determined.
+/// * `stats_sender_channel` - The [std::sync::mpsc::Sender<StatType>] to send the stats to the [StatsController](StatsController).
+/// # Returns
+/// * `Ok(())` - If the stats were collected successfully.
+/// * `Err(())` - If its the first time the [SystemId] is determined and the [SystemId] is not recognized.
+pub fn collect_system_specific_stats<T: words::lib::RDH + 'static>(
+    rdh: &T,
+    system_id: &mut Option<SystemId>,
+    stats_sender_channel: &std::sync::mpsc::Sender<StatType>,
+) -> Result<(), String> {
+    if let Some(system_id) = system_id {
+        // Determine the system ID and collect system specific stats
+        match system_id {
+            // Collect stats for each system
+            SystemId::ITS => {
+                log::trace!("Collecting stats for ITS");
+                collect_its_stats(rdh, stats_sender_channel)
+            }
+            // Example for other systems (and to make clippy shut up about using if let instead of match, cause only 1 case is implemented)
+            SystemId::FOC => {
+                log::trace!("Collecting stats for Focal");
+                // stat collection not implemented
+            }
+            _ => (), // Not implemented
+        }
+    } else {
+        // First time seeing a system ID
+        let observed_sys_id = match SystemId::from_system_id(rdh.rdh0().system_id) {
+            Ok(id) => id,
+            Err(e) => return Err(e),
+        };
+        log::info!("{observed_sys_id} detected");
+        stats_sender_channel
+            .send(StatType::SystemId(observed_sys_id))
+            .unwrap();
+        *system_id = Some(observed_sys_id);
+    }
+    Ok(())
+}
+
+/// Collects stats specific to ITS from the given [RDH][words::lib::RDH] and sends them to the [StatsController].
+fn collect_its_stats<T: words::lib::RDH>(
+    rdh: &T,
+    stats_sender_channel: &std::sync::mpsc::Sender<StatType>,
+) {
+    let layer = words::its::layer_from_feeid(rdh.fee_id());
+    let stave = words::its::stave_number_from_feeid(rdh.fee_id());
+    stats_sender_channel
+        .send(StatType::LayerStaveSeen { layer, stave })
+        .unwrap();
+    stats_sender_channel
+        .send(StatType::DataFormat(rdh.data_format()))
+        .unwrap();
 }
