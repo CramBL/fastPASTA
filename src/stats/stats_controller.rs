@@ -260,12 +260,21 @@ impl<C: Config> StatsController<C> {
                 self.hbfs_seen.to_string(),
                 None,
             ));
-            // If no filtering, the layers and staves seen is from the total RDHs
-            report.add_stat(StatSummary::new(
-                "Layers and Staves seen".to_string(),
-                format_layers_and_staves(self.layers_staves_seen.clone()),
-                None,
-            ));
+
+            // Check if the target is ITS and add ITS specific stats if it is
+            if matches!(
+                // Evaluates the check and then returns the target if it is Some
+                self.config.check().and_then(|check| check.target()),
+                Some(crate::util::config::System::ITS)
+            ) {
+                // If no filtering, the layers and staves seen is from the total RDHs
+                report.add_stat(StatSummary::new(
+                    "Layers and Staves seen".to_string(),
+                    format_layers_and_staves(self.layers_staves_seen.clone()),
+                    None,
+                ));
+            }
+
             // If no filtering, the payload size seen is from the total RDHs
             report.add_stat(StatSummary::new(
                 "Total Payload Size".to_string(),
