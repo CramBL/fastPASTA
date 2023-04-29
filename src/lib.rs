@@ -46,7 +46,10 @@
 //! ```
 
 use crossbeam_channel::Receiver;
+use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
+use stats::stats_controller;
 use util::lib::{Config, DataOutputMode};
+use validators::{its_payload_fsm_cont::ItsPayloadFsmContinuous, lib::ValidatorDispatcher};
 
 pub mod input;
 pub mod stats;
@@ -62,20 +65,18 @@ pub mod write;
 /// Too small capacity will cause the producer thread to block
 const CHANNEL_CDP_CAPACITY: usize = 100;
 
-/// Entry point for scanning the input and delegating to checkers, view generators and/or writers depending on config
+/// Entry point for scanning the input and delegating to checkers, view generators and/or writers depending on [Config]
 ///
 /// Follows these steps:
 /// 1. Setup reading (`file` or `stdin`) using [input::lib::spawn_reader].
 /// 2. Depending on [Config] do one of:
-///     - Validate data with [validators::lib::check_cdp_chunk].
+///     - Validate data by dispatching it to validators with [validators::lib::ValidatorDispatcher].
 ///     - Generate views of data with [view::lib::generate_view].
 ///     - Write data to `file` or `stdout` with [write::lib::spawn_writer].
 pub fn process<T: words::lib::RDH + 'static>(
     config: std::sync::Arc<impl Config + 'static>,
-    loader: input::input_scanner::InputScanner<
-        impl input::bufreader_wrapper::BufferedReaderWrapper + ?Sized + std::marker::Send + 'static,
-    >,
-    send_stats_ch: std::sync::mpsc::Sender<stats::stats_controller::StatType>,
+    loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
+    send_stats_ch: std::sync::mpsc::Sender<stats_controller::StatType>,
     thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
     // 1. Launch reader thread to read data from file or stdin
@@ -148,13 +149,10 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
         .spawn({
             move || {
                 // Setup for check case
-                let mut validator_dispatcher = validators::lib::ValidatorDispatcher::new(
-                    config.clone(),
-                    stats_sender_channel.clone(),
-                );
+                let mut validator_dispatcher =
+                    ValidatorDispatcher::new(config.clone(), stats_sender_channel.clone());
                 // Setup for view case
-                let mut its_payload_fsm_cont =
-                    validators::its_payload_fsm_cont::ItsPayloadFsmContinuous::default();
+                let mut its_payload_fsm_cont = ItsPayloadFsmContinuous::default();
                 // Start analysis
                 while !stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
                     // Receive chunk from reader
@@ -170,21 +168,16 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                     for rdh in cdp_chunk.rdh_slice().iter() {
                         if rdh.stop_bit() == 1 {
                             stats_sender_channel
-                                .send(stats::stats_controller::StatType::HBFsSeen(1))
+                                .send(stats_controller::StatType::HBFsSeen(1))
                                 .unwrap();
                         }
                         let layer = words::lib::layer_from_feeid(rdh.fee_id());
                         let stave = words::lib::stave_number_from_feeid(rdh.fee_id());
                         stats_sender_channel
-                            .send(stats::stats_controller::StatType::LayerStaveSeen {
-                                layer,
-                                stave,
-                            })
+                            .send(stats_controller::StatType::LayerStaveSeen { layer, stave })
                             .unwrap();
                         stats_sender_channel
-                            .send(stats::stats_controller::StatType::DataFormat(
-                                rdh.data_format(),
-                            ))
+                            .send(stats_controller::StatType::DataFormat(rdh.data_format()))
                             .unwrap();
                     }
 
@@ -199,7 +192,7 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                             &mut its_payload_fsm_cont,
                         ) {
                             stats_sender_channel
-                                .send(stats::stats_controller::StatType::Fatal(e.to_string()))
+                                .send(stats_controller::StatType::Fatal(e.to_string()))
                                 .expect("Couldn't send to StatsController");
                         }
                     }

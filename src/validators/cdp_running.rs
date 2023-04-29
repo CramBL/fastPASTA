@@ -1,21 +1,20 @@
 //! Checks the CDP payload. Uses the [ItsPayloadFsmContinuous] state machine to determine which words to expect.
 //!
 //! [CdpRunningValidator] delegates sanity checks to word specific sanity checkers.
-use std::sync::Arc;
 
 use super::data_words::DATA_WORD_SANITY_CHECKER;
-use crate::util;
-use crate::validators::its_payload_fsm_cont::ItsPayloadFsmContinuous;
-use crate::validators::its_payload_fsm_cont::PayloadWord;
-use crate::words::data_words::{
-    ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane,
-};
-use crate::words::lib::RDH;
-use crate::words::status_words::{is_lane_active, Cdw};
 use crate::{
     stats::stats_controller::StatType,
-    validators::status_words::STATUS_WORD_SANITY_CHECKER,
-    words::status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt},
+    util::{self, lib::Config},
+    validators::{
+        its_payload_fsm_cont::{self, ItsPayloadFsmContinuous, PayloadWord},
+        status_words::STATUS_WORD_SANITY_CHECKER,
+    },
+    words::{
+        data_words::{ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane},
+        lib::RDH,
+        status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
+    },
 };
 
 enum StatusWordKind<'a> {
@@ -26,8 +25,8 @@ enum StatusWordKind<'a> {
 }
 
 /// Checks the CDP payload and reports any errors.
-pub struct CdpRunningValidator<T: RDH, C: util::lib::Config> {
-    config: Arc<C>,
+pub struct CdpRunningValidator<T: RDH, C: Config> {
+    config: std::sync::Arc<C>,
     running_checks: bool,
     its_state_machine: ItsPayloadFsmContinuous,
     current_rdh: Option<T>,
@@ -44,9 +43,12 @@ pub struct CdpRunningValidator<T: RDH, C: util::lib::Config> {
     is_new_data: bool, // Flag used to indicate start of new CDP payload where a CDW is valid
 }
 
-impl<T: RDH, C: util::lib::Config> CdpRunningValidator<T, C> {
+impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
     /// Creates a new [CdpRunningValidator] from a [Config] and a [StatType] producer channel.
-    pub fn new(config: Arc<C>, stats_send_ch: std::sync::mpsc::Sender<StatType>) -> Self {
+    pub fn new(
+        config: std::sync::Arc<C>,
+        stats_send_ch: std::sync::mpsc::Sender<StatType>,
+    ) -> Self {
         Self {
             config: config.clone(),
             running_checks: matches!(config.check(), Some(util::config::Check::All(_))),
@@ -69,7 +71,7 @@ impl<T: RDH, C: util::lib::Config> CdpRunningValidator<T, C> {
     // For testing configs
     #[allow(dead_code)]
     fn set_config(&mut self, config: C) {
-        self.config = Arc::new(config);
+        self.config = std::sync::Arc::new(config);
     }
 
     /// Helper function to format and report an error
@@ -164,18 +166,18 @@ impl<T: RDH, C: util::lib::Config> CdpRunningValidator<T, C> {
             },
 
             Err(ambigious_word) => match ambigious_word {
-                crate::validators::its_payload_fsm_cont::AmbigiousError::TDH_or_DDW0 => {
+                its_payload_fsm_cont::AmbigiousError::TDH_or_DDW0 => {
                     self.report_error(
                     "[E99] Unrecognized ID in ITS payload, could be TDH/DDW0 based on current state, attempting to parse as TDH",
                     gbt_word,
                 );
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
                 }
-                crate::validators::its_payload_fsm_cont::AmbigiousError::DW_or_TDT_CDW => {
+                its_payload_fsm_cont::AmbigiousError::DW_or_TDT_CDW => {
                     self.report_error("[E99] Unrecognized ID in ITS payload, could be Data Word/TDT/CDW based on current state, attempting to parse as Data Word", gbt_word);
                     self.process_data_word(gbt_word);
                 }
-                crate::validators::its_payload_fsm_cont::AmbigiousError::DDW0_or_TDH_IHW => {
+                its_payload_fsm_cont::AmbigiousError::DDW0_or_TDH_IHW => {
                     self.report_error("[E99] Unrecognized ID in ITS payload, could be DDW0/TDH/IHW based on current state, attempting to parse as DDW0", gbt_word);
                     self.process_status_word(StatusWordKind::Ddw0(gbt_word));
                 }
@@ -461,6 +463,7 @@ mod tests {
         util::{config::Check, lib::*},
         words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7},
     };
+    use std::sync::Arc;
 
     // Mock config for testing
     struct MockConfig {
