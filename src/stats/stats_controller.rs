@@ -2,6 +2,7 @@
 //! It also controls the stop flag, which can be used to stop the program if a fatal error occurs, or if the config contains a max number of errors to tolerate.
 //! Finally when the event loop breaks (at the end of execution), it will print a summary of the stats collected, using the Report struct.
 
+use super::lib::{StatType, SystemId};
 use crate::{
     stats::report::{Report, StatSummary},
     util::lib::Config,
@@ -11,8 +12,6 @@ use std::sync::{
     atomic::{AtomicBool, AtomicU32},
     Arc,
 };
-
-use super::lib::StatType;
 
 /// The StatsController receives stats and builds a summary report that is printed at the end of execution.
 pub struct StatsController<C: Config> {
@@ -44,6 +43,7 @@ pub struct StatsController<C: Config> {
     fatal_error: Option<String>,
     layers_staves_seen: Vec<(u8, u8)>,
     run_trigger_type: (u32, String),
+    system_id_observed: Option<SystemId>,
 }
 impl<C: Config> StatsController<C> {
     /// Creates a new StatsController from a [Config], a [std::sync::mpsc::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
@@ -71,6 +71,7 @@ impl<C: Config> StatsController<C> {
             fatal_error: None,
             layers_staves_seen: Vec::new(),
             run_trigger_type: (0, String::from("")),
+            system_id_observed: None,
         }
     }
 
@@ -180,6 +181,7 @@ impl<C: Config> StatsController<C> {
                     self.fatal_error = Some(error);
                 }
             }
+            StatType::SystemId(sys_id) => self.system_id_observed = Some(sys_id),
         }
     }
 
@@ -230,12 +232,8 @@ impl<C: Config> StatsController<C> {
                 None,
             ));
 
-            // Check if the target is ITS and add ITS specific stats if it is
-            if matches!(
-                // Evaluates the check and then returns the target if it is Some
-                self.config.check().and_then(|check| check.target()),
-                Some(crate::util::config::System::ITS)
-            ) {
+            // Check if the observed system ID is ITS
+            if matches!(self.system_id_observed, Some(SystemId::ITS)) {
                 // If no filtering, the layers and staves seen is from the total RDHs
                 report.add_stat(StatSummary::new(
                     "Layers and Staves seen".to_string(),
@@ -260,6 +258,10 @@ impl<C: Config> StatsController<C> {
         let observed_data_formats_string =
             self.check_and_format_observed_data_formats(self.data_formats_observed.clone());
         report.add_detected_attribute("Data Format".to_string(), observed_data_formats_string);
+        report.add_detected_attribute(
+            "System ID".to_string(),
+            self.system_id_observed.clone().unwrap().to_string(),
+        );
 
         report.print();
     }

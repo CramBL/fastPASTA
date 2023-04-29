@@ -41,6 +41,7 @@ pub fn collect_its_stats<T: words::lib::RDH>(
 }
 
 #[allow(missing_docs)]
+#[derive(Debug, Clone, Copy)]
 /// Enums to represent each subsystem in the ALICE DAQ from the System ID.
 pub enum SystemId {
     // ignore missing docs
@@ -131,6 +132,8 @@ pub enum StatType {
     ///
     /// Contains the raw value and the string description summarizing the trigger type
     RunTriggerType((u32, String)),
+    /// The first system ID observed is the basis for the rest of processing
+    SystemId(SystemId),
     /// Increment the total RDHs seen.
     RDHsSeen(u8),
     /// Increment the total RDHs filtered.

@@ -47,7 +47,7 @@
 
 use crossbeam_channel::Receiver;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
-use stats::lib::StatType;
+use stats::lib::{StatType, SystemId};
 use util::lib::{Config, DataOutputMode};
 use validators::{its::its_payload_fsm_cont::ItsPayloadFsmContinuous, lib::ValidatorDispatcher};
 
@@ -144,7 +144,7 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
     data_channel: Receiver<input::data_wrapper::CdpChunk<T>>,
 ) -> std::thread::JoinHandle<()> {
     let analysis_thread = std::thread::Builder::new().name("Analysis".to_string());
-
+    let mut system_id: Option<SystemId> = None; // System ID is only set once
     analysis_thread
         .spawn({
             move || {
@@ -170,13 +170,34 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                             stats_sender_channel.send(StatType::HBFsSeen(1)).unwrap();
                         }
 
-                        // Check if the target is ITS and collect ITS specific stats if it is
-                        if matches!(
-                            // Evaluates the check and then returns the target if it is Some
-                            config.check().and_then(|check| check.target()),
-                            Some(util::config::System::ITS)
-                        ) {
-                            stats::lib::collect_its_stats(rdh, &stats_sender_channel);
+                        if system_id.is_none() {
+                            let observed_sys_id =
+                                match SystemId::from_system_id(rdh.rdh0().system_id) {
+                                    Ok(id) => id,
+                                    Err(e) => {
+                                        // Send error and break, stop processing
+                                        stats_sender_channel.send(StatType::Fatal(e)).unwrap();
+                                        break;
+                                    }
+                                };
+                            stats_sender_channel
+                                .send(StatType::SystemId(observed_sys_id))
+                                .unwrap();
+                            system_id = Some(observed_sys_id);
+                        }
+
+                        // Determine the system ID and collect system specific stats
+                        match SystemId::from_system_id(rdh.rdh0().system_id) {
+                            Ok(id) => {
+                                match id {
+                                    // Collect stats for each system
+                                    SystemId::ITS => {
+                                        stats::lib::collect_its_stats(rdh, &stats_sender_channel)
+                                    }
+                                    _ => (), // Not implemented
+                                }
+                            }
+                            Err(e) => stats_sender_channel.send(StatType::Error(e)).unwrap(),
                         }
                     }
 

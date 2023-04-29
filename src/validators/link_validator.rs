@@ -8,7 +8,7 @@ pub(crate) use super::{
     its::cdp_running::CdpRunningValidator, rdh, rdh_running::RdhCruRunningChecker,
 };
 use crate::{
-    stats::{lib::StatType, stats_controller},
+    stats::lib::StatType,
     util::{
         config::{self, Check},
         lib::Config,
