@@ -519,9 +519,8 @@ mod tests {
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
         let mock_config = MockConfig { check: None };
-        let cfg = Arc::new(mock_config);
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(cfg, send);
+            CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos);
@@ -540,9 +539,8 @@ mod tests {
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
         let mock_config = MockConfig { check: None };
-        let cfg = Arc::new(mock_config);
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(cfg, send);
+            CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0x0;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos);
@@ -568,9 +566,8 @@ mod tests {
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
         let mock_config = MockConfig { check: None };
-        let cfg = Arc::new(mock_config);
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(cfg, send);
+            CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
@@ -597,9 +594,8 @@ mod tests {
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
         let mock_config = MockConfig { check: None };
-        let cfg = Arc::new(mock_config);
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(cfg, send);
+            CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
@@ -641,9 +637,8 @@ mod tests {
         let mock_config = MockConfig {
             check: Some(Check::All(Target { system: None })),
         };
-        let cfg = Arc::new(mock_config);
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(cfg, send);
+            CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
