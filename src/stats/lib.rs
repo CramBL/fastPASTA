@@ -1,7 +1,7 @@
 //! Contains the [init_stats_controller] function, which spawns a thread with the [StatsController] running, and returns the thread handle, the channel to send stats to, and the stop flag.
 use super::stats_controller::StatsController;
 use crate::{util::lib::Config, words};
-use std::sync::atomic::AtomicBool;
+use std::{fmt::Display, sync::atomic::AtomicBool};
 
 /// Spawns a thread with the StatsController running, and returns the thread handle, the channel to send stats to, and the stop flag.
 pub fn init_stats_controller<C: Config + 'static>(
@@ -108,6 +108,7 @@ impl std::fmt::Display for SystemId {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 /// Possible stats that can be sent to the StatsController.
 pub enum StatType {
     /// Fatal error, stop processing.
@@ -141,6 +142,30 @@ pub enum StatType {
         /// The stave number.
         stave: u8,
     },
+}
+
+impl Display for StatType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StatType::Fatal(e) => write!(f, "Fatal error: {e}"),
+            StatType::Error(e) => write!(f, "Error: {e}"),
+            StatType::RunTriggerType((val, description)) => {
+                write!(f, "Run trigger type: {val}: {description}")
+            }
+            StatType::SystemId(s_id) => write!(f, "System ID: {s_id}"),
+            StatType::RDHsSeen(cnt) => write!(f, "RDHs seen: {cnt}"),
+            StatType::RDHsFiltered(cnt) => write!(f, "RDHs filtered: {cnt}"),
+            StatType::PayloadSize(bytes) => write!(f, "Payload size: {bytes}"),
+            StatType::LinksObserved(id) => write!(f, "Link observed: {id}"),
+            StatType::RdhVersion(v) => write!(f, "RDH version: {v}"),
+            StatType::DataFormat(format) => write!(f, "Data format: {format}"),
+            StatType::HBFsSeen(cnt) => write!(f, "HBFs seen: {cnt}"),
+            StatType::LayerStaveSeen {
+                layer: layer_id,
+                stave: stave_id,
+            } => write!(f, "Layer/stave seen: {layer_id}/{stave_id}"),
+        }
+    }
 }
 
 /// Takes an [RDH](words::lib::RDH) and determines the [SystemId] and collects system specific stats.

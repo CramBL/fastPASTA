@@ -23,3 +23,47 @@ pub fn do_payload_checks<T: RDH, C: Config>(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use std::sync::Arc;
+
+    use crate::{
+        util::config,
+        util::lib::test_util::MockConfig,
+        words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, *},
+    };
+
+    use super::*;
+
+    #[test]
+    fn test_do_payload_checks_bad_payload() {
+        let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
+
+        let mut mock_config = MockConfig::default();
+        mock_config.check = Some(config::Check::All(config::Target {
+            system: Some(config::System::ITS),
+        }));
+
+        let mut cdp_validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
+            CdpRunningValidator::new(Arc::new(mock_config), send_stats_ch.clone());
+        let rdh = CORRECT_RDH_CRU_V7;
+        let payload = vec![0x3D; 100];
+        let rdh_mem_pos = 0;
+        let cdp_chunk_slice = (&rdh, payload.as_slice(), rdh_mem_pos);
+
+        do_payload_checks(cdp_chunk_slice, &send_stats_ch, &mut cdp_validator);
+
+        // Receive and check stats
+        while let Ok(stats) = rcv_stats_ch.try_recv() {
+            match stats {
+                _ => {
+                    // the payload is only made up of 0x3D, so there should be errors, and all mentioning `3D`
+                    assert!(stats.to_string().contains("3D"));
+                    println!("Stats: {:?}", stats)
+                }
+            }
+        }
+    }
+}

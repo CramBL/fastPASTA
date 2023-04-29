@@ -460,59 +460,13 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::util::lib::test_util::MockConfig;
     use crate::{
+        util::config::Check,
         util::config::Target,
-        util::{config::Check, lib::*},
         words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7},
     };
     use std::sync::Arc;
-
-    // Mock config for testing
-    struct MockConfig {
-        check: Option<Check>,
-    }
-    impl Config for MockConfig {}
-    impl Checks for MockConfig {
-        fn check(&self) -> Option<Check> {
-            self.check.clone()
-        }
-    }
-    impl Views for MockConfig {
-        fn view(&self) -> Option<util::config::View> {
-            None
-        }
-    }
-    impl Filter for MockConfig {
-        fn filter_link(&self) -> Option<u8> {
-            todo!()
-        }
-    }
-    impl Util for MockConfig {
-        fn verbosity(&self) -> u8 {
-            todo!()
-        }
-
-        fn max_tolerate_errors(&self) -> u32 {
-            todo!()
-        }
-    }
-    impl InputOutput for MockConfig {
-        fn input_file(&self) -> &Option<std::path::PathBuf> {
-            todo!()
-        }
-
-        fn skip_payload(&self) -> bool {
-            todo!()
-        }
-
-        fn output(&self) -> &Option<std::path::PathBuf> {
-            todo!()
-        }
-
-        fn output_mode(&self) -> util::lib::DataOutputMode {
-            todo!()
-        }
-    }
 
     #[test]
     fn test_validate_ihw() {
@@ -523,7 +477,7 @@ mod tests {
         ];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mock_config = MockConfig { check: None };
+        let mock_config = MockConfig::default();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
             CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0;
@@ -543,7 +497,7 @@ mod tests {
         ];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mock_config = MockConfig { check: None };
+        let mock_config = MockConfig::default();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
             CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0x0;
@@ -570,7 +524,7 @@ mod tests {
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mock_config = MockConfig { check: None };
+        let mock_config = MockConfig::default();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
             CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
@@ -598,7 +552,7 @@ mod tests {
         let raw_data_tdt_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF2];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mock_config = MockConfig { check: None };
+        let mock_config = MockConfig::default();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
             CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
@@ -638,10 +592,9 @@ mod tests {
         let raw_data_tdt_next_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF3];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
+        let mut mock_config = MockConfig::default();
+        mock_config.check = Some(Check::All(Target { system: None }));
 
-        let mock_config = MockConfig {
-            check: Some(Check::All(Target { system: None })),
-        };
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
             CdpRunningValidator::new(Arc::new(mock_config), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes

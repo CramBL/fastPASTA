@@ -50,7 +50,7 @@ pub trait Views {
 }
 
 /// Enum for all possible data output modes.
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum DataOutputMode {
     /// Write to a file.
     File,
@@ -58,4 +58,82 @@ pub enum DataOutputMode {
     Stdout,
     /// Do not write data out.
     None,
+}
+
+#[allow(missing_docs)]
+pub mod test_util {
+    use super::*;
+    #[derive(Debug, Clone)]
+
+    /// Complete configurable Mock config for testing
+    pub struct MockConfig {
+        pub check: Option<Check>,
+        pub view: Option<View>,
+        pub filter_link: Option<u8>,
+        pub verbosity: u8,
+        pub max_tolerate_errors: u32,
+        pub input_file: Option<std::path::PathBuf>,
+        pub skip_payload: bool,
+        pub output: Option<std::path::PathBuf>,
+        pub output_mode: DataOutputMode,
+    }
+
+    impl Default for MockConfig {
+        fn default() -> Self {
+            Self {
+                check: None,
+                view: None,
+                filter_link: None,
+                verbosity: 0,
+                max_tolerate_errors: 0,
+                input_file: None,
+                skip_payload: false,
+                output: None,
+                output_mode: DataOutputMode::None,
+            }
+        }
+    }
+
+    impl Config for MockConfig {}
+    impl Checks for MockConfig {
+        fn check(&self) -> Option<Check> {
+            self.check.clone()
+        }
+    }
+    impl Views for MockConfig {
+        fn view(&self) -> Option<View> {
+            self.view.clone()
+        }
+    }
+    impl Filter for MockConfig {
+        fn filter_link(&self) -> Option<u8> {
+            self.filter_link
+        }
+    }
+    impl Util for MockConfig {
+        fn verbosity(&self) -> u8 {
+            self.verbosity
+        }
+
+        fn max_tolerate_errors(&self) -> u32 {
+            self.max_tolerate_errors
+        }
+    }
+    impl InputOutput for MockConfig {
+        fn input_file(&self) -> &Option<std::path::PathBuf> {
+            &self.input_file
+        }
+
+        fn skip_payload(&self) -> bool {
+            self.skip_payload
+        }
+
+        fn output(&self) -> &Option<std::path::PathBuf> {
+            &self.output
+        }
+
+        fn output_mode(&self) -> DataOutputMode {
+            self.output_mode
+        }
+    }
 }
