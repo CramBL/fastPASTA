@@ -33,8 +33,11 @@ impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C>
     ///
     /// If a link validator thread does not exist for the link id of the current rdh, a new one is spawned
     pub fn dispatch_cdp_chunk(&mut self, cdp_chunk: data_wrapper::CdpChunk<T>) {
+        // Iterate over the CDP chunk
         cdp_chunk.into_iter().for_each(|(rdh, data, mem_pos)| {
+            // Check if the link id of the current rdh is already in the list of links
             if let Some(link_index) = self.links.iter().position(|&link| link == rdh.link_id()) {
+                // If the link was found, use its index to send the data through the correct link validator's channel
                 self.link_process_channels
                     .get(link_index)
                     .unwrap()
