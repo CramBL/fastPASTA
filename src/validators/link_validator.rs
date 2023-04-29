@@ -1,12 +1,17 @@
-//! Contains the [LinkValidator] that contains all the subvalidators, and delegates all checks for a specific link.
+//! Contains the [LinkValidator] that contains all the [RDH] subvalidators, and delegates all checks for a specific link.
 //!
 //! A [LinkValidator] is created for each link that is being checked.
-//! The [LinkValidator] is responsible for creating and running all the subvalidators.
+//! The [LinkValidator] is responsible for creating and running all the [RDH] subvalidators, and delegating payload depending on target system.
 //! It also contains an [AllocRingBuffer] that is used to store the previous two [RDH]s, to be able to include them in error messages.
+//!
+//! Adding a new system to the validator is done by adding a new module to the [validators](crate::validators) module, and adding the new system to the [System](crate::util::config::System) enum.
+//! The new module should contain a main payload validator that can be used by the [LinkValidator] to delegate payload to.
+//! Unfortunately it cannot be implemented through trait objects as they cannot be stored in the [LinkValidator] without using dynamic traits.
+//!
+//! In the `do_checks` function, the [LinkValidator] will delegate the payload to the correct validator depending on the target system.
+//! The new system should be added to the match statement, along with how to delegate the payload to the new validator.
 
-pub(crate) use super::{
-    its::cdp_running::CdpRunningValidator, rdh, rdh_running::RdhCruRunningChecker,
-};
+pub(crate) use super::{its, rdh, rdh_running::RdhCruRunningChecker};
 use crate::{
     stats::lib::StatType,
     util::{
@@ -31,7 +36,7 @@ pub struct LinkValidator<T: RDH, C: Config> {
     pub send_stats_ch: std::sync::mpsc::Sender<StatType>,
     /// Consumer channel to receive data from.
     pub data_rcv_channel: crossbeam_channel::Receiver<CdpTuple<T>>,
-    cdp_validator: CdpRunningValidator<T, C>,
+    its_cdp_validator: its::cdp_running::CdpRunningValidator<T, C>,
     rdh_running_validator: RdhCruRunningChecker<T>,
     rdh_sanity_validator: RdhCruSanityValidator<T>,
     prev_rdhs: AllocRingBuffer<T>,
@@ -40,7 +45,7 @@ pub struct LinkValidator<T: RDH, C: Config> {
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 impl<T: RDH, C: Config> LinkValidator<T, C> {
-    /// Creates a new [LinkValidator] and the [StatType][crate::stats::StatType] sender channel to it, from a [Config].
+    /// Creates a new [LinkValidator] and the [StatType] sender channel to it, from a [Config].
     pub fn new(
         global_config: std::sync::Arc<C>,
         send_stats_ch: std::sync::mpsc::Sender<StatType>,
@@ -66,7 +71,10 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
 
                 send_stats_ch: send_stats_ch.clone(),
                 data_rcv_channel,
-                cdp_validator: CdpRunningValidator::new(global_config.clone(), send_stats_ch),
+                its_cdp_validator: its::cdp_running::CdpRunningValidator::new(
+                    global_config.clone(),
+                    send_stats_ch,
+                ),
                 rdh_running_validator: RdhCruRunningChecker::default(),
                 rdh_sanity_validator,
                 prev_rdhs: AllocRingBuffer::with_capacity(2),
@@ -91,11 +99,26 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
         if let Some(system) = self.config.check().unwrap().target() {
             match system {
                 config::System::ITS => {
-                    self.cdp_validator.set_current_rdh(&rdh, rdh_mem_pos);
                     if !payload.is_empty() {
-                        self.do_payload_checks(&payload);
+                        super::its::lib::do_payload_checks(
+                            (&rdh, &payload, rdh_mem_pos),
+                            &self.send_stats_ch,
+                            &mut self.its_cdp_validator,
+                        );
                     }
-                }
+                } // Example of how to add a new system to the validator
+                  //
+                  // 1. Match on the system target in the config
+                  //  config::System::NewSystem => {
+                  //     if !payload.is_empty() {
+                  // 2. Call the do_payload_checks in the `new_system` module and pass the necessary arguments to do the checks
+                  //         super::new_system::lib::do_payload_checks(
+                  //             (&rdh, &payload, rdh_mem_pos),
+                  //             &self.send_stats_ch,
+                  //             &mut self.new_system_cdp_validator,
+                  //         );
+                  //     }
+                  // }
             }
         }
 
@@ -125,17 +148,5 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
         self.send_stats_ch
             .send(StatType::Error(format!("{rdh_mem_pos:#X}: {error}")))
             .unwrap();
-    }
-
-    fn do_payload_checks(&mut self, payload: &[u8]) {
-        match super::lib::preprocess_payload(payload) {
-            Ok(gbt_word_chunks) => gbt_word_chunks.for_each(|gbt_word| {
-                self.cdp_validator.check(&gbt_word[..10]); // Take 10 bytes as flavor 0 would have additional 6 bytes of padding
-            }),
-            Err(e) => {
-                self.send_stats_ch.send(StatType::Error(e)).unwrap();
-                self.cdp_validator.reset_fsm();
-            }
-        }
     }
 }
