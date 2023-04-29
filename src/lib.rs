@@ -50,6 +50,11 @@ use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanne
 use stats::lib::{self, StatType, SystemId};
 use util::lib::{Config, DataOutputMode};
 use validators::{its::its_payload_fsm_cont::ItsPayloadFsmContinuous, lib::ValidatorDispatcher};
+use words::{
+    lib::RdhSubWord,
+    rdh::Rdh0,
+    rdh_cru::{RdhCRU, V6, V7},
+};
 
 pub mod input;
 pub mod stats;
@@ -59,11 +64,46 @@ pub mod view;
 pub mod words;
 pub mod write;
 
-/// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
-///
-/// Larger capacity means less overhead, but more memory usage
-/// Too small capacity will cause the producer thread to block
-const CHANNEL_CDP_CAPACITY: usize = 100;
+/// Does the initial setup for input data processing
+pub fn init_processing(
+    config: std::sync::Arc<impl Config + 'static>,
+    mut reader: Box<dyn BufferedReaderWrapper>,
+    stat_send_channel: std::sync::mpsc::Sender<StatType>,
+    thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
+) -> std::process::ExitCode {
+    // Determine RDH version
+    let rdh0 = Rdh0::load(&mut reader).expect("Failed to read first RDH0");
+    let rdh_version = rdh0.header_id;
+
+    // Send RDH version to stats thread
+    stat_send_channel
+        .send(StatType::RdhVersion(rdh_version))
+        .unwrap();
+
+    // Create input scanner from the already read RDH0 (to avoid seeking back and reading it twice, which would also break with stdin piping)
+    let loader =
+        InputScanner::new_from_rdh0(config.clone(), reader, stat_send_channel.clone(), rdh0);
+
+    // Choose the rest of the execution based on the RDH version
+    // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
+    match rdh_version {
+        6 => match process::<RdhCRU<V6>>(config, loader, stat_send_channel.clone(), thread_stopper)
+        {
+            Ok(_) => exit_success(),
+            Err(e) => exit_fatal(stat_send_channel, e.to_string(), 2),
+        },
+        7 => match process::<RdhCRU<V7>>(config, loader, stat_send_channel.clone(), thread_stopper)
+        {
+            Ok(_) => exit_success(),
+            Err(e) => exit_fatal(stat_send_channel, e.to_string(), 2),
+        },
+        _ => exit_fatal(
+            stat_send_channel,
+            format!("Unknown RDH version: {rdh_version}"),
+            3,
+        ),
+    }
+}
 
 /// Entry point for scanning the input and delegating to checkers, view generators and/or writers depending on [Config]
 ///
@@ -226,7 +266,18 @@ pub fn get_config() -> std::sync::Arc<util::config::Opt> {
 }
 
 /// Exit with [std::process::ExitCode] `SUCCESS`.
-pub fn exit_success() -> std::process::ExitCode {
+fn exit_success() -> std::process::ExitCode {
     log::info!("Exit successful");
     std::process::ExitCode::SUCCESS
+}
+
+fn exit_fatal(
+    stat_send_channel: std::sync::mpsc::Sender<StatType>,
+    error_string: String,
+    exit_code: u8,
+) -> std::process::ExitCode {
+    stat_send_channel
+        .send(StatType::Fatal(error_string))
+        .unwrap();
+    std::process::ExitCode::from(exit_code)
 }
