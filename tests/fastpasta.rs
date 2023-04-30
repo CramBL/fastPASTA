@@ -4,7 +4,7 @@ use std::process::Command; // Run programs
 
 /// Path to test files : tests/regression/test-data/
 /// Files
-const FILE_10_RDH: &str = "tests/regression/test-data/10_rdh.raw";
+pub const FILE_10_RDH: &str = "tests/regression/test-data/10_rdh.raw";
 const FILE_ERR_NOT_HBF: &str = "tests/regression/test-data/err_not_hbf.raw";
 const FILE_THRS_CDW_LINKS: &str = "tests/regression/test-data/thrs_cdw_links.raw";
 const FILE_READOUT_SUPERPAGE_1: &str = "tests/regression/test-data/readout.superpage.1.raw";
@@ -15,7 +15,7 @@ const FILE_1_HBF_BAD_ITS_PAYLOAD: &str = "tests/regression/test-data/1_hbf_bad_i
 const FILE_1_HBF_BAD_TDT: &str = "tests/regression/test-data/1_hbf_bad_tdt.raw";
 
 /// Helper function to match the raw output of stderr or stdout, with a pattern a fixed amount of times
-fn match_on_output(byte_output: Vec<u8>, re_str: &str, match_count: usize) -> bool {
+pub fn match_on_output(byte_output: &Vec<u8>, re_str: &str, match_count: usize) -> bool {
     // Build regex pattern
     let re = fancy_regex::Regex::new(re_str).unwrap();
     // Make the predicate function
@@ -49,7 +49,7 @@ fn file_exists_exit_successful_10_rdh() -> Result<(), Box<dyn std::error::Error>
 
     // Take the output of stderr and match it with a pattern once
     assert!(match_on_output(
-        cmd.output().unwrap().stderr,
+        &cmd.output().unwrap().stderr,
         "(?i)exit success",
         1
     ));
@@ -68,7 +68,7 @@ fn file_exists_exit_successful_err_not_hbf() -> Result<(), Box<dyn std::error::E
     cmd.assert().success();
 
     assert!(match_on_output(
-        cmd.output().unwrap().stderr,
+        &cmd.output().unwrap().stderr,
         "(?i)exit success",
         1
     ));
@@ -87,7 +87,7 @@ fn file_exists_exit_successful_thrs_cdw_links() -> Result<(), Box<dyn std::error
     cmd.assert().success();
 
     assert!(match_on_output(
-        cmd.output().unwrap().stderr,
+        &cmd.output().unwrap().stderr,
         "(?i)exit success",
         1
     ));
@@ -106,7 +106,7 @@ fn file_exists_exit_successful_readout_superpage_1() -> Result<(), Box<dyn std::
     cmd.assert().success();
 
     assert!(match_on_output(
-        cmd.output().unwrap().stderr,
+        &cmd.output().unwrap().stderr,
         "(?i)exit success",
         1
     ));
@@ -125,7 +125,7 @@ fn file_exists_exit_successful_1_hbf_bad_cdp_structure() -> Result<(), Box<dyn s
     cmd.assert().success();
 
     assert!(match_on_output(
-        cmd.output().unwrap().stderr,
+        &cmd.output().unwrap().stderr,
         "(?i)exit success",
         1
     ));
@@ -144,7 +144,7 @@ fn file_exists_exit_successful_1_hbf_bad_dw_ddw0() -> Result<(), Box<dyn std::er
     cmd.assert().success();
 
     assert!(match_on_output(
-        cmd.output().unwrap().stderr,
+        &cmd.output().unwrap().stderr,
         "(?i)exit success",
         1
     ));
@@ -163,7 +163,7 @@ fn file_exists_exit_successful_1_hbf_bad_ihw_tdh() -> Result<(), Box<dyn std::er
     cmd.assert().success();
 
     assert!(match_on_output(
-        cmd.output().unwrap().stderr,
+        &cmd.output().unwrap().stderr,
         "(?i)exit success",
         1
     ));
@@ -182,7 +182,7 @@ fn file_exists_exit_successful_1_hbf_bad_its_payload() -> Result<(), Box<dyn std
     cmd.assert().success();
 
     assert!(match_on_output(
-        cmd.output().unwrap().stderr,
+        &cmd.output().unwrap().stderr,
         "(?i)exit success",
         1
     ));
@@ -201,24 +201,10 @@ fn file_exists_exit_successful_1_hbf_bad_tdt() -> Result<(), Box<dyn std::error:
     cmd.assert().success();
 
     assert!(match_on_output(
-        cmd.output().unwrap().stderr,
+        &cmd.output().unwrap().stderr,
         "(?i)exit success",
         1
     ));
-
-    Ok(())
-}
-
-#[test]
-fn view_rdh() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("fastpasta")?;
-
-    cmd.arg(FILE_10_RDH).arg("view").arg("rdh").arg("-v2");
-
-    use predicate::str::is_match;
-    cmd.assert()
-        .success()
-        .stdout(is_match(": .* (7|6) .* 64 .* (0|2)").unwrap().count(10));
 
     Ok(())
 }
