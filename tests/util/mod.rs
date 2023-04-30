@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 /// Re-export some common utilities for system tests
 pub use assert_cmd::prelude::*; // Add methods on commands
 pub use predicate::str::is_match;
