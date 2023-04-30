@@ -8,7 +8,8 @@ pub const FILE_10_RDH: &str = "tests/regression/test-data/10_rdh.raw";
 pub const FILE_ERR_NOT_HBF: &str = "tests/regression/test-data/err_not_hbf.raw";
 const FILE_THRS_CDW_LINKS: &str = "tests/regression/test-data/thrs_cdw_links.raw";
 pub const FILE_READOUT_SUPERPAGE_1: &str = "tests/regression/test-data/readout.superpage.1.raw";
-const FILE_1_HBF_BAD_CDP_STRUCTURE: &str = "tests/regression/test-data/1_hbf_bad_cdp_structure.raw";
+pub const FILE_1_HBF_BAD_CDP_STRUCTURE: &str =
+    "tests/regression/test-data/1_hbf_bad_cdp_structure.raw";
 const FILE_1_HBF_BAD_DW_DDW0: &str = "tests/regression/test-data/1_hbf_bad_dw_ddw0.raw";
 const FILE_1_HBF_BAD_IHW_TDH: &str = "tests/regression/test-data/1_hbf_bad_ihw_tdh.raw";
 const FILE_1_HBF_BAD_ITS_PAYLOAD: &str = "tests/regression/test-data/1_hbf_bad_its_payload.raw";
