@@ -89,26 +89,13 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             initial_rdh0: Some(rdh0),
         }
     }
-    fn report_rdh_seen(&self) {
+
+    fn report_stat(&self, stat: StatType) {
         self.stats_controller_sender_ch
-            .send(StatType::RDHsSeen(1))
-            .expect("Failed to send stats, receiver was dropped")
+            .send(stat)
+            .expect("Failed to send stats, receiver was dropped");
     }
-    fn report_link_seen(&self, link_id: u8) {
-        self.stats_controller_sender_ch
-            .send(StatType::LinksObserved(link_id))
-            .expect("Failed to send stats, receiver was dropped")
-    }
-    fn report_payload_size(&self, payload_size: u32) {
-        self.stats_controller_sender_ch
-            .send(StatType::PayloadSize(payload_size))
-            .expect("Failed to send stats, receiver was dropped")
-    }
-    fn report_rdh_filtered(&self) {
-        self.stats_controller_sender_ch
-            .send(StatType::RDHsFiltered(1))
-            .expect("Failed to send stats, receiver was dropped")
-    }
+
     fn report_run_trigger_type<T: RDH>(&self, rdh: &T) {
         let raw_trigger_type = rdh.trigger_type();
         let run_trigger_type_str = crate::view::lib::rdh_trigger_type_as_string(rdh);
@@ -150,13 +137,13 @@ where
 
         // Set the link ID and report another RDH seen
         let current_link_id = rdh.link_id();
-        self.report_rdh_seen();
-        self.report_payload_size(rdh.payload_size() as u32);
+        self.report_stat(StatType::RDHsSeen(1));
+        self.report_stat(StatType::PayloadSize(rdh.payload_size() as u32));
 
         // If we haven't seen this link before, report it and add it to the list of unique links
         if !self.unique_links_observed.contains(&current_link_id) {
             self.unique_links_observed.push(current_link_id);
-            self.report_link_seen(current_link_id);
+            self.report_stat(StatType::LinksObserved(current_link_id));
         }
         sanity_check_offset_next(
             &rdh,
@@ -167,7 +154,7 @@ where
         if let Some(x) = self.link_to_filter {
             // If it matches, return the RDH
             if x == current_link_id {
-                self.report_rdh_filtered();
+                self.report_stat(StatType::RDHsFiltered(1));
                 // no jump. current pos -> start of payload
                 Ok(rdh)
             } else {
@@ -228,13 +215,13 @@ where
                 &self.stats_controller_sender_ch,
             )?;
             let current_link_id = rdh.link_id();
-            self.report_rdh_seen();
+            self.report_stat(StatType::RDHsSeen(1));
             if !self.unique_links_observed.contains(&current_link_id) {
                 self.unique_links_observed.push(current_link_id);
-                self.report_link_seen(current_link_id);
+                self.report_stat(StatType::LinksObserved(current_link_id));
             }
             if self.link_to_filter.unwrap() == current_link_id {
-                self.report_rdh_filtered();
+                self.report_stat(StatType::RDHsFiltered(1));
                 return Ok(rdh);
             }
             self.reader
