@@ -96,6 +96,120 @@ fn file_exists_exit_successful_thrs_cdw_links() -> Result<(), Box<dyn std::error
 }
 
 #[test]
+fn file_exists_exit_successful_readout_superpage_1() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_READOUT_SUPERPAGE_1)
+        .arg("check")
+        .arg("sanity")
+        .arg("-v2");
+    cmd.assert().success();
+
+    assert!(match_on_output(
+        cmd.output().unwrap().stderr,
+        "(?i)exit success",
+        1
+    ));
+
+    Ok(())
+}
+
+#[test]
+fn file_exists_exit_successful_1_hbf_bad_cdp_structure() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_1_HBF_BAD_CDP_STRUCTURE)
+        .arg("check")
+        .arg("sanity")
+        .arg("-v2");
+    cmd.assert().success();
+
+    assert!(match_on_output(
+        cmd.output().unwrap().stderr,
+        "(?i)exit success",
+        1
+    ));
+
+    Ok(())
+}
+
+#[test]
+fn file_exists_exit_successful_1_hbf_bad_dw_ddw0() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_1_HBF_BAD_DW_DDW0)
+        .arg("check")
+        .arg("sanity")
+        .arg("-v2");
+    cmd.assert().success();
+
+    assert!(match_on_output(
+        cmd.output().unwrap().stderr,
+        "(?i)exit success",
+        1
+    ));
+
+    Ok(())
+}
+
+#[test]
+fn file_exists_exit_successful_1_hbf_bad_ihw_tdh() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_1_HBF_BAD_IHW_TDH)
+        .arg("check")
+        .arg("sanity")
+        .arg("-v2");
+    cmd.assert().success();
+
+    assert!(match_on_output(
+        cmd.output().unwrap().stderr,
+        "(?i)exit success",
+        1
+    ));
+
+    Ok(())
+}
+
+#[test]
+fn file_exists_exit_successful_1_hbf_bad_its_payload() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_1_HBF_BAD_ITS_PAYLOAD)
+        .arg("check")
+        .arg("sanity")
+        .arg("-v2");
+    cmd.assert().success();
+
+    assert!(match_on_output(
+        cmd.output().unwrap().stderr,
+        "(?i)exit success",
+        1
+    ));
+
+    Ok(())
+}
+
+#[test]
+fn file_exists_exit_successful_1_hbf_bad_tdt() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_1_HBF_BAD_TDT)
+        .arg("check")
+        .arg("sanity")
+        .arg("-v2");
+    cmd.assert().success();
+
+    assert!(match_on_output(
+        cmd.output().unwrap().stderr,
+        "(?i)exit success",
+        1
+    ));
+
+    Ok(())
+}
+
+#[test]
 fn view_rdh() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
