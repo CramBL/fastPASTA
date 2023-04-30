@@ -1,10 +1,5 @@
-use assert_cmd::prelude::*; // Add methods on commands
-use predicate::str::is_match;
-use predicates::prelude::*; // Used for writing assertions
-use std::process::Command;
-mod fastpasta;
-use crate::fastpasta::match_on_output;
-use crate::fastpasta::FILE_ERR_NOT_HBF; // File used in these tests
+use crate::util::*;
+mod util;
 
 const MATCH_PATTERNS: [&str; 6] = [
     "(?i)Trigger Type.*0x6A03",

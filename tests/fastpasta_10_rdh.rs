@@ -1,10 +1,5 @@
-use assert_cmd::prelude::*; // Add methods on commands
-use predicate::str::is_match;
-use predicates::prelude::*; // Used for writing assertions
-use std::process::Command;
-mod fastpasta;
-use crate::fastpasta::match_on_output;
-use crate::fastpasta::FILE_10_RDH; // File used in these tests
+use crate::util::*;
+mod util;
 
 // Asserts that the end of processing report summary contains correct information
 fn validate_report_summary(byte_output: &Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {

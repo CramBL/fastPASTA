@@ -1,10 +1,5 @@
-use assert_cmd::prelude::*; // Add methods on commands
-use predicate::str::is_match;
-use predicates::prelude::*; // Used for writing assertions
-use std::process::Command;
-mod fastpasta;
-use crate::fastpasta::match_on_output;
-use crate::fastpasta::FILE_1_HBF_BAD_CDP_STRUCTURE; // File used in these tests
+use crate::util::*;
+mod util;
 
 #[test]
 fn view_rdh() -> Result<(), Box<dyn std::error::Error>> {
@@ -52,6 +47,27 @@ fn check_all_its() -> Result<(), Box<dyn std::error::Error>> {
     // 1 Error from a stateful check
     cmd.assert().stderr(is_match("ERROR -")?.count(1));
     cmd.assert().stderr(is_match("WARN -")?.count(0));
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_err_msg() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_1_HBF_BAD_CDP_STRUCTURE)
+        .arg("check")
+        .arg("all")
+        .arg("its")
+        .arg("-v2");
+
+    // 1 Error from a stateful check
+    assert!(match_on_output(
+        &cmd.output()?.stderr,
+        // Eror message should indicate: In position 0xE0, something about DDW0 and RDH
+        "(?i)0xe0.*(DDW0|RDH).*(DDW0|RDH)",
+        1
+    ));
 
     Ok(())
 }
