@@ -82,30 +82,48 @@ impl Report {
         self.fatal_error = Some(error);
     }
     pub fn print(&mut self) {
+        let is_windows = std::env::consts::OS.to_lowercase().contains("windows"); // Windows can't have ANSI colors :(
+
         let mut global_stats_table = Table::new(&self.stats);
-        global_stats_table = format_global_stats_sub_table(&global_stats_table);
+        global_stats_table = format_global_stats_sub_table(&global_stats_table, is_windows);
         let mut detected_attributes_table = Table::new(&self.detected_attributes);
         detected_attributes_table = format_sub_table(
             &detected_attributes_table,
             "Detected Attributes".to_string(),
-            SubtableColor::Yellow,
+            if is_windows {
+                SubtableColor::NoColor
+            } else {
+                SubtableColor::Yellow
+            },
         );
 
         if self.filter_stats_table.is_some() {
             let filter_stats_table = format_sub_table(
                 self.filter_stats_table.as_ref().unwrap(),
                 "Filter Stats".to_string(),
-                SubtableColor::Purple,
+                if is_windows {
+                    SubtableColor::NoColor
+                } else {
+                    SubtableColor::Purple
+                },
             );
             let multi_table = tabled::col![
                 global_stats_table,
                 tabled::row![detected_attributes_table, filter_stats_table]
             ];
-            self.report_table = Some(format_super_table(&multi_table, self.processing_time));
+            self.report_table = Some(format_super_table(
+                &multi_table,
+                self.processing_time,
+                is_windows,
+            ));
         } else {
             let multi_table =
                 tabled::col![global_stats_table, tabled::row![detected_attributes_table]];
-            self.report_table = Some(format_super_table(&multi_table, self.processing_time));
+            self.report_table = Some(format_super_table(
+                &multi_table,
+                self.processing_time,
+                is_windows,
+            ));
         }
         if self.fatal_error.is_some() {
             let mut error_table = self.report_table.clone().unwrap();
@@ -126,7 +144,11 @@ impl Report {
 }
 
 /// The super table is the table that contains all the other tables
-fn format_super_table(super_table: &Table, processing_time: std::time::Duration) -> Table {
+fn format_super_table(
+    super_table: &Table,
+    processing_time: std::time::Duration,
+    is_os_windows: bool,
+) -> Table {
     let mut modded_table = super_table.clone();
     let style = tabled::Style::modern()
         .horizontals([tabled::style::HorizontalLine::new(
@@ -139,26 +161,37 @@ fn format_super_table(super_table: &Table, processing_time: std::time::Duration)
             1,
             tabled::Style::modern().get_vertical(),
         )]);
+
     modded_table.with(style).with(Panel::header("Report")).with(
         Modify::new(Rows::single(0))
             .with(Alignment::center())
             .with(Format::new(|x| {
-                let x = x.to_uppercase();
-                x.green().to_string()
+                let mut x = x.to_uppercase();
+                if !is_os_windows {
+                    x = x.green().to_string()
+                }
+                x
             })),
     );
+
     let height = modded_table.count_rows();
     modded_table
         .with(Panel::footer(format!("Processed in {processing_time:?}")))
         .with(
             Modify::new(Rows::single(height))
                 .with(Alignment::center())
-                .with(Format::new(|x| x.dimmed().to_string())),
+                .with(Format::new(|x| {
+                    if is_os_windows {
+                        x.to_string()
+                    } else {
+                        x.dimmed().to_string()
+                    }
+                })),
         );
     modded_table
 }
 
-fn format_global_stats_sub_table(global_stats_table: &Table) -> Table {
+fn format_global_stats_sub_table(global_stats_table: &Table, os_is_windows: bool) -> Table {
     let mut modded_table = global_stats_table.clone();
     let style = tabled::Style::modern()
         .off_left()
@@ -173,21 +206,39 @@ fn format_global_stats_sub_table(global_stats_table: &Table) -> Table {
         .main(Some('═'))
         .intersection(None)]);
 
-    modded_table
-        .with(style)
-        .with(Modify::new(Rows::single(0)).with(Format::new(|x| x.to_uppercase())))
-        .with(Modify::new(Columns::single(0)).with(Format::new(|s| s.blue().to_string())))
-        .with(Modify::new(Columns::single(1)).with(Format::new(|s| s.bright_cyan().to_string())))
-        .with(Modify::new(Columns::new(2..)).with(Format::new(|s| s.yellow().to_string())))
-        .with(Panel::header("Global Stats"))
-        .with(
-            Modify::new(Rows::single(0))
-                .with(Alignment::center())
-                .with(Format::new(|x| {
-                    let x = x.to_uppercase();
-                    x.bright_yellow().to_string()
-                })),
-        );
+    if os_is_windows {
+        // Boring no colors
+        modded_table
+            .with(style)
+            .with(Modify::new(Rows::single(0)).with(Format::new(|x| x.to_uppercase())))
+            .with(Modify::new(Columns::new(2..)).with(Format::new(|s| s.to_string())))
+            .with(Panel::header("Global Stats"))
+            .with(
+                Modify::new(Rows::single(0))
+                    .with(Alignment::center())
+                    .with(Format::new(|x| x.to_uppercase())),
+            );
+    } else {
+        // Fun ANSI colors
+        modded_table
+            .with(style)
+            .with(Modify::new(Rows::single(0)).with(Format::new(|x| x.to_uppercase())))
+            .with(Modify::new(Columns::single(0)).with(Format::new(|s| s.blue().to_string())))
+            .with(
+                Modify::new(Columns::single(1)).with(Format::new(|s| s.bright_cyan().to_string())),
+            )
+            .with(Modify::new(Columns::new(2..)).with(Format::new(|s| s.yellow().to_string())))
+            .with(Panel::header("Global Stats"))
+            .with(
+                Modify::new(Rows::single(0))
+                    .with(Alignment::center())
+                    .with(Format::new(|x| {
+                        let x = x.to_uppercase();
+                        x.bright_yellow().to_string()
+                    })),
+            );
+    }
+
     modded_table
 }
 
@@ -198,6 +249,7 @@ enum SubtableColor {
     Blue,
     Yellow,
     Red,
+    NoColor, // Windows...
 }
 /// Formats a subtable to use the same style as the main table
 /// Adds a header to the subtable in all caps, purple, and aligned center
@@ -227,6 +279,7 @@ fn format_sub_table(subtable: &Table, header: String, color: SubtableColor) -> T
                     SubtableColor::Blue => x.blue().to_string(),
                     SubtableColor::Yellow => x.yellow().to_string(),
                     SubtableColor::Red => x.red().to_string(),
+                    SubtableColor::NoColor => x, // Colors are not available for Windows
                 }
             })),
     );
@@ -237,6 +290,7 @@ fn format_sub_table(subtable: &Table, header: String, color: SubtableColor) -> T
             SubtableColor::Blue => x.blue().to_string(),
             SubtableColor::Yellow => x.yellow().to_string(),
             SubtableColor::Red => x.red().to_string(),
+            SubtableColor::NoColor => x.to_string(), // Colors are not available for Windows
         })),
     );
 
@@ -298,5 +352,10 @@ mod tests {
         report.add_fatal_error(fatal_error.to_string());
 
         assert_stdout_contains!(report.print(), "FATAL ERROR");
+    }
+
+    #[test]
+    fn test_os() {
+        println!("{}", std::env::consts::OS);
     }
 }

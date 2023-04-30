@@ -19,7 +19,7 @@ TXT_CLEAR="\e[0m"
 
 # Prefix for each command.
 ## Run the binary and go to the test-data folder
-cmd_prefix="cargo run -- ./tests/regression/test-data/"
+cmd_prefix="cargo run -- ./tests/test-data/"
 
 # Arrays to store the failed tests
 ## The index of each array corresponds to the index of the failed test in the tests_array

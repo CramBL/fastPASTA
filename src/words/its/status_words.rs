@@ -702,6 +702,7 @@ impl PartialEq for Cdw {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn ihw_read_write() {
@@ -754,7 +755,7 @@ mod tests {
         const VALID_ID: u8 = 0xF0;
         // Boring but very typical TDT, everything is 0 except for packet_done
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF0];
-        assert!(raw_data_tdt[9] == VALID_ID);
+        assert_eq!(raw_data_tdt[9], VALID_ID);
         let tdt = Tdt::load(&mut raw_data_tdt.as_slice()).unwrap();
         println!("{tdt}");
         assert_eq!(tdt.id(), VALID_ID);
@@ -808,7 +809,7 @@ mod tests {
         assert!(tdt.timeout_to_start());
         assert!(tdt.timeout_start_stop());
         assert!(tdt.timeout_in_idle());
-        assert!(tdt.lane_status_27_24() == LANE_24_AND_25_IN_ERROR);
+        assert_eq!(tdt.lane_status_27_24(), LANE_24_AND_25_IN_ERROR);
         let combined_lane_status_23_to_16 =
             ((LANE_22_IN_WARNING as u16) << 8) | (LANE_16_AND_19_IN_OK as u16);
         assert_eq!(tdt.lane_status_23_16(), combined_lane_status_23_to_16);
@@ -864,7 +865,7 @@ mod tests {
             TRANSMISSION_TO_LANE_STARTS_VIOLATION_SET,
             0xE4,
         ];
-        assert!(raw_data_ddw0[9] == VALID_ID);
+        assert_eq!(raw_data_ddw0[9], VALID_ID);
         let ddw0 = Ddw0::load(&mut raw_data_ddw0.as_slice()).unwrap();
         println!("{ddw0}");
         assert_eq!(ddw0.id(), VALID_ID);
@@ -892,7 +893,7 @@ mod tests {
         let raw_data_cdw = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0xF8];
         assert!(raw_data_cdw[9] == VALID_ID);
         let cdw = Cdw::load(&mut raw_data_cdw.as_slice()).unwrap();
-        assert!(cdw.id() == VALID_ID);
+        assert_eq!(cdw.id(), VALID_ID);
         assert!(cdw.is_reserved_0());
         assert_eq!(cdw.calibration_user_fields(), 0x050403020100);
         assert_eq!(cdw.calibration_word_index(), 0x080706);

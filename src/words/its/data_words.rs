@@ -91,8 +91,8 @@ pub struct ObLane(u8);
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
+    use pretty_assertions::assert_eq;
 
     const DATA_WORDS_OB: [u8; 64] = [
         0xA8, 0x00, 0xC0, 0x01, 0xFE, 0x7F, 0x05, 0xFE, 0x7F, 0x46, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -115,7 +115,7 @@ mod tests {
             .for_each(|(idx, data_word)| {
                 let id = data_word[9];
                 let lane = ob_data_word_id_to_lane(id);
-                assert!(lane == (idx + 6) as u8);
+                assert_eq!(lane, (idx + 6) as u8);
             });
     }
 
