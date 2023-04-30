@@ -169,7 +169,7 @@ impl<C: Config> StatsController<C> {
                 let (raw_val, string_descr) = self.run_trigger_type.to_owned();
                 if raw_val == 0 && string_descr.is_empty() {
                     log::debug!(
-                        "Run trigger type determined to be {raw_trigger_type}: {trigger_type_str}"
+                        "Run trigger type determined to be {raw_trigger_type:#0x}: {trigger_type_str}"
                     );
                     self.run_trigger_type = (raw_trigger_type, trigger_type_str);
                 } else {
