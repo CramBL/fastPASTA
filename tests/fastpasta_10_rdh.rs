@@ -30,7 +30,7 @@ fn view_rdh() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert()
         .success()
-        .stdout(is_match(": .* (7|6) .* 64 .* (0|2)").unwrap().count(10));
+        .stdout(is_match(": .* (7|6) .* 64 .* (0|2)")?.count(10));
 
     Ok(())
 }
@@ -61,18 +61,10 @@ fn check_sanity() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_10_RDH).arg("check").arg("sanity");
     cmd.assert().success();
 
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)error - ",
-        0
-    ));
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)warn - ",
-        0
-    ));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
 
-    validate_report_summary(&cmd.output().unwrap().stdout)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())
 }
@@ -84,18 +76,10 @@ fn check_sanity_its() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_10_RDH).arg("check").arg("sanity").arg("its");
     cmd.assert().success();
 
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)error - ",
-        0
-    ));
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)warn - ",
-        0
-    ));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
     // Asserts on stdout
-    validate_report_summary(&cmd.output().unwrap().stdout)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())
 }
@@ -107,18 +91,10 @@ fn check_all() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_10_RDH).arg("check").arg("all");
     cmd.assert().success();
 
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)error - ",
-        0
-    ));
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)warn - ",
-        0
-    ));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
     // Asserts on stdout
-    validate_report_summary(&cmd.output().unwrap().stdout)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())
 }
@@ -130,18 +106,10 @@ fn check_all_its() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_10_RDH).arg("check").arg("all").arg("its");
     cmd.assert().success();
 
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)error - ",
-        0
-    ));
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)warn - ",
-        0
-    ));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
     // Asserts on stdout
-    validate_report_summary(&cmd.output().unwrap().stdout)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())
 }
