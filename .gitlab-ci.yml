@@ -151,24 +151,24 @@ test-coverage:
     - echo "${RUSTFLAGS}"
     - rustup component add llvm-tools-preview
     - cargo install grcov
-    - apt-get update && apt-get install -y lcov
+    - apt-get update && apt-get install -y libxml2-utils
     # Might already exist from the cache
     - cargo clean
     - mkdir -p target/coverage
     - ls -l target/coverage
-    # Remove old test filed or grcov won't produce anything
-    - rm -rf target/coverage/*
-    - ls -l target/coverage
     # Rust-based tests
     - RUSTFLAGS="-Cinstrument-coverage" LLVM_PROFILE_FILE="target/coverage/%p-%m.profraw" cargo test -- --test-threads=1 --nocapture
     - ls -l target/coverage
-    - grcov target/coverage --binary-path target/debug -s . --output-types html,cobertura,lcov --branch --ignore-not-existing --ignore '../*' --ignore "/*" --ignore "$HOME/.cargo/**" --ignore "*cargo*" -o target/coverage --keep-only 'src/*'
-    - ls -l target/coverage
+    - grcov target/coverage --binary-path target/debug -s . --output-types html,cobertura --branch --ignore-not-existing --ignore '../*' --ignore "/*" --ignore "$HOME/.cargo/**" --ignore "*cargo*" -o target/coverage --keep-only 'src/*'
     - echo "Coverage files generated"
     - ls -l target/coverage
-    - lcov --summary coverage.lcov
-  coverage: /lines\.*:\s*([\d\.]+%)/
+    # Extract just the top-level coverage number from the XML report.
+    - |
+      xmllint --xpath "concat('Coverage: ', 100 * string(//coverage/@line-rate), '%')" target/coverage/cobertura.xml
+
+  coverage: '/Coverage: \d+(?:\.\d+)?/'
   dependencies: []
+  cache: []
   artifacts:
     paths:
       - target/coverage/
