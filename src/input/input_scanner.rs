@@ -289,13 +289,13 @@ fn sanity_check_offset_next<T: RDH>(
 
 #[cfg(test)]
 mod tests {
-    use std::io::Write;
-    use std::{fs::File, io::BufReader, path::PathBuf};
-
     use crate::util::config::Opt;
     use crate::util::lib::InputOutput;
     use crate::words::lib::ByteSlice;
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
+    use pretty_assertions::assert_eq;
+    use std::io::Write;
+    use std::{fs::File, io::BufReader, path::PathBuf};
 
     fn setup_scanner_for_file(
         path: &str,
@@ -373,7 +373,7 @@ mod tests {
             let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
             let rdh = scanner.load_rdh_cru::<RdhCRU<V7>>();
             assert!(rdh.is_err());
-            assert!(rdh.unwrap_err().kind() == std::io::ErrorKind::UnexpectedEof);
+            assert_eq!(rdh.unwrap_err().kind(), std::io::ErrorKind::UnexpectedEof);
         }
 
         // delete output file
@@ -415,7 +415,7 @@ mod tests {
             let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
             let rdh = scanner.load_rdh_cru::<RdhCRU<V6>>();
             assert!(rdh.is_err());
-            assert!(rdh.unwrap_err().kind() == std::io::ErrorKind::UnexpectedEof);
+            assert_eq!(rdh.unwrap_err().kind(), std::io::ErrorKind::UnexpectedEof);
         }
     }
 }

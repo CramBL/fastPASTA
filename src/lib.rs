@@ -284,19 +284,19 @@ fn exit_fatal(
 
 #[cfg(test)]
 mod tests {
-    use std::{path::PathBuf, sync::Arc};
-
     use super::*;
     use crate::input::data_wrapper::CdpChunk;
     use crate::words::rdh_cru::test_data::*;
     use crate::{input::lib::init_reader, util::lib::test_util::MockConfig};
+    use pretty_assertions::assert_eq;
+    use std::{path::PathBuf, sync::Arc};
 
     #[test]
     fn test_init_processing() {
         // Setup Mock Config
         let mut mock_config = MockConfig::default();
         // Set input file from one of the files used for regression testing
-        mock_config.input_file = Some(PathBuf::from("tests/regression/test-data/10_rdh.raw"));
+        mock_config.input_file = Some(PathBuf::from("tests/test-data/10_rdh.raw"));
         let mock_config = Arc::new(mock_config);
         // Setup a reader
         let reader = init_reader(&*mock_config).unwrap();
