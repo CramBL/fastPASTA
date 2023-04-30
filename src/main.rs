@@ -20,7 +20,7 @@ pub fn main() -> std::process::ExitCode {
     // If max allowed errors is reached, stop the processing from the stats thread
     let (stat_controller, stat_send_channel, stop_flag) = init_stats_controller(config.clone());
 
-    let exit_code: std::process::ExitCode = match init_reader(&config) {
+    let exit_code: std::process::ExitCode = match init_reader(&*config) {
         Ok(readable) => fastpasta::init_processing(config, readable, stat_send_channel, stop_flag),
         Err(e) => {
             stat_send_channel

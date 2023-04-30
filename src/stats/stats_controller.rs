@@ -169,7 +169,7 @@ impl<C: Config> StatsController<C> {
                 let (raw_val, string_descr) = self.run_trigger_type.to_owned();
                 if raw_val == 0 && string_descr.is_empty() {
                     log::debug!(
-                        "Run trigger type determined to be {raw_trigger_type}: {trigger_type_str}"
+                        "Run trigger type determined to be {raw_trigger_type:#0x}: {trigger_type_str}"
                     );
                     self.run_trigger_type = (raw_trigger_type, trigger_type_str);
                 } else {
@@ -260,7 +260,7 @@ impl<C: Config> StatsController<C> {
         report.add_detected_attribute("Data Format".to_string(), observed_data_formats_string);
         report.add_detected_attribute(
             "System ID".to_string(),
-            self.system_id_observed.unwrap().to_string(),
+            self.system_id_observed.unwrap_or(SystemId::TST).to_string(), // Default to TST for unit tests where no RDHs are seen
         );
 
         report.print();

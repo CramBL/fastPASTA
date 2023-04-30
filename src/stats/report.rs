@@ -121,7 +121,7 @@ impl Report {
                 );
             self.report_table = Some(error_table);
         }
-        eprintln!("{}", self.report_table.as_ref().unwrap());
+        println!("{}", self.report_table.as_ref().unwrap());
     }
 }
 
@@ -247,12 +247,12 @@ fn format_sub_table(subtable: &Table, header: String, color: SubtableColor) -> T
 mod tests {
     use super::*;
 
-    macro_rules! assert_stderr_contains {
+    macro_rules! assert_stdout_contains {
         ($test:expr, $expected:literal) => {{
             use gag::BufferRedirect;
             use std::io::Read;
 
-            let mut buf = BufferRedirect::stderr().unwrap();
+            let mut buf = BufferRedirect::stdout().unwrap();
 
             $test;
 
@@ -285,9 +285,9 @@ mod tests {
 
         let filter_table = Table::new(vec![filtered_links, observed_links]);
         report.add_filter_stats(filter_table);
-        assert_stderr_contains!(report.print(), "Filtered links");
-        assert_stderr_contains!(report.print(), "Total RDHs");
-        assert_stderr_contains!(report.print(), "725800");
+        assert_stdout_contains!(report.print(), "Filtered links");
+        assert_stdout_contains!(report.print(), "Total RDHs");
+        assert_stdout_contains!(report.print(), "725800");
     }
 
     #[test]
@@ -297,6 +297,6 @@ mod tests {
         let mut report = Report::new(processing_time.elapsed());
         report.add_fatal_error(fatal_error.to_string());
 
-        assert_stderr_contains!(report.print(), "FATAL ERROR");
+        assert_stdout_contains!(report.print(), "FATAL ERROR");
     }
 }
