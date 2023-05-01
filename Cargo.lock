@@ -462,6 +462,7 @@ dependencies = [
  "gag",
  "itertools",
  "log",
+ "once_cell",
  "owo-colors",
  "predicates",
  "pretty_assertions",

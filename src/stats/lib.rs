@@ -1,17 +1,26 @@
 //! Contains the [init_stats_controller] function, which spawns a thread with the [StatsController] running, and returns the thread handle, the channel to send stats to, and the stop flag.
 use super::stats_controller::StatsController;
-use crate::{util::lib::Config, words};
+use crate::{util::config::Cfg, words};
 use std::{fmt::Display, sync::atomic::AtomicBool};
 
 /// Spawns a thread with the StatsController running, and returns the thread handle, the channel to send stats to, and the stop flag.
-pub fn init_stats_controller<C: Config + 'static>(
-    config: std::sync::Arc<C>,
+pub fn init_stats_controller(
+    config: Option<&'static Cfg>,
 ) -> (
     std::thread::JoinHandle<()>,
     std::sync::mpsc::Sender<StatType>,
     std::sync::Arc<AtomicBool>,
 ) {
-    let mut stats = StatsController::new(config);
+    if config.is_none() {}
+    let mut stats = if config.is_some() {
+        StatsController::new(Some(Cfg::global()))
+    } else {
+        assert!(
+            cfg!(debug_assertions),
+            "No cfg set but we are not in a test environment!"
+        );
+        StatsController::new(None)
+    };
     let send_stats_channel = stats.send_channel();
     let thread_stop_flag = stats.end_processing_flag();
     let stats_thread = std::thread::Builder::new()
@@ -231,9 +240,8 @@ fn collect_its_stats<T: words::lib::RDH>(
 
 #[cfg(test)]
 mod tests {
-    use crate::words::lib::RDH;
-
     use super::*;
+    use crate::words::lib::RDH;
 
     #[test]
     fn test_collect_its_stats() {
@@ -283,9 +291,7 @@ mod tests {
 
     #[test]
     fn test_init_stats_controller() {
-        let config = std::sync::Arc::new(crate::util::lib::test_util::MockConfig::default());
-
-        let (handle, send_ch, stop_flag) = init_stats_controller(config);
+        let (handle, send_ch, stop_flag) = init_stats_controller(None);
 
         // Stop flag should be false
         assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));

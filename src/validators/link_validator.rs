@@ -15,8 +15,8 @@ pub(crate) use super::{its, rdh, rdh_running::RdhCruRunningChecker};
 use crate::{
     stats::lib::StatType,
     util::{
-        config::{self, Check},
-        lib::Config,
+        config::{self, Cfg, Check, System},
+        lib::Checks,
     },
     validators::rdh::RdhCruSanityValidator,
     words::{
@@ -29,22 +29,22 @@ use ringbuffer::{AllocRingBuffer, RingBufferExt, RingBufferWrite};
 /// Main validator that handles all checks on a specific link.
 ///
 /// A [LinkValidator] is created for each link that is being checked.
-pub struct LinkValidator<T: RDH, C: Config> {
-    config: std::sync::Arc<C>,
+pub struct LinkValidator<T: RDH> {
     running_checks: bool,
     /// Producer channel to send stats through.
     pub send_stats_ch: std::sync::mpsc::Sender<StatType>,
     /// Consumer channel to receive data from.
     pub data_rcv_channel: crossbeam_channel::Receiver<CdpTuple<T>>,
-    its_cdp_validator: its::cdp_running::CdpRunningValidator<T, C>,
+    its_cdp_validator: its::cdp_running::CdpRunningValidator<T>,
     rdh_running_validator: RdhCruRunningChecker<T>,
     rdh_sanity_validator: RdhCruSanityValidator<T>,
     prev_rdhs: AllocRingBuffer<T>,
+    target_system: Option<System>,
 }
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
-impl<T: RDH, C: Config> LinkValidator<T, C> {
+impl<T: RDH> LinkValidator<T> {
     /// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
     ///
     /// Larger capacity means less overhead, but more memory usage
@@ -53,10 +53,9 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
 
     /// Creates a new [LinkValidator] and the [StatType] sender channel to it, from a [Config].
     pub fn new(
-        global_config: std::sync::Arc<C>,
         send_stats_ch: std::sync::mpsc::Sender<StatType>,
     ) -> (Self, crossbeam_channel::Sender<CdpTuple<T>>) {
-        let rdh_sanity_validator = if let Some(system) = global_config.check().unwrap().target() {
+        let rdh_sanity_validator = if let Some(system) = Cfg::global().check().unwrap().target() {
             match system {
                 config::System::ITS => {
                     RdhCruSanityValidator::<T>::with_specialization(rdh::SpecializeChecks::ITS)
@@ -69,18 +68,14 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
             crossbeam_channel::bounded(Self::CHANNEL_CDP_CAPACITY);
         (
             Self {
-                config: global_config.clone(),
-                running_checks: match global_config.check().unwrap() {
+                running_checks: match Cfg::global().check().unwrap() {
                     Check::All(_) => true,
                     Check::Sanity(_) => false,
                 },
-
+                target_system: Cfg::global().check().unwrap().target(),
                 send_stats_ch: send_stats_ch.clone(),
                 data_rcv_channel,
-                its_cdp_validator: its::cdp_running::CdpRunningValidator::new(
-                    global_config.clone(),
-                    send_stats_ch,
-                ),
+                its_cdp_validator: its::cdp_running::CdpRunningValidator::new(send_stats_ch),
                 rdh_running_validator: RdhCruRunningChecker::default(),
                 rdh_sanity_validator,
                 prev_rdhs: AllocRingBuffer::with_capacity(2),
@@ -102,7 +97,7 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
 
         self.do_rdh_checks(&rdh, rdh_mem_pos);
 
-        if let Some(system) = self.config.check().unwrap().target() {
+        if let Some(system) = &self.target_system {
             match system {
                 config::System::ITS => {
                     if !payload.is_empty() {
@@ -160,21 +155,38 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::config::{System, Target};
-    use crate::util::lib::test_util::MockConfig;
     use crate::words::its::test_payloads::*;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
+    use std::sync::mpsc::Sender;
+
+    fn setup_test_link_validator<T: RDH>(
+        is_running_checks: bool,
+        is_its_payload_running_checks: bool,
+        send_stats: Sender<StatType>,
+        data_rcv_channel: crossbeam_channel::Receiver<(T, Vec<u8>, u64)>,
+    ) -> LinkValidator<T> {
+        let mut its_cdp_validator =
+            its::cdp_running::CdpRunningValidator::_new_no_cfg(send_stats.clone());
+        its_cdp_validator.running_checks = is_its_payload_running_checks;
+        LinkValidator {
+            running_checks: is_running_checks,
+            send_stats_ch: send_stats,
+            data_rcv_channel,
+            its_cdp_validator,
+            rdh_running_validator: RdhCruRunningChecker::default(),
+            rdh_sanity_validator: RdhCruSanityValidator::<T>::default(),
+            prev_rdhs: AllocRingBuffer::with_capacity(2),
+            target_system: None,
+        }
+    }
 
     #[test]
     fn test_run_link_validator() {
         let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
-        let mut mock_config = MockConfig::default();
-        mock_config.check = Some(Check::Sanity(Target { system: None }));
-
-        let (mut link_validator, _cdp_tuple_send_ch): (
-            LinkValidator<RdhCRU<V7>, MockConfig>,
-            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
-        ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
+        let (data_send_channel, data_rcv_channel) =
+            crossbeam_channel::bounded(LinkValidator::<RdhCRU<V7>>::CHANNEL_CDP_CAPACITY);
+        let mut link_validator: LinkValidator<RdhCRU<V7>> =
+            setup_test_link_validator(false, false, send_stats_ch, data_rcv_channel);
 
         assert_eq!(link_validator.running_checks, false);
 
@@ -189,7 +201,7 @@ mod tests {
             vec![0x00, 0x01, 0x02],
             0x0000_0000_0000_0000,
         );
-        _cdp_tuple_send_ch.send(cdp).unwrap();
+        data_send_channel.send(cdp).unwrap();
 
         // Wait for the link validator to process the CDP
         std::thread::sleep(std::time::Duration::from_millis(100));
@@ -202,15 +214,10 @@ mod tests {
     #[test]
     fn test_valid_payloads_flavor_0() {
         let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
-        let mut mock_config = MockConfig::default();
-        mock_config.check = Some(Check::Sanity(Target {
-            system: Some(System::ITS),
-        }));
-
-        let (mut link_validator, cdp_tuple_send_ch): (
-            LinkValidator<RdhCRU<V7>, MockConfig>,
-            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
-        ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
+        let (data_send_channel, data_rcv_channel) =
+            crossbeam_channel::bounded(LinkValidator::<RdhCRU<V7>>::CHANNEL_CDP_CAPACITY);
+        let mut link_validator: LinkValidator<RdhCRU<V7>> =
+            setup_test_link_validator(false, false, send_stats_ch, data_rcv_channel);
 
         assert_eq!(link_validator.running_checks, false);
 
@@ -225,8 +232,7 @@ mod tests {
 
         // Send a CDP to the link validator
         let cdp = (CORRECT_RDH_CRU_V7, payload, 0);
-
-        cdp_tuple_send_ch.send(cdp).unwrap();
+        data_send_channel.send(cdp).unwrap();
 
         // Wait for the link validator to process the CDP
         std::thread::sleep(std::time::Duration::from_millis(100));
@@ -243,15 +249,10 @@ mod tests {
     #[test]
     fn test_valid_payloads_flavor_2() {
         let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
-        let mut mock_config = MockConfig::default();
-        mock_config.check = Some(Check::Sanity(Target {
-            system: Some(System::ITS),
-        }));
-
-        let (mut link_validator, cdp_tuple_send_ch): (
-            LinkValidator<RdhCRU<V7>, MockConfig>,
-            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
-        ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
+        let (data_send_channel, data_rcv_channel) =
+            crossbeam_channel::bounded(LinkValidator::<RdhCRU<V7>>::CHANNEL_CDP_CAPACITY);
+        let mut link_validator: LinkValidator<RdhCRU<V7>> =
+            setup_test_link_validator(false, false, send_stats_ch, data_rcv_channel);
 
         assert_eq!(link_validator.running_checks, false);
 
@@ -266,8 +267,7 @@ mod tests {
 
         // Send a CDP to the link validator
         let cdp = (CORRECT_RDH_CRU_V7, payload, 0);
-
-        cdp_tuple_send_ch.send(cdp).unwrap();
+        data_send_channel.send(cdp).unwrap();
 
         // Wait for the link validator to process the CDP
         std::thread::sleep(std::time::Duration::from_millis(100));
@@ -284,15 +284,11 @@ mod tests {
     #[test]
     fn test_invalid_payloads_flavor_2_bad_tdh_one_error() {
         let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
-        let mut mock_config = MockConfig::default();
-        mock_config.check = Some(Check::Sanity(Target {
-            system: Some(System::ITS),
-        }));
-
-        let (mut link_validator, cdp_tuple_send_ch): (
-            LinkValidator<RdhCRU<V7>, MockConfig>,
-            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
-        ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
+        let (data_send_channel, data_rcv_channel) =
+            crossbeam_channel::bounded(LinkValidator::<RdhCRU<V7>>::CHANNEL_CDP_CAPACITY);
+        let mut link_validator: LinkValidator<RdhCRU<V7>> =
+            setup_test_link_validator(false, false, send_stats_ch, data_rcv_channel);
+        link_validator.target_system = Some(System::ITS);
 
         assert_eq!(link_validator.running_checks, false);
 
@@ -308,8 +304,7 @@ mod tests {
 
         // Send a CDP to the link validator
         let cdp = (CORRECT_RDH_CRU_V7, payload, 0);
-
-        cdp_tuple_send_ch.send(cdp).unwrap();
+        data_send_channel.send(cdp).unwrap();
 
         // Wait for the link validator to process the CDP
         std::thread::sleep(std::time::Duration::from_millis(100));
@@ -332,15 +327,13 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn test_init_link_validator_no_checks_enabled() {
-        // Should panic because no checks are enabled in the config, doesn't make sense to run the link validator
+    fn test_init_link_validator_no_config() {
+        // Should panic because config is not set, doesn't make sense to run the link validator
         let (send_stats_ch, _) = std::sync::mpsc::channel();
-        let mut mock_config = MockConfig::default();
-        mock_config.check = None; // No checks enabled in the config
 
         let (mut _link_validator, _cdp_tuple_send_ch): (
-            LinkValidator<RdhCRU<V7>, MockConfig>,
+            LinkValidator<RdhCRU<V7>>,
             crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
-        ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
+        ) = LinkValidator::new(send_stats_ch);
     }
 }

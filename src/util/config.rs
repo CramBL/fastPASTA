@@ -5,10 +5,13 @@
 
 // Unfortunately needed because of the arg_enum macro not handling doc comments properly
 #![allow(missing_docs)]
+use super::lib::{Checks, Config, DataOutputMode, Filter, InputOutput, Util, Views};
+use once_cell::sync::OnceCell;
 use std::path::PathBuf;
 use structopt::{clap::arg_enum, StructOpt};
 
-use super::lib::{Checks, Config, DataOutputMode, Filter, InputOutput, Util, Views};
+pub static CONFIG: OnceCell<Cfg> = OnceCell::new();
+
 /// The Opt struct uses the [StructOpt] procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
 #[derive(StructOpt, Debug)]
 #[structopt(setting = structopt::clap::AppSettings::ColoredHelp,
@@ -25,7 +28,7 @@ Examples:
                  ^^^^                      ^^^^                       ^^^^
                 INPUT       --->          FILTER          --->        VIEW"
 )]
-pub struct Opt {
+pub struct Cfg {
     /// Input file (default: stdin)
     #[structopt(name = "INPUT DATA", parse(from_os_str))]
     file: Option<PathBuf>,
@@ -58,10 +61,20 @@ pub struct Opt {
     output: Option<PathBuf>,
 }
 
-/// Implementing the config super trait requires implementing all the sub traits
-impl Config for Opt {}
+impl Cfg {
+    pub fn global() -> &'static Cfg {
+        CONFIG.get().expect("Config is not initialized")
+    }
 
-impl Views for Opt {
+    pub fn from_cli_args() -> Cfg {
+        <Cfg as structopt::StructOpt>::from_args()
+    }
+}
+
+/// Implementing the config super trait requires implementing all the sub traits
+impl Config for Cfg {}
+
+impl Views for Cfg {
     #[inline]
     fn view(&self) -> Option<View> {
         if let Some(sub_cmd) = &self.cmd {
@@ -78,14 +91,14 @@ impl Views for Opt {
     }
 }
 
-impl Filter for Opt {
+impl Filter for Cfg {
     #[inline]
     fn filter_link(&self) -> Option<u8> {
         self.filter_link
     }
 }
 
-impl Checks for Opt {
+impl Checks for Cfg {
     #[inline]
     fn check(&self) -> Option<Check> {
         if let Some(sub_cmd) = &self.cmd {
@@ -102,7 +115,7 @@ impl Checks for Opt {
     }
 }
 
-impl InputOutput for Opt {
+impl InputOutput for Cfg {
     #[inline]
     fn input_file(&self) -> &Option<PathBuf> {
         &self.file
@@ -149,7 +162,7 @@ impl InputOutput for Opt {
     }
 }
 
-impl Util for Opt {
+impl Util for Cfg {
     #[inline]
     fn verbosity(&self) -> u8 {
         self.verbosity

@@ -12,7 +12,6 @@ use super::data_wrapper::CdpChunk;
 use super::input_scanner::{InputScanner, ScanCDP};
 use super::stdin_reader::StdInReaderSeeker;
 use super::util::buf_reader_with_capacity;
-use crate::util::lib::Config;
 use crate::words;
 use crate::words::lib::RDH;
 use crossbeam_channel::Receiver;
@@ -25,10 +24,10 @@ const CHANNEL_CDP_CHUNK_CAPACITY: usize = 100;
 ///
 /// The input mode is determined by the presence of the input file path in the config
 #[inline]
-pub fn init_reader<C: Config>(
-    config: &C,
+pub fn init_reader(
+    input_path: &Option<std::path::PathBuf>,
 ) -> Result<Box<dyn BufferedReaderWrapper>, std::io::Error> {
-    if let Some(path) = config.input_file() {
+    if let Some(path) = input_path {
         log::trace!("Reading from file: {:?}", &path);
         let f = std::fs::OpenOptions::new().read(true).open(path)?;
         Ok(Box::new(buf_reader_with_capacity(f, 1024 * 50)))

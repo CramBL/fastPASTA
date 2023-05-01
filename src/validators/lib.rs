@@ -1,31 +1,26 @@
 //! Contains the [ValidatorDispatcher], that manages [LinkValidator]s and iterates over and comnsumes a [`data_wrapper::CdpChunk<T>`], dispatching the data to the correct thread based on the Link ID running an instance of [LinkValidator].
 use super::link_validator::LinkValidator;
-use crate::{input::data_wrapper, stats::lib::StatType, util, words::lib::RDH};
+use crate::{input::data_wrapper, stats::lib::StatType, words::lib::RDH};
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 /// The [ValidatorDispatcher] is responsible for creating and managing the [LinkValidator] threads.
 ///
 /// It receives a [`data_wrapper::CdpChunk<T>`] and dispatches the data to the correct thread running an instance of [LinkValidator].
-pub struct ValidatorDispatcher<T: RDH, C: util::lib::Config> {
+pub struct ValidatorDispatcher<T: RDH> {
     links: Vec<u8>,
     link_process_channels: Vec<crossbeam_channel::Sender<CdpTuple<T>>>,
     validator_thread_handles: Vec<std::thread::JoinHandle<()>>,
     stats_sender: std::sync::mpsc::Sender<StatType>,
-    global_config: std::sync::Arc<C>,
 }
 
-impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C> {
+impl<T: RDH + 'static> ValidatorDispatcher<T> {
     /// Create a new ValidatorDispatcher from a Config and a stats sender channel
-    pub fn new(
-        global_config: std::sync::Arc<C>,
-        stats_sender: std::sync::mpsc::Sender<StatType>,
-    ) -> Self {
+    pub fn new(stats_sender: std::sync::mpsc::Sender<StatType>) -> Self {
         Self {
             links: Vec::new(),
             link_process_channels: Vec::new(),
             validator_thread_handles: Vec::new(),
             stats_sender,
-            global_config,
         }
     }
 
@@ -48,10 +43,8 @@ impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C>
                 self.links.push(rdh.link_id());
 
                 // Create a new link validator thread to handle the new link
-                let (mut link_validator, send_channel) = LinkValidator::<T, C>::new(
-                    self.global_config.clone(),
-                    self.stats_sender.clone(),
-                );
+                let (mut link_validator, send_channel) =
+                    LinkValidator::<T>::new(self.stats_sender.clone());
 
                 // Add the send channel to the new link validator
                 self.link_process_channels.push(send_channel);
@@ -175,31 +168,14 @@ fn chunkify_payload<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::input::data_wrapper::CdpChunk;
-    use crate::words::its::test_payloads::*;
-    use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
-    use crate::words::rdh_cru::{RdhCRU, V7};
-
     use super::*;
+    use crate::words::its::test_payloads::*;
+    use crate::words::rdh_cru::{RdhCRU, V7};
 
     #[test]
     fn test_dispacter() {
-        let config = <util::config::Opt as structopt::StructOpt>::from_iter(&[
-            "fastpasta",
-            "check",
-            "sanity",
-        ]);
-
-        let mut disp: ValidatorDispatcher<RdhCRU<V7>, util::config::Opt> =
-            ValidatorDispatcher::new(std::sync::Arc::new(config), std::sync::mpsc::channel().0);
-
-        let cdp_tuple: CdpTuple<RdhCRU<V7>> = (CORRECT_RDH_CRU_V7, vec![0; 100], 0);
-
-        let mut cdp_chunk = CdpChunk::new();
-        cdp_chunk.push_tuple(cdp_tuple);
-
-        disp.dispatch_cdp_chunk(cdp_chunk);
-
+        let mut disp: ValidatorDispatcher<RdhCRU<V7>> =
+            ValidatorDispatcher::new(std::sync::mpsc::channel().0);
         disp.join();
     }
 

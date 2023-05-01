@@ -5,7 +5,6 @@
 //! Implements drop to flush the remaining data to the file once processing is done.
 
 use crate::input::data_wrapper::CdpChunk;
-use crate::util::lib::Config;
 use crate::words::lib::RDH;
 
 /// Trait for a writer that can write ALICE readout data to file/stdout.
@@ -32,9 +31,9 @@ pub struct BufferedWriter<T: RDH> {
 
 impl<T: RDH> BufferedWriter<T> {
     /// Create a new BufferedWriter from a config and a max buffer size.
-    pub fn new(config: &impl Config, max_buffer_size: usize) -> Self {
+    pub fn new(max_buffer_size: usize, output_path: &Option<std::path::PathBuf>) -> Self {
         // Create output file, and buf writer if specified
-        let buf_writer = match config.output() {
+        let buf_writer = match output_path {
             Some(path) if "stdout".eq(path.to_str().unwrap()) => None,
             Some(path) => {
                 let path: std::path::PathBuf = path.to_owned();
@@ -130,36 +129,25 @@ impl<T: RDH> Drop for BufferedWriter<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::vec;
-
-    use crate::util::config::Opt;
+    // DON'T RUN IN PARALLEL
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
+    use pretty_assertions::assert_eq;
+    use std::vec;
 
     use super::*;
 
-    const OUTPUT_FILE_STR: &str = " test_filter_link.raw";
-    const OUTPUT_CMD: &str = "-o test_filter_link.raw";
-    const CONFIG_STR: [&str; 7] = [
-        "fastpasta",
-        "../fastpasta_test_files/data_ols_ul.raw",
-        OUTPUT_CMD,
-        "-f",
-        "2",
-        "check",
-        "sanity",
-    ];
+    const OUTPUT_FILE_STR: &str = "test_filter_link.raw";
 
     #[test]
     fn test_buffered_writer() {
-        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&CONFIG_STR);
+        // Make file name unique to this test
+        let filepath = std::path::PathBuf::from("0".to_owned() + &OUTPUT_FILE_STR);
         {
-            let writer = BufferedWriter::<RdhCRU<V6>>::new(&config, 10);
+            let writer = BufferedWriter::<RdhCRU<V6>>::new(10, &Some(filepath.clone()));
 
             assert!(writer.buf_writer.is_some());
         }
-
-        let filepath = std::path::PathBuf::from(OUTPUT_FILE_STR);
 
         // delete output file
         std::fs::remove_file(filepath).unwrap();
@@ -170,18 +158,17 @@ mod tests {
     // Should panic, Because when the writer is dropped, it flushes the buffer, which will panic because the number of RDHs and payloads are not equal
     // Empty payloads are counted.
     fn test_push_2_rdh_v7_buffer_is_2() {
-        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&CONFIG_STR);
+        let filepath = std::path::PathBuf::from("1".to_owned() + &OUTPUT_FILE_STR);
         let rdhs = vec![CORRECT_RDH_CRU_V7, CORRECT_RDH_CRU_V7];
         let length = rdhs.len();
-        println!("length: {}", length);
+        println!("length: {length}");
         {
-            let mut writer = BufferedWriter::<RdhCRU<V7>>::new(&config, 10);
+            let mut writer = BufferedWriter::<RdhCRU<V7>>::new(10, &Some(filepath.clone()));
             writer.push_rdhs(rdhs);
             let buf_size = writer.filtered_rdhs_buffer.len();
-            println!("buf_size: {}", buf_size);
-            assert_eq!(buf_size, length);
+            println!("buf_size: {buf_size}");
+            pretty_assertions::assert_eq!(buf_size, length);
             // Clean up before drop
-            let filepath = std::path::PathBuf::from(OUTPUT_FILE_STR);
             // delete output file
             std::fs::remove_file(filepath).unwrap();
         }
@@ -189,7 +176,7 @@ mod tests {
 
     #[test]
     fn test_push_2_rdh_v7_and_empty_payloads_buffers_are_2() {
-        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&CONFIG_STR);
+        let filepath = std::path::PathBuf::from("2".to_owned() + &OUTPUT_FILE_STR);
         let mut cdp_chunk = CdpChunk::new();
 
         cdp_chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
@@ -197,14 +184,14 @@ mod tests {
 
         let length = cdp_chunk.len();
         {
-            let mut writer = BufferedWriter::<RdhCRU<V7>>::new(&config, 10);
+            let mut writer = BufferedWriter::<RdhCRU<V7>>::new(10, &Some(filepath.clone()));
             writer.push_cdp_chunk(cdp_chunk);
             let buf_size = writer.filtered_rdhs_buffer.len();
             assert_eq!(buf_size, length);
         }
 
         // CLEANUP
-        let filepath = std::path::PathBuf::from(OUTPUT_FILE_STR);
+
         // delete output file
         std::fs::remove_file(filepath).unwrap();
     }

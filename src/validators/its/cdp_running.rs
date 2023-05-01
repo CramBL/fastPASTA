@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{
     stats::lib::StatType,
-    util::{self, lib::Config},
+    util::{self, config::Cfg, lib::Checks},
     words::{
         its::{
             data_words::{ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane},
@@ -27,9 +27,8 @@ enum StatusWordKind<'a> {
 }
 
 /// Checks the CDP payload and reports any errors.
-pub struct CdpRunningValidator<T: RDH, C: Config> {
-    config: std::sync::Arc<C>,
-    running_checks: bool,
+pub struct CdpRunningValidator<T: RDH> {
+    pub(crate) running_checks: bool,
     its_state_machine: ItsPayloadFsmContinuous,
     current_rdh: Option<T>,
     current_ihw: Option<Ihw>,
@@ -45,15 +44,11 @@ pub struct CdpRunningValidator<T: RDH, C: Config> {
     is_new_data: bool, // Flag used to indicate start of new CDP payload where a CDW is valid
 }
 
-impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
+impl<T: RDH> CdpRunningValidator<T> {
     /// Creates a new [CdpRunningValidator] from a [Config] and a [StatType] producer channel.
-    pub fn new(
-        config: std::sync::Arc<C>,
-        stats_send_ch: std::sync::mpsc::Sender<StatType>,
-    ) -> Self {
+    pub fn new(stats_send_ch: std::sync::mpsc::Sender<StatType>) -> Self {
         Self {
-            config: config.clone(),
-            running_checks: matches!(config.check(), Some(util::config::Check::All(_))),
+            running_checks: matches!(Cfg::global().check(), Some(util::config::Check::All(_))),
             its_state_machine: ItsPayloadFsmContinuous::default(),
             current_rdh: None,
             current_ihw: None,
@@ -70,10 +65,29 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
         }
     }
 
-    // For testing configs
-    #[allow(dead_code)]
-    fn set_config(&mut self, config: C) {
-        self.config = std::sync::Arc::new(config);
+    /// For testing without a config object
+    #[doc(hidden)]
+    #[cfg(debug_assertions)]
+    pub fn _new_no_cfg(stats_send_ch: std::sync::mpsc::Sender<StatType>) -> Self {
+        if !cfg!(debug_assertions) {
+            panic!("Not intended to run in production code")
+        }
+        Self {
+            running_checks: false,
+            its_state_machine: ItsPayloadFsmContinuous::default(),
+            current_rdh: None,
+            current_ihw: None,
+            current_tdh: None,
+            previous_tdh: None,
+            current_tdt: None,
+            current_ddw0: None,
+            previous_cdw: None,
+            gbt_word_counter: 0,
+            stats_send_ch,
+            payload_mem_pos: 0,
+            gbt_word_padding_size_bytes: 0,
+            is_new_data: false,
+        }
     }
 
     /// Helper function to format and report an error
@@ -460,13 +474,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::lib::test_util::MockConfig;
-    use crate::{
-        util::config::Check,
-        util::config::Target,
-        words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7},
-    };
-    use std::sync::Arc;
+    use crate::words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7};
 
     #[test]
     fn test_validate_ihw() {
@@ -477,9 +485,7 @@ mod tests {
         ];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mock_config = MockConfig::default();
-        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(Arc::new(mock_config), send);
+        let mut validator: CdpRunningValidator<RdhCRU<V7>> = CdpRunningValidator::_new_no_cfg(send);
         let rdh_mem_pos = 0;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos);
@@ -497,9 +503,7 @@ mod tests {
         ];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mock_config = MockConfig::default();
-        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(Arc::new(mock_config), send);
+        let mut validator: CdpRunningValidator<RdhCRU<V7>> = CdpRunningValidator::_new_no_cfg(send);
         let rdh_mem_pos = 0x0;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos);
@@ -524,9 +528,8 @@ mod tests {
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mock_config = MockConfig::default();
-        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(Arc::new(mock_config), send);
+
+        let mut validator: CdpRunningValidator<RdhCRU<V7>> = CdpRunningValidator::_new_no_cfg(send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
@@ -552,9 +555,7 @@ mod tests {
         let raw_data_tdt_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF2];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mock_config = MockConfig::default();
-        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(Arc::new(mock_config), send);
+        let mut validator: CdpRunningValidator<RdhCRU<V7>> = CdpRunningValidator::_new_no_cfg(send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
@@ -592,11 +593,8 @@ mod tests {
         let raw_data_tdt_next_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF3];
 
         let (send, stats_recv_ch) = std::sync::mpsc::channel();
-        let mut mock_config = MockConfig::default();
-        mock_config.check = Some(Check::All(Target { system: None }));
-
-        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(Arc::new(mock_config), send);
+        let mut validator: CdpRunningValidator<RdhCRU<V7>> = CdpRunningValidator::_new_no_cfg(send);
+        validator.running_checks = true;
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2

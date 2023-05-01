@@ -4,7 +4,8 @@
 
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
-use crate::util::lib::Config;
+use crate::util::config::Cfg;
+use crate::util::lib::{Config, Filter, InputOutput};
 use crate::words::lib::RDH;
 use crate::{stats::lib::StatType, words::rdh::Rdh0};
 use std::io::Read;
@@ -74,7 +75,6 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     ///
     /// The [Rdh0] is used to determine the RDH version before instantiating the [InputScanner].
     pub fn new_from_rdh0(
-        config: std::sync::Arc<impl Config>,
         reader: Box<R>,
         stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
         rdh0: Rdh0,
@@ -83,8 +83,8 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             reader,
             tracker: MemPosTracker::new(),
             stats_controller_sender_ch,
-            link_to_filter: config.filter_link(),
-            skip_payload: config.skip_payload(),
+            link_to_filter: Cfg::global().filter_link(),
+            skip_payload: Cfg::global().skip_payload(),
             unique_links_observed: vec![],
             initial_rdh0: Some(rdh0),
         }
@@ -276,8 +276,6 @@ fn sanity_check_offset_next<T: RDH>(
 
 #[cfg(test)]
 mod tests {
-    use crate::util::config::Opt;
-    use crate::util::lib::InputOutput;
     use crate::words::lib::ByteSlice;
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
     use pretty_assertions::assert_eq;
@@ -291,7 +289,7 @@ mod tests {
         std::sync::mpsc::Receiver<StatType>,
     ) {
         use super::*;
-        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
+        let config: Cfg = <Cfg as structopt::StructOpt>::from_iter(&[
             "fastpasta",
             path,
             "-f",
