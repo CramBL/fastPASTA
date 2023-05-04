@@ -142,6 +142,8 @@ pub enum StatType {
         /// The stave number.
         stave: u8,
     },
+    /// Record the generic FEE ID
+    FeeId(u16),
 }
 
 impl Display for StatType {
@@ -164,6 +166,7 @@ impl Display for StatType {
                 layer: layer_id,
                 stave: stave_id,
             } => write!(f, "Layer/stave seen: {layer_id}/{stave_id}"),
+            StatType::FeeId(id) => write!(f, "FEE ID: {id}"),
         }
     }
 }
@@ -197,7 +200,7 @@ pub fn collect_system_specific_stats<T: words::lib::RDH + 'static>(
                 log::trace!("Collecting stats for Focal");
                 // stat collection not implemented
             }
-            _ => (), // Not implemented
+            _ => (), // Do nothing for other systems
         }
     } else {
         // First time seeing a system ID

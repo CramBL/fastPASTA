@@ -8,6 +8,8 @@
 use std::path::PathBuf;
 use structopt::{clap::arg_enum, StructOpt};
 
+use crate::words::its::layer_stave_string_to_feeid;
+
 use super::lib::{Checks, Config, DataOutputMode, Filter, InputOutput, Util, Views};
 /// The Opt struct uses the [StructOpt] procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
 #[derive(StructOpt, Debug)]
@@ -25,7 +27,7 @@ Examples:
                  ^^^^                      ^^^^                       ^^^^
                 INPUT       --->          FILTER          --->        VIEW"
 )]
-pub struct Opt {
+pub struct Cfg {
     /// Input file (default: stdin)
     #[structopt(name = "INPUT DATA", parse(from_os_str))]
     file: Option<PathBuf>,
@@ -42,9 +44,17 @@ pub struct Opt {
     #[structopt(short = "e", long = "max-errors", default_value = "0", global = true)]
     max_tolerate_errors: u32,
 
-    /// Set CRU link ID to filter by
-    #[structopt(short = "f", long, global = true)]
+    /// Set CRU link ID to filter by (e.g. 5)
+    #[structopt(short = "f", long, global = true, group = "filter")]
     filter_link: Option<u8>,
+
+    /// Set FEE ID to filter by (e.g. L5_42 or 20522)
+    #[structopt(short = "F", long, global = true, group = "filter")]
+    filter_fee: Option<u16>,
+
+    /// Set ITS layer & stave to filter by (e.g. L5_42)
+    #[structopt(long, global = true, group = "filter")]
+    filter_its_stave: Option<String>,
 
     /// Output raw data (default: stdout), requires a link to filter by. If Checks or Views are enabled, the output is supressed.
     #[structopt(
@@ -53,15 +63,15 @@ pub struct Opt {
         long = "output",
         parse(from_os_str),
         global = true,
-        requires("filter-link")
+        requires("filter")
     )]
     output: Option<PathBuf>,
 }
 
 /// Implementing the config super trait requires implementing all the sub traits
-impl Config for Opt {}
+impl Config for Cfg {}
 
-impl Views for Opt {
+impl Views for Cfg {
     #[inline]
     fn view(&self) -> Option<View> {
         if let Some(sub_cmd) = &self.cmd {
@@ -78,14 +88,32 @@ impl Views for Opt {
     }
 }
 
-impl Filter for Opt {
+impl Filter for Cfg {
     #[inline]
     fn filter_link(&self) -> Option<u8> {
         self.filter_link
     }
+
+    fn filter_fee(&self) -> Option<u16> {
+        self.filter_fee
+    }
+
+    fn filter_its_stave(&self) -> Option<u16> {
+        if let Some(stave_layer) = &self.filter_its_stave {
+            // Start with something like "l2_1"
+            // 1. check if the first char is an L, if so, it's the Lx_x format
+            if stave_layer.to_uppercase().starts_with('L') {
+                Some(layer_stave_string_to_feeid(stave_layer).expect("Invalid FEE ID"))
+            } else {
+                panic!("Invalid ITS layer & stave format, expected L[x]_[y], e.g. L2_13")
+            }
+        } else {
+            None
+        }
+    }
 }
 
-impl Checks for Opt {
+impl Checks for Cfg {
     #[inline]
     fn check(&self) -> Option<Check> {
         if let Some(sub_cmd) = &self.cmd {
@@ -102,7 +130,7 @@ impl Checks for Opt {
     }
 }
 
-impl InputOutput for Opt {
+impl InputOutput for Cfg {
     #[inline]
     fn input_file(&self) -> &Option<PathBuf> {
         &self.file
@@ -149,7 +177,7 @@ impl InputOutput for Opt {
     }
 }
 
-impl Util for Opt {
+impl Util for Cfg {
     #[inline]
     fn verbosity(&self) -> u8 {
         self.verbosity

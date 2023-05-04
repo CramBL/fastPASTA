@@ -184,13 +184,13 @@ mod tests {
 
     #[test]
     fn test_dispacter() {
-        let config = <util::config::Opt as structopt::StructOpt>::from_iter(&[
+        let config = <util::config::Cfg as structopt::StructOpt>::from_iter(&[
             "fastpasta",
             "check",
             "sanity",
         ]);
 
-        let mut disp: ValidatorDispatcher<RdhCRU<V7>, util::config::Opt> =
+        let mut disp: ValidatorDispatcher<RdhCRU<V7>, util::config::Cfg> =
             ValidatorDispatcher::new(std::sync::Arc::new(config), std::sync::mpsc::channel().0);
 
         let cdp_tuple: CdpTuple<RdhCRU<V7>> = (CORRECT_RDH_CRU_V7, vec![0; 100], 0);

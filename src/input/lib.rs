@@ -12,6 +12,7 @@ use super::data_wrapper::CdpChunk;
 use super::input_scanner::{InputScanner, ScanCDP};
 use super::stdin_reader::StdInReaderSeeker;
 use super::util::buf_reader_with_capacity;
+use crate::stats::lib::{self, StatType, SystemId};
 use crate::util::lib::Config;
 use crate::words;
 use crate::words::lib::RDH;
@@ -49,10 +50,12 @@ pub fn init_reader<C: Config>(
 pub fn spawn_reader<T: RDH + 'static>(
     stop_flag: std::sync::Arc<AtomicBool>,
     input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
+    stats_sender_channel: std::sync::mpsc::Sender<StatType>,
 ) -> (std::thread::JoinHandle<()>, Receiver<CdpChunk<T>>) {
     let reader_thread = std::thread::Builder::new().name("Reader".to_string());
     let (send_channel, rcv_channel) = crossbeam_channel::bounded(CHANNEL_CDP_CHUNK_CAPACITY);
     let mut local_stop_on_non_full_chunk = false;
+    let mut system_id: Option<SystemId> = None; // System ID is only set once
     const CDP_CHUNK_SIZE: usize = 100;
     let thread_handle = reader_thread
         .spawn({
@@ -79,6 +82,27 @@ pub fn spawn_reader<T: RDH + 'static>(
                             }
                         }
                     };
+
+                    // Collect global stats
+                    // Send HBF seen if stop bit is 1
+                    for rdh in cdps.rdh_slice().iter() {
+                        if rdh.stop_bit() == 1 {
+                            stats_sender_channel.send(StatType::HBFsSeen(1)).unwrap();
+                        }
+                        // Always send fee id
+                        stats_sender_channel
+                            .send(StatType::FeeId(rdh.fee_id()))
+                            .unwrap();
+                        if let Err(e) = lib::collect_system_specific_stats(
+                            rdh,
+                            &mut system_id,
+                            &stats_sender_channel,
+                        ) {
+                            // Send error and break, stop processing
+                            stats_sender_channel.send(StatType::Fatal(e)).unwrap();
+                            break; // Fatal error
+                        }
+                    }
 
                     // Send a chunk to the checker
                     if let Err(e) = send_channel.send(cdps) {
