@@ -127,7 +127,6 @@ Additional checks related to state:
 * `When:` Word is IHW (not in continuation substate)
   * RDH stop_bit == 0
 * `When:` TDH following a TDT with packet_done == 1
-  * TDH internal_trigger == 1
   * TDH continuation == 0
   * TDH trigger_bc > previous TDH
 * `When:` TDH following a TDT with packet_done == 0

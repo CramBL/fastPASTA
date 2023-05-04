@@ -342,11 +342,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
         if !self.running_checks {
             return;
         }
-        if self.current_tdh.as_ref().unwrap().internal_trigger() != 1 {
-            self.report_error("[E43] TDH internal trigger is not 1", tdh_slice);
-            let tmp_rdh = self.current_rdh.as_ref().unwrap();
-            log::debug!("{tmp_rdh}");
-        }
+
         if let Some(previous_tdh) = self.previous_tdh.as_ref() {
             if previous_tdh.trigger_bc() > self.current_tdh.as_ref().unwrap().trigger_bc() {
                 self.report_error(
