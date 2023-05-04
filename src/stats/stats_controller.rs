@@ -383,7 +383,7 @@ fn format_layers_and_staves(layers_staves_seen: Vec<(u8, u8)>) -> String {
         .join("")
 }
 
-fn format_fee_ids(fee_ids_seen: &mut Vec<u16>) -> String {
+fn format_fee_ids(fee_ids_seen: &mut [u16]) -> String {
     fee_ids_seen.sort();
     fee_ids_seen
         .iter()

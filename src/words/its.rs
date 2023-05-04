@@ -83,7 +83,7 @@ pub fn is_match_feeid_layer_stave(a_fee_id: u16, b_fee_id: u16) -> bool {
 /// let fee_id = layer_stave_string_to_feeid(&String::from("l0_1"));
 /// assert_eq!(fee_id, Some(1));
 /// ```
-pub fn layer_stave_string_to_feeid(layer_stave_str: &String) -> Option<u16> {
+pub fn layer_stave_string_to_feeid(layer_stave_str: &str) -> Option<u16> {
     let split_fee = layer_stave_str.split('_').collect::<Vec<&str>>();
     debug_assert!(split_fee.len() == 2);
     // 5. Parse the first string that should contain the layer number

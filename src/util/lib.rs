@@ -27,6 +27,7 @@ pub trait Filter {
 
     /// Get the target of the filter
     fn filter_target(&self) -> Option<FilterTarget> {
+        #[allow(clippy::manual_map)] // Clippy is wrong here
         if let Some(link) = self.filter_link() {
             Some(FilterTarget::Link(link))
         } else if let Some(fee) = self.filter_fee() {
