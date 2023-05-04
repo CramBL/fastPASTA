@@ -47,7 +47,7 @@
 
 use crossbeam_channel::Receiver;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
-use stats::lib::{self, StatType, SystemId};
+use stats::lib::StatType;
 use util::lib::{Config, DataOutputMode};
 use validators::{its::its_payload_fsm_cont::ItsPayloadFsmContinuous, lib::ValidatorDispatcher};
 use words::{
@@ -362,16 +362,7 @@ mod tests {
             stats.push(stat);
         }
 
-        // Assert
-        let mut detected_its = false;
-
-        // Iterate through all stats, should only be one about the detected system ID
-        for stat in stats {
-            match stat {
-                StatType::SystemId(SystemId::ITS) => detected_its = true,
-                x => panic!("Unexpected stat: {:?}", x),
-            }
-        }
-        assert!(detected_its);
+        // No stats should have been sent
+        assert_eq!(stats.len(), 0);
     }
 }
