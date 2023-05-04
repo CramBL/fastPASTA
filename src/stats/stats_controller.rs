@@ -354,8 +354,9 @@ impl<C: Config> StatsController<C> {
         // Print the errors, limited if there's a limit set
         if self.max_tolerate_errors > 0 {
             self.reported_errors
-                .drain(..self.max_tolerate_errors as usize)
+                .drain(..)
                 .into_iter()
+                .take(self.max_tolerate_errors as usize)
                 .for_each(|e| {
                     log::error!("{e}");
                 });
