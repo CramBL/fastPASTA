@@ -8,7 +8,6 @@ use crate::{
     util::lib::{Config, FilterTarget},
     words,
 };
-use log::error;
 use std::sync::{
     atomic::{AtomicBool, AtomicU32},
     Arc,
@@ -29,6 +28,7 @@ pub struct StatsController<C: Config> {
     config: std::sync::Arc<C>,
     total_errors: AtomicU32,
     non_atomic_total_errors: u64,
+    reported_errors: Vec<String>,
     max_tolerate_errors: u32,
     // The channel where stats are received from other threads.
     recv_stats_channel: std::sync::mpsc::Receiver<StatType>,
@@ -63,6 +63,7 @@ impl<C: Config> StatsController<C> {
             processing_time: std::time::Instant::now(),
             total_errors: AtomicU32::new(0),
             non_atomic_total_errors: 0,
+            reported_errors: Vec::new(),
             max_tolerate_errors: global_config.max_tolerate_errors(),
             recv_stats_channel,
             send_stats_channel: Some(send_stats_channel),
@@ -107,6 +108,8 @@ impl<C: Config> StatsController<C> {
             // Avoid printing the report in the middle of a view
             log::info!("View active, skipping report summary printout.")
         } else {
+            self.non_atomic_total_errors += self.reported_errors.len() as u64;
+            self.print_errors();
             self.print();
         }
     }
@@ -120,21 +123,18 @@ impl<C: Config> StatsController<C> {
                     log::trace!("Fatal error already seen, ignoring error: {}", msg);
                     return;
                 }
-                if self.max_tolerate_errors == 0 {
-                    error!("{msg}");
-                    self.non_atomic_total_errors += 1;
-                } else {
+                self.reported_errors.push(msg);
+                if self.max_tolerate_errors > 0 {
                     let prv_err_cnt = self.total_errors.load(std::sync::atomic::Ordering::SeqCst);
                     if prv_err_cnt >= self.max_tolerate_errors {
                         return;
                     }
-                    error!("{msg}");
                     let prv_err_cnt = self
                         .total_errors
                         .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                    log::info!("Error count: {}", prv_err_cnt + 1);
+                    log::trace!("Error count: {}", prv_err_cnt + 1);
                     if prv_err_cnt + 1 == self.max_tolerate_errors {
-                        log::info!("Errors reached maximum tolerated errors, exiting...");
+                        log::trace!("Errors reached maximum tolerated errors, exiting...");
                         self.end_processing_flag
                             .store(true, std::sync::atomic::Ordering::SeqCst);
                     }
@@ -337,6 +337,33 @@ impl<C: Config> StatsController<C> {
         }
 
         filtered_stats
+    }
+
+    fn print_errors(&mut self) {
+        // Regex to extract the memory address from the error message
+        let re = regex::Regex::new(r"0x(?<mem_pos>[0-9a-fA-F]+):").unwrap();
+        // Sort the errors by memory address
+        if !self.reported_errors.is_empty() {
+            self.reported_errors.sort_by_key(|e| {
+                let addr = re
+                    .captures(e)
+                    .expect("Error message should contain a memory address, none found with regex");
+                u64::from_str_radix(&addr["mem_pos"], 16).expect("Error parsing memory address")
+            });
+        }
+        // Print the errors, limited if there's a limit set
+        if self.max_tolerate_errors > 0 {
+            self.reported_errors
+                .drain(..self.max_tolerate_errors as usize)
+                .into_iter()
+                .for_each(|e| {
+                    log::error!("{e}");
+                });
+        } else {
+            self.reported_errors.drain(..).into_iter().for_each(|e| {
+                log::error!("{e}");
+            });
+        }
     }
 }
 
