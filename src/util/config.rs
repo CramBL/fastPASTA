@@ -50,7 +50,11 @@ pub struct Cfg {
 
     /// Set FEE ID to filter by (e.g. L5_42 or 20522)
     #[structopt(short = "F", long, global = true, group = "filter")]
-    filter_fee: Option<String>,
+    filter_fee: Option<u16>,
+
+    /// Set ITS layer & stave to filter by (e.g. L5_42)
+    #[structopt(long, global = true, group = "filter")]
+    filter_its_stave: Option<String>,
 
     /// Output raw data (default: stdout), requires a link to filter by. If Checks or Views are enabled, the output is supressed.
     #[structopt(
@@ -91,17 +95,17 @@ impl Filter for Cfg {
     }
 
     fn filter_fee(&self) -> Option<u16> {
-        if let Some(fee) = &self.filter_fee {
-            // Start with something like "l2_1" or "20522" if specified in the other format
+        self.filter_fee
+    }
+
+    fn filter_its_stave(&self) -> Option<u16> {
+        if let Some(stave_layer) = &self.filter_its_stave {
+            // Start with something like "l2_1"
             // 1. check if the first char is an L, if so, it's the Lx_x format
-            if fee.to_uppercase().starts_with('L') {
-                // The FEE ID has been specified in the Lx_x format
-                Some(layer_stave_string_to_feeid(fee).expect("Invalid FEE ID"))
-            } else if let Ok(fee) = fee.parse::<u16>() {
-                // The FEE ID has been specified in the pure integer format, just return it
-                Some(fee)
+            if stave_layer.to_uppercase().starts_with('L') {
+                Some(layer_stave_string_to_feeid(stave_layer).expect("Invalid FEE ID"))
             } else {
-                None
+                panic!("Invalid ITS layer & stave format, expected L[x]_[y], e.g. L2_13")
             }
         } else {
             None

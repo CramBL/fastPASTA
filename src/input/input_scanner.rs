@@ -4,7 +4,8 @@
 
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
-use crate::util::lib::Config;
+use crate::util::lib::{Config, FilterTarget};
+use crate::words::its::is_match_feeid_layer_stave;
 use crate::words::lib::RDH;
 use crate::{stats::lib::StatType, words::rdh::Rdh0};
 use std::io::Read;
@@ -31,6 +32,7 @@ pub trait ScanCDP {
     /// Loads the next [RDH] that matches the user specified filter target from the input and returns it
     fn load_next_rdh_to_filter<T: RDH>(
         &mut self,
+        offset_to_next: u16,
         target: FilterTarget,
     ) -> Result<T, std::io::Error>;
 
@@ -49,8 +51,7 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     reader: Box<R>,
     tracker: MemPosTracker,
     stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
-    link_to_filter: Option<u8>,
-    fee_to_filter: Option<u16>,
+    filter_target: Option<FilterTarget>,
     skip_payload: bool,
     unique_links_observed: Vec<u8>,
     initial_rdh0: Option<Rdh0>,
@@ -68,8 +69,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             reader,
             tracker,
             stats_controller_sender_ch,
-            link_to_filter: config.filter_link(),
-            fee_to_filter: config.filter_fee(),
+            filter_target: config.filter_target(),
             skip_payload: config.skip_payload(),
             unique_links_observed: vec![],
             initial_rdh0: None,
@@ -87,9 +87,8 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         InputScanner {
             reader,
             tracker: MemPosTracker::new(),
+            filter_target: config.filter_target(),
             stats_controller_sender_ch,
-            link_to_filter: config.filter_link(),
-            fee_to_filter: config.filter_fee(),
             skip_payload: config.skip_payload(),
             unique_links_observed: vec![],
             initial_rdh0: Some(rdh0),
@@ -173,41 +172,22 @@ where
             &self.stats_controller_sender_ch,
         )?;
 
-        let rdh = match (self.link_to_filter, self.fee_to_filter) {
-            (None, None) => {
-                    // No filter set, return the RDH (nop)
+        // If a filter is set, check if the RDH matches the filter
+        let rdh = if let Some(target) = self.filter_target {
+            if is_rdh_filter_target(&rdh, target) {
+                self.report_rdh_filtered();
 
-                    Ok(rdh)
-                },
-            (None, Some(fee_id)) => {
-                if fee_id == rdh.fee_id() {
-                    Ok(rdh)
-                } else {
-                    // If it doesn't match: Set tracker to jump to next RDH and try until we find a matching link or EOF
-                    log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
-
-                    self.reader
-                        .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
-                    self.load_next_rdh_to_filter( FilterTarget::Fee(fee_id))
-                }
-            },
-            (Some(link_id), None) => {
-                // If it matches, return the RDH
-                if link_id == rdh.link_id() {
-                    self.report_rdh_filtered();
-                    // no jump. current pos -> start of payload
-                    Ok(rdh)
-                } else {
-                    // If it doesn't match: Set tracker to jump to next RDH and try until we find a matching link or EOF
-                    log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
-
-                    self.reader
-                        .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
-                    self.load_next_rdh_to_filter(FilterTarget::Link(link_id))
-                }
-            },
-            (Some(_), Some(_)) => unreachable!("Link and FEE filter set at the same time, this should have been caught by the config parser"),
+                Ok(rdh)
+            } else {
+                // If it doesn't match: Set tracker to jump to next RDH and try until we find a matching link or EOF
+                log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
+                self.load_next_rdh_to_filter(rdh.offset_to_next(), target)
+            }
+        } else {
+            // No filter set, return the RDH (nop)
+            Ok(rdh)
         };
+
         if let Ok(rdh) = &rdh {
             self.report_payload_size(rdh.payload_size() as u32);
         }
@@ -249,8 +229,11 @@ where
 
     fn load_next_rdh_to_filter<T: RDH>(
         &mut self,
+        offset_to_next: u16,
         filter_target: FilterTarget,
     ) -> Result<T, std::io::Error> {
+        self.reader
+            .seek_relative(self.tracker.next(offset_to_next as u64))?;
         loop {
             let rdh: T = RDH::load(&mut self.reader)?;
             log::debug!("Loaded RDH: \n      {rdh}");
@@ -276,19 +259,12 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-/// The target of an optional filter on the input data
-pub enum FilterTarget {
-    /// Filter on the link ID
-    Link(u8),
-    /// Filter on the FEE ID
-    Fee(u16),
-}
 // Check if the RDH matches the filter target
 fn is_rdh_filter_target(rdh: &impl RDH, target: FilterTarget) -> bool {
     match target {
         FilterTarget::Link(id) => rdh.link_id() == id,
         FilterTarget::Fee(id) => rdh.fee_id() == id,
+        FilterTarget::ItsLayerStave(fee_id) => is_match_feeid_layer_stave(rdh.fee_id(), fee_id),
     }
 }
 

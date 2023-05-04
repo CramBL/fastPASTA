@@ -108,3 +108,174 @@ fn check_all_its() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn filter_its_stave() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_10_RDH)
+        .arg("--filter-its-stave")
+        .arg("L0_12")
+        .arg("-o")
+        .arg(FILE_OUTPUT_TMP);
+
+    cmd.assert().success();
+
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    // Asserts on stdout
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        "(?i)Total.*RDHs.*10",
+        1
+    ));
+    // Checking the filtered stats
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        r"(?i).*filter.*stats",
+        1
+    ));
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        r"(?i)\|.*RDHs.*10",
+        1
+    ));
+
+    assert!(match_on_output(&cmd.output()?.stdout, r"(?i).*L0_12", 1));
+
+    // cleanup temp file
+    std::fs::remove_file(FILE_OUTPUT_TMP).expect("Could not remove temp file");
+
+    Ok(())
+}
+
+#[test]
+fn filter_its_stave_not_found() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    let stave_to_filer = "L3_0"; // Not in the data
+    cmd.arg(FILE_10_RDH)
+        .arg("--filter-its-stave")
+        .arg(stave_to_filer)
+        .arg("-o")
+        .arg(FILE_OUTPUT_TMP);
+
+    cmd.assert().success();
+
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    // Asserts on stdout
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        "(?i)Total.*RDHs.*10",
+        1
+    ));
+    // Checking the filtered stats
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        r"(?i).*filter.*stats",
+        1
+    ));
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        r"(?i)\|.* RDHs.*0",
+        1
+    ));
+
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        &(r"(?i).*not found:.*".to_string() + stave_to_filer),
+        1
+    ));
+
+    // cleanup temp file
+    std::fs::remove_file(FILE_OUTPUT_TMP).expect("Could not remove temp file");
+
+    Ok(())
+}
+
+#[test]
+fn filter_fee() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    let fee_id_to_filter = "524";
+    cmd.arg(FILE_10_RDH)
+        .arg("--filter-fee")
+        .arg(fee_id_to_filter)
+        .arg("-o")
+        .arg(FILE_OUTPUT_TMP);
+
+    cmd.assert().success();
+
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    // Asserts on stdout
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        "(?i)Total.*RDHs.*10",
+        1
+    ));
+    // Checking the filtered stats
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        r"(?i).*filter.*stats",
+        1
+    ));
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        &(r"(?i)FEE.*".to_string() + fee_id_to_filter),
+        1
+    ));
+
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        r"(?i)\|.* RDHs.*10",
+        1
+    ));
+
+    // cleanup temp file
+    std::fs::remove_file(FILE_OUTPUT_TMP).expect("Could not remove temp file");
+
+    Ok(())
+}
+
+#[test]
+fn filter_fee_not_found() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    let fee_id_to_filter = "1337";
+    cmd.arg(FILE_10_RDH)
+        .arg("--filter-fee")
+        .arg(fee_id_to_filter)
+        .arg("-o")
+        .arg(FILE_OUTPUT_TMP);
+
+    cmd.assert().success();
+
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    // Asserts on stdout
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        "(?i)Total.*RDHs.*10",
+        1
+    ));
+    // Checking the filtered stats
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        r"(?i).*filter.*stats",
+        1
+    ));
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        &(r"(?i)FEE.*not found.*".to_string() + fee_id_to_filter),
+        1
+    ));
+
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        r"(?i)\|.* RDHs.* 0 ",
+        1
+    ));
+
+    // cleanup temp file
+    std::fs::remove_file(FILE_OUTPUT_TMP).expect("Could not remove temp file");
+
+    Ok(())
+}

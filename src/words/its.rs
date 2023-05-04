@@ -4,6 +4,14 @@ pub mod status_words;
 
 // Utility functions to extract information from the FeeId
 /// Extracts stave_number from 6 LSB \[5:0\]
+///
+/// # Example
+/// ```
+/// # use fastpasta::words::its::stave_number_from_feeid;
+/// let fee_id: u16 = 524;
+/// let stave_number: u8 = stave_number_from_feeid(fee_id);
+/// assert_eq!(stave_number, 12);
+/// ```
 pub fn stave_number_from_feeid(fee_id: u16) -> u8 {
     let stave_number_mask: u16 = 0b11_1111;
     (fee_id & stave_number_mask) as u8
@@ -17,8 +25,14 @@ pub fn layer_from_feeid(fee_id: u16) -> u8 {
     ((fee_id >> layer_lsb_idx) & layer_mask) as u8
 }
 
-/// Convert layer and stave number to fee_id
-fn feeid_from_layer_stave(layer: u8, stave: u8) -> u16 {
+/// Convert layer and stave number to fee_id, assumes Link 0.
+/// # Example
+/// ```
+/// # use fastpasta::words::its::feeid_from_layer_stave;
+/// let fee_id = feeid_from_layer_stave(0, 12);
+/// assert_eq!(fee_id, 12);
+/// ```
+pub fn feeid_from_layer_stave(layer: u8, stave: u8) -> u16 {
     let layer_mask: u16 = 0b0111;
     let stave_mask: u16 = 0b11_1111;
     let layer_lsb_idx: u8 = 12;
@@ -26,7 +40,35 @@ fn feeid_from_layer_stave(layer: u8, stave: u8) -> u16 {
     ((layer as u16 & layer_mask) << layer_lsb_idx) | (stave as u16 & stave_mask) << stave_lsb_idx
 }
 
-/// Convert a string of the form "layer_stave" to a FEE ID
+/// Compare the two FEE IDs, ignoring the link ID.
+/// # Example
+/// ```
+/// # use fastpasta::words::its::is_match_feeid_layer_stave;
+/// let fee_id_a = 20522; // Link 0
+/// let fee_id_b = 20778; // Link 1
+/// assert!(is_match_feeid_layer_stave(fee_id_a, fee_id_b));
+/// ```
+/// ```
+/// /// Trivial example
+/// # use fastpasta::words::its::is_match_feeid_layer_stave;
+/// let fee_id_a = 20522;
+/// let fee_id_b = 20522;
+/// assert!(is_match_feeid_layer_stave(fee_id_a, fee_id_b));
+/// ```
+/// ```
+/// /// Same layer, different stave
+/// # use fastpasta::words::its::is_match_feeid_layer_stave;
+/// let fee_id_a = 20522;
+/// let fee_id_b = 20523;
+/// assert!(!is_match_feeid_layer_stave(fee_id_a, fee_id_b));
+/// ```
+///
+pub fn is_match_feeid_layer_stave(a_fee_id: u16, b_fee_id: u16) -> bool {
+    let layer_stave_mask: u16 = 0b0111_0000_0011_1111;
+    (a_fee_id & layer_stave_mask) == (b_fee_id & layer_stave_mask)
+}
+
+/// Convert a string of the form "layer_stave" to a FEE ID, assumes Link 0.
 ///
 /// # Examples
 /// ```

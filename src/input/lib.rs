@@ -89,6 +89,10 @@ pub fn spawn_reader<T: RDH + 'static>(
                         if rdh.stop_bit() == 1 {
                             stats_sender_channel.send(StatType::HBFsSeen(1)).unwrap();
                         }
+                        // Always send fee id
+                        stats_sender_channel
+                            .send(StatType::FeeId(rdh.fee_id()))
+                            .unwrap();
                         if let Err(e) = lib::collect_system_specific_stats(
                             rdh,
                             &mut system_id,

@@ -128,9 +128,7 @@ pub fn process<T: words::lib::RDH + 'static>(
     // 2. Launch analysis thread if an analysis action is set (view or check)
     let analysis_handle = if config.check().is_some() || config.view().is_some() {
         debug_assert!(
-            config.output_mode() == util::lib::DataOutputMode::None
-                || config.filter_link().is_some()
-                || config.filter_fee().is_some(),
+            config.output_mode() == util::lib::DataOutputMode::None || config.filter_enabled(),
         );
         let handle = spawn_analysis(
             config.clone(),
@@ -147,21 +145,14 @@ pub fn process<T: words::lib::RDH + 'static>(
     let output_handle: Option<std::thread::JoinHandle<()>> = match (
         config.check(),
         config.view(),
-        config.filter_link(),
-        config.filter_fee(),
+        config.filter_enabled(),
         config.output_mode(),
     ) {
-        (None, None, Some(_link), None, output_mode) if output_mode != DataOutputMode::None => {
-            Some(write::lib::spawn_writer(
-                config.clone(),
-                thread_stopper,
-                reader_rcv_channel,
-            ))
-        }
-        (None, None, None, Some(_fee), output_mode) if output_mode != DataOutputMode::None => Some(
+        (None, None, true, output_mode) if output_mode != DataOutputMode::None => Some(
             write::lib::spawn_writer(config.clone(), thread_stopper, reader_rcv_channel),
         ),
-        (Some(_), None, _, _, output_mode) | (None, Some(_), _, _, output_mode)
+
+        (Some(_), None, _, output_mode) | (None, Some(_), _, output_mode)
             if output_mode != DataOutputMode::None =>
         {
             log::warn!(

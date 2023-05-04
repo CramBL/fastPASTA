@@ -5,7 +5,7 @@
 use super::lib::{StatType, SystemId};
 use crate::{
     stats::report::{Report, StatSummary},
-    util::lib::Config,
+    util::lib::{Config, FilterTarget},
     words,
 };
 use log::error;
@@ -43,6 +43,7 @@ pub struct StatsController<C: Config> {
     hbfs_seen: u32,
     fatal_error: Option<String>,
     layers_staves_seen: Vec<(u8, u8)>,
+    fee_id_seen: Vec<u16>,
     run_trigger_type: (u32, String),
     system_id_observed: Option<SystemId>,
 }
@@ -71,6 +72,7 @@ impl<C: Config> StatsController<C> {
             hbfs_seen: 0,
             fatal_error: None,
             layers_staves_seen: Vec::new(),
+            fee_id_seen: Vec::new(),
             run_trigger_type: (0, String::from("")),
             system_id_observed: None,
         }
@@ -183,16 +185,16 @@ impl<C: Config> StatsController<C> {
                 }
             }
             StatType::SystemId(sys_id) => self.system_id_observed = Some(sys_id),
+            StatType::FeeId(id) => {
+                // Only add if not already seen
+                if !self.fee_id_seen.contains(&id) {
+                    self.fee_id_seen.push(id);
+                }
+            }
         }
     }
 
-    /// Builds and prints the report
-    fn print(&self) {
-        let mut report = Report::new(self.processing_time.elapsed());
-        if let Some(err) = &self.fatal_error {
-            report.add_fatal_error(err.clone());
-        }
-        // Add global stats
+    fn add_global_stats_to_report(&mut self, report: &mut Report) {
         if self.max_tolerate_errors == 0 {
             report.add_stat(StatSummary::new(
                 "Total Errors".to_string(),
@@ -224,8 +226,19 @@ impl<C: Config> StatsController<C> {
             format_links_observed(self.links_observed.clone()),
             None,
         ));
+    }
 
-        if self.config.filter_link().is_none() && self.config.filter_fee().is_none() {
+    /// Builds and prints the report
+    fn print(&mut self) {
+        let mut report = Report::new(self.processing_time.elapsed());
+        // Add fatal error if any
+        if let Some(err) = &self.fatal_error {
+            report.add_fatal_error(err.clone());
+        }
+        // Add global stats
+        self.add_global_stats_to_report(&mut report);
+
+        if !self.config.filter_enabled() {
             // If no filtering, the HBFs seen is from the total RDHs
             report.add_stat(StatSummary::new(
                 "Total HBFs".to_string(),
@@ -241,6 +254,13 @@ impl<C: Config> StatsController<C> {
                     format_layers_and_staves(self.layers_staves_seen.clone()),
                     None,
                 ));
+            } else {
+                // If the target system is not ITS then just list the FEEIDs raw
+                report.add_stat(StatSummary::new(
+                    "FEE IDs seen".to_string(),
+                    format_fee_ids(&mut self.fee_id_seen),
+                    None,
+                ))
             }
 
             // If no filtering, the payload size seen is from the total RDHs
@@ -291,22 +311,29 @@ impl<C: Config> StatsController<C> {
             self.rdhs_filtered.to_string(),
             None,
         ));
+        // If filtering, the HBFs seen is from the filtered RDHs
+        filtered_stats.push(StatSummary::new(
+            "HBFs".to_string(),
+            self.hbfs_seen.to_string(),
+            None,
+        ));
         filtered_stats.push(StatSummary::new(
             "Total Payload Size".to_string(),
             format_payload(self.payload_size),
             None,
         ));
 
-        if let Some(link_id) = self.config.filter_link() {
-            let filtered_links = summerize_filtered_links(link_id, self.links_observed.clone());
-            filtered_stats.push(filtered_links);
-        } else if let Some(fee_id) = self.config.filter_fee() {
-            let filtered_feeid = summerize_filtered_feeid(fee_id, self.layers_staves_seen.clone());
-            filtered_stats.push(filtered_feeid);
-        } else {
-            unreachable!(
-                "Filtering is enabled but no filter link or filter fee is set. This is a bug."
-            )
+        if let Some(filter_target) = self.config.filter_target() {
+            let filtered_target = match filter_target {
+                FilterTarget::Link(link_id) => {
+                    summerize_filtered_links(link_id, &self.links_observed)
+                }
+                FilterTarget::Fee(fee_id) => summerize_filtered_fee_ids(fee_id, &self.fee_id_seen),
+                FilterTarget::ItsLayerStave(fee_id_no_link) => {
+                    summerize_filtered_its_layer_staves(fee_id_no_link, &self.layers_staves_seen)
+                }
+            };
+            filtered_stats.push(filtered_target);
         }
 
         filtered_stats
@@ -356,8 +383,24 @@ fn format_layers_and_staves(layers_staves_seen: Vec<(u8, u8)>) -> String {
         .join("")
 }
 
+fn format_fee_ids(fee_ids_seen: &mut Vec<u16>) -> String {
+    fee_ids_seen.sort();
+    fee_ids_seen
+        .iter()
+        .enumerate()
+        .map(|(i, id)| {
+            if i > 0 && i % 5 == 0 {
+                format!("{id}\n")
+            } else {
+                format!("{id} ")
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(", ")
+}
+
 /// Helper functions to format the summary of filtered link ID
-fn summerize_filtered_links(link_to_filter: u8, links_observed: Vec<u8>) -> StatSummary {
+fn summerize_filtered_links(link_to_filter: u8, links_observed: &[u8]) -> StatSummary {
     let mut filtered_links_stat = StatSummary::new("Link ID".to_string(), "".to_string(), None);
     // Format links that were filtered, separated by commas
     if links_observed.contains(&link_to_filter) {
@@ -370,16 +413,31 @@ fn summerize_filtered_links(link_to_filter: u8, links_observed: Vec<u8>) -> Stat
 }
 
 /// Helper functions to format the summary of filtered FEE ID
-fn summerize_filtered_feeid(fee_id: u16, layers_staves_seen: Vec<(u8, u8)>) -> StatSummary {
+fn summerize_filtered_fee_ids(fee_id: u16, fee_ids_seen: &[u16]) -> StatSummary {
     let mut filtered_feeid_stat = StatSummary::new("FEE ID".to_string(), "".to_string(), None);
-    let layer = words::its::layer_from_feeid(fee_id);
-    let stave = words::its::stave_number_from_feeid(fee_id);
-    if layers_staves_seen.contains(&(layer, stave)) {
+
+    if fee_ids_seen.contains(&fee_id) {
         filtered_feeid_stat.value = fee_id.to_string();
-        filtered_feeid_stat.notes = format!("L{layer}_{stave}");
     } else {
         filtered_feeid_stat.value = "<<none>>".to_string();
-        filtered_feeid_stat.notes = format!("not found: {fee_id} aka. L{layer}_{stave}");
+        filtered_feeid_stat.notes = format!("not found: {fee_id}");
+    }
+    filtered_feeid_stat
+}
+
+/// Helper functions to format the summary of filtered ITS layer and stave
+fn summerize_filtered_its_layer_staves(
+    fee_id_no_link: u16,
+    layers_staves_seen: &[(u8, u8)],
+) -> StatSummary {
+    let mut filtered_feeid_stat = StatSummary::new("ITS stave".to_string(), "".to_string(), None);
+    let layer = words::its::layer_from_feeid(fee_id_no_link);
+    let stave = words::its::stave_number_from_feeid(fee_id_no_link);
+    if layers_staves_seen.contains(&(layer, stave)) {
+        filtered_feeid_stat.value = format!("L{layer}_{stave}");
+    } else {
+        filtered_feeid_stat.value = "<<none>>".to_string();
+        filtered_feeid_stat.notes = format!("not found: L{layer}_{stave}");
     }
     filtered_feeid_stat
 }

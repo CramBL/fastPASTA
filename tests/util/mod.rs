@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 /// Re-export some common utilities for system tests
 pub use assert_cmd::prelude::*; // Add methods on commands
+pub use assert_fs::prelude::*;
 pub use predicate::str::is_match;
 pub use predicates::prelude::*; // Used for writing assertions
 pub use std::process::Command; // Run programs
@@ -16,6 +17,7 @@ pub const FILE_1_HBF_BAD_DW_DDW0: &str = "tests/test-data/1_hbf_bad_dw_ddw0.raw"
 pub const FILE_1_HBF_BAD_IHW_TDH: &str = "tests/test-data/1_hbf_bad_ihw_tdh.raw";
 pub const FILE_1_HBF_BAD_ITS_PAYLOAD: &str = "tests/test-data/1_hbf_bad_its_payload.raw";
 pub const FILE_1_HBF_BAD_TDT: &str = "tests/test-data/1_hbf_bad_tdt.raw";
+pub const FILE_OUTPUT_TMP: &str = "tests/test-data/output.tmp";
 
 /// Helper function to match the raw output of stderr or stdout, with a pattern a fixed amount of times
 pub fn match_on_output(byte_output: &Vec<u8>, re_str: &str, match_count: usize) -> bool {

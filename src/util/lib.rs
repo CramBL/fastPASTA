@@ -22,6 +22,39 @@ pub trait Filter {
     fn filter_link(&self) -> Option<u8>;
     /// FEE ID to filter by
     fn filter_fee(&self) -> Option<u16>;
+    /// ITS layer & stave to filter by
+    fn filter_its_stave(&self) -> Option<u16>;
+
+    /// Get the target of the filter
+    fn filter_target(&self) -> Option<FilterTarget> {
+        if let Some(link) = self.filter_link() {
+            Some(FilterTarget::Link(link))
+        } else if let Some(fee) = self.filter_fee() {
+            Some(FilterTarget::Fee(fee))
+        } else if let Some(its_layer_stave) = self.filter_its_stave() {
+            Some(FilterTarget::ItsLayerStave(its_layer_stave))
+        } else {
+            None
+        }
+    }
+
+    /// Determine if the filter is enabled
+    fn filter_enabled(&self) -> bool {
+        self.filter_link().is_some()
+            || self.filter_fee().is_some()
+            || self.filter_its_stave().is_some()
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+/// The target of an optional filter on the input data
+pub enum FilterTarget {
+    /// Filter on the link ID
+    Link(u8),
+    /// Filter on the FEE ID
+    Fee(u16),
+    /// Filter on the ITS layer and stave
+    ItsLayerStave(u16),
 }
 
 /// Trait for all input/output options
@@ -80,6 +113,7 @@ pub mod test_util {
         pub view: Option<View>,
         pub filter_link: Option<u8>,
         pub filter_fee: Option<u16>,
+        pub filter_its_stave: Option<String>,
         pub verbosity: u8,
         pub max_tolerate_errors: u32,
         pub input_file: Option<std::path::PathBuf>,
@@ -95,6 +129,7 @@ pub mod test_util {
                 view: None,
                 filter_link: None,
                 filter_fee: None,
+                filter_its_stave: None,
                 verbosity: 0,
                 max_tolerate_errors: 0,
                 input_file: None,
@@ -123,6 +158,23 @@ pub mod test_util {
 
         fn filter_fee(&self) -> Option<u16> {
             self.filter_fee
+        }
+
+        fn filter_its_stave(&self) -> Option<u16> {
+            if let Some(stave_layer) = &self.filter_its_stave {
+                // Start with something like "l2_1"
+                // 1. check if the first char is an L, if so, it's the Lx_x format
+                if stave_layer.to_uppercase().starts_with('L') {
+                    Some(
+                        crate::words::its::layer_stave_string_to_feeid(stave_layer)
+                            .expect("Invalid FEE ID"),
+                    )
+                } else {
+                    panic!("Invalid ITS layer & stave format, expected L[layer numer]_[stave number], e.g. L2_1, got {stave_layer}")
+                }
+            } else {
+                None
+            }
         }
     }
     impl Util for MockConfig {
