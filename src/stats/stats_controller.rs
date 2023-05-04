@@ -341,7 +341,7 @@ impl<C: Config> StatsController<C> {
 
     fn print_errors(&mut self) {
         // Regex to extract the memory address from the error message
-        let re = regex::Regex::new(r"0x(?<mem_pos>[0-9a-fA-F]+):").unwrap();
+        let re = regex::Regex::new(r"0x(?P<mem_pos>[0-9a-fA-F]+):").unwrap();
         // Sort the errors by memory address
         if !self.reported_errors.is_empty() {
             self.reported_errors.sort_by_key(|e| {
@@ -355,13 +355,12 @@ impl<C: Config> StatsController<C> {
         if self.max_tolerate_errors > 0 {
             self.reported_errors
                 .drain(..)
-                .into_iter()
                 .take(self.max_tolerate_errors as usize)
                 .for_each(|e| {
                     log::error!("{e}");
                 });
         } else {
-            self.reported_errors.drain(..).into_iter().for_each(|e| {
+            self.reported_errors.drain(..).for_each(|e| {
                 log::error!("{e}");
             });
         }
