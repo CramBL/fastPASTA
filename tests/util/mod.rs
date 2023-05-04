@@ -17,6 +17,8 @@ pub const FILE_1_HBF_BAD_DW_DDW0: &str = "tests/test-data/1_hbf_bad_dw_ddw0.raw"
 pub const FILE_1_HBF_BAD_IHW_TDH: &str = "tests/test-data/1_hbf_bad_ihw_tdh.raw";
 pub const FILE_1_HBF_BAD_ITS_PAYLOAD: &str = "tests/test-data/1_hbf_bad_its_payload.raw";
 pub const FILE_1_HBF_BAD_TDT: &str = "tests/test-data/1_hbf_bad_tdt.raw";
+pub const FILE_TDH_NO_DATA: &str = "tests/test-data/tdh_no_data.raw";
+
 pub const FILE_OUTPUT_TMP: &str = "tests/test-data/output.tmp";
 
 /// Helper function to match the raw output of stderr or stdout, with a pattern a fixed amount of times
