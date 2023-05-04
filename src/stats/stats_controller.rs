@@ -337,9 +337,16 @@ fn format_layers_and_staves(layers_staves_seen: Vec<(u8, u8)>) -> String {
     layers_staves_seen.sort();
     layers_staves_seen
         .iter()
-        .map(|(layer, stave)| format!("L{layer}_{stave}"))
+        .enumerate()
+        .map(|(i, (layer, stave))| {
+            if i > 0 && i % 7 == 0 {
+                format!("L{layer}_{stave}\n")
+            } else {
+                format!("L{layer}_{stave} ")
+            }
+        })
         .collect::<Vec<String>>()
-        .join(", ")
+        .join("")
 }
 
 /// Helper functions to format the summary
