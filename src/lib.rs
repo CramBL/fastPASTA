@@ -130,6 +130,7 @@ pub fn process<T: words::lib::RDH + 'static>(
         debug_assert!(
             config.output_mode() == util::lib::DataOutputMode::None
                 || config.filter_link().is_some()
+                || config.filter_fee().is_some(),
         );
         let handle = spawn_analysis(
             config.clone(),

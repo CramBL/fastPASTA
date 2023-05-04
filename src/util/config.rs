@@ -8,6 +8,8 @@
 use std::path::PathBuf;
 use structopt::{clap::arg_enum, StructOpt};
 
+use crate::words::its::layer_stave_string_to_feeid;
+
 use super::lib::{Checks, Config, DataOutputMode, Filter, InputOutput, Util, Views};
 /// The Opt struct uses the [StructOpt] procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
 #[derive(StructOpt, Debug)]
@@ -42,13 +44,13 @@ pub struct Cfg {
     #[structopt(short = "e", long = "max-errors", default_value = "0", global = true)]
     max_tolerate_errors: u32,
 
-    /// Set CRU link ID to filter by
+    /// Set CRU link ID to filter by (e.g. 5)
     #[structopt(short = "f", long, global = true, group = "filter")]
     filter_link: Option<u8>,
 
-    /// Set FEE ID to filter by
+    /// Set FEE ID to filter by (e.g. L5_42 or 20522)
     #[structopt(short = "F", long, global = true, group = "filter")]
-    filter_fee: Option<u16>,
+    filter_fee: Option<String>,
 
     /// Output raw data (default: stdout), requires a link to filter by. If Checks or Views are enabled, the output is supressed.
     #[structopt(
@@ -89,7 +91,21 @@ impl Filter for Cfg {
     }
 
     fn filter_fee(&self) -> Option<u16> {
-        self.filter_fee
+        if let Some(fee) = &self.filter_fee {
+            // Start with something like "l2_1" or "20522" if specified in the other format
+            // 1. check if the first char is an L, if so, it's the Lx_x format
+            if fee.to_uppercase().starts_with('L') {
+                // The FEE ID has been specified in the Lx_x format
+                Some(layer_stave_string_to_feeid(fee).expect("Invalid FEE ID"))
+            } else if let Ok(fee) = fee.parse::<u16>() {
+                // The FEE ID has been specified in the pure integer format, just return it
+                Some(fee)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 }
 
