@@ -490,6 +490,7 @@ dependencies = [
  "owo-colors",
  "predicates",
  "pretty_assertions",
+ "regex",
  "ringbuffer",
  "sm",
  "stderrlog",
