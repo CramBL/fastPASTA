@@ -50,3 +50,20 @@ fn check_sanity_its_issue_26() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+// https://gitlab.cern.ch/mkonig/fastpasta/-/issues/26
+#[test]
+fn check_all_its_issue_26() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_TDH_NO_DATA).arg("check").arg("all").arg("its");
+    cmd.assert().success();
+
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    assert!(match_on_output(&cmd.output()?.stdout, "(?i)errors.*0", 1));
+
+    Ok(())
+}
