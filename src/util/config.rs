@@ -1,7 +1,7 @@
-//! Contains the [Opt] struct that parses and stores the command line arguments
+//! Contains the [Cfg] struct that parses and stores the command line arguments
 //!
-//! [Opt] uses procedural macros from the [StructOpt] library to implement most of the argument parsing and validation logic.
-//! The [Opt] struct implements several options and subcommands, as well as convenience functions to get various parts of the configuration
+//! [Cfg] uses procedural macros from the [StructOpt] library to implement most of the argument parsing and validation logic.
+//! The [Cfg] struct implements several options and subcommands, as well as convenience functions to get various parts of the configuration
 
 // Unfortunately needed because of the arg_enum macro not handling doc comments properly
 #![allow(missing_docs)]

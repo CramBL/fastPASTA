@@ -243,7 +243,7 @@ pub fn init_error_logger(cfg: &impl Config) {
     }
 }
 
-/// Get the [config][util::config::Opt] from the command line arguments and return it as an [Arc][std::sync::Arc].
+/// Get the [config][util::config::Cfg] from the command line arguments and return it as an [Arc][std::sync::Arc].
 pub fn get_config() -> std::sync::Arc<util::config::Cfg> {
     let cfg = <util::config::Cfg as structopt::StructOpt>::from_args();
     std::sync::Arc::new(cfg)
