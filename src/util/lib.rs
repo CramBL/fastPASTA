@@ -1,6 +1,8 @@
 //! Contains the [Config] super trait, and all the sub traits required by it
 //!
 //! Implementing the [Config] super trait is required by configs passed to structs in other modules as part of instantiation.
+use std::fmt::Display;
+
 use super::config::{Check, View};
 
 /// Super trait for all the traits that needed to be implemented by the config struct
@@ -18,6 +20,8 @@ pub trait Util {
 pub trait Filter {
     /// Link ID to filter by
     fn filter_link(&self) -> Option<u8>;
+    /// FEE ID to filter by
+    fn filter_fee(&self) -> Option<u16>;
 }
 
 /// Trait for all input/output options
@@ -55,6 +59,16 @@ pub enum DataOutputMode {
     None,
 }
 
+impl Display for DataOutputMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DataOutputMode::File => write!(f, "File"),
+            DataOutputMode::Stdout => write!(f, "Stdout"),
+            DataOutputMode::None => write!(f, "None"),
+        }
+    }
+}
+
 #[allow(missing_docs)]
 pub mod test_util {
     use super::*;
@@ -65,6 +79,7 @@ pub mod test_util {
         pub check: Option<Check>,
         pub view: Option<View>,
         pub filter_link: Option<u8>,
+        pub filter_fee: Option<u16>,
         pub verbosity: u8,
         pub max_tolerate_errors: u32,
         pub input_file: Option<std::path::PathBuf>,
@@ -79,6 +94,7 @@ pub mod test_util {
                 check: None,
                 view: None,
                 filter_link: None,
+                filter_fee: None,
                 verbosity: 0,
                 max_tolerate_errors: 0,
                 input_file: None,
@@ -103,6 +119,10 @@ pub mod test_util {
     impl Filter for MockConfig {
         fn filter_link(&self) -> Option<u8> {
             self.filter_link
+        }
+
+        fn filter_fee(&self) -> Option<u16> {
+            self.filter_fee
         }
     }
     impl Util for MockConfig {

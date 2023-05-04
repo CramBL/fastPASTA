@@ -6,6 +6,7 @@ use super::lib::{StatType, SystemId};
 use crate::{
     stats::report::{Report, StatSummary},
     util::lib::Config,
+    words,
 };
 use log::error;
 use std::sync::{
@@ -224,7 +225,7 @@ impl<C: Config> StatsController<C> {
             None,
         ));
 
-        if self.config.filter_link().is_none() {
+        if self.config.filter_link().is_none() && self.config.filter_fee().is_none() {
             // If no filtering, the HBFs seen is from the total RDHs
             report.add_stat(StatSummary::new(
                 "Total HBFs".to_string(),
@@ -296,11 +297,17 @@ impl<C: Config> StatsController<C> {
             None,
         ));
 
-        let filtered_links = summerize_filtered_links(
-            self.config.filter_link().unwrap(),
-            self.links_observed.clone(),
-        );
-        filtered_stats.push(filtered_links);
+        if let Some(link_id) = self.config.filter_link() {
+            let filtered_links = summerize_filtered_links(link_id, self.links_observed.clone());
+            filtered_stats.push(filtered_links);
+        } else if let Some(fee_id) = self.config.filter_fee() {
+            let filtered_feeid = summerize_filtered_feeid(fee_id, self.layers_staves_seen.clone());
+            filtered_stats.push(filtered_feeid);
+        } else {
+            unreachable!(
+                "Filtering is enabled but no filter link or filter fee is set. This is a bug."
+            )
+        }
 
         filtered_stats
     }
@@ -349,7 +356,7 @@ fn format_layers_and_staves(layers_staves_seen: Vec<(u8, u8)>) -> String {
         .join("")
 }
 
-/// Helper functions to format the summary
+/// Helper functions to format the summary of filtered link ID
 fn summerize_filtered_links(link_to_filter: u8, links_observed: Vec<u8>) -> StatSummary {
     let mut filtered_links_stat = StatSummary::new("Link ID".to_string(), "".to_string(), None);
     // Format links that were filtered, separated by commas
@@ -360,4 +367,19 @@ fn summerize_filtered_links(link_to_filter: u8, links_observed: Vec<u8>) -> Stat
         filtered_links_stat.notes = format!("not found: {link_to_filter}");
     }
     filtered_links_stat
+}
+
+/// Helper functions to format the summary of filtered FEE ID
+fn summerize_filtered_feeid(fee_id: u16, layers_staves_seen: Vec<(u8, u8)>) -> StatSummary {
+    let mut filtered_feeid_stat = StatSummary::new("FEE ID".to_string(), "".to_string(), None);
+    let layer = words::its::layer_from_feeid(fee_id);
+    let stave = words::its::stave_number_from_feeid(fee_id);
+    if layers_staves_seen.contains(&(layer, stave)) {
+        filtered_feeid_stat.value = fee_id.to_string();
+        filtered_feeid_stat.notes = format!("L{layer}_{stave}");
+    } else {
+        filtered_feeid_stat.value = "<<none>>".to_string();
+        filtered_feeid_stat.notes = format!("not found: {fee_id} aka. L{layer}_{stave}");
+    }
+    filtered_feeid_stat
 }

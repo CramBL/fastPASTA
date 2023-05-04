@@ -28,8 +28,11 @@ pub trait ScanCDP {
         Ok(CdpWrapper(rdh, payload, mem_pos))
     }
 
-    /// Loads the next [RDH] that matches the user specified link from the input and returns it
-    fn load_next_rdh_to_filter<T: RDH>(&mut self) -> Result<T, std::io::Error>;
+    /// Loads the next [RDH] that matches the user specified filter target from the input and returns it
+    fn load_next_rdh_to_filter<T: RDH>(
+        &mut self,
+        target: FilterTarget,
+    ) -> Result<T, std::io::Error>;
 
     /// Convenience function to return the current memory position in the input stream
     fn current_mem_pos(&self) -> u64;
@@ -47,6 +50,7 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     tracker: MemPosTracker,
     stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
     link_to_filter: Option<u8>,
+    fee_to_filter: Option<u16>,
     skip_payload: bool,
     unique_links_observed: Vec<u8>,
     initial_rdh0: Option<Rdh0>,
@@ -65,6 +69,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             tracker,
             stats_controller_sender_ch,
             link_to_filter: config.filter_link(),
+            fee_to_filter: config.filter_fee(),
             skip_payload: config.skip_payload(),
             unique_links_observed: vec![],
             initial_rdh0: None,
@@ -84,6 +89,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             tracker: MemPosTracker::new(),
             stats_controller_sender_ch,
             link_to_filter: config.filter_link(),
+            fee_to_filter: config.filter_fee(),
             skip_payload: config.skip_payload(),
             unique_links_observed: vec![],
             initial_rdh0: Some(rdh0),
@@ -119,6 +125,17 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             )))
             .expect("Failed to send stats, receiver was dropped")
     }
+    fn collect_rdh_seen_stats(&mut self, rdh: &impl RDH) {
+        // Set the link ID and report another RDH seen
+        let current_link_id = rdh.link_id();
+        self.report_rdh_seen();
+
+        // If we haven't seen this link before, report it and add it to the list of unique links
+        if !self.unique_links_observed.contains(&current_link_id) {
+            self.unique_links_observed.push(current_link_id);
+            self.report_link_seen(current_link_id);
+        }
+    }
 }
 
 impl<R> ScanCDP for InputScanner<R>
@@ -148,40 +165,53 @@ where
             rdh = rdh
         );
 
-        // Set the link ID and report another RDH seen
-        let current_link_id = rdh.link_id();
-        self.report_rdh_seen();
-        self.report_payload_size(rdh.payload_size() as u32);
-
-        // If we haven't seen this link before, report it and add it to the list of unique links
-        if !self.unique_links_observed.contains(&current_link_id) {
-            self.unique_links_observed.push(current_link_id);
-            self.report_link_seen(current_link_id);
-        }
+        // Collect stats
+        self.collect_rdh_seen_stats(&rdh);
         sanity_check_offset_next(
             &rdh,
             self.tracker.memory_address_bytes,
             &self.stats_controller_sender_ch,
         )?;
-        // If we have a link filter set, check if the current link matches the filter
-        if let Some(x) = self.link_to_filter {
-            // If it matches, return the RDH
-            if x == current_link_id {
-                self.report_rdh_filtered();
-                // no jump. current pos -> start of payload
-                Ok(rdh)
-            } else {
-                // If it doesn't match: Set tracker to jump to next RDH and try until we find a matching link or EOF
-                log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
 
-                self.reader
-                    .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
-                self.load_next_rdh_to_filter()
-            }
-        } else {
-            // No filter set, return the RDH (nop)
-            Ok(rdh)
+        let rdh = match (self.link_to_filter, self.fee_to_filter) {
+            (None, None) => {
+                    // No filter set, return the RDH (nop)
+
+                    Ok(rdh)
+                },
+            (None, Some(fee_id)) => {
+                if fee_id == rdh.fee_id() {
+                    Ok(rdh)
+                } else {
+                    // If it doesn't match: Set tracker to jump to next RDH and try until we find a matching link or EOF
+                    log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
+
+                    self.reader
+                        .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
+                    self.load_next_rdh_to_filter( FilterTarget::Fee(fee_id))
+                }
+            },
+            (Some(link_id), None) => {
+                // If it matches, return the RDH
+                if link_id == rdh.link_id() {
+                    self.report_rdh_filtered();
+                    // no jump. current pos -> start of payload
+                    Ok(rdh)
+                } else {
+                    // If it doesn't match: Set tracker to jump to next RDH and try until we find a matching link or EOF
+                    log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
+
+                    self.reader
+                        .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
+                    self.load_next_rdh_to_filter(FilterTarget::Link(link_id))
+                }
+            },
+            (Some(_), Some(_)) => unreachable!("Link and FEE filter set at the same time, this should have been caught by the config parser"),
+        };
+        if let Ok(rdh) = &rdh {
+            self.report_payload_size(rdh.payload_size() as u32);
         }
+        rdh
     }
 
     /// Reads the next payload from file, using the payload size from the RDH
@@ -217,7 +247,10 @@ where
         Ok(CdpWrapper(rdh, payload, loading_at_memory_offset))
     }
 
-    fn load_next_rdh_to_filter<T: RDH>(&mut self) -> Result<T, std::io::Error> {
+    fn load_next_rdh_to_filter<T: RDH>(
+        &mut self,
+        filter_target: FilterTarget,
+    ) -> Result<T, std::io::Error> {
         loop {
             let rdh: T = RDH::load(&mut self.reader)?;
             log::debug!("Loaded RDH: \n      {rdh}");
@@ -227,13 +260,9 @@ where
                 self.tracker.memory_address_bytes,
                 &self.stats_controller_sender_ch,
             )?;
-            let current_link_id = rdh.link_id();
-            self.report_rdh_seen();
-            if !self.unique_links_observed.contains(&current_link_id) {
-                self.unique_links_observed.push(current_link_id);
-                self.report_link_seen(current_link_id);
-            }
-            if self.link_to_filter.unwrap() == current_link_id {
+            self.collect_rdh_seen_stats(&rdh);
+
+            if is_rdh_filter_target(&rdh, filter_target) {
                 self.report_rdh_filtered();
                 return Ok(rdh);
             }
@@ -244,6 +273,22 @@ where
 
     fn current_mem_pos(&self) -> u64 {
         self.tracker.memory_address_bytes
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+/// The target of an optional filter on the input data
+pub enum FilterTarget {
+    /// Filter on the link ID
+    Link(u8),
+    /// Filter on the FEE ID
+    Fee(u16),
+}
+// Check if the RDH matches the filter target
+fn is_rdh_filter_target(rdh: &impl RDH, target: FilterTarget) -> bool {
+    match target {
+        FilterTarget::Link(id) => rdh.link_id() == id,
+        FilterTarget::Fee(id) => rdh.fee_id() == id,
     }
 }
 
@@ -289,7 +334,7 @@ fn sanity_check_offset_next<T: RDH>(
 
 #[cfg(test)]
 mod tests {
-    use crate::util::config::Opt;
+    use crate::util::config::Cfg;
     use crate::util::lib::InputOutput;
     use crate::words::lib::ByteSlice;
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
@@ -304,7 +349,7 @@ mod tests {
         std::sync::mpsc::Receiver<StatType>,
     ) {
         use super::*;
-        let config: Opt = <Opt as structopt::StructOpt>::from_iter(&[
+        let config: Cfg = <Cfg as structopt::StructOpt>::from_iter(&[
             "fastpasta",
             path,
             "-f",

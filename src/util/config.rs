@@ -25,7 +25,7 @@ Examples:
                  ^^^^                      ^^^^                       ^^^^
                 INPUT       --->          FILTER          --->        VIEW"
 )]
-pub struct Opt {
+pub struct Cfg {
     /// Input file (default: stdin)
     #[structopt(name = "INPUT DATA", parse(from_os_str))]
     file: Option<PathBuf>,
@@ -43,8 +43,12 @@ pub struct Opt {
     max_tolerate_errors: u32,
 
     /// Set CRU link ID to filter by
-    #[structopt(short = "f", long, global = true)]
+    #[structopt(short = "f", long, global = true, group = "filter")]
     filter_link: Option<u8>,
+
+    /// Set FEE ID to filter by
+    #[structopt(short = "F", long, global = true, group = "filter")]
+    filter_fee: Option<u16>,
 
     /// Output raw data (default: stdout), requires a link to filter by. If Checks or Views are enabled, the output is supressed.
     #[structopt(
@@ -53,15 +57,15 @@ pub struct Opt {
         long = "output",
         parse(from_os_str),
         global = true,
-        requires("filter-link")
+        requires("filter")
     )]
     output: Option<PathBuf>,
 }
 
 /// Implementing the config super trait requires implementing all the sub traits
-impl Config for Opt {}
+impl Config for Cfg {}
 
-impl Views for Opt {
+impl Views for Cfg {
     #[inline]
     fn view(&self) -> Option<View> {
         if let Some(sub_cmd) = &self.cmd {
@@ -78,14 +82,18 @@ impl Views for Opt {
     }
 }
 
-impl Filter for Opt {
+impl Filter for Cfg {
     #[inline]
     fn filter_link(&self) -> Option<u8> {
         self.filter_link
     }
+
+    fn filter_fee(&self) -> Option<u16> {
+        self.filter_fee
+    }
 }
 
-impl Checks for Opt {
+impl Checks for Cfg {
     #[inline]
     fn check(&self) -> Option<Check> {
         if let Some(sub_cmd) = &self.cmd {
@@ -102,7 +110,7 @@ impl Checks for Opt {
     }
 }
 
-impl InputOutput for Opt {
+impl InputOutput for Cfg {
     #[inline]
     fn input_file(&self) -> &Option<PathBuf> {
         &self.file
@@ -149,7 +157,7 @@ impl InputOutput for Opt {
     }
 }
 
-impl Util for Opt {
+impl Util for Cfg {
     #[inline]
     fn verbosity(&self) -> u8 {
         self.verbosity

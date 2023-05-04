@@ -123,7 +123,7 @@ pub fn process<T: words::lib::RDH + 'static>(
     let (reader_handle, reader_rcv_channel): (
         std::thread::JoinHandle<()>,
         crossbeam_channel::Receiver<input::data_wrapper::CdpChunk<T>>,
-    ) = input::lib::spawn_reader(thread_stopper.clone(), loader);
+    ) = input::lib::spawn_reader(thread_stopper.clone(), loader, send_stats_ch.clone());
 
     // 2. Launch analysis thread if an analysis action is set (view or check)
     let analysis_handle = if config.check().is_some() || config.view().is_some() {
@@ -147,12 +147,20 @@ pub fn process<T: words::lib::RDH + 'static>(
         config.check(),
         config.view(),
         config.filter_link(),
+        config.filter_fee(),
         config.output_mode(),
     ) {
-        (None, None, Some(_), output_mode) if output_mode != DataOutputMode::None => Some(
+        (None, None, Some(_link), None, output_mode) if output_mode != DataOutputMode::None => {
+            Some(write::lib::spawn_writer(
+                config.clone(),
+                thread_stopper,
+                reader_rcv_channel,
+            ))
+        }
+        (None, None, None, Some(_fee), output_mode) if output_mode != DataOutputMode::None => Some(
             write::lib::spawn_writer(config.clone(), thread_stopper, reader_rcv_channel),
         ),
-        (Some(_), None, _, output_mode) | (None, Some(_), _, output_mode)
+        (Some(_), None, _, _, output_mode) | (None, Some(_), _, _, output_mode)
             if output_mode != DataOutputMode::None =>
         {
             log::warn!(
@@ -184,7 +192,7 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
     data_channel: Receiver<input::data_wrapper::CdpChunk<T>>,
 ) -> std::thread::JoinHandle<()> {
     let analysis_thread = std::thread::Builder::new().name("Analysis".to_string());
-    let mut system_id: Option<SystemId> = None; // System ID is only set once
+
     analysis_thread
         .spawn({
             move || {
@@ -203,22 +211,6 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                             break;
                         }
                     };
-                    // Collect global stats
-                    // Send HBF seen if stop bit is 1
-                    for rdh in cdp_chunk.rdh_slice().iter() {
-                        if rdh.stop_bit() == 1 {
-                            stats_sender_channel.send(StatType::HBFsSeen(1)).unwrap();
-                        }
-                        if let Err(e) = lib::collect_system_specific_stats(
-                            rdh,
-                            &mut system_id,
-                            &stats_sender_channel,
-                        ) {
-                            // Send error and break, stop processing
-                            stats_sender_channel.send(StatType::Fatal(e)).unwrap();
-                            break; // Fatal error
-                        }
-                    }
 
                     // Do checks or view
                     if config.check().is_some() {
@@ -260,8 +252,8 @@ pub fn init_error_logger(cfg: &impl Config) {
 }
 
 /// Get the [config][util::config::Opt] from the command line arguments and return it as an [Arc][std::sync::Arc].
-pub fn get_config() -> std::sync::Arc<util::config::Opt> {
-    let cfg = <util::config::Opt as structopt::StructOpt>::from_args();
+pub fn get_config() -> std::sync::Arc<util::config::Cfg> {
+    let cfg = <util::config::Cfg as structopt::StructOpt>::from_args();
     std::sync::Arc::new(cfg)
 }
 
