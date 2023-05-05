@@ -55,9 +55,9 @@ sm! {
         }
 
         _NoDataTrue {
-            TDH_ => DDW0_or_TDH_,
-            DDW0_or_TDH_ => DDW0_or_TDH_,
-            DDW0_or_TDH_or_IHW_ => DDW0_or_TDH_
+            TDH_ => DDW0_or_TDH_or_IHW_,
+            DDW0_or_TDH_ => DDW0_or_TDH_or_IHW_,
+            DDW0_or_TDH_or_IHW_ => DDW0_or_TDH_or_IHW_
         }
 
         _NoDataFalse {
@@ -144,7 +144,7 @@ impl ItsPayloadFsmContinuous {
                     true => (m.transition(_NoDataTrue).as_enum(), Ok(PayloadWord::TDH)),
                 },
 
-                DDW0_or_TDH_By_NoDataTrue(m) => match gbt_word[9] {
+                DDW0_or_TDH_or_IHW_By_NoDataTrue(m) => match gbt_word[9] {
                     0xE8 if status_words::util::tdh_no_data(gbt_word) => (
                         m.transition(_NoDataTrue).as_enum(),
                         Ok(PayloadWord::TDH_after_packet_done),
@@ -154,6 +154,7 @@ impl ItsPayloadFsmContinuous {
                         Ok(PayloadWord::TDH_after_packet_done),
                     ),
                     0xE4 => (m.transition(_WasDdw0).as_enum(), Ok(PayloadWord::DDW0)),
+                    0xE0 => (m.transition(_WasIhw).as_enum(), Ok(PayloadWord::IHW)),
                     // Error in ID, assuming TDH to try to stay on track, but return as error to be handled by caller
                     _ => (
                         m.transition(_NoDataFalse).as_enum(),
