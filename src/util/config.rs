@@ -48,7 +48,7 @@ pub struct Cfg {
     #[structopt(short = "f", long, global = true, group = "filter")]
     filter_link: Option<u8>,
 
-    /// Set FEE ID to filter by (e.g. L5_42 or 20522)
+    /// Set FEE ID to filter by (e.g. 20522)
     #[structopt(short = "F", long, global = true, group = "filter")]
     filter_fee: Option<u16>,
 
@@ -79,6 +79,7 @@ impl Views for Cfg {
                 Command::View(view) => match view {
                     View::Rdh => Some(View::Rdh),
                     View::Hbf => Some(View::Hbf),
+                    View::ItsReadoutFrames => Some(View::ItsReadoutFrames),
                 },
                 _ => None,
             }
@@ -228,9 +229,12 @@ pub enum View {
     /// Print formatted RDHs to stdout
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
     Rdh,
-    /// Print formatted HBFs to stdout
+    /// DEPRECATED! use its-readout-frames instead. Print formatted ITS payload HBFs to stdout, validating the printed words with a Protocol Tracker.
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
     Hbf,
+    /// Print formatted ITS readout frames to stdout
+    #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
+    ItsReadoutFrames,
 }
 
 /// Target system for checks

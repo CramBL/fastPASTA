@@ -11,12 +11,12 @@ pub fn generate_view<T: RDH>(
     cdp_chunk: input::data_wrapper::CdpChunk<T>,
     send_stats_ch: &std::sync::mpsc::Sender<StatType>,
     its_payload_fsm_cont: &mut ItsPayloadFsmContinuous,
-) -> Result<(), std::io::Error> {
+) -> Result<(), Box<dyn std::error::Error>> {
+    use util::config::View;
     match view {
-        util::config::View::Rdh => super::rdh_view::rdh_view(cdp_chunk)?,
-        util::config::View::Hbf => {
-            super::hbf_view::hbf_view(cdp_chunk, send_stats_ch, its_payload_fsm_cont)?
-        }
+        View::Rdh => super::rdh_view::rdh_view(cdp_chunk)?,
+        View::Hbf => super::hbf_view::hbf_view(cdp_chunk, send_stats_ch, its_payload_fsm_cont)?,
+        View::ItsReadoutFrames => super::its_readout_frame_view::its_readout_frame_view(cdp_chunk)?,
     }
     Ok(())
 }
@@ -47,4 +47,42 @@ pub fn rdh_trigger_type_as_string<T: RDH>(rdh: &T) -> String {
     } else {
         String::from("Other")
     }
+}
+
+/// Calculates the current position in the memory of the current word.
+///
+/// Current payload position is the first byte after the current RDH
+/// The gbt word position relative to the current payload is then:
+/// relative_mem_pos = gbt_word_counter * (10 + gbt_word_padding_size_bytes)
+/// And the absolute position in the memory is then:
+/// gbt_word_mem_pos = payload_mem_pos + relative_mem_pos
+#[inline]
+pub fn calc_current_word_mem_pos(word_idx: usize, data_format: u8, rdh_mem_pos: u64) -> u64 {
+    let gbt_word_padding: u64 = if data_format == 0 {
+        6
+    } else {
+        // Data format 2
+        0
+    };
+
+    let gbt_word_memory_size_bytes: u64 = 10 + gbt_word_padding;
+    let relative_mem_pos = word_idx as u64 * gbt_word_memory_size_bytes;
+    relative_mem_pos + rdh_mem_pos + 64
+}
+
+/// Simple helper function to format a word slice as a string of hex values
+pub fn format_word_slice(word_slice: &[u8]) -> String {
+    format!(
+        "[{:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}]",
+        word_slice[0],
+        word_slice[1],
+        word_slice[2],
+        word_slice[3],
+        word_slice[4],
+        word_slice[5],
+        word_slice[6],
+        word_slice[7],
+        word_slice[8],
+        word_slice[9],
+    )
 }

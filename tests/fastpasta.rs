@@ -191,6 +191,26 @@ fn file_exists_exit_successful_tdh_no_data() -> Result<(), Box<dyn std::error::E
     Ok(())
 }
 
+#[test]
+fn file_exists_exit_successful_tdh_no_data_ihw() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_TDH_NO_DATA_IHW)
+        .arg("check")
+        .arg("sanity")
+        .arg("-v2");
+    cmd.assert().success();
+
+    // Take the output of stderr and match it with a pattern once
+    assert!(match_on_output(
+        &cmd.output().unwrap().stderr,
+        "(?i)exit success",
+        1
+    ));
+
+    Ok(())
+}
+
 /// Check that a not found file returns a fatal error, with a description of an OS error
 ///
 /// Try with all the different verbosity values 0-4

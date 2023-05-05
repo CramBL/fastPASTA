@@ -4,7 +4,8 @@
 
 use super::{
     data_words::DATA_WORD_SANITY_CHECKER,
-    its_payload_fsm_cont::{self, ItsPayloadFsmContinuous, PayloadWord},
+    its_payload_fsm_cont::{self, ItsPayloadFsmContinuous},
+    lib::ItsPayloadWord,
     status_words::STATUS_WORD_SANITY_CHECKER,
 };
 use crate::{
@@ -140,31 +141,31 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
         // valid words in the current state and returns it as an error, that is handled below
         match current_word {
             Ok(word) => match word {
-                PayloadWord::IHW => {
+                ItsPayloadWord::IHW => {
                     self.process_status_word(StatusWordKind::Ihw(gbt_word));
                     self.check_rdh_at_initial_ihw(gbt_word);
                 }
-                PayloadWord::IHW_continuation => {
+                ItsPayloadWord::IHW_continuation => {
                     self.process_status_word(StatusWordKind::Ihw(gbt_word))
                 }
 
-                PayloadWord::TDH => {
+                ItsPayloadWord::TDH => {
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
                     self.check_tdh_no_continuation(gbt_word);
                 }
-                PayloadWord::TDH_continuation => {
+                ItsPayloadWord::TDH_continuation => {
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
                     self.check_tdh_continuation(gbt_word);
                 }
-                PayloadWord::TDH_after_packet_done => {
+                ItsPayloadWord::TDH_after_packet_done => {
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
                     self.check_tdh_by_was_tdt_packet_done_true(gbt_word);
                 }
-                PayloadWord::TDT => self.process_status_word(StatusWordKind::Tdt(gbt_word)),
+                ItsPayloadWord::TDT => self.process_status_word(StatusWordKind::Tdt(gbt_word)),
                 // DataWord and CDW are handled together
-                PayloadWord::CDW | PayloadWord::DataWord => self.process_data_word(gbt_word),
+                ItsPayloadWord::CDW | ItsPayloadWord::DataWord => self.process_data_word(gbt_word),
 
-                PayloadWord::DDW0 => self.process_status_word(StatusWordKind::Ddw0(gbt_word)),
+                ItsPayloadWord::DDW0 => self.process_status_word(StatusWordKind::Ddw0(gbt_word)),
             },
 
             Err(ambigious_word) => match ambigious_word {

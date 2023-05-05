@@ -1,3 +1,5 @@
+use predicates::str::contains;
+
 use crate::util::*;
 mod util;
 
@@ -64,6 +66,33 @@ fn check_all_its_issue_26() -> Result<(), Box<dyn std::error::Error>> {
     validate_report_summary(&cmd.output()?.stdout)?;
 
     assert!(match_on_output(&cmd.output()?.stdout, "(?i)errors.*0", 1));
+
+    Ok(())
+}
+
+#[test]
+fn check_view_its_readout_frames() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_TDH_NO_DATA)
+        .arg("view")
+        .arg("its-readout-frames");
+    cmd.assert().success();
+
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+
+    // Before issue 29 was fixed, 0x5320 was erroneously displayed as a TDH.
+    // Here we confirm that it is now correctly interpreted as an IHW
+    cmd.assert().stdout(
+        contains("RDH").count(3).and(
+            contains("TDT").count(36).and(
+                contains("TDH")
+                    .count(53)
+                    .and(contains("IHW").count(2).and(contains("DDW").count(1))),
+            ),
+        ),
+    );
 
     Ok(())
 }

@@ -1,27 +1,7 @@
 //! State machine for ITS payload continuous mode
-#![allow(non_camel_case_types)] // An exception to the Rust naming convention, for the state machine macro types
+#![allow(non_camel_case_types)]
 
-/// Payload word types
-pub enum PayloadWord {
-    /// ITS Header Word
-    IHW,
-    /// ITS Header Word in continuation mode
-    IHW_continuation,
-    /// Trigger Data Header
-    TDH,
-    /// Trigger Data Header in continuation mode
-    TDH_continuation,
-    /// Trigger Data Header succeeding a TDT with packet done flag set
-    TDH_after_packet_done,
-    /// Trigger Data Trailer
-    TDT,
-    /// Calibration Data Word
-    CDW,
-    /// Data
-    DataWord,
-    /// Diagnostic Data Word 0
-    DDW0,
-}
+use super::lib::ItsPayloadWord;
 
 /// Types that can be returned as an error from the FSM.
 ///
@@ -128,33 +108,36 @@ impl ItsPayloadFsmContinuous {
     /// Takes a slice of 10 bytes representing the GBT word.
     /// Returns the type of the word wrapped in an OK if the ID was identified.
     /// If the ID could not be determined, a best guess is returned wrapped in an error type to be handled by the caller
-    pub fn advance(&mut self, gbt_word: &[u8]) -> Result<PayloadWord, AmbigiousError> {
+    pub fn advance(&mut self, gbt_word: &[u8]) -> Result<ItsPayloadWord, AmbigiousError> {
         use crate::words::its::status_words;
         use ITS_Payload_Continuous::Variant::*;
         use ITS_Payload_Continuous::*;
 
         let current_state = self.state_machine.clone();
 
-        let (next_state, current_word): (Variant, Result<PayloadWord, AmbigiousError>) =
+        let (next_state, current_word): (Variant, Result<ItsPayloadWord, AmbigiousError>) =
             match current_state {
-                InitialIHW_(m) => (m.transition(_WasIhw).as_enum(), Ok(PayloadWord::IHW)),
+                InitialIHW_(m) => (m.transition(_WasIhw).as_enum(), Ok(ItsPayloadWord::IHW)),
 
                 TDH_By_WasIhw(m) => match status_words::util::tdh_no_data(gbt_word) {
-                    false => (m.transition(_NoDataFalse).as_enum(), Ok(PayloadWord::TDH)),
-                    true => (m.transition(_NoDataTrue).as_enum(), Ok(PayloadWord::TDH)),
+                    false => (
+                        m.transition(_NoDataFalse).as_enum(),
+                        Ok(ItsPayloadWord::TDH),
+                    ),
+                    true => (m.transition(_NoDataTrue).as_enum(), Ok(ItsPayloadWord::TDH)),
                 },
 
                 DDW0_or_TDH_or_IHW_By_NoDataTrue(m) => match gbt_word[9] {
                     0xE8 if status_words::util::tdh_no_data(gbt_word) => (
                         m.transition(_NoDataTrue).as_enum(),
-                        Ok(PayloadWord::TDH_after_packet_done),
+                        Ok(ItsPayloadWord::TDH_after_packet_done),
                     ),
                     0xE8 if !status_words::util::tdh_no_data(gbt_word) => (
                         m.transition(_NoDataFalse).as_enum(),
-                        Ok(PayloadWord::TDH_after_packet_done),
+                        Ok(ItsPayloadWord::TDH_after_packet_done),
                     ),
-                    0xE4 => (m.transition(_WasDdw0).as_enum(), Ok(PayloadWord::DDW0)),
-                    0xE0 => (m.transition(_WasIhw).as_enum(), Ok(PayloadWord::IHW)),
+                    0xE4 => (m.transition(_WasDdw0).as_enum(), Ok(ItsPayloadWord::DDW0)),
+                    0xE0 => (m.transition(_WasIhw).as_enum(), Ok(ItsPayloadWord::IHW)),
                     // Error in ID, assuming TDH to try to stay on track, but return as error to be handled by caller
                     _ => (
                         m.transition(_NoDataFalse).as_enum(),
@@ -165,17 +148,18 @@ impl ItsPayloadFsmContinuous {
                 DATA_By_NoDataFalse(m) => match gbt_word[9] {
                     0xF0 if status_words::util::tdt_packet_done(gbt_word) => (
                         m.transition(_WasTDTpacketDoneTrue).as_enum(),
-                        Ok(PayloadWord::TDT),
+                        Ok(ItsPayloadWord::TDT),
                     ),
                     0xF0 if !status_words::util::tdt_packet_done(gbt_word) => (
                         m.transition(_WasTDTpacketDoneFalse).as_enum(),
-                        Ok(PayloadWord::TDT),
+                        Ok(ItsPayloadWord::TDT),
                     ),
-                    0xF8 => (m.transition(_WasData).as_enum(), Ok(PayloadWord::CDW)),
+                    0xF8 => (m.transition(_WasData).as_enum(), Ok(ItsPayloadWord::CDW)),
                     // All ranges that are legal data word IDs
-                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => {
-                        (m.transition(_WasData).as_enum(), Ok(PayloadWord::DataWord))
-                    }
+                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => (
+                        m.transition(_WasData).as_enum(),
+                        Ok(ItsPayloadWord::DataWord),
+                    ),
                     // Assume data word but return as error
                     _ => (
                         m.transition(_WasData).as_enum(),
@@ -186,17 +170,18 @@ impl ItsPayloadFsmContinuous {
                 DATA_By_WasData(m) => match gbt_word[9] {
                     0xF0 if status_words::util::tdt_packet_done(gbt_word) => (
                         m.transition(_WasTDTpacketDoneTrue).as_enum(),
-                        Ok(PayloadWord::TDT),
+                        Ok(ItsPayloadWord::TDT),
                     ),
                     0xF0 if !status_words::util::tdt_packet_done(gbt_word) => (
                         m.transition(_WasTDTpacketDoneFalse).as_enum(),
-                        Ok(PayloadWord::TDT),
+                        Ok(ItsPayloadWord::TDT),
                     ),
-                    0xF8 => (m.transition(_WasData).as_enum(), Ok(PayloadWord::CDW)),
+                    0xF8 => (m.transition(_WasData).as_enum(), Ok(ItsPayloadWord::CDW)),
                     // All ranges that are legal data word IDs
-                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => {
-                        (m.transition(_WasData).as_enum(), Ok(PayloadWord::DataWord))
-                    }
+                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => (
+                        m.transition(_WasData).as_enum(),
+                        Ok(ItsPayloadWord::DataWord),
+                    ),
                     // Assume data word but return as error
                     _ => (
                         m.transition(_WasData).as_enum(),
@@ -206,28 +191,29 @@ impl ItsPayloadFsmContinuous {
 
                 c_IHW_By_WasTDTpacketDoneFalse(m) => (
                     m.transition(_Next).as_enum(),
-                    Ok(PayloadWord::IHW_continuation),
+                    Ok(ItsPayloadWord::IHW_continuation),
                 ),
 
                 c_TDH_By_Next(m) => (
                     m.transition(_Next).as_enum(),
-                    Ok(PayloadWord::TDH_continuation),
+                    Ok(ItsPayloadWord::TDH_continuation),
                 ),
 
                 c_DATA_By_Next(m) => match gbt_word[9] {
                     0xF0 if status_words::util::tdt_packet_done(gbt_word) => (
                         m.transition(_WasTDTpacketDoneTrue).as_enum(),
-                        Ok(PayloadWord::TDT),
+                        Ok(ItsPayloadWord::TDT),
                     ),
                     0xF0 if !status_words::util::tdt_packet_done(gbt_word) => (
                         m.transition(_WasTDTpacketDoneFalse).as_enum(),
-                        Ok(PayloadWord::TDT),
+                        Ok(ItsPayloadWord::TDT),
                     ),
-                    0xF8 => (m.transition(_WasData).as_enum(), Ok(PayloadWord::CDW)),
+                    0xF8 => (m.transition(_WasData).as_enum(), Ok(ItsPayloadWord::CDW)),
                     // All ranges that are legal data word IDs
-                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => {
-                        (m.transition(_WasData).as_enum(), Ok(PayloadWord::DataWord))
-                    }
+                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => (
+                        m.transition(_WasData).as_enum(),
+                        Ok(ItsPayloadWord::DataWord),
+                    ),
                     // Assume data word but return as error
                     _ => (
                         m.transition(_WasData).as_enum(),
@@ -238,17 +224,18 @@ impl ItsPayloadFsmContinuous {
                 c_DATA_By_WasData(m) => match gbt_word[9] {
                     0xF0 if status_words::util::tdt_packet_done(gbt_word) => (
                         m.transition(_WasTDTpacketDoneTrue).as_enum(),
-                        Ok(PayloadWord::TDT),
+                        Ok(ItsPayloadWord::TDT),
                     ),
                     0xF0 if !status_words::util::tdt_packet_done(gbt_word) => (
                         m.transition(_WasTDTpacketDoneFalse).as_enum(),
-                        Ok(PayloadWord::TDT),
+                        Ok(ItsPayloadWord::TDT),
                     ),
-                    0xF8 => (m.transition(_WasData).as_enum(), Ok(PayloadWord::CDW)),
+                    0xF8 => (m.transition(_WasData).as_enum(), Ok(ItsPayloadWord::CDW)),
                     // All ranges that are legal data word IDs
-                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => {
-                        (m.transition(_WasData).as_enum(), Ok(PayloadWord::DataWord))
-                    }
+                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => (
+                        m.transition(_WasData).as_enum(),
+                        Ok(ItsPayloadWord::DataWord),
+                    ),
                     // Assume data word but return as error
                     _ => (
                         m.transition(_WasData).as_enum(),
@@ -259,21 +246,21 @@ impl ItsPayloadFsmContinuous {
                 DDW0_or_TDH_or_IHW_By_WasTDTpacketDoneTrue(m) => match gbt_word[9] {
                     0xE8 if status_words::util::tdh_no_data(gbt_word) => (
                         m.transition(_NoDataTrue).as_enum(),
-                        Ok(PayloadWord::TDH_after_packet_done),
+                        Ok(ItsPayloadWord::TDH_after_packet_done),
                     ),
                     0xE8 if !status_words::util::tdh_no_data(gbt_word) => (
                         m.transition(_NoDataFalse).as_enum(),
-                        Ok(PayloadWord::TDH_after_packet_done),
+                        Ok(ItsPayloadWord::TDH_after_packet_done),
                     ),
-                    0xE4 => (m.transition(_WasDdw0).as_enum(), Ok(PayloadWord::DDW0)),
-                    0xE0 => (m.transition(_WasIhw).as_enum(), Ok(PayloadWord::IHW)),
+                    0xE4 => (m.transition(_WasDdw0).as_enum(), Ok(ItsPayloadWord::DDW0)),
+                    0xE0 => (m.transition(_WasIhw).as_enum(), Ok(ItsPayloadWord::IHW)),
                     // Assume DDW0 but return as error
                     _ => (
                         m.transition(_WasDdw0).as_enum(),
                         Err(AmbigiousError::DDW0_or_TDH_IHW),
                     ),
                 },
-                IHW_By_WasDdw0(m) => (m.transition(_WasIhw).as_enum(), Ok(PayloadWord::IHW)),
+                IHW_By_WasDdw0(m) => (m.transition(_WasIhw).as_enum(), Ok(ItsPayloadWord::IHW)),
             };
 
         self.state_machine = next_state;
