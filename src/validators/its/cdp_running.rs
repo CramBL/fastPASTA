@@ -16,7 +16,7 @@ use crate::{
             data_words::{ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane},
             status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
         },
-        lib::RDH,
+        lib::{ByteSlice, RDH},
     },
 };
 
@@ -36,6 +36,7 @@ pub struct CdpRunningValidator<T: RDH, C: Config> {
     current_ihw: Option<Ihw>,
     current_tdh: Option<Tdh>,
     previous_tdh: Option<Tdh>,
+    previous_internal_tdh: Option<Tdh>, // Last TDH with internal trigger bit set
     current_tdt: Option<Tdt>,
     current_ddw0: Option<Ddw0>,
     previous_cdw: Option<Cdw>,
@@ -60,6 +61,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
             current_ihw: None,
             current_tdh: None,
             previous_tdh: None,
+            previous_internal_tdh: None,
             current_tdt: None,
             current_ddw0: None,
             previous_cdw: None,
@@ -152,6 +154,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
                 ItsPayloadWord::TDH => {
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
                     self.check_tdh_no_continuation(gbt_word);
+                    self.check_tdh_trigger_interval(gbt_word);
                 }
                 ItsPayloadWord::TDH_continuation => {
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
@@ -160,6 +163,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
                 ItsPayloadWord::TDH_after_packet_done => {
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
                     self.check_tdh_by_was_tdt_packet_done_true(gbt_word);
+                    self.check_tdh_trigger_interval(gbt_word);
                 }
                 ItsPayloadWord::TDT => self.process_status_word(StatusWordKind::Tdt(gbt_word)),
                 // DataWord and CDW are handled together
@@ -222,6 +226,13 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
                 log::debug!("{tdh}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
                     self.report_error(&format!("[E40] {e}"), tdh_as_slice);
+                }
+                // If the previous TDH had internal trigger set, mem swap it with the previous internal TDH, to make it the new previous TDH.
+                if let Some(prev_tdh) = self.current_tdh.as_ref() {
+                    if prev_tdh.internal_trigger() == 1 {
+                        self.previous_internal_tdh =
+                            Some(Tdh::load(&mut <&[u8]>::clone(&prev_tdh.to_byte_slice())).unwrap())
+                    }
                 }
                 // Swap current and last TDH, then replace current with the new TDH
                 std::mem::swap(&mut self.current_tdh, &mut self.previous_tdh);
@@ -405,7 +416,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
         }
     }
 
-    /// Checks TDH continuation, orbit when the TDH immediately follows an IHW
+    /// Checks TDH fields: continuation, orbit, when the TDH immediately follows an IHW
     #[inline]
     fn check_tdh_no_continuation(&mut self, tdh_slice: &[u8]) {
         if !self.running_checks {
@@ -449,6 +460,49 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
                         &format!("[E44] TDH trigger_type is not equal to RDH trigger_type, TDH: {:#X}, RDH: {tmp_rdh_trig:#X}", current_tdh.trigger_type()),
                         tdh_slice,
                     );
+            }
+        }
+    }
+
+    fn check_tdh_trigger_interval(&self, _tdh_slice: &[u8]) {
+        if !self.running_checks {
+            return;
+        }
+        if let Some(specified_trig_period) = self.config.check_its_trigger_period() {
+            //
+            if let Some(prev_int_tdh) = self.previous_internal_tdh.as_ref() {
+                //
+                let current_tdh = self
+                    .current_tdh
+                    .as_ref()
+                    .expect("TDH should be set, process words before checks");
+                if current_tdh.internal_trigger() == 1 {
+                    let prev_trigger_bc = prev_int_tdh.trigger_bc();
+                    let current_trigger_bc = current_tdh.trigger_bc();
+
+                    let detected_period = if current_trigger_bc < prev_trigger_bc {
+                        // Bunch Crossing ID wrapped around
+                        let distance_to_max = Tdh::MAX_BC - prev_trigger_bc + 1; // +1 cause of incrementing the Orbit counter
+                        distance_to_max + current_trigger_bc
+                    } else {
+                        current_trigger_bc - prev_trigger_bc
+                    };
+                    // check
+                    if specified_trig_period != detected_period {
+                        let prev_trigger_orbit = prev_int_tdh.trigger_orbit;
+                        let current_trigger_orbit = current_tdh.trigger_orbit;
+                        let mem_pos = self.calc_current_word_mem_pos();
+
+                        self.stats_send_ch
+                            .send(StatType::Error(format!(
+                                "{mem_pos:#X}: {error} ", error = &format!(
+                                    "[E45] TDH trigger period mismatch with user specified: {specified_trig_period} != {detected_period}\
+                                    \n\tPrevious TDH Orbit_BC: {prev_trigger_orbit}_{prev_trigger_bc:>4}\
+                                    \n\tCurrent  TDH Orbit_BC: {current_trigger_orbit}_{current_trigger_bc:>4}",
+                            ))))
+                            .expect("Failed to send error to stats channel");
+                    }
+                }
             }
         }
     }

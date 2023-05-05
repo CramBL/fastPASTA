@@ -55,6 +55,15 @@ pub mod util {
         }
     }
 
+    /// Takes a full TDH slice and returns a string description of the trigger orbit and BC in the Orbit_BC format
+    pub fn tdh_trigger_orbit_bc_as_string(tdh_slice: &[u8]) -> String {
+        // Get the BC from 27:16
+        let bc = u16::from_le_bytes([tdh_slice[2], tdh_slice[3]]) & 0x0FFF;
+        // Get the Orbit from 63:32
+        let orbit = u32::from_le_bytes([tdh_slice[4], tdh_slice[5], tdh_slice[6], tdh_slice[7]]);
+        format!("{orbit}_{bc:>4}")
+    }
+
     /// Takes a full TDH slice and returns if the no_data field is set
     pub fn tdh_no_data(tdh_slice: &[u8]) -> bool {
         debug_assert!(tdh_slice.len() == 10);
@@ -281,6 +290,8 @@ pub struct Tdh {
     reserved0_id: u16, // 71:64 reserved, 79:72 id
 }
 impl Tdh {
+    /// Maximum value of the trigger_bc field
+    pub const MAX_BC: u16 = 3563;
     /// Returns the integer value of the reserved0 field
     pub fn reserved0(&self) -> u16 {
         self.reserved0_id & 0xFF

@@ -74,6 +74,9 @@ pub trait InputOutput {
 pub trait Checks {
     /// Type of Check to perform.
     fn check(&self) -> Option<Check>;
+
+    /// Return the check on ITS trigger period if it is set.
+    fn check_its_trigger_period(&self) -> Option<u16>;
 }
 
 /// Trait for all view options.
@@ -121,6 +124,7 @@ pub mod test_util {
         pub skip_payload: bool,
         pub output: Option<std::path::PathBuf>,
         pub output_mode: DataOutputMode,
+        pub its_trigger_period: Option<u16>,
     }
 
     impl Default for MockConfig {
@@ -137,6 +141,7 @@ pub mod test_util {
                 skip_payload: false,
                 output: None,
                 output_mode: DataOutputMode::None,
+                its_trigger_period: None,
             }
         }
     }
@@ -145,6 +150,9 @@ pub mod test_util {
     impl Checks for MockConfig {
         fn check(&self) -> Option<Check> {
             self.check.clone()
+        }
+        fn check_its_trigger_period(&self) -> Option<u16> {
+            self.its_trigger_period
         }
     }
     impl Views for MockConfig {
