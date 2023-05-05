@@ -1,3 +1,5 @@
+use predicates::str::contains;
+
 use crate::util::*;
 mod util;
 
@@ -101,10 +103,98 @@ fn check_all_its() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_10_RDH).arg("check").arg("all").arg("its");
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+
     // Asserts on stdout
     validate_report_summary(&cmd.output()?.stdout)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_trigger_period_missing_arg() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("all")
+        .arg("its")
+        .arg("--its-trigger-period")
+        .arg("1");
+    cmd.assert()
+        .failure()
+        .stderr(contains("arguments were not provided:").and(contains("filter-its-stave")));
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_trigger_period_stave_not_found() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("all")
+        .arg("its")
+        .arg("-v2")
+        .arg("--its-trigger-period")
+        .arg("1")
+        .arg("--filter-its-stave")
+        .arg("L3_2");
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+
+    assert!(match_on_output(
+        &cmd.output()?.stdout,
+        "(?i)its stave.*<<none>>.*not found.*l3_2",
+        1
+    ));
+
+    Ok(())
+}
+#[test]
+fn check_all_its_trigger_period_mismatch() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("all")
+        .arg("its")
+        .arg("-v3")
+        .arg("--its-trigger-period")
+        .arg("1")
+        .arg("--filter-its-stave")
+        .arg("L0_12");
+    cmd.assert().success();
+
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 4));
+    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+
+    match_on_out_no_case(&cmd.output()?.stderr, r"period.*mismatch.*1 !=", 4)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l0_12", 1)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_trigger_period() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("all")
+        .arg("its")
+        .arg("-v3")
+        .arg("--its-trigger-period")
+        .arg("0")
+        .arg("--filter-its-stave")
+        .arg("L0_12");
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+
+    match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l0_12", 1)?;
 
     Ok(())
 }
@@ -120,25 +210,13 @@ fn filter_its_stave() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     // Asserts on stdout
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        "(?i)Total.*RDHs.*10",
-        1
-    ));
+    match_on_out_no_case(&cmd.output()?.stdout, r"filter.*stats", 1)?;
+
     // Checking the filtered stats
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        r"(?i).*filter.*stats",
-        1
-    ));
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        r"(?i)\|.*RDHs.*10",
-        1
-    ));
+    match_on_out_no_case(&cmd.output()?.stdout, r".*filter.*stats", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, r"\|.*RDHs.*10", 1)?;
 
     assert!(match_on_output(&cmd.output()?.stdout, r"(?i).*L0_12", 1));
 
@@ -151,40 +229,27 @@ fn filter_its_stave() -> Result<(), Box<dyn std::error::Error>> {
 #[test]
 fn filter_its_stave_not_found() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
-    let stave_to_filer = "L3_0"; // Not in the data
+    let stave_to_filter = "L3_0"; // Not in the data
     cmd.arg(FILE_10_RDH)
         .arg("--filter-its-stave")
-        .arg(stave_to_filer)
+        .arg(stave_to_filter)
         .arg("-o")
         .arg(FILE_OUTPUT_TMP);
 
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     // Asserts on stdout
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        "(?i)Total.*RDHs.*10",
-        1
-    ));
+    match_on_out_no_case(&cmd.output()?.stdout, "Total.*RDHs.*10", 1)?;
     // Checking the filtered stats
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        r"(?i).*filter.*stats",
-        1
-    ));
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        r"(?i)\|.* RDHs.*0",
-        1
-    ));
+    match_on_out_no_case(&cmd.output()?.stdout, r".*filter.*stats", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, r"\|.* RDHs.*0", 1)?;
 
-    assert!(match_on_output(
+    match_on_out_no_case(
         &cmd.output()?.stdout,
-        &(r"(?i).*not found:.*".to_string() + stave_to_filer),
-        1
-    ));
+        &(r".*not found:.*".to_string() + stave_to_filter),
+        1,
+    )?;
 
     // cleanup temp file
     std::fs::remove_file(FILE_OUTPUT_TMP).expect("Could not remove temp file");
