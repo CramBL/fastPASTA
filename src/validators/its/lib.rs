@@ -24,6 +24,48 @@ pub fn do_payload_checks<T: RDH, C: Config>(
     }
 }
 
+#[allow(non_camel_case_types)] // An exception to the Rust naming convention, for these words that are already acronyms
+/// ITS Payload word types
+pub enum ItsPayloadWord {
+    /// ITS Header Word
+    IHW,
+    /// ITS Header Word in continuation mode
+    IHW_continuation,
+    /// Trigger Data Header
+    TDH,
+    /// Trigger Data Header in continuation mode
+    TDH_continuation,
+    /// Trigger Data Header succeeding a TDT with packet done flag set
+    TDH_after_packet_done,
+    /// Trigger Data Trailer
+    TDT,
+    /// Calibration Data Word
+    CDW,
+    /// Data
+    DataWord,
+    /// Diagnostic Data Word 0
+    DDW0,
+}
+
+impl ItsPayloadWord {
+    /// Takes in the ID of an ITS Payload word, and returns the type as an enum if it matches any.
+    ///
+    /// Only returns simple types, i.e. not the continuation types etc.
+    pub fn from_id(word_id: u8) -> Result<Self, String> {
+        match word_id {
+            0xE0 => Ok(ItsPayloadWord::IHW),
+            0xE4 => Ok(ItsPayloadWord::DDW0),
+            0xE8 => Ok(ItsPayloadWord::TDH),
+            0xF0 => Ok(ItsPayloadWord::TDT),
+            0xF8 => Ok(ItsPayloadWord::CDW),
+            0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => {
+                Ok(ItsPayloadWord::DataWord)
+            }
+            _ => Err("Unknown ITS Payload Word ID".to_string()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
