@@ -55,12 +55,12 @@ fn print_start_of_its_readout_frame_header_text(
 ) -> Result<(), std::io::Error> {
     writeln!(
         stdio_lock,
-        "\nMemory    Word{:>37}{:>12}{:>12}{:>12}{:>12}{:>15}",
+        "\nMemory    Word{:>37}{:>12}{:>12}{:>12}{:>12}{:>19}",
         "Trig.", "Packet", "Expect", "Link", "Lane  ", "Trigger  "
     )?;
     writeln!(
         stdio_lock,
-        "Position  type{:>36} {:>12}{:>12}{:>12}{:>12}{:>15}\n",
+        "Position  type{:>36} {:>12}{:>12}{:>12}{:>12}{:>19}\n",
         "type", "status", "Data? ", "ID  ", "faults", "Orbit_BC "
     )?;
     Ok(())
