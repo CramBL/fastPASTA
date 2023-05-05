@@ -1,4 +1,4 @@
-@startuml cdp_payload_fsm_continuous_mode
+@startuml ITS_payload_fsm_continuous_mode
 ' Carto color palette
 ' light blue       #88CCEE
 ' light pink/red   #CC6677
@@ -41,29 +41,32 @@ skinparam State {
 }
 
 
-Title **CDP payload fsm** (continuous mode)
+Title **ITS payload FSM** (continuous mode)
 hide empty description
 
 state after_TDH <<choice>>
-state after_TDH_no_data <<choice>>
+'state after_TDH_no_data <<choice>>
 state after_TDT <<choice>>
 state after_Data <<choice>>
 
 
 
-[*] -right-----> IHW
+[*] --> IHW
 
-IHW -right-> TDH
+IHW --> TDH
 
 TDH --> after_TDH
 
-after_TDH --> Data : [no_data == 0]
-after_TDH --> after_TDH_no_data : [no_data == 1]
+after_TDH -right-> Data : [no_data == 0]
+after_TDH -up-> TDH : [no_data == 1\n&& TDH]
+after_TDH ----> DDW0 : [no_data == 1\n&& DDW0]
+after_TDH -left-> IHW : [no_data == 1\n&& IHW]
 
 'note left of after_TDH_no_data : Both TDH and DDW0\nare legal next words
 
-after_TDH_no_data --> TDH : [TDH]
-after_TDH_no_data --> DDW0 : [DDW0]
+'after_TDH_no_data --> TDH : [TDH]
+'after_TDH_no_data --> DDW0 : [DDW0]
+'after_TDH_no_data -up-> IHW : [IHW]
 
 
 Data --> after_Data
@@ -71,35 +74,34 @@ Data --> after_Data
 'note left of after_Data : Both Data and TDT\nare legal next words
 
 after_Data --> Data : [Data Word]
-after_Data --> TDT : [TDT]
+after_Data -up-> TDT : [TDT]
 
-TDT --> after_TDT
-after_TDT --> TDH : [packet_done == 1\n&& TDH]
+TDT -up-> after_TDT
+after_TDT -left-> TDH : [packet_done == 1\n&& TDH]
 after_TDT --> DDW0 : [packet_done == 1\n&& DDW0]
-after_TDT --> IHW : [packet_done == 1\n&& IHW]
-after_TDT --> Continuation : [packet_done == 0\n&& event page full]
+after_TDT -up-> IHW : [packet_done == 1\n&& IHW]
+after_TDT -right-> Continuation : [packet_done == 0\n&& event page full]
 'note right of after_TDT : IHW, TDH and DDW0\nare legal next words\nwhen **packet_done == 1**
 
 state Continuation #6699CC {
   state after_c_Data <<choice>>
-    [*] -left---> c_IHW
+    [*] --> c_IHW
     c_IHW --> c_TDH : [stop_bit == 0\n&& Page >= 1]
 
 
-    c_TDH --> c_Data
-    c_Data -> after_c_Data
+    c_TDH -left-> c_Data
+    c_Data -up-> after_c_Data
 
-    after_c_Data -left-> c_Data : [Data Word]
+    after_c_Data --> c_Data : [Data Word]
     after_c_Data -up-> c_TDT : [TDT]
 
-    c_TDT -down-> after_TDT
+    c_TDT -up-> after_TDT
 
     'note top of after_c_Data : Both Data and TDT\nare legal next words\nif event page is not full
 
 }
 
 
-
-DDW0 -----right-----> [*]
+DDW0 -right-> [*]
 
 @enduml
