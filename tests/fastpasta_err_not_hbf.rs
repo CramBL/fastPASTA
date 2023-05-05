@@ -98,3 +98,27 @@ fn check_sanity_debug_verbosity() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn view_its_readout_frames() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_ERR_NOT_HBF)
+        .arg("view")
+        .arg("its-readout-frames");
+
+    use predicate::str::contains;
+    cmd.assert().success().stdout(
+        contains("RDH").count(2).and(
+            contains("IHW").count(2).and(
+                contains("TDH").count(2).and(
+                    contains("TDT")
+                        .count(2)
+                        .and(contains("DDW").count(0).and(contains("stop=0").count(2))),
+                ),
+            ),
+        ),
+    );
+
+    Ok(())
+}

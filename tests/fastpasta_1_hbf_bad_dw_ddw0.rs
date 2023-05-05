@@ -131,3 +131,26 @@ fn check_all_its_max_error_5() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn view_its_readout_frame() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_1_HBF_BAD_DW_DDW0)
+        .arg("view")
+        .arg("its-readout-frames");
+    use predicate::str::contains;
+    // A Dataword and DDW0 has bad ID.
+    cmd.assert().success().stderr(contains("ERROR - ").count(2));
+    cmd.assert().success().stdout(
+        contains("RDH").count(2).and(
+            contains("IHW").count(1).and(
+                contains("TDH")
+                    .count(1)
+                    .and(contains("TDT").count(1).and(contains("DDW").count(0))),
+            ),
+        ),
+    );
+
+    Ok(())
+}

@@ -279,3 +279,22 @@ fn filter_fee_not_found() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn view_its_readout_frame() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH).arg("view").arg("its-readout-frames");
+    use predicate::str::contains;
+    cmd.assert().success().stdout(
+        contains("RDH").count(10).and(
+            contains("IHW").count(5).and(
+                contains("TDH")
+                    .count(5)
+                    .and(contains("TDT").count(5).and(contains("DDW").count(5))),
+            ),
+        ),
+    );
+
+    Ok(())
+}
