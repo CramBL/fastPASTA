@@ -145,7 +145,9 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
             Ok(word) => match word {
                 ItsPayloadWord::IHW => {
                     self.process_status_word(StatusWordKind::Ihw(gbt_word));
-                    self.check_rdh_at_initial_ihw(gbt_word);
+                    if self.running_checks {
+                        self.check_rdh_at_initial_ihw(gbt_word);
+                    }
                 }
                 ItsPayloadWord::IHW_continuation => {
                     self.process_status_word(StatusWordKind::Ihw(gbt_word))
@@ -153,17 +155,23 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
 
                 ItsPayloadWord::TDH => {
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                    self.check_tdh_no_continuation(gbt_word);
-                    self.check_tdh_trigger_interval(gbt_word);
+                    if self.running_checks {
+                        self.check_tdh_no_continuation(gbt_word);
+                        self.check_tdh_trigger_interval(gbt_word);
+                    }
                 }
                 ItsPayloadWord::TDH_continuation => {
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                    self.check_tdh_continuation(gbt_word);
+                    if self.running_checks {
+                        self.check_tdh_continuation(gbt_word);
+                    }
                 }
                 ItsPayloadWord::TDH_after_packet_done => {
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                    self.check_tdh_by_was_tdt_packet_done_true(gbt_word);
-                    self.check_tdh_trigger_interval(gbt_word);
+                    if self.running_checks {
+                        self.check_tdh_by_was_tdt_packet_done_true(gbt_word);
+                        self.check_tdh_trigger_interval(gbt_word);
+                    }
                 }
                 ItsPayloadWord::TDT => self.process_status_word(StatusWordKind::Tdt(gbt_word)),
                 // DataWord and CDW are handled together
@@ -254,7 +262,9 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
                 }
 
                 // Additional state dependent checks on RDH
-                self.check_rdh_at_ddw0(ddw0_as_slice);
+                if self.running_checks {
+                    self.check_rdh_at_ddw0(ddw0_as_slice);
+                }
                 self.current_ddw0 = Some(ddw0);
             }
         }
@@ -273,6 +283,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
                 self.report_error(&format!("[E70] {e}"), data_word_slice);
                 log::debug!("Data word: {data_word_slice:?}");
             }
+
             let id_3_msb = data_word_slice[id_index] >> 5;
             if id_3_msb == 0b001 {
                 // Inner Barrel
@@ -351,10 +362,6 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
     /// Checks TDH trigger and continuation following a TDT packet_done = 1
     #[inline]
     fn check_tdh_by_was_tdt_packet_done_true(&mut self, tdh_slice: &[u8]) {
-        if !self.running_checks {
-            return;
-        }
-
         if let Some(previous_tdh) = self.previous_tdh.as_ref() {
             if previous_tdh.trigger_bc() > self.current_tdh.as_ref().unwrap().trigger_bc() {
                 self.report_error(
@@ -372,9 +379,6 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
     /// Checks RDH stop_bit and pages_counter when a DDW0 is observed
     #[inline]
     fn check_rdh_at_ddw0(&mut self, ddw0_slice: &[u8]) {
-        if !self.running_checks {
-            return;
-        }
         if self.current_rdh.as_ref().unwrap().stop_bit() != 1 {
             self.report_error("[E11] DDW0 observed but RDH stop bit is not 1", ddw0_slice);
         }
@@ -385,9 +389,6 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
     /// Checks RDH stop_bit and pages_counter when an initial IHW is observed (not IHW during continuation)
     #[inline]
     fn check_rdh_at_initial_ihw(&mut self, ihw_slice: &[u8]) {
-        if !self.running_checks {
-            return;
-        }
         if self.current_rdh.as_ref().unwrap().stop_bit() != 0 {
             self.report_error("[E12] IHW observed but RDH stop bit is not 0", ihw_slice);
         }
@@ -396,9 +397,6 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
     /// Checks TDH when continuation is expected (Previous TDT packet_done = 0)
     #[inline]
     fn check_tdh_continuation(&mut self, tdh_slice: &[u8]) {
-        if !self.running_checks {
-            return;
-        }
         if self.current_tdh.as_ref().unwrap().continuation() != 1 {
             self.report_error("[E41] TDH continuation is not 1", tdh_slice);
         }
@@ -419,9 +417,6 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
     /// Checks TDH fields: continuation, orbit, when the TDH immediately follows an IHW
     #[inline]
     fn check_tdh_no_continuation(&mut self, tdh_slice: &[u8]) {
-        if !self.running_checks {
-            return;
-        }
         let current_rdh = self.current_rdh.as_ref().expect("RDH should be set");
         let current_tdh = self
             .current_tdh
@@ -465,9 +460,6 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
     }
 
     fn check_tdh_trigger_interval(&self, _tdh_slice: &[u8]) {
-        if !self.running_checks {
-            return;
-        }
         if let Some(specified_trig_period) = self.config.check_its_trigger_period() {
             //
             if let Some(prev_int_tdh) = self.previous_internal_tdh.as_ref() {
