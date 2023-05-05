@@ -10,10 +10,13 @@ use super::{
 };
 use crate::{
     stats::lib::StatType,
-    util::{self, lib::Config},
+    util::{config, lib::Config},
     words::{
         its::{
-            data_words::{ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane},
+            data_words::{
+                ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane,
+                DataWordContents,
+            },
             status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
         },
         lib::{ByteSlice, RDH},
@@ -45,6 +48,12 @@ pub struct CdpRunningValidator<T: RDH, C: Config> {
     payload_mem_pos: u64,
     gbt_word_padding_size_bytes: u8,
     is_new_data: bool, // Flag used to indicate start of new CDP payload where a CDW is valid
+    // Stores the ALPIDE data from TDH with internal trigger bit set, to the next TDT.
+    alpide_data_frame: Vec<DataWordContents>,
+    // Flag to start storing ALPIDE data, if the config is set to check ALPIDE data, and a filter for a stave is set.
+    // Set to true when a TDH with internal trigger bit set is found.
+    // Set to false when it's true and a TDT is found.
+    is_internal_trigger: bool,
 }
 
 impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
@@ -55,7 +64,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
     ) -> Self {
         Self {
             config: config.clone(),
-            running_checks: matches!(config.check(), Some(util::config::Check::All(_))),
+            running_checks: matches!(config.check(), Some(config::Check::All(_))),
             its_state_machine: ItsPayloadFsmContinuous::default(),
             current_rdh: None,
             current_ihw: None,
@@ -70,6 +79,21 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
             payload_mem_pos: 0,
             gbt_word_padding_size_bytes: 0,
             is_new_data: false,
+            // If the config is set to check ALPIDE data, and a filter for a stave is set, then allocate space ALPIDE data.
+            alpide_data_frame: if let Some(check) = config.check() {
+                if check
+                    .target()
+                    .is_some_and(|target| target == config::System::ITS)
+                    && config.filter_its_stave().is_some()
+                {
+                    Vec::with_capacity(200)
+                } else {
+                    Vec::with_capacity(0)
+                }
+            } else {
+                Vec::with_capacity(0)
+            },
+            is_internal_trigger: false,
         }
     }
 
@@ -218,6 +242,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
     /// 1. Deserializes the slice as the expected status word and checks it for sanity.
     /// 2. If the sanity check fails, the error is sent to the stats channel
     /// 3. Stores the deserialized status word as the last status word of the same type.
+    /// 4. Sets flags if appropriate
     #[inline]
     fn process_status_word(&mut self, status_word: StatusWordKind) {
         match status_word {
@@ -242,6 +267,8 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
                             Some(Tdh::load(&mut <&[u8]>::clone(&prev_tdh.to_byte_slice())).unwrap())
                     }
                 }
+                // If the current TDH has internal trigger set, set the flag
+                self.is_internal_trigger = tdh.internal_trigger() == 1;
                 // Swap current and last TDH, then replace current with the new TDH
                 std::mem::swap(&mut self.current_tdh, &mut self.previous_tdh);
                 self.current_tdh = Some(tdh);
@@ -252,6 +279,8 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
                     self.report_error(&format!("[E50] {e}"), tdt_as_slice);
                 }
+                self.is_internal_trigger = false;
+                self.process_alpide_data();
                 self.current_tdt = Some(tdt);
             }
             StatusWordKind::Ddw0(ddw0_as_slice) => {
@@ -310,6 +339,11 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
                 &format!("[E72] IB lane {lane_id} is not active according to IHW active_lanes: {active_lanes:#X}."),
                 ib_slice,
             );
+        }
+        if self.alpide_data_frame.capacity() != 0 {
+            // Fancy way of checking if a stave filter is set and we should collect ALPIDE data
+            self.alpide_data_frame
+                .push(DataWordContents::from_data_word_slice(ib_slice));
         }
     }
 
@@ -497,6 +531,22 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
                 }
             }
         }
+    }
+
+    fn process_alpide_data(&mut self) {
+        debug_assert!(self.is_internal_trigger == false);
+        if self.alpide_data_frame.is_empty() {
+            return;
+        }
+        self.alpide_data_frame.drain(..).for_each(|dw_contents| {
+            //
+            for b in dw_contents.bytes.iter() {
+                if b & 0b1111_0000 == 0xA0 {
+                    // Could be a header
+                    log::info!("chip header?");
+                }
+            }
+        });
     }
 }
 
