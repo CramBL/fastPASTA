@@ -70,67 +70,8 @@ pub fn calc_current_word_mem_pos(word_idx: usize, data_format: u8, rdh_mem_pos: 
     relative_mem_pos + rdh_mem_pos + 64
 }
 
-/// Generates a human readable view of ITS readout frame words based on the raw word, word type, and memory position.
-///
-/// Takes:
-///     * The word byte slice
-///     * The type of PayloadWord from the ITS payload protocol
-///     * The memory position of the word
-pub fn generate_its_readout_frame_word_view(
-    word_type: crate::validators::its::lib::ItsPayloadWord,
-    gbt_word_slice: &[u8],
-    mem_pos_str: String,
-    stdio_lock: &mut std::io::StdoutLock,
-) -> Result<(), std::io::Error> {
-    use crate::validators::its::lib::ItsPayloadWord;
-    use crate::words::its::status_words::util::*;
-    use std::io::Write;
-
-    let word_slice_str = format_word_slice(gbt_word_slice);
-    match word_type {
-        ItsPayloadWord::IHW | ItsPayloadWord::IHW_continuation => {
-            writeln!(stdio_lock, "{mem_pos_str} IHW {word_slice_str}")?;
-        }
-        ItsPayloadWord::TDH | ItsPayloadWord::TDH_after_packet_done => {
-            let trigger_str = tdh_trigger_as_string(gbt_word_slice);
-            let continuation_str = tdh_continuation_as_string(gbt_word_slice);
-            let no_data_str = tdh_no_data_as_string(gbt_word_slice);
-            writeln!(
-                            stdio_lock,
-                            "{mem_pos_str} TDH {word_slice_str} {trigger_str}  {continuation_str}        {no_data_str}"
-                        )?;
-        }
-        ItsPayloadWord::TDH_continuation => {
-            let trigger_str = tdh_trigger_as_string(gbt_word_slice);
-            let continuation_str = tdh_continuation_as_string(gbt_word_slice);
-            writeln!(
-                stdio_lock,
-                "{mem_pos_str} TDH {word_slice_str} {trigger_str}  {continuation_str}"
-            )?;
-        }
-        ItsPayloadWord::TDT => {
-            let packet_status_str = tdt_packet_done_as_string(gbt_word_slice);
-            let error_reporting_str = ddw0_tdt_lane_status_as_string(gbt_word_slice);
-            writeln!(
-                            stdio_lock,
-                            "{mem_pos_str} TDT {word_slice_str} {packet_status_str:>18}                             {error_reporting_str}",
-                        )?;
-        }
-        ItsPayloadWord::DDW0 => {
-            let error_reporting_str = ddw0_tdt_lane_status_as_string(gbt_word_slice);
-
-            writeln!(
-                            stdio_lock,
-                            "{mem_pos_str} DDW {word_slice_str}                                                {error_reporting_str}",
-                        )?;
-        }
-        // Ignore these cases
-        ItsPayloadWord::CDW | ItsPayloadWord::DataWord => (),
-    }
-    Ok(())
-}
-
-fn format_word_slice(word_slice: &[u8]) -> String {
+/// Simple helper function to format a word slice as a string of hex values
+pub fn format_word_slice(word_slice: &[u8]) -> String {
     format!(
         "[{:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}]",
         word_slice[0],

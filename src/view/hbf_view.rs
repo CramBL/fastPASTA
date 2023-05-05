@@ -54,7 +54,7 @@ pub(crate) fn hbf_view<T: RDH>(
                 let current_mem_pos =
                     super::lib::calc_current_word_mem_pos(idx, rdh.data_format(), rdh_mem_pos);
                 let mem_pos_str = format!("{current_mem_pos:>8X}:");
-                super::lib::generate_its_readout_frame_word_view(
+                generate_hbf_word_view(
                     current_word_type,
                     gbt_word_slice,
                     mem_pos_str,
@@ -95,5 +95,57 @@ fn print_rdh_hbf_view<T: RDH>(
         rdh.version(),
         rdh.link_id()
     )?;
+    Ok(())
+}
+
+fn generate_hbf_word_view(
+    word_type: crate::validators::its::lib::ItsPayloadWord,
+    gbt_word_slice: &[u8],
+    mem_pos_str: String,
+    stdio_lock: &mut std::io::StdoutLock,
+) -> Result<(), std::io::Error> {
+    use crate::words::its::status_words::util::*;
+
+    let word_slice_str = crate::view::lib::format_word_slice(gbt_word_slice);
+    match word_type {
+        ItsPayloadWord::IHW | ItsPayloadWord::IHW_continuation => {
+            writeln!(stdio_lock, "{mem_pos_str} IHW {word_slice_str}")?;
+        }
+        ItsPayloadWord::TDH | ItsPayloadWord::TDH_after_packet_done => {
+            let trigger_str = tdh_trigger_as_string(gbt_word_slice);
+            let continuation_str = tdh_continuation_as_string(gbt_word_slice);
+            let no_data_str = tdh_no_data_as_string(gbt_word_slice);
+            writeln!(
+                            stdio_lock,
+                            "{mem_pos_str} TDH {word_slice_str} {trigger_str}  {continuation_str}        {no_data_str}"
+                        )?;
+        }
+        ItsPayloadWord::TDH_continuation => {
+            let trigger_str = tdh_trigger_as_string(gbt_word_slice);
+            let continuation_str = tdh_continuation_as_string(gbt_word_slice);
+            writeln!(
+                stdio_lock,
+                "{mem_pos_str} TDH {word_slice_str} {trigger_str}  {continuation_str}"
+            )?;
+        }
+        ItsPayloadWord::TDT => {
+            let packet_status_str = tdt_packet_done_as_string(gbt_word_slice);
+            let error_reporting_str = ddw0_tdt_lane_status_as_string(gbt_word_slice);
+            writeln!(
+                            stdio_lock,
+                            "{mem_pos_str} TDT {word_slice_str} {packet_status_str:>18}                             {error_reporting_str}",
+                        )?;
+        }
+        ItsPayloadWord::DDW0 => {
+            let error_reporting_str = ddw0_tdt_lane_status_as_string(gbt_word_slice);
+
+            writeln!(
+                            stdio_lock,
+                            "{mem_pos_str} DDW {word_slice_str}                                                {error_reporting_str}",
+                        )?;
+        }
+        // Ignore these cases
+        ItsPayloadWord::CDW | ItsPayloadWord::DataWord => (),
+    }
     Ok(())
 }
