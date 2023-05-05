@@ -1,6 +1,7 @@
 use crate::{
     input,
     validators::{its::lib::ItsPayloadWord, lib::preprocess_payload},
+    view::lib::format_word_slice,
     words::lib::RDH,
 };
 use std::io::Write;
@@ -36,7 +37,14 @@ fn generate_status_word_view(
         Ok(word_type) => {
             generate_its_readout_frame_word_view(word_type, word, mem_pos_str, stdio_lock)?
         }
-        Err(e) => log::error!("Error: {}", e),
+        Err(e) => {
+            let word_str = format_word_slice(word);
+            let trimmed_mem_pos_str = mem_pos_str.trim();
+            log::error!(
+                "{trimmed_mem_pos_str} {e}: {:#02X} found in: {word_str}",
+                word[9]
+            );
+        }
     }
 
     Ok(())
