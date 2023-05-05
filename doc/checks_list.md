@@ -73,7 +73,7 @@ If any of the following conditions are not met, the RDH fails the sanity check a
 * RDH0
   * system_id = 0x20 `ITS system ID`
 
-## Payload sanity checks
+## ITS Payload sanity checks
 All ID checks are made based on the FSM illustrated in the section [Payload running checks](#payload-running-checks).
 ### Status Words
 #### IHW
@@ -117,8 +117,8 @@ If any of the following checks passes, it is considered valid.
 
 0x58 <= ID <= 0x5E `OL`
 
-## Payload running checks
-Before each payload is checked, the rdh for that payload is set as the current rdh. A state machine (see below) is used to keep track of which words are expected, and sanity checks are performed on the each word (sanity checks are listed further down this document).
+## ITS Payload running checks
+Before each payload is checked, the RDH for that payload is set as the current RDH. A state machine (see below) is used to keep track of which words are expected, and sanity checks are performed on the each word .
 
 Additional checks related to state:
 * `When:` Word is DDW0
@@ -140,4 +140,4 @@ Additional checks related to state:
 
 
 Certain transitions are ambigious, these are resolved based on the ID of the next received GBT word.
-![CDP FSM for validation](cdp_payload_fsm_continuous_mode.png)
+![ITS payload FSM for validation](ITS_payload_fsm_continuous_mode.png)
