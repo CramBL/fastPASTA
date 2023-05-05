@@ -56,6 +56,10 @@ pub struct Cfg {
     #[structopt(long, global = true, group = "filter")]
     filter_its_stave: Option<String>,
 
+    /// With the `check all its` command, specify a value for the ITS trigger period to check for, requires an its stave to be specified as filter
+    #[structopt(long, global = true, requires("filter-its-stave"))]
+    its_trigger_period: Option<u16>,
+
     /// Output raw data (default: stdout), requires a link to filter by. If Checks or Views are enabled, the output is supressed.
     #[structopt(
         name = "OUTPUT DATA",
@@ -128,6 +132,10 @@ impl Checks for Cfg {
         } else {
             None
         }
+    }
+
+    fn check_its_trigger_period(&self) -> Option<u16> {
+        self.its_trigger_period
     }
 }
 

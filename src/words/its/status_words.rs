@@ -281,6 +281,8 @@ pub struct Tdh {
     reserved0_id: u16, // 71:64 reserved, 79:72 id
 }
 impl Tdh {
+    /// Maximum value of the trigger_bc field
+    pub const MAX_BC: u16 = 3563;
     /// Returns the integer value of the reserved0 field
     pub fn reserved0(&self) -> u16 {
         self.reserved0_id & 0xFF
