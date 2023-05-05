@@ -55,13 +55,13 @@ fn print_start_of_its_readout_frame_header_text(
 ) -> Result<(), std::io::Error> {
     writeln!(
         stdio_lock,
-        "\nMemory    Word{:>37}{:>12}{:>12}{:>12}{:>12}",
-        "Trig.", "Packet", "Expect", "Link", "Lane  "
+        "\nMemory    Word{:>37}{:>12}{:>12}{:>12}{:>12}{:>15}",
+        "Trig.", "Packet", "Expect", "Link", "Lane  ", "Trigger  "
     )?;
     writeln!(
         stdio_lock,
-        "Position  type{:>36} {:>12}{:>12}{:>12}{:>12}\n",
-        "type", "status", "Data? ", "ID  ", "faults"
+        "Position  type{:>36} {:>12}{:>12}{:>12}{:>12}{:>15}\n",
+        "type", "status", "Data? ", "ID  ", "faults", "Orbit_BC "
     )?;
     Ok(())
 }
@@ -106,9 +106,10 @@ fn generate_its_readout_frame_word_view(
             let trigger_str = tdh_trigger_as_string(gbt_word_slice);
             let continuation_str = tdh_continuation_as_string(gbt_word_slice);
             let no_data_str = tdh_no_data_as_string(gbt_word_slice);
+            let trig_orbit_bc_str = tdh_trigger_orbit_bc_as_string(gbt_word_slice);
             writeln!(
                             stdio_lock,
-                            "{mem_pos_str} TDH {word_slice_str} {trigger_str}  {continuation_str}        {no_data_str}"
+                            "{mem_pos_str} TDH {word_slice_str} {trigger_str}  {continuation_str}        {no_data_str} {trig_orbit_bc_str:>42}"
                         )?;
         }
 
