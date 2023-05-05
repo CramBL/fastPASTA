@@ -255,7 +255,7 @@ pub struct Target {
 
 arg_enum! {
 /// List of supported systems to target for checks
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
     pub enum System {
         ITS,
     }
