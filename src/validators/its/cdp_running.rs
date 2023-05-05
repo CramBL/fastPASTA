@@ -488,8 +488,8 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
                             .send(StatType::Error(format!(
                                 "{mem_pos:#X}: {error} ", error = &format!(
                                     "[E45] TDH trigger period mismatch with user specified: {specified_trig_period} != {detected_period}\
-                                    \n\tCurrent  TDH Orbit_BC: {current_trigger_orbit}_{current_trigger_bc:>4}\
-                                    \n\tPrevious TDH Orbit_BC: {prev_trigger_orbit}_{prev_trigger_bc:>4}",
+                                    \n\tPrevious TDH Orbit_BC: {prev_trigger_orbit}_{prev_trigger_bc:>4}\
+                                    \n\tCurrent  TDH Orbit_BC: {current_trigger_orbit}_{current_trigger_bc:>4}",
                              ) )))
                             .expect("Failed to send error to stats channel");
                     }
