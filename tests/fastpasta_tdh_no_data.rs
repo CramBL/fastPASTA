@@ -6,15 +6,16 @@ mod util;
 // Asserts that the end of processing report summary contains correct information
 fn validate_report_summary(byte_output: &Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
     let match_patterns = vec![
-        "(?i)Trigger Type.*0x6803",
-        "(?i)RDH.*Version.*7",
-        "(?i)Total.*RDHs.*3",
-        "(?i)Total.*hbfs.*1",
-        "(?i)((layers)|(staves)).*((layers)|(staves)).*L0_0",
+        "Trigger Type.*0x6803",
+        "RDH.*Version.*7",
+        "Total.*RDHs.*3",
+        "Total.*hbfs.*1",
+        "((layers)|(staves)).*((layers)|(staves)).*L0_0",
     ];
-    match_patterns.into_iter().for_each(|pattern| {
-        assert!(match_on_output(byte_output, pattern, 1));
-    });
+    for pattern in match_patterns {
+        match_on_out_no_case(byte_output, pattern, 1)?;
+    }
+
     Ok(())
 }
 
@@ -25,8 +26,7 @@ fn check_sanity() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_TDH_NO_DATA).arg("check").arg("sanity");
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
 
     validate_report_summary(&cmd.output()?.stdout)?;
 
@@ -44,11 +44,10 @@ fn check_sanity_its_issue_26() -> Result<(), Box<dyn std::error::Error>> {
         .arg("its");
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
-    assert!(match_on_output(&cmd.output()?.stdout, "(?i)errors.*0", 1));
+    match_on_out_no_case(&cmd.output()?.stdout, "errors.*0", 1)?;
 
     Ok(())
 }
@@ -64,7 +63,7 @@ fn check_all_its_issue_26() -> Result<(), Box<dyn std::error::Error>> {
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
-    assert!(match_on_output(&cmd.output()?.stdout, "(?i)errors.*0", 1));
+    match_on_out_no_case(&cmd.output()?.stdout, "errors.*0", 1)?;
 
     Ok(())
 }
@@ -78,8 +77,7 @@ fn check_view_its_readout_frames() -> Result<(), Box<dyn std::error::Error>> {
         .arg("its-readout-frames");
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
 
     // Before issue 29 was fixed, 0x5320 was erroneously displayed as a TDH.
     // Here we confirm that it is now correctly interpreted as an IHW

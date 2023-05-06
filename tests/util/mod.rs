@@ -23,7 +23,11 @@ pub const FILE_TDH_NO_DATA_IHW: &str = "tests/test-data/tdh_no_data_ihw.raw";
 pub const FILE_OUTPUT_TMP: &str = "tests/test-data/output.tmp";
 
 /// Helper function to match the raw output of stderr or stdout, with a pattern a fixed amount of times
-pub fn match_on_output(byte_output: &Vec<u8>, re_str: &str, match_count: usize) -> bool {
+pub fn match_on_output(
+    byte_output: &Vec<u8>,
+    re_str: &str,
+    match_count: usize,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Build regex pattern
     let re = fancy_regex::Regex::new(re_str).unwrap();
     // Make the predicate function
@@ -31,7 +35,8 @@ pub fn match_on_output(byte_output: &Vec<u8>, re_str: &str, match_count: usize) 
     // Convert the output to string as utf-8
     let str_res = std::str::from_utf8(&byte_output).expect("invalid utf-8 sequence");
     // Evaluate the output with the predicate
-    pred_regex.eval(&str_res)
+    assert!(pred_regex.eval(&str_res));
+    Ok(())
 }
 
 /// Helper function to match the raw output of stderr or stdout, with a pattern a fixed amount of times, case insensitive
@@ -47,7 +52,11 @@ pub fn match_on_out_no_case(
     // Convert the output to string as utf-8
     let str_res = std::str::from_utf8(&byte_output).expect("invalid utf-8 sequence");
     // Evaluate the output with the predicate
-    assert!(pred_regex.eval(&str_res));
+    assert!(
+        pred_regex.eval(&str_res),
+        "regex: {} - expected match count: {match_count}",
+        re_str
+    );
     Ok(())
 }
 
@@ -55,7 +64,7 @@ pub fn match_on_out_no_case(
 pub fn assert_no_errors_or_warn(
     stderr_byte_output: &Vec<u8>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    assert!(match_on_output(stderr_byte_output, "(?i)error - ", 0));
-    assert!(match_on_output(stderr_byte_output, "(?i)warn - ", 0));
+    match_on_out_no_case(stderr_byte_output, "error - ", 0)?;
+    match_on_out_no_case(stderr_byte_output, "warn - ", 0)?;
     Ok(())
 }

@@ -10,11 +10,7 @@ fn file_exists_exit_successful_10_rdh() -> Result<(), Box<dyn std::error::Error>
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)exit success",
-        1
-    ));
+    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -29,11 +25,7 @@ fn file_exists_exit_successful_err_not_hbf() -> Result<(), Box<dyn std::error::E
         .arg("-v2");
     cmd.assert().success();
 
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)exit success",
-        1
-    ));
+    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -48,11 +40,7 @@ fn file_exists_exit_successful_thrs_cdw_links() -> Result<(), Box<dyn std::error
         .arg("-v2");
     cmd.assert().success();
 
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)exit success",
-        1
-    ));
+    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -67,11 +55,7 @@ fn file_exists_exit_successful_readout_superpage_1() -> Result<(), Box<dyn std::
         .arg("-v2");
     cmd.assert().success();
 
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)exit success",
-        1
-    ));
+    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -86,11 +70,7 @@ fn file_exists_exit_successful_1_hbf_bad_cdp_structure() -> Result<(), Box<dyn s
         .arg("-v2");
     cmd.assert().success();
 
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)exit success",
-        1
-    ));
+    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -105,11 +85,7 @@ fn file_exists_exit_successful_1_hbf_bad_dw_ddw0() -> Result<(), Box<dyn std::er
         .arg("-v2");
     cmd.assert().success();
 
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)exit success",
-        1
-    ));
+    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -124,11 +100,7 @@ fn file_exists_exit_successful_1_hbf_bad_ihw_tdh() -> Result<(), Box<dyn std::er
         .arg("-v2");
     cmd.assert().success();
 
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)exit success",
-        1
-    ));
+    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -143,11 +115,7 @@ fn file_exists_exit_successful_1_hbf_bad_its_payload() -> Result<(), Box<dyn std
         .arg("-v2");
     cmd.assert().success();
 
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)exit success",
-        1
-    ));
+    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -162,11 +130,7 @@ fn file_exists_exit_successful_1_hbf_bad_tdt() -> Result<(), Box<dyn std::error:
         .arg("-v2");
     cmd.assert().success();
 
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)exit success",
-        1
-    ));
+    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -182,11 +146,7 @@ fn file_exists_exit_successful_tdh_no_data() -> Result<(), Box<dyn std::error::E
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)exit success",
-        1
-    ));
+    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -202,11 +162,7 @@ fn file_exists_exit_successful_tdh_no_data_ihw() -> Result<(), Box<dyn std::erro
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
-    assert!(match_on_output(
-        &cmd.output().unwrap().stderr,
-        "(?i)exit success",
-        1
-    ));
+    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }

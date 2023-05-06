@@ -2,12 +2,12 @@ use crate::util::*;
 mod util;
 
 const MATCH_PATTERNS: [&str; 6] = [
-    "(?i)Trigger Type.*0x6A03",
-    "(?i)Trigger Type.*SOC",
-    "(?i)RDH.*Version.*7",
-    "(?i)Total.*RDHs.*2",
-    "(?i)Total.*hbfs.*0",
-    "(?i)((layers)|(staves)).*((layers)|(staves)).*L0_12",
+    "Trigger Type.*0x6A03",
+    "Trigger Type.*SOC",
+    "RDH.*Version.*7",
+    "Total.*RDHs.*2",
+    "Total.*hbfs.*0",
+    "((layers)|(staves)).*((layers)|(staves)).*L0_12",
 ];
 
 #[test]
@@ -77,7 +77,7 @@ fn check_sanity() -> Result<(), Box<dyn std::error::Error>> {
     cmd.assert().success();
 
     for pattern in MATCH_PATTERNS {
-        assert!(match_on_output(&cmd.output()?.stdout, pattern, 1));
+        match_on_out_no_case(&cmd.output()?.stdout, pattern, 1)?;
     }
 
     Ok(())
@@ -94,7 +94,7 @@ fn check_sanity_debug_verbosity() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)loaded.*rdh", 2));
+    match_on_out_no_case(&cmd.output()?.stderr, "loaded.*rdh", 2)?;
 
     Ok(())
 }

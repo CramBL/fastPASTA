@@ -62,12 +62,8 @@ fn check_all_its_err_msg() -> Result<(), Box<dyn std::error::Error>> {
         .arg("-v2");
 
     // 1 Error from a stateful check
-    assert!(match_on_output(
-        &cmd.output()?.stderr,
-        // Eror message should indicate: In position 0xE0, something about DDW0 and RDH
-        "(?i)0xe0.*(DDW0|RDH).*(DDW0|RDH)",
-        1
-    ));
+    // Eror message should indicate: In position 0xE0, something about DDW0 and RDH
+    match_on_out_no_case(&cmd.output()?.stderr, "0xe0.*(DDW0|RDH).*(DDW0|RDH)", 1)?;
 
     Ok(())
 }
