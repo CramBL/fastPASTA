@@ -5,7 +5,7 @@
 use super::lib::{StatType, SystemId};
 use crate::{
     stats::report::{Report, StatSummary},
-    util::lib::{Config, FilterTarget},
+    util::lib::{Config, DataOutputMode, FilterTarget},
     words,
 };
 use std::sync::{
@@ -104,9 +104,9 @@ impl<C: Config> StatsController<C> {
             self.update(stats_update);
         }
         // After processing all stats, print the summary report or don't if in view mode
-        if self.config.view().is_some() {
-            // Avoid printing the report in the middle of a view
-            log::info!("View active, skipping report summary printout.")
+        if self.config.view().is_some() || self.config.output_mode() == DataOutputMode::Stdout {
+            // Avoid printing the report in the middle of a view, or if output is being redirected
+            log::info!("View active or output is being piped, skipping report summary printout.")
         } else {
             self.non_atomic_total_errors += self.reported_errors.len() as u64;
             self.print_errors();
