@@ -249,6 +249,7 @@ impl Display for Rdh2 {
 
 /// Represents the RDH3 subword of the RDH.
 #[repr(packed)]
+#[derive(Clone, Copy)]
 pub struct Rdh3 {
     /// RDH detector field 32 bit, but 23:4 are reserved bits.
     pub detector_field: u32,
@@ -308,5 +309,72 @@ impl Display for Rdh3 {
             f,
             "Rdh3: detector_field: {tmp_df:x?}, par_bit: {tmp_par:x?}, reserved0: {tmp_res:x?}"
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::words;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_rdh0_partial_eq() {
+        let rdh0 = Rdh0 {
+            header_id: 6,
+            header_size: 40,
+            fee_id: words::rdh::FeeId(0),
+            priority_bit: 0,
+            system_id: 32,
+            reserved0: 0,
+        };
+        let rdh0_2 = Rdh0 {
+            header_id: 6,
+            header_size: 40,
+            fee_id: words::rdh::FeeId(0),
+            priority_bit: 0,
+            system_id: 32,
+            reserved0: 0,
+        };
+        assert_eq!(rdh0, rdh0_2);
+    }
+
+    #[test]
+    fn test_rdh1_partial_eq() {
+        let rdh1 = Rdh1 {
+            bc_reserved0: words::rdh::BcReserved(0),
+            orbit: 200,
+        };
+        let rdh1_2 = Rdh1 {
+            bc_reserved0: words::rdh::BcReserved(0),
+            orbit: 200,
+        };
+        assert_eq!(rdh1, rdh1_2);
+    }
+
+    #[test]
+    fn test_rdh2_partial_eq() {
+        let rdh2 = Rdh2 {
+            trigger_type: 0x00000000,
+            pages_counter: 0x0000,
+            stop_bit: 0x00,
+            reserved0: 0x00,
+        };
+        let rdh2_2 = rdh2.clone();
+
+        assert_eq!(rdh2, rdh2_2);
+    }
+
+    #[test]
+    fn test_rdh3_partial_eq() {
+        let rdh3 = Rdh3 {
+            detector_field: 0x00000000,
+            par_bit: 0x0000,
+            reserved0: 0x0000,
+        };
+        println!("{:?}", rdh3);
+        let rdh3_2 = rdh3.clone();
+
+        assert_eq!(rdh3, rdh3_2);
     }
 }

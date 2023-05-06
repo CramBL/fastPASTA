@@ -355,6 +355,15 @@ mod tests {
     }
 
     #[test]
+    fn stats_summar_default() {
+        let stats_summary = StatSummary::default();
+
+        assert_eq!(stats_summary.statistic, "");
+        assert_eq!(stats_summary.value, "");
+        assert_eq!(stats_summary.notes, "");
+    }
+
+    #[test]
     fn test_os() {
         println!("{}", std::env::consts::OS);
     }
