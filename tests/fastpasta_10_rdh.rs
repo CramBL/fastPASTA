@@ -200,6 +200,42 @@ fn check_all_its_trigger_period() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("all")
+        .arg("its_stave")
+        .arg("-v4")
+        .arg("--filter-its-stave")
+        .arg("L0_12");
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+
+    match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l0_12", 1)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_stave_missing_filter() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("all")
+        .arg("its_stave")
+        .arg("-v4");
+    cmd.assert().failure();
+
+    match_on_out_no_case(&cmd.output()?.stderr, "invalid.*specify.*stave", 1)?;
+
+    Ok(())
+}
+
+#[test]
 fn filter_its_stave() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
     cmd.arg(FILE_10_RDH)

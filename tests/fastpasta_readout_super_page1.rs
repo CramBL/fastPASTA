@@ -83,3 +83,23 @@ fn view_its_readout_frames() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg("check")
+        .arg("all")
+        .arg("its_stave")
+        .arg("-v2")
+        .arg("--filter-its-stave")
+        .arg("L1_6")
+        .arg(FILE_READOUT_SUPERPAGE_1);
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+
+    match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l1_6", 1)?;
+
+    Ok(())
+}
