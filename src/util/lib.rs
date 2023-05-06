@@ -9,15 +9,15 @@ use super::config::{Check, View};
 pub trait Config: Util + Filter + InputOutput + Checks + Views + Send + Sync {
     /// Validate the arguments of the config
     fn validate_args(&self) -> Result<(), String> {
-        if self.filter_enabled() && self.view().is_some() {
-            return Err("Cannot filter and view at the same time".to_string());
-        } else if let Some(check) = self.check() {
+        if let Some(check) = self.check() {
             if let Some(target) = check.target() {
                 if matches!(target, super::config::System::ITS_Stave)
                     && self.filter_its_stave().is_none()
                 {
                     return Err("Cannot check ITS stave without specifying a stave".to_string());
                 }
+            } else if self.check_its_trigger_period().is_some() {
+                return Err("Specifying trigger priod has to be done with the `check all its_stave` command".to_string());
             }
         }
         Ok(())
