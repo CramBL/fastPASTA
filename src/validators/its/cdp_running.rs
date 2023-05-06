@@ -102,12 +102,6 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
         }
     }
 
-    // For testing configs
-    #[allow(dead_code)]
-    fn set_config(&mut self, config: C) {
-        self.config = std::sync::Arc::new(config);
-    }
-
     /// Helper function to format and report an error
     ///
     /// Takes in the error string slice and the word slice

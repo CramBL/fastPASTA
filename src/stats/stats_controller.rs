@@ -457,7 +457,8 @@ fn summerize_filtered_its_layer_staves(
     fee_id_no_link: u16,
     layers_staves_seen: &[(u8, u8)],
 ) -> StatSummary {
-    let mut filtered_feeid_stat = StatSummary::new("ITS stave".to_string(), "".to_string(), None);
+    let mut filtered_feeid_stat = StatSummary::default();
+    filtered_feeid_stat.statistic = "ITS stave".to_string();
     let layer = words::its::layer_from_feeid(fee_id_no_link);
     let stave = words::its::stave_number_from_feeid(fee_id_no_link);
     if layers_staves_seen.contains(&(layer, stave)) {
