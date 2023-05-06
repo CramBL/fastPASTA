@@ -153,7 +153,7 @@ impl AlpideFrameDecoder {
             let error_str = bc_to_chip_ids
                 .iter()
                 .fold(String::from(""), |acc, (bc, chip_ids)| {
-                    format!("{acc}\n\t\tBunch counter: {bc:?} | Chip IDs: {chip_ids:?}")
+                    format!("{acc}\n\t\tBunch counter: {bc:>3?} | Chip IDs: {chip_ids:?}")
                 });
             Err(error_str)
         } else {
