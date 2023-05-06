@@ -58,7 +58,7 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
     ) -> (Self, crossbeam_channel::Sender<CdpTuple<T>>) {
         let rdh_sanity_validator = if let Some(system) = global_config.check().unwrap().target() {
             match system {
-                config::System::ITS => {
+                config::System::ITS | config::System::ITS_Stave => {
                     RdhCruSanityValidator::<T>::with_specialization(rdh::SpecializeChecks::ITS)
                 }
             }
@@ -104,7 +104,7 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
 
         if let Some(system) = self.config.check().unwrap().target() {
             match system {
-                config::System::ITS => {
+                config::System::ITS | config::System::ITS_Stave => {
                     if !payload.is_empty() {
                         super::its::lib::do_payload_checks(
                             (&rdh, &payload, rdh_mem_pos),

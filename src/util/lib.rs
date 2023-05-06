@@ -6,7 +6,23 @@ use std::fmt::Display;
 use super::config::{Check, View};
 
 /// Super trait for all the traits that needed to be implemented by the config struct
-pub trait Config: Util + Filter + InputOutput + Checks + Views + Send + Sync {}
+pub trait Config: Util + Filter + InputOutput + Checks + Views + Send + Sync {
+    /// Validate the arguments of the config
+    fn validate_args(&self) -> Result<(), String> {
+        if let Some(check) = self.check() {
+            if let Some(target) = check.target() {
+                if matches!(target, super::config::System::ITS_Stave) {
+                    if self.filter_its_stave().is_none() {
+                        return Err("Cannot check ITS stave without specifying a stave".to_string());
+                    }
+                } else if self.check_its_trigger_period().is_some() {
+                    return Err("Specifying trigger period has to be done with the `check all its_stave` command".to_string());
+                }
+            }
+        }
+        Ok(())
+    }
+}
 
 /// Trait for all small utility options that are not specific to any other trait
 pub trait Util {

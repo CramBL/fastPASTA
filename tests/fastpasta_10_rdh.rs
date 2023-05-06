@@ -1,19 +1,21 @@
+use predicates::str::contains;
+
 use crate::util::*;
 mod util;
 
 // Asserts that the end of processing report summary contains correct information
 fn validate_report_summary(byte_output: &Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
     let match_patterns = vec![
-        "(?i)Trigger Type.*0x6A03",
-        "(?i)Trigger Type.*SOC",
-        "(?i)RDH.*Version.*7",
-        "(?i)Total.*RDHs.*10",
-        "(?i)Total.*hbfs.*5",
-        "(?i)((layers)|(staves)).*((layers)|(staves)).*L0_12",
+        "Trigger Type.*0x6A03",
+        "Trigger Type.*SOC",
+        "RDH.*Version.*7",
+        "Total.*RDHs.*10",
+        "Total.*hbfs.*5",
+        "((layers)|(staves)).*((layers)|(staves)).*L0_12",
     ];
-    match_patterns.into_iter().for_each(|pattern| {
-        assert!(match_on_output(byte_output, pattern, 1));
-    });
+    for pattern in match_patterns {
+        match_on_out_no_case(byte_output, pattern, 1)?;
+    }
     Ok(())
 }
 
@@ -56,9 +58,7 @@ fn check_sanity() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_10_RDH).arg("check").arg("sanity");
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
-
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())
@@ -71,8 +71,7 @@ fn check_sanity_its() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_10_RDH).arg("check").arg("sanity").arg("its");
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     // Asserts on stdout
     validate_report_summary(&cmd.output()?.stdout)?;
 
@@ -86,8 +85,7 @@ fn check_all() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_10_RDH).arg("check").arg("all");
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     // Asserts on stdout
     validate_report_summary(&cmd.output()?.stdout)?;
 
@@ -101,10 +99,134 @@ fn check_all_its() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_10_RDH).arg("check").arg("all").arg("its");
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+
     // Asserts on stdout
     validate_report_summary(&cmd.output()?.stdout)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_trigger_period_missing_arg() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("all")
+        .arg("its_stave")
+        .arg("--its-trigger-period")
+        .arg("1");
+    cmd.assert()
+        .failure()
+        .stderr(contains("arguments were not provided:").and(contains("filter-its-stave")));
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_trigger_period_stave_not_found() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("all")
+        .arg("its_stave")
+        .arg("-v2")
+        .arg("--its-trigger-period")
+        .arg("1")
+        .arg("--filter-its-stave")
+        .arg("L3_2");
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+
+    match_on_out_no_case(
+        &cmd.output()?.stdout,
+        "its stave.*<<none>>.*not found.*l3_2",
+        1,
+    )?;
+
+    Ok(())
+}
+#[test]
+fn check_all_its_trigger_period_mismatch() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("all")
+        .arg("its_stave")
+        .arg("-v3")
+        .arg("--its-trigger-period")
+        .arg("1")
+        .arg("--filter-its-stave")
+        .arg("L0_12");
+    cmd.assert().success();
+
+    match_on_out_no_case(&cmd.output()?.stderr, "error - ", 4)?;
+    match_on_out_no_case(&cmd.output()?.stderr, "warn - ", 0)?;
+
+    match_on_out_no_case(&cmd.output()?.stderr, r"period.*mismatch.*1 !=", 4)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l0_12", 1)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_trigger_period() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("all")
+        .arg("its_stave")
+        .arg("-v3")
+        .arg("--its-trigger-period")
+        .arg("0")
+        .arg("--filter-its-stave")
+        .arg("L0_12");
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+
+    match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l0_12", 1)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("all")
+        .arg("its_stave")
+        .arg("-v4")
+        .arg("--filter-its-stave")
+        .arg("L0_12");
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+
+    match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l0_12", 1)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_stave_missing_filter() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("all")
+        .arg("its_stave")
+        .arg("-v4");
+    cmd.assert().failure();
+
+    match_on_out_no_case(&cmd.output()?.stderr, "invalid.*specify.*stave", 1)?;
 
     Ok(())
 }
@@ -120,27 +242,15 @@ fn filter_its_stave() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     // Asserts on stdout
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        "(?i)Total.*RDHs.*10",
-        1
-    ));
-    // Checking the filtered stats
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        r"(?i).*filter.*stats",
-        1
-    ));
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        r"(?i)\|.*RDHs.*10",
-        1
-    ));
+    match_on_out_no_case(&cmd.output()?.stdout, r"filter.*stats", 1)?;
 
-    assert!(match_on_output(&cmd.output()?.stdout, r"(?i).*L0_12", 1));
+    // Checking the filtered stats
+    match_on_out_no_case(&cmd.output()?.stdout, r".*filter.*stats", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, r"\|.*RDHs.*10", 1)?;
+
+    match_on_out_no_case(&cmd.output()?.stdout, r".*L0_12", 1)?;
 
     // cleanup temp file
     std::fs::remove_file(FILE_OUTPUT_TMP).expect("Could not remove temp file");
@@ -151,40 +261,27 @@ fn filter_its_stave() -> Result<(), Box<dyn std::error::Error>> {
 #[test]
 fn filter_its_stave_not_found() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
-    let stave_to_filer = "L3_0"; // Not in the data
+    let stave_to_filter = "L3_0"; // Not in the data
     cmd.arg(FILE_10_RDH)
         .arg("--filter-its-stave")
-        .arg(stave_to_filer)
+        .arg(stave_to_filter)
         .arg("-o")
         .arg(FILE_OUTPUT_TMP);
 
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     // Asserts on stdout
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        "(?i)Total.*RDHs.*10",
-        1
-    ));
+    match_on_out_no_case(&cmd.output()?.stdout, "Total.*RDHs.*10", 1)?;
     // Checking the filtered stats
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        r"(?i).*filter.*stats",
-        1
-    ));
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        r"(?i)\|.* RDHs.*0",
-        1
-    ));
+    match_on_out_no_case(&cmd.output()?.stdout, r".*filter.*stats", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, r"\|.* RDHs.*0", 1)?;
 
-    assert!(match_on_output(
+    match_on_out_no_case(
         &cmd.output()?.stdout,
-        &(r"(?i).*not found:.*".to_string() + stave_to_filer),
-        1
-    ));
+        &(r".*not found:.*".to_string() + stave_to_filter),
+        1,
+    )?;
 
     // cleanup temp file
     std::fs::remove_file(FILE_OUTPUT_TMP).expect("Could not remove temp file");
@@ -204,31 +301,18 @@ fn filter_fee() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     // Asserts on stdout
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        "(?i)Total.*RDHs.*10",
-        1
-    ));
+    match_on_out_no_case(&cmd.output()?.stdout, "Total.*RDHs.*10", 1)?;
     // Checking the filtered stats
-    assert!(match_on_output(
+    match_on_out_no_case(&cmd.output()?.stdout, r".*filter.*stats", 1)?;
+    match_on_out_no_case(
         &cmd.output()?.stdout,
-        r"(?i).*filter.*stats",
-        1
-    ));
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        &(r"(?i)FEE.*".to_string() + fee_id_to_filter),
-        1
-    ));
+        &(r"FEE.*".to_string() + fee_id_to_filter),
+        1,
+    )?;
 
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        r"(?i)\|.* RDHs.*10",
-        1
-    ));
+    match_on_out_no_case(&cmd.output()?.stdout, r"\|.* RDHs.*10", 1)?;
 
     // cleanup temp file
     std::fs::remove_file(FILE_OUTPUT_TMP).expect("Could not remove temp file");
@@ -248,31 +332,18 @@ fn filter_fee_not_found() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     // Asserts on stdout
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        "(?i)Total.*RDHs.*10",
-        1
-    ));
+    match_on_out_no_case(&cmd.output()?.stdout, "Total.*RDHs.*10", 1)?;
     // Checking the filtered stats
-    assert!(match_on_output(
+    match_on_out_no_case(&cmd.output()?.stdout, r".*filter.*stats", 1)?;
+    match_on_out_no_case(
         &cmd.output()?.stdout,
-        r"(?i).*filter.*stats",
-        1
-    ));
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        &(r"(?i)FEE.*not found.*".to_string() + fee_id_to_filter),
-        1
-    ));
+        &(r"FEE.*not found.*".to_string() + fee_id_to_filter),
+        1,
+    )?;
 
-    assert!(match_on_output(
-        &cmd.output()?.stdout,
-        r"(?i)\|.* RDHs.* 0 ",
-        1
-    ));
+    match_on_out_no_case(&cmd.output()?.stdout, r"\|.* RDHs.* 0 ", 1)?;
 
     // cleanup temp file
     std::fs::remove_file(FILE_OUTPUT_TMP).expect("Could not remove temp file");

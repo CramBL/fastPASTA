@@ -5,31 +5,25 @@
 
 // Unfortunately needed because of the arg_enum macro not handling doc comments properly
 #![allow(missing_docs)]
+#![allow(non_camel_case_types)]
+use super::lib::{Checks, Config, DataOutputMode, Filter, InputOutput, Util, Views};
+use crate::words::its::layer_stave_string_to_feeid;
 use std::path::PathBuf;
 use structopt::{clap::arg_enum, StructOpt};
-
-use crate::words::its::layer_stave_string_to_feeid;
-
-use super::lib::{Checks, Config, DataOutputMode, Filter, InputOutput, Util, Views};
-/// The Opt struct uses the [StructOpt] procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
+/// The [Cfg] struct uses the [StructOpt] procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
 #[derive(StructOpt, Debug)]
 #[structopt(setting = structopt::clap::AppSettings::ColoredHelp,
     name = "fastPASTA - fast Protocol Analysis Scanning Tool for ALICE",
-    about = "\n\
-Usage flow:  [INPUT] -> [FILTER] -> [VALIDATE/VIEW/OUTPUT]
-                          ^^^                 ^^^
-                        Optional            Optional
-Examples:
-    1. Read from file -> filter by link 0 -> validate with all checks enabled
-        $ ./fastpasta input.raw --filter-link 0 check all
-    2. Read decompressed data from stdin -> filter link 3 -> see a formatted view of RDHs
-        $ lz4 -d input.raw -c | ./fastpasta --filter-link 3 | ./fastpasta view rdh
-                 ^^^^                      ^^^^                       ^^^^
-                INPUT       --->          FILTER          --->        VIEW"
-)]
+    author = "Marc König <mbkj@tutamail.com>",
+    about = "\nfastpasta scans through ALICE Readout System's raw data output.\n\
+It can report validation fails, display data in a human\n\
+readable way, or filter the data.\n\
+\n\
+Project home page: https://gitlab.cern.ch/mkonig/fastpasta"
+    )]
 pub struct Cfg {
     /// Input file (default: stdin)
-    #[structopt(name = "INPUT DATA", parse(from_os_str))]
+    #[structopt(name = "Raw Data File", global = true, parse(from_os_str))]
     file: Option<PathBuf>,
 
     /// Commands such as [Check] or [View] that accepts further subcommands
@@ -56,11 +50,11 @@ pub struct Cfg {
     #[structopt(long, global = true, group = "filter")]
     filter_its_stave: Option<String>,
 
-    /// With the `check all its` command, specify a value for the ITS trigger period to check for, requires an its stave to be specified as filter
-    #[structopt(long, global = true, requires("filter-its-stave"))]
+    /// Enables checks on the ITS trigger period with the specified value, usable with the `check all its_stave` command
+    #[structopt(short = "p", long, global = true, requires("filter-its-stave"))]
     its_trigger_period: Option<u16>,
 
-    /// Output raw data (default: stdout), requires a link to filter by. If Checks or Views are enabled, the output is supressed.
+    /// Output raw data (default: stdout), requires setting a filter option. If Checks or Views are enabled, the output is supressed.
     #[structopt(
         name = "OUTPUT DATA",
         short = "o",
@@ -197,7 +191,6 @@ impl Util for Cfg {
     }
 }
 
-/// Possible subcommands at the upper level
 #[derive(structopt::StructOpt, Debug, Clone)]
 pub enum Command {
     /// [Check] subcommand to enable checks, needs to be followed by a [Check] type subcommand and a target system
@@ -208,9 +201,7 @@ pub enum Command {
 
 /// Check subcommand to enable checks, needs to be followed by a check type subcommand and a target system
 #[derive(structopt::StructOpt, Debug, Clone)]
-#[structopt(setting = structopt::clap::AppSettings::ColoredHelp, about = "Enable validation checks, by default only RDHs are checked.\n\
-a target such as 'ITS' can be specified.\n\
-Invoke `help [SUBCOMMAND]` for more information on possible targets.")]
+#[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
 pub enum Check {
     /// Perform sanity & running checks on RDH. If a target system is specified (e.g. 'ITS') checks implemented for the target is also performed. If no target system is specified, only the most generic checks are done.
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
@@ -232,7 +223,7 @@ impl Check {
 
 /// Data views that can be generated
 #[derive(structopt::StructOpt, Debug, Clone)]
-#[structopt(setting = structopt::clap::AppSettings::ColoredHelp, about = "Enable data views")]
+#[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
 pub enum View {
     /// Print formatted RDHs to stdout
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
@@ -255,8 +246,9 @@ pub struct Target {
 
 arg_enum! {
 /// List of supported systems to target for checks
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
     pub enum System {
         ITS,
+        ITS_Stave,
     }
 }
