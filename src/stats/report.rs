@@ -85,7 +85,7 @@ impl Report {
         let is_windows = std::env::consts::OS.to_lowercase().contains("windows"); // Windows can't have ANSI colors :(
 
         let mut global_stats_table = Table::new(&self.stats);
-        global_stats_table = format_global_stats_sub_table(&global_stats_table, is_windows);
+        format_global_stats_sub_table(&mut global_stats_table, is_windows);
         let mut detected_attributes_table = Table::new(&self.detected_attributes);
         detected_attributes_table = format_sub_table(
             &detected_attributes_table,
@@ -191,8 +191,7 @@ fn format_super_table(
     modded_table
 }
 
-fn format_global_stats_sub_table(global_stats_table: &Table, os_is_windows: bool) -> Table {
-    let mut modded_table = global_stats_table.clone();
+fn format_global_stats_sub_table(global_stats_table: &mut Table, os_is_windows: bool) {
     let style = tabled::Style::modern()
         .off_left()
         .off_right()
@@ -208,7 +207,7 @@ fn format_global_stats_sub_table(global_stats_table: &Table, os_is_windows: bool
 
     if os_is_windows {
         // Boring no colors
-        modded_table
+        global_stats_table
             .with(style)
             .with(Modify::new(Rows::single(0)).with(Format::new(|x| x.to_uppercase())))
             .with(Modify::new(Columns::new(2..)).with(Format::new(|s| s.to_string())))
@@ -220,7 +219,7 @@ fn format_global_stats_sub_table(global_stats_table: &Table, os_is_windows: bool
             );
     } else {
         // Fun ANSI colors
-        modded_table
+        global_stats_table
             .with(style)
             .with(Modify::new(Rows::single(0)).with(Format::new(|x| x.to_uppercase())))
             .with(Modify::new(Columns::single(0)).with(Format::new(|s| s.blue().to_string())))
@@ -238,8 +237,6 @@ fn format_global_stats_sub_table(global_stats_table: &Table, os_is_windows: bool
                     })),
             );
     }
-
-    modded_table
 }
 
 #[allow(dead_code)]
@@ -342,6 +339,23 @@ mod tests {
         assert_stdout_contains!(report.print(), "Filtered links");
         assert_stdout_contains!(report.print(), "Total RDHs");
         assert_stdout_contains!(report.print(), "725800");
+    }
+
+    #[test]
+    fn test_summary_contains_filtered_links_rdhs_windows() {
+        let filtered_links = StatSummary::new(
+            "Filtered links".to_string(),
+            String::from("0"),
+            Some(String::from("Not found: 2")),
+        );
+        let observed_links =
+            StatSummary::new("Links observed".to_string(), "1 7 8 9".to_string(), None);
+
+        let mut filter_table = Table::new(vec![filtered_links, observed_links]);
+        println!("before:\n{filter_table}");
+        format_global_stats_sub_table(&mut filter_table, true);
+        println!("After:\n{filter_table}");
+        assert_stdout_contains!(println!("{}", filter_table), "Filtered links");
     }
 
     #[test]
