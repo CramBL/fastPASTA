@@ -33,7 +33,28 @@ pub mod util {
         }
     }
 
-    /// Takes a DDW0 or TDT slice and returns a string description of whether or not an error is reported by the DDW0
+    /// Takes a DDW0 or TDT slice and returns a 7 char long string description of the most severe lane status among all lanes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use fastpasta::words::its::status_words::util::ddw0_tdt_lane_status_as_string;
+    /// /// Example of a DDW0 with a all lanes in a OK state
+    /// let ddw0_slice = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE4];
+    /// assert_eq!(ddw0_tdt_lane_status_as_string(&ddw0_slice), "       ");
+    /// ```
+    /// ```
+    /// # use fastpasta::words::its::status_words::util::ddw0_tdt_lane_status_as_string;
+    /// /// Example of a DDW0 with lane 0 in a Warning state
+    /// let ddw0_slice = [0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE4];
+    /// assert_eq!(ddw0_tdt_lane_status_as_string(&ddw0_slice), "Warning");
+    /// ```
+    /// ```
+    /// # use fastpasta::words::its::status_words::util::ddw0_tdt_lane_status_as_string;
+    /// /// Example of a TDT with lane 0 in Error state and lane 1 in Fatal state
+    /// let tdt_slice = [0b0000_1110, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0];
+    /// assert_eq!(ddw0_tdt_lane_status_as_string(&tdt_slice), "Fatal  ");
+    /// ```
     pub fn ddw0_tdt_lane_status_as_string(ddw0_tdt_slice: &[u8]) -> String {
         if ddw0_tdt_lane_status_any_fatal(ddw0_tdt_slice) {
             String::from("Fatal  ")
@@ -712,7 +733,7 @@ impl PartialEq for Cdw {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{util::*, *};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -727,9 +748,9 @@ mod tests {
         assert_eq!(ihw.id(), VALID_ID);
         assert!(ihw.is_reserved_0());
         assert_eq!(ihw.active_lanes(), ACTIVE_LANES_14_ACTIVE);
-        println!("{ihw}");
+        println!("{ihw:#?}");
         let loaded_ihw = Ihw::load(&mut ihw.to_byte_slice()).unwrap();
-        println!("{loaded_ihw}");
+        println!("{loaded_ihw:?}");
         assert_eq!(ihw, loaded_ihw);
     }
 
@@ -910,5 +931,35 @@ mod tests {
         assert_eq!(cdw.calibration_word_index(), 0x080706);
         let loaded_cdw = Cdw::load(&mut cdw.to_byte_slice()).unwrap();
         assert_eq!(cdw, loaded_cdw);
+    }
+
+    #[test]
+    fn test_tdh_trigger_as_string() {
+        let tdh_slice = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE8];
+
+        let trig_as_string = tdh_trigger_as_string(&tdh_slice);
+
+        assert_eq!(trig_as_string, "Other   ");
+    }
+
+    #[test]
+    fn test_tdh_continuation_as_string() {
+        // Only continuation flag set other than ID
+        let tdh_slice = [
+            0x00,
+            0b0100_0000, // Continuation flag set
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0xE8,
+        ];
+
+        let cont_as_string = tdh_continuation_as_string(&tdh_slice);
+
+        assert_eq!(cont_as_string, "Cont.");
     }
 }
