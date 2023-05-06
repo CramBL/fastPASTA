@@ -86,12 +86,12 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
             is_new_data: false,
             // If the config is set to check ALPIDE data, and a filter for a stave is set, then allocate space ALPIDE data.
             alpide_data_frame: if let Some(check) = config.check() {
-                if check
-                    .target()
-                    .is_some_and(|target| target == config::System::ITS)
-                    && config.filter_its_stave().is_some()
-                {
-                    Vec::with_capacity(200)
+                if let Some(target) = check.target() {
+                    if target == config::System::ITS && config.filter_its_stave().is_some() {
+                        Vec::with_capacity(200)
+                    } else {
+                        Vec::with_capacity(0)
+                    }
                 } else {
                     Vec::with_capacity(0)
                 }
@@ -636,7 +636,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
             for (lane_id, errors) in errors_per_lane {
                 error_string.push_str(&format!("\n\tLane {lane_id} errors:"));
                 for err in errors {
-                    error_string.push_str(&format!("{err}"));
+                    error_string.push_str(&err);
                 }
             }
             self.stats_send_ch
