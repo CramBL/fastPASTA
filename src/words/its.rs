@@ -1,4 +1,5 @@
 //! Data definitions for ITS payload words
+pub mod alpide_words;
 pub mod data_words;
 pub mod status_words;
 
