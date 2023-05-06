@@ -19,7 +19,7 @@ fn check_sanity_its() -> Result<(), Box<dyn std::error::Error>> {
     match_on_out_no_case(&cmd.output()?.stdout, "trigger type.*0x4893.*SOT", 1)?;
     match_on_out_no_case(&cmd.output()?.stdout, "total rdhs.*6", 1)?;
     match_on_out_no_case(&cmd.output()?.stdout, "links.*8, 9, 11", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "hbfs .* 3 ", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "hbfs.*3", 1)?;
     match_on_out_no_case(&cmd.output()?.stdout, "layers.*l0_12", 1)?;
 
     Ok(())
