@@ -54,8 +54,7 @@ pub fn match_on_out_no_case(
     // Evaluate the output with the predicate
     assert!(
         pred_regex.eval(&str_res),
-        "regex: {} - expected match count: {match_count}",
-        re_str
+        "regex: {re_str} - expected match count: {match_count}\nFailed to match on:\n{str_res}"
     );
     Ok(())
 }
