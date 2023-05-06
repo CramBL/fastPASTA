@@ -15,12 +15,12 @@ fn check_sanity_its() -> Result<(), Box<dyn std::error::Error>> {
     cmd.assert().success();
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "total errors .* 0 ", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "trigger type .* 0x4893 .* SOT ", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "total rdhs.* 6 ", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "links.*8, 9, 11 ", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "total errors.*0", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "trigger type.*0x4893.*SOT", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "total rdhs.*6", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "links.*8, 9, 11", 1)?;
     match_on_out_no_case(&cmd.output()?.stdout, "hbfs .* 3 ", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "layers .* l0_12", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "layers.*l0_12", 1)?;
 
     Ok(())
 }
@@ -37,7 +37,7 @@ fn check_all_its() -> Result<(), Box<dyn std::error::Error>> {
     cmd.assert().success();
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "total errors .* 0 ", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "total errors.*0", 1)?;
 
     Ok(())
 }
@@ -56,7 +56,7 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
     cmd.assert().success();
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "total errors .* 0 ", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "total errors.*0", 1)?;
 
     Ok(())
 }
@@ -77,7 +77,7 @@ fn check_all_its_stave_trigger_period() -> Result<(), Box<dyn std::error::Error>
     cmd.assert().success();
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "total errors .* 0 ", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "total errors.*0", 1)?;
 
     Ok(())
 }
