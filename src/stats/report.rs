@@ -355,7 +355,7 @@ mod tests {
         println!("before:\n{filter_table}");
         format_global_stats_sub_table(&mut filter_table, true);
         println!("After:\n{filter_table}");
-        assert_stdout_contains!(println!("{}", filter_table), "Filtered links");
+        assert_stdout_contains!(println!("{filter_table}"), "Filtered links");
     }
 
     #[test]
