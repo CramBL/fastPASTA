@@ -5,8 +5,10 @@
 - [Running RDH checks](#rdh-running-checks)
 - [ITS specific checks](#its-specific-checks)
   - [RDH sanity checks](#rdh-sanity-check-1)
-  - [Payload sanity checks](#payload-sanity-checks)
-  - [Payload running checks](#payload-running-checks)
+  - [Payload sanity checks](#its-payload-sanity-checks)
+  - [Payload running checks](#its-payload-sanity-checks)
+  - [User defined payload checks](#user-defined-its-payload-checks)
+  - [ALPIDE checks](#alpide-checks)
 
 ## Prelimary sanity checks
 > These checks are done to verify that the input data is scanned correctly, if any of them fail, data is skipped or if that is not possible, a fatal error is raised and processing stops
@@ -74,7 +76,7 @@ If any of the following conditions are not met, the RDH fails the sanity check a
   * system_id = 0x20 `ITS system ID`
 
 ## ITS Payload sanity checks
-All ID checks are made based on the FSM illustrated in the section [Payload running checks](#payload-running-checks).
+All ID checks are made based on the FSM illustrated in the section [Payload running checks](#its-payload-running-checks).
 ### Status Words
 #### IHW
 * id = 0xE0
@@ -141,3 +143,9 @@ Additional checks related to state:
 
 Certain transitions are ambigious, these are resolved based on the ID of the next received GBT word.
 ![ITS payload FSM for validation](ITS_payload_fsm_continuous_mode.png)
+
+## User defined ITS payload checks
+- The user can specify a trigger period (orbit/bunch counter) for the TDHs, and the trigger period for all TDH's with internal trigger set is then compared to the specified value.
+
+## ALPIDE checks
+When all ITS checks are enabled and the option to filter data for a specific ITS Stave is set, ALPIDE data is decoded for each lane ID in the data stream. The time stamps for each chip in a readout frame is checked for consistency. All time stamps should match, and if they don't, an error message is displayed showing each observed time stamp and which chip ID it was observed in.
