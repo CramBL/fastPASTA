@@ -6,13 +6,11 @@
 // Unfortunately needed because of the arg_enum macro not handling doc comments properly
 #![allow(missing_docs)]
 #![allow(non_camel_case_types)]
+use super::lib::{Checks, Config, DataOutputMode, Filter, InputOutput, Util, Views};
+use crate::words::its::layer_stave_string_to_feeid;
 use std::path::PathBuf;
 use structopt::{clap::arg_enum, StructOpt};
-
-use crate::words::its::layer_stave_string_to_feeid;
-
-use super::lib::{Checks, Config, DataOutputMode, Filter, InputOutput, Util, Views};
-/// The Opt struct uses the [StructOpt] procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
+/// The [Cfg] struct uses the [StructOpt] procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
 #[derive(StructOpt, Debug)]
 #[structopt(setting = structopt::clap::AppSettings::ColoredHelp,
     name = "fastPASTA - fast Protocol Analysis Scanning Tool for ALICE",
@@ -30,7 +28,7 @@ Examples:
 )]
 pub struct Cfg {
     /// Input file (default: stdin)
-    #[structopt(name = "INPUT DATA", parse(from_os_str))]
+    #[structopt(name = "Raw Data File", global = true, parse(from_os_str))]
     file: Option<PathBuf>,
 
     /// Commands such as [Check] or [View] that accepts further subcommands
