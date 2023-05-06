@@ -369,3 +369,40 @@ fn view_its_readout_frame() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn check_sanity_stdin() -> Result<(), Box<dyn std::error::Error>> {
+    use assert_cmd::cmd::*;
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.pipe_stdin(FILE_10_RDH)?.arg("check").arg("sanity");
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    Ok(())
+}
+
+#[test]
+fn filter_link_check_sanity_pipe_between_fastpasta() -> Result<(), Box<dyn std::error::Error>> {
+    // Test piping to fastpasta and writing to stdout and piping into another fastpasta instance
+    let mut cmd1 = Command::cargo_bin("fastpasta")?;
+
+    // Pipe 10_rdh.raw into fastpasta and filter link 8
+    cmd1.pipe_stdin(FILE_10_RDH)?.arg("--filter-link").arg("8");
+    // Confirm successful execution and copy output
+    let out = cmd1.assert().success().get_output().stdout.clone();
+    assert_no_errors_or_warn(&cmd1.output()?.stderr)?;
+
+    // Pipe the output of the first fastpasta instance into another fastpasta instance
+    let mut cmd2 = Command::cargo_bin("fastpasta")?;
+    cmd2.write_stdin(out).arg("check").arg("sanity");
+
+    // Confirm successful execution and validate the report summary and that there was no errors
+    cmd2.assert().success();
+    assert_no_errors_or_warn(&cmd2.output()?.stderr)?;
+    validate_report_summary(&cmd2.output()?.stdout)?;
+
+    Ok(())
+}

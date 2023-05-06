@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 /// Re-export some common utilities for system tests
 pub use assert_cmd::prelude::*; // Add methods on commands
+pub use assert_cmd::Command; // Get the methods for the Commands struct
 pub use assert_fs::prelude::*;
 pub use predicate::str::is_match;
 pub use predicates::prelude::*; // Used for writing assertions
-pub use std::process::Command; // Run programs
 
 /// Path to test files : tests/test-data/
 /// Files
