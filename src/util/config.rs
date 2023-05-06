@@ -5,6 +5,7 @@
 
 // Unfortunately needed because of the arg_enum macro not handling doc comments properly
 #![allow(missing_docs)]
+#![allow(non_camel_case_types)]
 use std::path::PathBuf;
 use structopt::{clap::arg_enum, StructOpt};
 
@@ -258,5 +259,6 @@ arg_enum! {
 #[derive(Debug, Clone, PartialEq)]
     pub enum System {
         ITS,
+        ITS_Stave,
     }
 }

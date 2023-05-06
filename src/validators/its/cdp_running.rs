@@ -87,7 +87,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
             // If the config is set to check ALPIDE data, and a filter for a stave is set, then allocate space ALPIDE data.
             alpide_data_frame: if let Some(check) = config.check() {
                 if let Some(target) = check.target() {
-                    if target == config::System::ITS && config.filter_its_stave().is_some() {
+                    if target == config::System::ITS_Stave && config.filter_its_stave().is_some() {
                         Vec::with_capacity(200)
                     } else {
                         Vec::with_capacity(0)
