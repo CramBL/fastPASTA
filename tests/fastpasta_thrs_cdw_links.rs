@@ -65,7 +65,7 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
 fn check_all_its_stave_trigger_period() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
-    cmd.arg(FILE_THRS_CDW_LINKS)
+    cmd.pipe_stdin(FILE_THRS_CDW_LINKS)?
         .arg("check")
         .arg("all")
         .arg("its_stave")

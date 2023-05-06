@@ -369,3 +369,17 @@ fn view_its_readout_frame() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn check_sanity_stdin() -> Result<(), Box<dyn std::error::Error>> {
+    use assert_cmd::cmd::*;
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.pipe_stdin(FILE_10_RDH)?.arg("check").arg("sanity");
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    Ok(())
+}
