@@ -61,8 +61,7 @@ fn check_all_its_issue_26() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_TDH_NO_DATA).arg("check").arg("all").arg("its");
     cmd.assert().success();
 
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)error - ", 0));
-    assert!(match_on_output(&cmd.output()?.stderr, "(?i)warn - ", 0));
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
     assert!(match_on_output(&cmd.output()?.stdout, "(?i)errors.*0", 1));
@@ -93,6 +92,25 @@ fn check_view_its_readout_frames() -> Result<(), Box<dyn std::error::Error>> {
             ),
         ),
     );
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_TDH_NO_DATA)
+        .arg("check")
+        .arg("all")
+        .arg("its")
+        .arg("--filter-its-stave")
+        .arg("l0_0");
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+
+    match_on_out_no_case(&cmd.output()?.stdout, "errors.*0", 1)?;
 
     Ok(())
 }
