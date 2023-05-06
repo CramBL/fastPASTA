@@ -19,6 +19,7 @@ impl AlpideFrameDecoder {
     pub fn process(&mut self, alpide_bytes: &[u8]) {
         use crate::words::its::alpide_words::AlpideWord;
         self.warning_count = 0; // Reset warnings
+        log::trace!("Processing {:02X?} bytes", alpide_bytes);
         for (i, b) in alpide_bytes.iter().enumerate() {
             if self.skip_n_bytes > 0 {
                 self.skip_n_bytes -= 1;
@@ -48,23 +49,37 @@ impl AlpideFrameDecoder {
                         let chip_id = *b & 0b1111;
                         self.last_chip_id = chip_id;
                         self.next_is_bc = true;
+                        log::trace!("{i}: ChipHeader");
                     }
                     AlpideWord::ChipEmptyFrame => {
                         self.is_header_seen = false;
                         let chip_id = *b & 0b1111;
                         self.last_chip_id = chip_id;
                         self.next_is_bc = true;
+                        log::trace!("{i}: ChipEmptyFrame");
                     }
-                    AlpideWord::ChipTrailer => self.is_header_seen = false, // Reset the header seen flag
-                    AlpideWord::RegionHeader => (), // Do nothing at the moment
-                    AlpideWord::DataShort => self.skip_n_bytes = 1, // Skip the next byte
-                    AlpideWord::DataLong => self.skip_n_bytes = 2, // Skip the next 2 bytes
-                    AlpideWord::BusyOn => log::info!("BusyOn word seen!"),
-                    AlpideWord::BusyOff => log::info!("BusyOff word seen!"),
+                    AlpideWord::ChipTrailer => {
+                        self.is_header_seen = false;
+                        log::trace!("{i}: ChipTrailer");
+                    } // Reset the header seen flag
+                    AlpideWord::RegionHeader => {
+                        self.is_header_seen = true;
+                        log::trace!("{i}: RegionHeader");
+                    } // Do nothing at the moment
+                    AlpideWord::DataShort => {
+                        self.skip_n_bytes = 1;
+                        log::trace!("{i}: DataShort");
+                    } // Skip the next byte
+                    AlpideWord::DataLong => {
+                        self.skip_n_bytes = 2;
+                        log::trace!("{i}: DataLong");
+                    } // Skip the next 2 bytes
+                    AlpideWord::BusyOn => log::trace!("{i}: BusyOn word seen!"),
+                    AlpideWord::BusyOff => log::trace!("{i}: BusyOff word seen!"),
                 },
                 Err(_) => {
                     self.warning_count += 1;
-                    log::warn!("Unknown ALPIDE word: {:#02X} at index {i}", b)
+                    log::warn!("Unknown ALPIDE word: {b:#02X} at index {i}")
                 }
             }
         }
