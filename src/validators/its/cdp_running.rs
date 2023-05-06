@@ -531,9 +531,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
 
     fn check_tdh_trigger_interval(&self, _tdh_slice: &[u8]) {
         if let Some(specified_trig_period) = self.config.check_its_trigger_period() {
-            //
             if let Some(prev_int_tdh) = self.previous_internal_tdh.as_ref() {
-                //
                 let current_tdh = self
                     .current_tdh
                     .as_ref()
