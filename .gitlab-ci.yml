@@ -14,7 +14,7 @@ cache:
     paths:
       - $CI_PROJECT_DIR/target/
 
-# Set any required environment variables here
+# Set any required environment variables here (defaults)
 variables:
   RUST_BACKTRACE: "FULL"
 
@@ -144,6 +144,7 @@ rust-nightly-test:
 test-coverage:
   stage: test
   variables:
+    RUST_BACKTRACE: "FULL"
     RUSTFLAGS: "-C instrument-coverage"
     LLVM_PROFILE_FILE: "target/coverage/%p-%m.profraw"
   script:
@@ -187,6 +188,7 @@ leak-sanitizer:
   variables:
     LSAN_OPTIONS: "suppressions=lsan-suppressions.txt"
     RUSTFLAGS: "-Z sanitizer=leak"
+    RUST_BACKTRACE: "FULL"
   script:
     - rustup component add llvm-tools-preview
     # to fix buggy leak analyzer:
@@ -207,6 +209,7 @@ address-sanitizer:
   variables:
     ASAN_OPTIONS: "detect_odr_violation=0:detect_leaks=0"
     RUSTFLAGS: "-Z sanitizer=address"
+    RUST_BACKTRACE: "FULL"
   script:
     - rustup component add llvm-tools-preview
     - rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
