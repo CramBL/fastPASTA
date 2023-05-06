@@ -220,6 +220,7 @@ mod tests {
     fn test_tdh_validator() {
         let raw_data_tdh = [0x03, 0x1A, 0x00, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x00, 0xE8];
         let tdh = Tdh::load(&mut raw_data_tdh.as_slice()).unwrap();
+        println!("{tdh:#?}");
         assert!(TDH_VALIDATOR.sanity_check(&tdh).is_ok());
         let raw_data_tdh_bad_reserved =
             [0x03, 0x1A, 0x00, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x0F, 0xE8];
@@ -268,6 +269,7 @@ mod tests {
     fn tdt_error_msg() {
         let raw_data_tdt_bad_id = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01];
         let tdt = Tdt::load(&mut raw_data_tdt_bad_id.as_slice()).unwrap();
+        println!("{tdt:#?}");
         let err = TDT_VALIDATOR.sanity_check(&tdt).err();
         println!("{err:?}");
         assert!(err.unwrap().contains("ID is not 0xF0: 0x"));
@@ -306,6 +308,7 @@ mod tests {
         ];
 
         let ddw0 = Ddw0::load(&mut raw_data_ddw0.as_slice()).unwrap();
+        println!("{ddw0:#?}");
         assert!(DDW0_VALIDATOR.sanity_check(&ddw0).is_ok());
     }
 

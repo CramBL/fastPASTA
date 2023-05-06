@@ -717,7 +717,7 @@ impl Debug for Cdw {
         let calibration_user_fields = self.calibration_user_fields();
         write!(
             f,
-            "CDW: {id:x} {calibration_word_index:x} {calibration_user_fields:x}"
+            "{id:x} {calibration_word_index:x} {calibration_user_fields:x}"
         )
     }
 }
@@ -741,9 +741,6 @@ mod tests {
         const VALID_ID: u8 = 0xE0;
         const ACTIVE_LANES_14_ACTIVE: u32 = 0x3F_FF;
         let raw_data_ihw = [0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE0];
-        if raw_data_ihw[9] != VALID_ID {
-            panic!("Invalid ID");
-        }
         let ihw = Ihw::load(&mut raw_data_ihw.as_slice()).unwrap();
         assert_eq!(ihw.id(), VALID_ID);
         assert!(ihw.is_reserved_0());
@@ -764,9 +761,6 @@ mod tests {
         const CONTINUATION: u16 = 0; // 0x0
         const TRIGGER_BC: u16 = 0;
         const TRIGGER_ORBIT: u32 = 0x0B7DD575;
-        if raw_data_tdh[9] != VALID_ID {
-            panic!("Invalid ID");
-        }
         let tdh = Tdh::load(&mut raw_data_tdh.as_slice()).unwrap();
         println!("{tdh}");
         assert_eq!(tdh.id(), VALID_ID);
@@ -925,6 +919,7 @@ mod tests {
         let raw_data_cdw = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0xF8];
         assert!(raw_data_cdw[9] == VALID_ID);
         let cdw = Cdw::load(&mut raw_data_cdw.as_slice()).unwrap();
+        println!("{cdw:#?}");
         assert_eq!(cdw.id(), VALID_ID);
         assert!(cdw.is_reserved_0());
         assert_eq!(cdw.calibration_user_fields(), 0x050403020100);
