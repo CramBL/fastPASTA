@@ -13,10 +13,10 @@ pub trait Config: Util + Filter + InputOutput + Checks + Views + Send + Sync {
             return Err("Cannot filter and view at the same time".to_string());
         } else if let Some(check) = self.check() {
             if let Some(target) = check.target() {
-                if matches!(target, super::config::System::ITS_Stave) {
-                    if self.filter_its_stave().is_none() {
-                        return Err("Cannot check ITS stave without specifying a stave".to_string());
-                    }
+                if matches!(target, super::config::System::ITS_Stave)
+                    && self.filter_its_stave().is_none()
+                {
+                    return Err("Cannot check ITS stave without specifying a stave".to_string());
                 }
             }
         }
