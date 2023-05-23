@@ -78,7 +78,6 @@ impl<T: RDH> CdpChunk<T> {
     /// # use fastpasta::input::data_wrapper::CdpChunk;
     /// # use fastpasta::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
     /// # use fastpasta::words::rdh_cru::{RdhCRU, V7};
-    ///
     /// let mut chunk = CdpChunk::<RdhCRU<V7>>::with_capacity(10);
     /// assert!(chunk.len() == 0);
     /// ```

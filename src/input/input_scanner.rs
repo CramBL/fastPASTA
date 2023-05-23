@@ -1,14 +1,16 @@
-//! Contains the [InputScanner], [ScanCDP] trait, and [CdpWrapper] tuple. Responsible for reading and forwarding input data.
+//! Contains the [InputScanner] & [ScanCDP] trait, responsible for reading and forwarding input data.
 //!
-//! The [InputScanner] implements the [ScanCDP] trait, and uses the [CdpWrapper] tuple for convenience to wrap an RDH, its payload and its memory position.
+//! The [InputScanner] implements the [ScanCDP] trait.
 
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
-use crate::util::lib::{Config, FilterTarget};
+use crate::util::lib::{Filter, FilterTarget, InputOutput};
 use crate::words::its::is_match_feeid_layer_stave;
 use crate::words::lib::RDH;
 use crate::{stats::lib::StatType, words::rdh::Rdh0};
 use std::io::Read;
+
+type CdpTuple<T> = (T, Vec<u8>, u64);
 
 /// Trait for a scanner that reads CDPs from a file or stdin
 pub trait ScanCDP {
@@ -20,13 +22,13 @@ pub trait ScanCDP {
     /// The size of the payload is given as an argument.
     fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error>;
 
-    /// Loads the next CDP ([RDH] and payload) from the input and returns it as a [CdpWrapper]
-    fn load_cdp<T: RDH>(&mut self) -> Result<CdpWrapper<T>, std::io::Error> {
+    /// Loads the next CDP ([RDH] and payload) from the input and returns it as a ([RDH], [`Vec<u8>`], [u64]) tuple.
+    fn load_cdp<T: RDH>(&mut self) -> Result<CdpTuple<T>, std::io::Error> {
         let rdh: T = self.load_rdh_cru()?;
         let payload = self.load_payload_raw(rdh.payload_size() as usize)?;
         let mem_pos = self.current_mem_pos();
 
-        Ok(CdpWrapper(rdh, payload, mem_pos))
+        Ok((rdh, payload, mem_pos))
     }
 
     /// Loads the next [RDH] that matches the user specified filter target from the input and returns it
@@ -40,12 +42,9 @@ pub trait ScanCDP {
     fn current_mem_pos(&self) -> u64;
 }
 
-/// Convenience tuple to wrap an [RDH], its payload and memory position.
-pub struct CdpWrapper<T: RDH>(pub T, pub Vec<u8>, pub u64);
-
-/// Scans data received through a [BufferedReaderWrapper], tracks the position in memory and sends stats to the stats controller.
+/// Scans data read through a [BufferedReaderWrapper], tracks the position in memory and sends [StatType] through the [std::sync::mpsc::Sender<StatType>] channel.
 ///
-/// Uses the [Config] to filter for user specified links.
+/// Uses [Filter] to filter for user specified links.
 /// Implements [ScanCDP] for a [BufferedReaderWrapper].
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     reader: Box<R>,
@@ -58,9 +57,9 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
 }
 
 impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
-    /// Creates a new [InputScanner] from a [Config], [BufferedReaderWrapper], [MemPosTracker] and a producer channel for [StatType].
+    /// Creates a new [InputScanner] from a config that implemenents [Filter] & [InputOutput], [BufferedReaderWrapper], [MemPosTracker] and a producer channel for [StatType].
     pub fn new(
-        config: std::sync::Arc<impl Config>,
+        config: std::sync::Arc<impl Filter + InputOutput>,
         reader: Box<R>,
         tracker: MemPosTracker,
         stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
@@ -75,11 +74,11 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             initial_rdh0: None,
         }
     }
-    /// Creates a new [InputScanner] from a [Config], [BufferedReaderWrapper], [MemPosTracker], a producer channel for [StatType] and an initial [Rdh0].
+    /// Creates a new [InputScanner] from a config that implemenents [Filter] & [InputOutput], [BufferedReaderWrapper], [MemPosTracker], a producer channel for [StatType] and an initial [Rdh0].
     ///
     /// The [Rdh0] is used to determine the RDH version before instantiating the [InputScanner].
     pub fn new_from_rdh0(
-        config: std::sync::Arc<impl Config>,
+        config: std::sync::Arc<impl Filter + InputOutput>,
         reader: Box<R>,
         stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
         rdh0: Rdh0,
@@ -203,7 +202,7 @@ where
     }
     /// Reads the next CDP from file
     #[inline]
-    fn load_cdp<T: RDH>(&mut self) -> Result<CdpWrapper<T>, std::io::Error> {
+    fn load_cdp<T: RDH>(&mut self) -> Result<CdpTuple<T>, std::io::Error> {
         log::trace!("Attempting to load CDP - 1. loading RDH");
         let loading_at_memory_offset = self.tracker.memory_address_bytes;
         let rdh: T = self.load_rdh_cru()?;
@@ -224,7 +223,7 @@ where
             Vec::with_capacity(0)
         };
 
-        Ok(CdpWrapper(rdh, payload, loading_at_memory_offset))
+        Ok((rdh, payload, loading_at_memory_offset))
     }
 
     fn load_next_rdh_to_filter<T: RDH>(
@@ -311,7 +310,6 @@ fn sanity_check_offset_next<T: RDH>(
 #[cfg(test)]
 mod tests {
     use crate::util::config::Cfg;
-    use crate::util::lib::InputOutput;
     use crate::words::lib::ByteSlice;
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
     use pretty_assertions::assert_eq;
