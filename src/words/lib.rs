@@ -27,9 +27,7 @@ where
     Self: ByteSlice,
 {
     /// Deserializes the GBT word from a byte slice
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
-    where
-        Self: Sized;
+    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>;
     /// Deserializes the GBT word from an [RDH0][Rdh0] and a byte slice containing the rest of the [RDH]
     fn load_from_rdh0<T: std::io::Read>(reader: &mut T, rdh0: Rdh0)
         -> Result<Self, std::io::Error>;
@@ -77,6 +75,8 @@ pub trait ByteSlice: Sized {
         unsafe { any_as_u8_slice(self) }
     }
 }
+impl<T> ByteSlice for &T where T: ByteSlice {}
+impl<T> ByteSlice for &mut T where T: ByteSlice {}
 
 /// Auto implement [ByteSlice] for the following structs.
 impl<Version> ByteSlice for RdhCRU<Version> {}
