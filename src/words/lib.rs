@@ -9,11 +9,9 @@ use super::{
 /// used for:
 /// * pretty printing to stdout
 /// * deserialize the GBT words from the binary file
-pub trait RdhSubWord: std::fmt::Debug + PartialEq + Sized + std::fmt::Display {
+pub trait RdhSubWord: Sized + PartialEq + std::fmt::Debug + std::fmt::Display {
     /// Deserializes the GBT word from a byte slice
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
-    where
-        Self: Sized;
+    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>;
 }
 
 /// Trait that all [RDH] words must implement
@@ -24,8 +22,9 @@ pub trait RdhSubWord: std::fmt::Debug + PartialEq + Sized + std::fmt::Display {
 /// * access the subwords
 /// * access the payload
 /// * accessing a variety of fields
-pub trait RDH:
-    PartialEq + Sized + ByteSlice + std::fmt::Display + std::fmt::Debug + Sync + Send
+pub trait RDH: PartialEq + Sized + std::fmt::Display + std::fmt::Debug + Sync + Send
+where
+    Self: ByteSlice,
 {
     /// Deserializes the GBT word from a byte slice
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
@@ -71,13 +70,10 @@ pub trait RDH:
 
 /// Trait used to convert a struct to a byte slice.
 /// All structs that are used to represent a full GBT word (not sub RDH words) must implement this trait.
-pub trait ByteSlice {
+pub trait ByteSlice: Sized {
     /// Returns a borrowed byte slice of the struct.
     #[inline]
-    fn to_byte_slice(&self) -> &[u8]
-    where
-        Self: Sized,
-    {
+    fn to_byte_slice(&self) -> &[u8] {
         unsafe { any_as_u8_slice(self) }
     }
 }
@@ -94,7 +90,8 @@ impl ByteSlice for super::its::status_words::Ddw0 {}
 /// This function can only be used to serialize a struct if it has the #[repr(packed)] attribute
 /// If there's any padding on T, it is UNITIALIZED MEMORY and therefor UNDEFINED BEHAVIOR!
 #[inline]
-unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
+unsafe fn any_as_u8_slice<T: Sized>(packed: &T) -> &[u8] {
+    use core::{mem::size_of, slice::from_raw_parts};
     // Create read-only reference to T as a byte slice, safe as long as no padding bytes are read
-    ::core::slice::from_raw_parts((p as *const T) as *const u8, ::core::mem::size_of::<T>())
+    from_raw_parts((packed as *const T) as *const u8, size_of::<T>())
 }

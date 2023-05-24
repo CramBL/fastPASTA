@@ -159,8 +159,7 @@ where
         };
         log::debug!(
             "Loaded RDH at [{:#X}]: \n       {rdh}",
-            self.tracker.memory_address_bytes,
-            rdh = rdh
+            self.tracker.memory_address_bytes
         );
 
         // Collect stats
@@ -273,38 +272,27 @@ fn sanity_check_offset_next<T: RDH>(
     current_memory_address: u64,
     stats_ch: &std::sync::mpsc::Sender<StatType>,
 ) -> Result<(), std::io::Error> {
-    let current_rdh_offset_to_next = rdh.offset_to_next() as i64;
-    let next_rdh_memory_location = current_rdh_offset_to_next - 64;
-    if next_rdh_memory_location < 0 {
-        let error_string = format!(
-            "\n[{current_memory_address:#X}]:\n{rdh_header_text}     {rdh}",
-            rdh_header_text = crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(5)
-        );
-        let fatal_error_string = format!(
-            "RDH offset to next is {current_rdh_offset_to_next} (less than 64 bytes). {error_string}");
-        stats_ch
-            .send(StatType::Error(fatal_error_string.clone()))
-            .unwrap();
+    let next_rdh_memory_location = rdh.offset_to_next() as i64 - 64;
+    // If the offset is not between 0 and 10 KB it is invalid
+    if !(0..=10_000).contains(&next_rdh_memory_location) {
+        // Invalid offset: Negative or very high
+        let fatal_err = invalid_rdh_offset(rdh, current_memory_address, next_rdh_memory_location);
+        stats_ch.send(StatType::Error(fatal_err.clone())).unwrap();
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            fatal_error_string,
-        ));
-    } else if next_rdh_memory_location > 0x4FFF {
-        // VERY HIGH OFFSET
-        let error_string = format!(
-            "\n[{current_memory_address:#X}]:\n{rdh_header_text}     {rdh}",
-            rdh_header_text = crate::words::rdh_cru::RdhCRU::<crate::words::rdh_cru::V7>::rdh_header_text_with_indent_to_string(5)
-        );
-        let fatal_error_string = format!("RDH offset is larger than 20KB. {error_string}");
-        stats_ch
-            .send(StatType::Error(fatal_error_string.clone()))
-            .unwrap();
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            fatal_error_string,
+            fatal_err,
         ));
     }
     Ok(())
+}
+
+fn invalid_rdh_offset<T: RDH>(rdh: &T, current_memory_address: u64, offset_to_next: i64) -> String {
+    use crate::words::rdh_cru::{RdhCRU, V7};
+    let error_string = format!(
+        "\n[{current_memory_address:#X}]:\n{rdh_header_text}     {rdh}",
+        rdh_header_text = RdhCRU::<V7>::rdh_header_text_with_indent_to_string(5)
+    );
+    format!("RDH offset to next is {offset_to_next}. {error_string}")
 }
 
 #[cfg(test)]

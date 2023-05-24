@@ -6,7 +6,12 @@ use std::fmt::Display;
 use super::config::{Check, View};
 
 /// Super trait for all the traits that needed to be implemented by the config struct
-pub trait Config: Util + Filter + InputOutput + Checks + Views + Send + Sync {
+// Generic traits that are required by the config struct
+pub trait Config: Send + Sync + std::marker::Sized
+where
+    // Subtraits that group together related configuration options
+    Self: Util + Filter + InputOutput + Checks + Views,
+{
     /// Validate the arguments of the config
     fn validate_args(&self) -> Result<(), String> {
         if let Some(check) = self.check() {
