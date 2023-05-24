@@ -42,7 +42,7 @@ pub trait ScanCDP {
     fn current_mem_pos(&self) -> u64;
 }
 
-/// Scans data read through a [BufferedReaderWrapper], tracks the position in memory and sends [StatType] through the [std::sync::mpsc::Sender<StatType>] channel.
+/// Scans data read through a [BufferedReaderWrapper], tracks the position in memory and sends [StatType] through the [`std::sync::mpsc::Sender<StatType>`] channel.
 ///
 /// Uses [Filter] to filter for user specified links.
 /// Implements [ScanCDP] for a [BufferedReaderWrapper].
