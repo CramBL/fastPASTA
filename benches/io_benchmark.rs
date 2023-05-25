@@ -4,7 +4,7 @@ use std::{
 };
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use fastpasta::words::lib::{ByteSlice, RDH};
+use fastpasta::words::lib::{ByteSlice, SerdeRdh, RDH};
 use fastpasta::{words::rdh_cru::RdhCRU, words::rdh_cru::V7};
 pub struct RelativeOffset(i64);
 impl RelativeOffset {
@@ -77,7 +77,7 @@ fn parse_rdh_manual(rdh_cru_size_bytes: u64, filename: &str, iterations: usize) 
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
     for _i in 1..iterations {
-        let rdh_tmp: RdhCRU<V7> = RdhCRU::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
+        let rdh_tmp: RdhCRU<V7> = SerdeRdh::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
         let relative_offset =
             RelativeOffset::new((rdh_tmp.offset_to_next() as u64) - rdh_cru_size_bytes);
         buf_reader

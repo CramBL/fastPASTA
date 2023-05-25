@@ -1,5 +1,5 @@
 //! Contains the definition of the [RDH CRU][RdhCRU].
-use super::lib::{ByteSlice, RdhSubWord};
+use super::lib::{ByteSlice, RdhSubWord, SerdeRdh};
 use crate::words::rdh::{CruidDw, DataformatReserved, Rdh0, Rdh1, Rdh2, Rdh3};
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::fmt::{self, Display};
@@ -114,54 +114,6 @@ impl<Version> Debug for RdhCRU<Version> {
 
 impl<Version: std::marker::Send + std::marker::Sync> super::lib::RDH for RdhCRU<Version> {
     #[inline]
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
-    where
-        Self: Sized,
-    {
-        let rdh0 = match Rdh0::load(reader) {
-            Ok(rdh0) => rdh0,
-            Err(e) => return Err(e),
-        };
-        Self::load_from_rdh0(reader, rdh0)
-    }
-    #[inline]
-    fn load_from_rdh0<T: std::io::Read>(
-        reader: &mut T,
-        rdh0: Rdh0,
-    ) -> Result<Self, std::io::Error> {
-        let offset_new_packet = reader.read_u16::<LittleEndian>()?;
-        let memory_size = reader.read_u16::<LittleEndian>()?;
-        let link_id = reader.read_u8()?;
-        let packet_counter = reader.read_u8()?;
-        // cru_id is 12 bit and the following dw is 4 bit
-        let tmp_cruid_dw = CruidDw(reader.read_u16::<LittleEndian>()?);
-        let rdh1 = Rdh1::load(reader)?;
-        // Now the next 64 bits contain the reserved0 and data_format
-        // [7:0]data_format, [63:8]reserved0
-        let tmp_dataformat_reserverd0 = DataformatReserved(reader.read_u64::<LittleEndian>()?);
-        let rdh2 = Rdh2::load(reader)?;
-        let reserved1 = reader.read_u64::<LittleEndian>()?;
-        let rdh3 = Rdh3::load(reader)?;
-        let reserved2 = reader.read_u64::<LittleEndian>()?;
-        // Finally return the RdhCRU
-        Ok(RdhCRU {
-            rdh0,
-            offset_new_packet,
-            memory_size,
-            link_id,
-            packet_counter,
-            cruid_dw: tmp_cruid_dw,
-            rdh1,
-            dataformat_reserved0: tmp_dataformat_reserverd0,
-            rdh2,
-            reserved1,
-            rdh3,
-            reserved2,
-            version: PhantomData,
-        })
-    }
-
-    #[inline]
     fn link_id(&self) -> u8 {
         self.link_id
     }
@@ -224,6 +176,56 @@ impl<Version: std::marker::Send + std::marker::Sync> super::lib::RDH for RdhCRU<
     #[inline]
     fn packet_counter(&self) -> u8 {
         self.packet_counter
+    }
+}
+
+impl<Version: std::marker::Send + std::marker::Sync> SerdeRdh for RdhCRU<Version> {
+    #[inline]
+    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
+    where
+        Self: Sized,
+    {
+        let rdh0 = match Rdh0::load(reader) {
+            Ok(rdh0) => rdh0,
+            Err(e) => return Err(e),
+        };
+        Self::load_from_rdh0(reader, rdh0)
+    }
+    #[inline]
+    fn load_from_rdh0<T: std::io::Read>(
+        reader: &mut T,
+        rdh0: Rdh0,
+    ) -> Result<Self, std::io::Error> {
+        let offset_new_packet = reader.read_u16::<LittleEndian>()?;
+        let memory_size = reader.read_u16::<LittleEndian>()?;
+        let link_id = reader.read_u8()?;
+        let packet_counter = reader.read_u8()?;
+        // cru_id is 12 bit and the following dw is 4 bit
+        let tmp_cruid_dw = CruidDw(reader.read_u16::<LittleEndian>()?);
+        let rdh1 = Rdh1::load(reader)?;
+        // Now the next 64 bits contain the reserved0 and data_format
+        // [7:0]data_format, [63:8]reserved0
+        let tmp_dataformat_reserverd0 = DataformatReserved(reader.read_u64::<LittleEndian>()?);
+        let rdh2 = Rdh2::load(reader)?;
+        let reserved1 = reader.read_u64::<LittleEndian>()?;
+        let rdh3 = Rdh3::load(reader)?;
+        let reserved2 = reader.read_u64::<LittleEndian>()?;
+        // Finally return the RdhCRU
+        Ok(RdhCRU {
+            rdh0,
+            offset_new_packet,
+            memory_size,
+            link_id,
+            packet_counter,
+            cruid_dw: tmp_cruid_dw,
+            rdh1,
+            dataformat_reserved0: tmp_dataformat_reserverd0,
+            rdh2,
+            reserved1,
+            rdh3,
+            reserved2,
+            version: PhantomData,
+        })
     }
 }
 

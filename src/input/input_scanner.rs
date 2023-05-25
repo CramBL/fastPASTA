@@ -6,7 +6,7 @@ use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
 use crate::util::lib::{Filter, FilterTarget, InputOutput};
 use crate::words::its::is_match_feeid_layer_stave;
-use crate::words::lib::RDH;
+use crate::words::lib::{SerdeRdh, RDH};
 use crate::{stats::lib::StatType, words::rdh::Rdh0};
 use std::io::Read;
 
@@ -150,12 +150,13 @@ where
         //  from the input. If so, we use it to create the first RDH.
         let rdh: T = match self.initial_rdh0.is_some() {
             true => {
-                let rdh = RDH::load_from_rdh0(&mut self.reader, self.initial_rdh0.take().unwrap())?;
+                let rdh =
+                    SerdeRdh::load_from_rdh0(&mut self.reader, self.initial_rdh0.take().unwrap())?;
                 // Report the trigger type as the RunTriggerType describing the type of run the data is from
                 self.report_run_trigger_type(&rdh);
                 rdh
             }
-            false => RDH::load(&mut self.reader)?,
+            false => SerdeRdh::load(&mut self.reader)?,
         };
         log::debug!(
             "Loaded RDH at [{:#X}]: \n       {rdh}",
@@ -233,7 +234,7 @@ where
         self.reader
             .seek_relative(self.tracker.next(offset_to_next as u64))?;
         loop {
-            let rdh: T = RDH::load(&mut self.reader)?;
+            let rdh: T = SerdeRdh::load(&mut self.reader)?;
             log::debug!("Loaded RDH: \n      {rdh}");
             log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
             sanity_check_offset_next(

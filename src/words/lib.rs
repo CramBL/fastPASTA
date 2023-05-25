@@ -24,13 +24,8 @@ pub trait RdhSubWord: Sized + PartialEq + std::fmt::Debug + std::fmt::Display {
 /// * accessing a variety of fields
 pub trait RDH: PartialEq + Sized + std::fmt::Display + std::fmt::Debug + Sync + Send
 where
-    Self: ByteSlice,
+    Self: SerdeRdh,
 {
-    /// Deserializes the GBT word from a byte slice
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>;
-    /// Deserializes the GBT word from an [RDH0][Rdh0] and a byte slice containing the rest of the [RDH]
-    fn load_from_rdh0<T: std::io::Read>(reader: &mut T, rdh0: Rdh0)
-        -> Result<Self, std::io::Error>;
     /// Returns the version of the [RDH].
     fn version(&self) -> u8;
     /// Returns the subword [RDH0][Rdh0] of the [RDH].
@@ -64,6 +59,18 @@ where
     fn dw(&self) -> u8;
     /// Returns the value of the packet counter.
     fn packet_counter(&self) -> u8;
+}
+
+/// Trait to Serialize/Deserialise (serde) [RDH] words.
+pub trait SerdeRdh: Send + Sync + Sized
+where
+    Self: ByteSlice,
+{
+    /// Deserializes the GBT word from a byte slice
+    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>;
+    /// Deserializes the GBT word from an [RDH0][Rdh0] and a byte slice containing the rest of the [RDH]
+    fn load_from_rdh0<T: std::io::Read>(reader: &mut T, rdh0: Rdh0)
+        -> Result<Self, std::io::Error>;
 }
 
 /// Trait used to convert a struct to a byte slice.
