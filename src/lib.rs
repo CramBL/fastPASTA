@@ -71,7 +71,7 @@ pub mod write;
 pub fn init_processing(
     config: std::sync::Arc<impl Config + 'static>,
     mut reader: Box<dyn BufferedReaderWrapper>,
-    stat_send_channel: std::sync::mpsc::Sender<StatType>,
+    stat_send_channel: flume::Sender<StatType>,
     thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::process::ExitCode {
     // Determine RDH version
@@ -119,7 +119,7 @@ pub fn init_processing(
 pub fn process<T: words::lib::RDH + 'static>(
     config: std::sync::Arc<impl Config + 'static>,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
-    send_stats_ch: std::sync::mpsc::Sender<StatType>,
+    send_stats_ch: flume::Sender<StatType>,
     thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
     // 1. Launch reader thread to read data from file or stdin
@@ -183,7 +183,7 @@ pub fn process<T: words::lib::RDH + 'static>(
 fn spawn_analysis<T: words::lib::RDH + 'static>(
     config: std::sync::Arc<impl Config + 'static>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
-    stats_sender_channel: std::sync::mpsc::Sender<StatType>,
+    stats_sender_channel: flume::Sender<StatType>,
     data_channel: Receiver<input::data_wrapper::CdpChunk<T>>,
 ) -> std::thread::JoinHandle<()> {
     let analysis_thread = std::thread::Builder::new().name("Analysis".to_string());
@@ -260,7 +260,7 @@ fn exit_success() -> std::process::ExitCode {
 }
 
 fn exit_fatal(
-    stat_send_channel: std::sync::mpsc::Sender<StatType>,
+    stat_send_channel: flume::Sender<StatType>,
     error_string: String,
     exit_code: u8,
 ) -> std::process::ExitCode {
@@ -289,10 +289,8 @@ mod tests {
         // Setup a reader
         let reader = init_reader(&mock_config).unwrap();
 
-        let (sender, receiver): (
-            std::sync::mpsc::Sender<StatType>,
-            std::sync::mpsc::Receiver<StatType>,
-        ) = std::sync::mpsc::channel();
+        let (sender, receiver): (flume::Sender<StatType>, flume::Receiver<StatType>) =
+            flume::unbounded();
 
         let stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
@@ -332,10 +330,8 @@ mod tests {
         // Setup Mock Config, no checks or views to be done
         let mock_config = MockConfig::default();
         let mock_config = Arc::new(mock_config);
-        let (stat_sender, stat_receiver): (
-            std::sync::mpsc::Sender<StatType>,
-            std::sync::mpsc::Receiver<StatType>,
-        ) = std::sync::mpsc::channel();
+        let (stat_sender, stat_receiver): (flume::Sender<StatType>, flume::Receiver<StatType>) =
+            flume::unbounded();
         let (data_sender, data_receiver): (
             crossbeam_channel::Sender<CdpChunk<RdhCRU<V7>>>,
             crossbeam_channel::Receiver<CdpChunk<RdhCRU<V7>>>,

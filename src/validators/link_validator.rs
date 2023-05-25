@@ -33,7 +33,7 @@ pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt> {
     config: std::sync::Arc<C>,
     running_checks: bool,
     /// Producer channel to send stats through.
-    pub send_stats_ch: std::sync::mpsc::Sender<StatType>,
+    pub send_stats_ch: flume::Sender<StatType>,
     /// Consumer channel to receive data from.
     pub data_rcv_channel: crossbeam_channel::Receiver<CdpTuple<T>>,
     its_cdp_validator: its::cdp_running::CdpRunningValidator<T, C>,
@@ -54,7 +54,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> LinkValidator<T, C> {
     /// Creates a new [LinkValidator] and the [StatType] sender channel to it, from a config that implements [ChecksOpt] + [FilterOpt].
     pub fn new(
         global_config: std::sync::Arc<C>,
-        send_stats_ch: std::sync::mpsc::Sender<StatType>,
+        send_stats_ch: flume::Sender<StatType>,
     ) -> (Self, crossbeam_channel::Sender<CdpTuple<T>>) {
         let rdh_sanity_validator = if let Some(system) = global_config.check().unwrap().target() {
             match system {
@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_run_link_validator() {
-        let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
+        let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
         let mut mock_config = MockConfig::default();
         mock_config.check = Some(Check::Sanity(Target { system: None }));
 
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn test_valid_payloads_flavor_0() {
-        let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
+        let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
         let mut mock_config = MockConfig::default();
         mock_config.check = Some(Check::Sanity(Target {
             system: Some(System::ITS),
@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn test_valid_payloads_flavor_2() {
-        let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
+        let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
         let mut mock_config = MockConfig::default();
         mock_config.check = Some(Check::Sanity(Target {
             system: Some(System::ITS),
@@ -283,7 +283,7 @@ mod tests {
 
     #[test]
     fn test_invalid_payloads_flavor_2_bad_tdh_one_error() {
-        let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
+        let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
         let mut mock_config = MockConfig::default();
         mock_config.check = Some(Check::Sanity(Target {
             system: Some(System::ITS),
@@ -334,7 +334,7 @@ mod tests {
     #[should_panic]
     fn test_init_link_validator_no_checks_enabled() {
         // Should panic because no checks are enabled in the config, doesn't make sense to run the link validator
-        let (send_stats_ch, _) = std::sync::mpsc::channel();
+        let (send_stats_ch, _) = flume::unbounded();
         let mut mock_config = MockConfig::default();
         mock_config.check = None; // No checks enabled in the config
 

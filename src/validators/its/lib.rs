@@ -12,7 +12,7 @@ use crate::{
 /// * `cdp_validator` - The CDP validator to use, which is an ITS specific [CdpRunningValidator]
 pub fn do_payload_checks<T: RDH, C: ChecksOpt + FilterOpt>(
     cdp_chunk_slice: (&T, &[u8], u64),
-    send_stats_channel: &std::sync::mpsc::Sender<StatType>,
+    send_stats_channel: &flume::Sender<StatType>,
     cdp_validator: &mut CdpRunningValidator<T, C>,
 ) {
     let (rdh, payload, rdh_mem_pos) = cdp_chunk_slice;
@@ -85,7 +85,7 @@ mod tests {
 
     #[test]
     fn test_do_payload_checks_bad_payload() {
-        let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
+        let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
 
         let mut mock_config = MockConfig::default();
         mock_config.check = Some(Check::All(Target {

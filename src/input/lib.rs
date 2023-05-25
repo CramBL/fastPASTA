@@ -53,7 +53,7 @@ pub fn init_reader<C: InputOutputOpt>(
 pub fn spawn_reader<T: RDH + 'static>(
     stop_flag: std::sync::Arc<AtomicBool>,
     input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
-    stats_sender_channel: std::sync::mpsc::Sender<StatType>,
+    stats_sender_channel: flume::Sender<StatType>,
 ) -> (std::thread::JoinHandle<()>, Receiver<CdpChunk<T>>) {
     let reader_thread = std::thread::Builder::new().name("Reader".to_string());
     let (send_channel, rcv_channel) = crossbeam_channel::bounded(CHANNEL_CDP_CHUNK_CAPACITY);

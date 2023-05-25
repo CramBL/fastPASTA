@@ -10,16 +10,13 @@ pub struct ValidatorDispatcher<T: RDH, C: util::lib::Config> {
     links: Vec<u8>,
     link_process_channels: Vec<crossbeam_channel::Sender<CdpTuple<T>>>,
     validator_thread_handles: Vec<std::thread::JoinHandle<()>>,
-    stats_sender: std::sync::mpsc::Sender<StatType>,
+    stats_sender: flume::Sender<StatType>,
     global_config: std::sync::Arc<C>,
 }
 
 impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C> {
     /// Create a new ValidatorDispatcher from a Config and a stats sender channel
-    pub fn new(
-        global_config: std::sync::Arc<C>,
-        stats_sender: std::sync::mpsc::Sender<StatType>,
-    ) -> Self {
+    pub fn new(global_config: std::sync::Arc<C>, stats_sender: flume::Sender<StatType>) -> Self {
         Self {
             links: Vec::new(),
             link_process_channels: Vec::new(),
@@ -191,7 +188,7 @@ mod tests {
         ]);
 
         let mut disp: ValidatorDispatcher<RdhCRU<V7>, util::config::Cfg> =
-            ValidatorDispatcher::new(std::sync::Arc::new(config), std::sync::mpsc::channel().0);
+            ValidatorDispatcher::new(std::sync::Arc::new(config), flume::unbounded().0);
 
         let cdp_tuple: CdpTuple<RdhCRU<V7>> = (CORRECT_RDH_CRU_V7, vec![0; 100], 0);
 
