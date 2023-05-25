@@ -8,16 +8,18 @@
 #![allow(non_camel_case_types)]
 use self::{
     filter::FilterOpt,
+    inputoutput::{DataOutputMode, InputOutputOpt},
     util::UtilOpt,
     view::{View, ViewOpt},
 };
-use super::lib::{ChecksOpt, Config, DataOutputMode, InputOutputOpt};
+use super::lib::{ChecksOpt, Config};
 
 use crate::words::its::layer_stave_string_to_feeid;
 use std::path::PathBuf;
 use structopt::{clap::arg_enum, StructOpt};
 
 pub mod filter;
+pub mod inputoutput;
 pub mod util;
 pub mod view;
 

@@ -1,10 +1,12 @@
 //! Contains the [Config] super trait, and all the sub traits required by it
 //!
 //! Implementing the [Config] super trait is required by configs passed to structs in other modules as part of instantiation.
-use std::{fmt::Display, sync::Arc};
+use std::sync::Arc;
 
+/// Re-export all the sub traits and enums
 pub use super::config::{
     filter::{FilterOpt, FilterTarget},
+    inputoutput::{DataOutputMode, InputOutputOpt},
     util::UtilOpt,
     view::{View, ViewOpt},
     Check,
@@ -60,71 +62,6 @@ where
     }
 }
 
-/// Trait for all input/output options
-pub trait InputOutputOpt {
-    /// Input file to read from.
-    fn input_file(&self) -> &Option<std::path::PathBuf>;
-    /// Determine from args if payload should be skipped at input
-    fn skip_payload(&self) -> bool;
-    /// Output file to write to.
-    fn output(&self) -> &Option<std::path::PathBuf>;
-    /// Output mode of the data writing (file, stdout, none)
-    fn output_mode(&self) -> DataOutputMode;
-}
-
-impl<T> InputOutputOpt for &T
-where
-    T: InputOutputOpt,
-{
-    fn input_file(&self) -> &Option<std::path::PathBuf> {
-        (*self).input_file()
-    }
-    fn skip_payload(&self) -> bool {
-        (*self).skip_payload()
-    }
-    fn output(&self) -> &Option<std::path::PathBuf> {
-        (*self).output()
-    }
-    fn output_mode(&self) -> DataOutputMode {
-        (*self).output_mode()
-    }
-}
-
-impl<T> InputOutputOpt for Box<T>
-where
-    T: InputOutputOpt,
-{
-    fn input_file(&self) -> &Option<std::path::PathBuf> {
-        (**self).input_file()
-    }
-    fn skip_payload(&self) -> bool {
-        (**self).skip_payload()
-    }
-    fn output(&self) -> &Option<std::path::PathBuf> {
-        (**self).output()
-    }
-    fn output_mode(&self) -> DataOutputMode {
-        (**self).output_mode()
-    }
-}
-impl<T> InputOutputOpt for Arc<T>
-where
-    T: InputOutputOpt,
-{
-    fn input_file(&self) -> &Option<std::path::PathBuf> {
-        (**self).input_file()
-    }
-    fn skip_payload(&self) -> bool {
-        (**self).skip_payload()
-    }
-    fn output(&self) -> &Option<std::path::PathBuf> {
-        (**self).output()
-    }
-    fn output_mode(&self) -> DataOutputMode {
-        (**self).output_mode()
-    }
-}
-
 /// Trait for all check options.
 pub trait ChecksOpt {
     /// Type of Check to perform.
@@ -169,31 +106,13 @@ where
     }
 }
 
-/// Enum for all possible data output modes.
-#[derive(PartialEq, Debug, Clone, Copy)]
-pub enum DataOutputMode {
-    /// Write to a file.
-    File,
-    /// Write to stdout.
-    Stdout,
-    /// Do not write data out.
-    None,
-}
-
-impl Display for DataOutputMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DataOutputMode::File => write!(f, "File"),
-            DataOutputMode::Stdout => write!(f, "Stdout"),
-            DataOutputMode::None => write!(f, "None"),
-        }
-    }
-}
-
 #[allow(missing_docs)]
 pub mod test_util {
     use super::*;
-    use crate::util::config::filter::FilterOpt;
+    use crate::util::config::{
+        filter::FilterOpt,
+        inputoutput::{DataOutputMode, InputOutputOpt},
+    };
     #[derive(Debug, Clone)]
 
     /// Complete configurable Mock config for testing
