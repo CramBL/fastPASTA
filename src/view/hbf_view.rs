@@ -12,7 +12,7 @@ use std::io::Write;
 
 pub(crate) fn hbf_view<T: RDH>(
     cdp_chunk: input::data_wrapper::CdpChunk<T>,
-    send_stats_ch: &std::sync::mpsc::Sender<StatType>,
+    send_stats_ch: &flume::Sender<StatType>,
     its_payload_fsm_cont: &mut ItsPayloadFsmContinuous,
 ) -> Result<(), std::io::Error> {
     let mut stdio_lock = std::io::stdout().lock();

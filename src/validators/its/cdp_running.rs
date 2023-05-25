@@ -51,7 +51,7 @@ pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt> {
     current_ddw0: Option<Ddw0>,
     previous_cdw: Option<Cdw>,
     gbt_word_counter: u16,
-    pub(crate) stats_send_ch: std::sync::mpsc::Sender<StatType>,
+    pub(crate) stats_send_ch: flume::Sender<StatType>,
     payload_mem_pos: u64,
     gbt_word_padding_size_bytes: u8,
     is_new_data: bool, // Flag used to indicate start of new CDP payload where a CDW is valid
@@ -66,10 +66,7 @@ pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt> {
 
 impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
     /// Creates a new [CdpRunningValidator] from a config that implements [ChecksOpt] + [FilterOpt] and a [StatType] producer channel.
-    pub fn new(
-        config: std::sync::Arc<C>,
-        stats_send_ch: std::sync::mpsc::Sender<StatType>,
-    ) -> Self {
+    pub fn new(config: std::sync::Arc<C>, stats_send_ch: flume::Sender<StatType>) -> Self {
         Self {
             config: config.clone(),
             running_checks: matches!(config.check(), Some(Check::All(_))),
@@ -659,7 +656,7 @@ mod tests {
             0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, VALID_ID,
         ];
 
-        let (send, stats_recv_ch) = std::sync::mpsc::channel();
+        let (send, stats_recv_ch) = flume::unbounded();
         let mock_config = MockConfig::default();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
             CdpRunningValidator::new(Arc::new(mock_config), send);
@@ -679,7 +676,7 @@ mod tests {
             0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, INVALID_ID,
         ];
 
-        let (send, stats_recv_ch) = std::sync::mpsc::channel();
+        let (send, stats_recv_ch) = flume::unbounded();
         let mock_config = MockConfig::default();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
             CdpRunningValidator::new(Arc::new(mock_config), send);
@@ -706,7 +703,7 @@ mod tests {
         // Boring but very typical TDT, everything is 0 except for packet_done
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
 
-        let (send, stats_recv_ch) = std::sync::mpsc::channel();
+        let (send, stats_recv_ch) = flume::unbounded();
         let mock_config = MockConfig::default();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
             CdpRunningValidator::new(Arc::new(mock_config), send);
@@ -734,7 +731,7 @@ mod tests {
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
         let raw_data_tdt_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF2];
 
-        let (send, stats_recv_ch) = std::sync::mpsc::channel();
+        let (send, stats_recv_ch) = flume::unbounded();
         let mock_config = MockConfig::default();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
             CdpRunningValidator::new(Arc::new(mock_config), send);
@@ -774,7 +771,7 @@ mod tests {
         let raw_data_tdt_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF2];
         let raw_data_tdt_next_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF3];
 
-        let (send, stats_recv_ch) = std::sync::mpsc::channel();
+        let (send, stats_recv_ch) = flume::unbounded();
         let mut mock_config = MockConfig::default();
         mock_config.check = Some(Check::All(Target { system: None }));
 

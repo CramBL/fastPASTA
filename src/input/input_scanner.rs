@@ -43,14 +43,14 @@ pub trait ScanCDP {
     fn current_mem_pos(&self) -> u64;
 }
 
-/// Scans data read through a [BufferedReaderWrapper], tracks the position in memory and sends [StatType] through the [`std::sync::mpsc::Sender<StatType>`] channel.
+/// Scans data read through a [BufferedReaderWrapper], tracks the position in memory and sends [StatType] through the [`flume::Sender<StatType>`] channel.
 ///
 /// Uses [FilterOpt] to filter for user specified links.
 /// Implements [ScanCDP] for a [BufferedReaderWrapper].
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     reader: Box<R>,
     tracker: MemPosTracker,
-    stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
+    stats_controller_sender_ch: flume::Sender<StatType>,
     filter_target: Option<FilterTarget>,
     skip_payload: bool,
     unique_links_observed: Vec<u8>,
@@ -63,7 +63,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         config: std::sync::Arc<impl FilterOpt + InputOutputOpt>,
         reader: Box<R>,
         tracker: MemPosTracker,
-        stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
+        stats_controller_sender_ch: flume::Sender<StatType>,
     ) -> Self {
         InputScanner {
             reader,
@@ -81,7 +81,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     pub fn new_from_rdh0(
         config: std::sync::Arc<impl FilterOpt + InputOutputOpt>,
         reader: Box<R>,
-        stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
+        stats_controller_sender_ch: flume::Sender<StatType>,
         rdh0: Rdh0,
     ) -> Self {
         InputScanner {
@@ -272,7 +272,7 @@ fn is_rdh_filter_target(rdh: &impl RDH, target: FilterTarget) -> bool {
 fn sanity_check_offset_next<T: RDH>(
     rdh: &T,
     current_memory_address: u64,
-    stats_ch: &std::sync::mpsc::Sender<StatType>,
+    stats_ch: &flume::Sender<StatType>,
 ) -> Result<(), std::io::Error> {
     let next_rdh_memory_location = rdh.offset_to_next() as i64 - 64;
     // If the offset is not between 0 and 10 KB it is invalid
@@ -310,7 +310,7 @@ mod tests {
         path: &str,
     ) -> (
         InputScanner<BufReader<std::fs::File>>,
-        std::sync::mpsc::Receiver<StatType>,
+        flume::Receiver<StatType>,
     ) {
         use super::*;
         let config: Cfg = <Cfg as structopt::StructOpt>::from_iter(&[
@@ -322,9 +322,9 @@ mod tests {
             "sanity",
         ]);
         let (send_stats_controller_channel, recv_stats_controller_channel): (
-            std::sync::mpsc::Sender<StatType>,
-            std::sync::mpsc::Receiver<StatType>,
-        ) = std::sync::mpsc::channel();
+            flume::Sender<StatType>,
+            flume::Receiver<StatType>,
+        ) = flume::unbounded();
 
         let cfg = std::sync::Arc::new(config);
         let reader = std::fs::OpenOptions::new()

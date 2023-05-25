@@ -8,7 +8,7 @@ pub fn init_stats_controller<C: Config + 'static>(
     config: std::sync::Arc<C>,
 ) -> (
     std::thread::JoinHandle<()>,
-    std::sync::mpsc::Sender<StatType>,
+    flume::Sender<StatType>,
     std::sync::Arc<AtomicBool>,
 ) {
     let mut stats = StatsController::new(config);
@@ -173,19 +173,19 @@ impl Display for StatType {
 
 /// Takes an [RDH](words::lib::RDH) and determines the [SystemId] and collects system specific stats.
 /// Uses the received [`Option<SystemId>`] to check if the system ID has already been determined,
-/// otherwise it will determine the [SystemId] and send it to the [StatsController](StatsController) via the channel [`std::sync::mpsc::Sender<StatType>`].
+/// otherwise it will determine the [SystemId] and send it to the [StatsController](StatsController) via the channel [`flume::Sender<StatType>`].
 ///
 /// # Arguments
 /// * `rdh` - The [RDH](words::lib::RDH) to collect stats from.
 /// * `system_id` - The [`Option<SystemId>`] to check if the system ID has already been determined.
-/// * `stats_sender_channel` - The [`std::sync::mpsc::Sender<StatType>`] to send the stats to the [StatsController](StatsController).
+/// * `stats_sender_channel` - The [`flume::Sender<StatType>`] to send the stats to the [StatsController](StatsController).
 /// # Returns
 /// * `Ok(())` - If the stats were collected successfully.
 /// * `Err(())` - If its the first time the [SystemId] is determined and the [SystemId] is not recognized.
 pub fn collect_system_specific_stats<T: words::lib::RDH + 'static>(
     rdh: &T,
     system_id: &mut Option<SystemId>,
-    stats_sender_channel: &std::sync::mpsc::Sender<StatType>,
+    stats_sender_channel: &flume::Sender<StatType>,
 ) -> Result<(), String> {
     if let Some(system_id) = system_id {
         // Determine the system ID and collect system specific stats
@@ -218,10 +218,7 @@ pub fn collect_system_specific_stats<T: words::lib::RDH + 'static>(
 }
 
 /// Collects stats specific to ITS from the given [RDH][words::lib::RDH] and sends them to the [StatsController].
-fn collect_its_stats<T: words::lib::RDH>(
-    rdh: &T,
-    stats_sender_channel: &std::sync::mpsc::Sender<StatType>,
-) {
+fn collect_its_stats<T: words::lib::RDH>(rdh: &T, stats_sender_channel: &flume::Sender<StatType>) {
     let layer = words::its::layer_from_feeid(rdh.fee_id());
     let stave = words::its::stave_number_from_feeid(rdh.fee_id());
     stats_sender_channel
@@ -240,7 +237,7 @@ mod tests {
 
     #[test]
     fn test_collect_its_stats() {
-        let (stats_sender, stats_receiver) = std::sync::mpsc::channel::<StatType>();
+        let (stats_sender, stats_receiver) = flume::unbounded::<StatType>();
         let rdh = crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
 
         let expect_layer = crate::words::its::layer_from_feeid(rdh.fee_id());
@@ -261,7 +258,7 @@ mod tests {
 
     #[test]
     fn test_collect_system_specific_stats() {
-        let (stats_sender, stats_receiver) = std::sync::mpsc::channel::<StatType>();
+        let (stats_sender, stats_receiver) = flume::unbounded::<StatType>();
         let mut system_id = None;
 
         let rdh = crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;

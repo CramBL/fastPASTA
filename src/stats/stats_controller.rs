@@ -31,12 +31,12 @@ pub struct StatsController<C: Config> {
     reported_errors: Vec<String>,
     max_tolerate_errors: u32,
     // The channel where stats are received from other threads.
-    recv_stats_channel: std::sync::mpsc::Receiver<StatType>,
+    recv_stats_channel: flume::Receiver<StatType>,
     // The channel stats are sent through, stored so that a clone of the channel can be returned easily
     // Has to be an option so that it can be set to None when the event loop starts.
     // Once run is called no producers that don't already have a channel to send stats through, will be able to get one.
     // This is because the event loop breaks when all sender channels are dropped, and if the StatsController keeps a reference to the channel, it will cause a deadlock.
-    send_stats_channel: Option<std::sync::mpsc::Sender<StatType>>,
+    send_stats_channel: Option<flume::Sender<StatType>>,
     end_processing_flag: Arc<AtomicBool>,
     rdh_version: u8,
     data_formats_observed: Vec<u8>,
@@ -48,12 +48,12 @@ pub struct StatsController<C: Config> {
     system_id_observed: Option<SystemId>,
 }
 impl<C: Config> StatsController<C> {
-    /// Creates a new StatsController from a [Config], a [std::sync::mpsc::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
+    /// Creates a new StatsController from a [Config], a [flume::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
     pub fn new(global_config: std::sync::Arc<C>) -> Self {
         let (send_stats_channel, recv_stats_channel): (
-            std::sync::mpsc::Sender<StatType>,
-            std::sync::mpsc::Receiver<StatType>,
-        ) = std::sync::mpsc::channel();
+            flume::Sender<StatType>,
+            flume::Receiver<StatType>,
+        ) = flume::unbounded();
         StatsController {
             rdhs_seen: 0,
             rdhs_filtered: 0,
@@ -80,7 +80,7 @@ impl<C: Config> StatsController<C> {
     }
 
     /// Returns a clone of the channel that is used to send stats to the StatsController.
-    pub fn send_channel(&self) -> std::sync::mpsc::Sender<StatType> {
+    pub fn send_channel(&self) -> flume::Sender<StatType> {
         if self.send_stats_channel.is_none() {
             log::error!("StatsController send channel is none, most likely it is already running and does not accept new producers");
             panic!("StatsController send channel is none, most likely it is already running and does not accept new producers");

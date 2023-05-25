@@ -9,7 +9,7 @@ use crate::{
 pub fn generate_view<T: RDH>(
     view: crate::util::config::view::View,
     cdp_chunk: input::data_wrapper::CdpChunk<T>,
-    send_stats_ch: &std::sync::mpsc::Sender<StatType>,
+    send_stats_ch: &flume::Sender<StatType>,
     its_payload_fsm_cont: &mut ItsPayloadFsmContinuous,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use util::config::view::View;
