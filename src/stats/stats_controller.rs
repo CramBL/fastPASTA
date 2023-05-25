@@ -5,8 +5,7 @@
 use super::lib::{StatType, SystemId};
 use crate::{
     stats::report::{Report, StatSummary},
-    util::config::filter::FilterTarget,
-    util::lib::{Config, DataOutputMode},
+    util::lib::{Config, DataOutputMode, FilterTarget},
     words,
 };
 use std::sync::{

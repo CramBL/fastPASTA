@@ -6,15 +6,19 @@
 // Unfortunately needed because of the arg_enum macro not handling doc comments properly
 #![allow(missing_docs)]
 #![allow(non_camel_case_types)]
-use self::filter::FilterOpt;
-use self::view::{View, ViewOpt};
-use super::lib::{ChecksOpt, Config, DataOutputMode, InputOutputOpt, UtilOpt};
+use self::{
+    filter::FilterOpt,
+    util::UtilOpt,
+    view::{View, ViewOpt},
+};
+use super::lib::{ChecksOpt, Config, DataOutputMode, InputOutputOpt};
 
 use crate::words::its::layer_stave_string_to_feeid;
 use std::path::PathBuf;
 use structopt::{clap::arg_enum, StructOpt};
 
 pub mod filter;
+pub mod util;
 pub mod view;
 
 /// The [Cfg] struct uses the [StructOpt] procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.

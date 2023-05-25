@@ -3,8 +3,9 @@
 //! Implementing the [Config] super trait is required by configs passed to structs in other modules as part of instantiation.
 use std::{fmt::Display, sync::Arc};
 
-use super::config::{
-    filter::FilterOpt,
+pub use super::config::{
+    filter::{FilterOpt, FilterTarget},
+    util::UtilOpt,
     view::{View, ViewOpt},
     Check,
 };
@@ -56,64 +57,6 @@ where
 {
     fn validate_args(&self) -> Result<(), String> {
         (**self).validate_args()
-    }
-}
-
-/// Trait for all small utility options that are not specific to any other trait
-pub trait UtilOpt {
-    /// Verbosity level of the logger: 0 = error, 1 = warn, 2 = info, 3 = debug, 4 = trace
-    fn verbosity(&self) -> u8;
-    /// Maximum number of errors to tolerate before exiting
-    fn max_tolerate_errors(&self) -> u32;
-}
-
-impl<T> UtilOpt for &T
-where
-    T: UtilOpt,
-{
-    fn verbosity(&self) -> u8 {
-        (*self).verbosity()
-    }
-    fn max_tolerate_errors(&self) -> u32 {
-        (*self).max_tolerate_errors()
-    }
-}
-
-impl<T> UtilOpt for &mut T
-where
-    T: UtilOpt,
-{
-    fn verbosity(&self) -> u8 {
-        (**self).verbosity()
-    }
-    fn max_tolerate_errors(&self) -> u32 {
-        (**self).max_tolerate_errors()
-    }
-}
-
-impl<T> UtilOpt for Box<T>
-where
-    T: UtilOpt,
-{
-    fn verbosity(&self) -> u8 {
-        (**self).verbosity()
-    }
-
-    fn max_tolerate_errors(&self) -> u32 {
-        (**self).max_tolerate_errors()
-    }
-}
-
-impl<T> UtilOpt for Arc<T>
-where
-    T: UtilOpt,
-{
-    fn verbosity(&self) -> u8 {
-        (**self).verbosity()
-    }
-
-    fn max_tolerate_errors(&self) -> u32 {
-        (**self).max_tolerate_errors()
     }
 }
 
