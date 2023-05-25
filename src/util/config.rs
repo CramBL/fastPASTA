@@ -4,20 +4,21 @@
 //! The [Cfg] struct implements several options and subcommands, as well as convenience functions to get various parts of the configuration
 
 // Unfortunately needed because of the arg_enum macro not handling doc comments properly
-#![allow(missing_docs)]
 #![allow(non_camel_case_types)]
 use self::{
+    check::{Check, ChecksOpt},
     filter::FilterOpt,
     inputoutput::{DataOutputMode, InputOutputOpt},
     util::UtilOpt,
     view::{View, ViewOpt},
 };
-use super::lib::{ChecksOpt, Config};
+use super::lib::Config;
 
 use crate::words::its::layer_stave_string_to_feeid;
 use std::path::PathBuf;
-use structopt::{clap::arg_enum, StructOpt};
+use structopt::StructOpt;
 
+pub mod check;
 pub mod filter;
 pub mod inputoutput;
 pub mod util;
@@ -205,6 +206,7 @@ impl UtilOpt for Cfg {
 }
 
 #[derive(structopt::StructOpt, Debug, Clone)]
+/// [Check] subcommand to enable checks or views, needs to be followed by a [Check] type subcommand and optionally a target system
 pub enum Command {
     /// [Check] subcommand to enable checks, needs to be followed by a [Check] type subcommand and a target system
     Check(Check),
@@ -212,41 +214,12 @@ pub enum Command {
     View(View),
 }
 
-/// Check subcommand to enable checks, needs to be followed by a check type subcommand and a target system
-#[derive(structopt::StructOpt, Debug, Clone)]
-#[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-pub enum Check {
-    /// Perform sanity & running checks on RDH. If a target system is specified (e.g. 'ITS') checks implemented for the target is also performed. If no target system is specified, only the most generic checks are done.
-    #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-    All(Target),
-    /// Perform only sanity checks on RDH. If a target system is specified (e.g. 'ITS') checks implemented for the target is also performed. If no target system is specified, only the most generic checks are done.
-    #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-    Sanity(Target),
-}
-
 impl Check {
     /// Get the target system for the check
-    pub fn target(&self) -> Option<System> {
+    pub fn target(&self) -> Option<check::System> {
         match self {
             Check::All(target) => target.system.clone(),
             Check::Sanity(target) => target.system.clone(),
         }
-    }
-}
-
-/// Target system for checks
-#[derive(structopt::StructOpt, Debug, Clone)]
-pub struct Target {
-    /// Target system for checks
-    #[structopt(possible_values = &System::variants(), case_insensitive = true)]
-    pub system: Option<System>,
-}
-
-arg_enum! {
-/// List of supported systems to target for checks
-#[derive(Debug, Clone, PartialEq)]
-    pub enum System {
-        ITS,
-        ITS_Stave,
     }
 }

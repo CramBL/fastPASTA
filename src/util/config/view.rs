@@ -1,4 +1,6 @@
-/// Trait for all view options.
+//! Contains the Trait [ViewOpt] for all view options, and the [View] enum for the view mode
+
+/// Trait for all view options set by the user.
 pub trait ViewOpt {
     /// Type of View to generate.
     fn view(&self) -> Option<View>;

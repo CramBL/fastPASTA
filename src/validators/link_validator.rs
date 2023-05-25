@@ -4,7 +4,7 @@
 //! The [LinkValidator] is responsible for creating and running all the [RDH] subvalidators, and delegating payload depending on target system.
 //! It also contains an [AllocRingBuffer] that is used to store the previous two [RDH]s, to be able to include them in error messages.
 //!
-//! Adding a new system to the validator is done by adding a new module to the [validators](crate::validators) module, and adding the new system to the [System](crate::util::config::System) enum.
+//! Adding a new system to the validator is done by adding a new module to the [validators](crate::validators) module, and adding the new system to the [System](crate::util::config::check::System) enum.
 //! The new module should contain a main payload validator that can be used by the [LinkValidator] to delegate payload to.
 //! Unfortunately it cannot be implemented through trait objects as they cannot be stored in the [LinkValidator] without using dynamic traits.
 //!
@@ -15,7 +15,7 @@ pub(crate) use super::{its, rdh, rdh_running::RdhCruRunningChecker};
 use crate::{
     stats::lib::StatType,
     util::{
-        config::{self, Check},
+        config::check::{Check, System},
         lib::Config,
     },
     validators::rdh::RdhCruSanityValidator,
@@ -58,7 +58,7 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
     ) -> (Self, crossbeam_channel::Sender<CdpTuple<T>>) {
         let rdh_sanity_validator = if let Some(system) = global_config.check().unwrap().target() {
             match system {
-                config::System::ITS | config::System::ITS_Stave => {
+                System::ITS | System::ITS_Stave => {
                     RdhCruSanityValidator::<T>::with_specialization(rdh::SpecializeChecks::ITS)
                 }
             }
@@ -104,7 +104,7 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
 
         if let Some(system) = self.config.check().unwrap().target() {
             match system {
-                config::System::ITS | config::System::ITS_Stave => {
+                System::ITS | System::ITS_Stave => {
                     if !payload.is_empty() {
                         super::its::lib::do_payload_checks(
                             (&rdh, &payload, rdh_mem_pos),
@@ -160,7 +160,7 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::config::{System, Target};
+    use crate::util::config::check::{System, Target};
     use crate::util::lib::test_util::MockConfig;
     use crate::words::its::test_payloads::*;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;

@@ -72,8 +72,8 @@ mod tests {
     use std::sync::Arc;
 
     use crate::{
-        util::config,
         util::lib::test_util::MockConfig,
+        util::lib::{Check, System, Target},
         words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, *},
     };
 
@@ -84,8 +84,8 @@ mod tests {
         let (send_stats_ch, rcv_stats_ch) = std::sync::mpsc::channel();
 
         let mut mock_config = MockConfig::default();
-        mock_config.check = Some(config::Check::All(config::Target {
-            system: Some(config::System::ITS),
+        mock_config.check = Some(Check::All(Target {
+            system: Some(System::ITS),
         }));
 
         let mut cdp_validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =

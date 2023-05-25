@@ -4,7 +4,7 @@ use crate::{
     validators::its::its_payload_fsm_cont::ItsPayloadFsmContinuous, words::lib::RDH,
 };
 
-/// Calls a specific view generator based on the [View][util::config::View] type.
+/// Calls a specific view generator based on the [View][util::config::view::View] type.
 #[inline]
 pub fn generate_view<T: RDH>(
     view: crate::util::config::view::View,

@@ -1,4 +1,6 @@
-/// Trait for all filter options
+//! Contains the Trait [FilterOpt] for all filter options, and the [FilterTarget] enum for the filter target
+
+/// Trait for all filter options set by the user
 pub trait FilterOpt {
     /// Link ID to filter by
     fn filter_link(&self) -> Option<u8>;

@@ -1,15 +1,14 @@
 //! Contains the [Config] super trait, and all the sub traits required by it
 //!
 //! Implementing the [Config] super trait is required by configs passed to structs in other modules as part of instantiation.
-use std::sync::Arc;
 
 /// Re-export all the sub traits and enums
 pub use super::config::{
+    check::{Check, ChecksOpt, System, Target},
     filter::{FilterOpt, FilterTarget},
     inputoutput::{DataOutputMode, InputOutputOpt},
     util::UtilOpt,
     view::{View, ViewOpt},
-    Check,
 };
 
 /// Super trait for all the traits that needed to be implemented by the config struct
@@ -23,7 +22,7 @@ where
     fn validate_args(&self) -> Result<(), String> {
         if let Some(check) = self.check() {
             if let Some(target) = check.target() {
-                if matches!(target, super::config::System::ITS_Stave) {
+                if matches!(target, System::ITS_Stave) {
                     if self.filter_its_stave().is_none() {
                         return Err("Cannot check ITS stave without specifying a stave".to_string());
                     }
@@ -53,56 +52,12 @@ where
         (**self).validate_args()
     }
 }
-impl<T> Config for Arc<T>
+impl<T> Config for std::sync::Arc<T>
 where
     T: Config,
 {
     fn validate_args(&self) -> Result<(), String> {
         (**self).validate_args()
-    }
-}
-
-/// Trait for all check options.
-pub trait ChecksOpt {
-    /// Type of Check to perform.
-    fn check(&self) -> Option<Check>;
-
-    /// Return the check on ITS trigger period if it is set.
-    fn check_its_trigger_period(&self) -> Option<u16>;
-}
-
-impl<T> ChecksOpt for &T
-where
-    T: ChecksOpt,
-{
-    fn check(&self) -> Option<Check> {
-        (*self).check()
-    }
-    fn check_its_trigger_period(&self) -> Option<u16> {
-        (*self).check_its_trigger_period()
-    }
-}
-
-impl<T> ChecksOpt for Box<T>
-where
-    T: ChecksOpt,
-{
-    fn check(&self) -> Option<Check> {
-        (**self).check()
-    }
-    fn check_its_trigger_period(&self) -> Option<u16> {
-        (**self).check_its_trigger_period()
-    }
-}
-impl<T> ChecksOpt for Arc<T>
-where
-    T: ChecksOpt,
-{
-    fn check(&self) -> Option<Check> {
-        (**self).check()
-    }
-    fn check_its_trigger_period(&self) -> Option<u16> {
-        (**self).check_its_trigger_period()
     }
 }
 

@@ -1,4 +1,6 @@
-/// Trait for all input/output options
+//! Contains the [InputOutputOpt] Trait for all input/output options and the [DataOutputMode] enum for the output mode
+
+/// Input/Output option set by a user
 pub trait InputOutputOpt {
     /// Input file to read from.
     fn input_file(&self) -> &Option<std::path::PathBuf>;

@@ -45,7 +45,7 @@ pub trait ScanCDP {
 
 /// Scans data read through a [BufferedReaderWrapper], tracks the position in memory and sends [StatType] through the [`std::sync::mpsc::Sender<StatType>`] channel.
 ///
-/// Uses [Filter] to filter for user specified links.
+/// Uses [FilterOpt] to filter for user specified links.
 /// Implements [ScanCDP] for a [BufferedReaderWrapper].
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     reader: Box<R>,
@@ -58,7 +58,7 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
 }
 
 impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
-    /// Creates a new [InputScanner] from a config that implemenents [Filter] & [InputOutput], [BufferedReaderWrapper], [MemPosTracker] and a producer channel for [StatType].
+    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper], [MemPosTracker] and a producer channel for [StatType].
     pub fn new(
         config: std::sync::Arc<impl FilterOpt + InputOutputOpt>,
         reader: Box<R>,
@@ -75,7 +75,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             initial_rdh0: None,
         }
     }
-    /// Creates a new [InputScanner] from a config that implemenents [Filter] & [InputOutput], [BufferedReaderWrapper], [MemPosTracker], a producer channel for [StatType] and an initial [Rdh0].
+    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper], [MemPosTracker], a producer channel for [StatType] and an initial [Rdh0].
     ///
     /// The [Rdh0] is used to determine the RDH version before instantiating the [InputScanner].
     pub fn new_from_rdh0(

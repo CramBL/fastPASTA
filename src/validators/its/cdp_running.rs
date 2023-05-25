@@ -13,7 +13,10 @@ use super::{
 };
 use crate::{
     stats::lib::StatType,
-    util::{config, lib::Config},
+    util::{
+        config::check::{Check, System},
+        lib::Config,
+    },
     words::{
         its::{
             alpide_words::LaneDataFrame,
@@ -69,7 +72,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
     ) -> Self {
         Self {
             config: config.clone(),
-            running_checks: matches!(config.check(), Some(config::Check::All(_))),
+            running_checks: matches!(config.check(), Some(Check::All(_))),
             its_state_machine: ItsPayloadFsmContinuous::default(),
             current_rdh: None,
             current_ihw: None,
@@ -87,7 +90,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
             // If the config is set to check ALPIDE data, and a filter for a stave is set, then allocate space ALPIDE data.
             alpide_data_frame: if let Some(check) = config.check() {
                 if let Some(target) = check.target() {
-                    if target == config::System::ITS_Stave && config.filter_its_stave().is_some() {
+                    if target == System::ITS_Stave && config.filter_its_stave().is_some() {
                         Vec::with_capacity(200)
                     } else {
                         Vec::with_capacity(0)
@@ -643,8 +646,7 @@ mod tests {
     use super::*;
     use crate::util::lib::test_util::MockConfig;
     use crate::{
-        util::config::Check,
-        util::config::Target,
+        util::config::check::{Check, Target},
         words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7},
     };
     use std::sync::Arc;
