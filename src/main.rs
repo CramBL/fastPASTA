@@ -5,22 +5,22 @@ use fastpasta::{
 
 pub fn main() -> std::process::ExitCode {
     let config = fastpasta::get_config();
-    fastpasta::init_error_logger(&*config);
-    log::trace!("Starting fastpasta with args: {:#?}", config);
+    fastpasta::init_error_logger(&config);
+    log::trace!("Starting fastpasta with args: {config:#?}");
     log::trace!(
         "Checks enabled: {:#?}",
-        fastpasta::util::lib::Checks::check(&*config)
+        fastpasta::util::lib::Checks::check(&config)
     );
     log::trace!(
         "Views enabled: {:#?}",
-        fastpasta::util::lib::Views::view(&*config)
+        fastpasta::util::lib::Views::view(&config)
     );
 
     // Launch statistics thread
     // If max allowed errors is reached, stop the processing from the stats thread
     let (stat_controller, stat_send_channel, stop_flag) = init_stats_controller(config.clone());
 
-    let exit_code: std::process::ExitCode = match init_reader(&*config) {
+    let exit_code: std::process::ExitCode = match init_reader(&config) {
         Ok(readable) => fastpasta::init_processing(config, readable, stat_send_channel, stop_flag),
         Err(e) => {
             stat_send_channel

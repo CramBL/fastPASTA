@@ -284,7 +284,7 @@ mod tests {
         mock_config.input_file = Some(PathBuf::from("tests/test-data/10_rdh.raw"));
         let mock_config = Arc::new(mock_config);
         // Setup a reader
-        let reader = init_reader(&*mock_config).unwrap();
+        let reader = init_reader(&mock_config).unwrap();
 
         let (sender, receiver): (
             std::sync::mpsc::Sender<StatType>,

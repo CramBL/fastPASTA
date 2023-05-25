@@ -25,7 +25,7 @@ pub fn spawn_writer<T: RDH + 'static>(
     let writer_thread = thread::Builder::new().name("Writer".to_string());
     writer_thread
         .spawn({
-            let mut writer = BufferedWriter::<T>::new(&*config, BUFFER_SIZE);
+            let mut writer = BufferedWriter::<T>::new(&config, BUFFER_SIZE);
             move || loop {
                 // Receive chunk from checker
                 let cdps = match data_channel.recv() {

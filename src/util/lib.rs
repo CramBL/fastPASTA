@@ -1,7 +1,7 @@
 //! Contains the [Config] super trait, and all the sub traits required by it
 //!
 //! Implementing the [Config] super trait is required by configs passed to structs in other modules as part of instantiation.
-use std::fmt::Display;
+use std::{fmt::Display, sync::Arc};
 
 use super::config::{Check, View};
 
@@ -29,12 +29,88 @@ where
     }
 }
 
+impl<T> Config for &T
+where
+    T: Config,
+{
+    fn validate_args(&self) -> Result<(), String> {
+        (*self).validate_args()
+    }
+}
+
+impl<T> Config for Box<T>
+where
+    T: Config,
+{
+    fn validate_args(&self) -> Result<(), String> {
+        (**self).validate_args()
+    }
+}
+impl<T> Config for Arc<T>
+where
+    T: Config,
+{
+    fn validate_args(&self) -> Result<(), String> {
+        (**self).validate_args()
+    }
+}
+
 /// Trait for all small utility options that are not specific to any other trait
 pub trait Util {
     /// Verbosity level of the logger: 0 = error, 1 = warn, 2 = info, 3 = debug, 4 = trace
     fn verbosity(&self) -> u8;
     /// Maximum number of errors to tolerate before exiting
     fn max_tolerate_errors(&self) -> u32;
+}
+
+impl<T> Util for &T
+where
+    T: Util,
+{
+    fn verbosity(&self) -> u8 {
+        (*self).verbosity()
+    }
+    fn max_tolerate_errors(&self) -> u32 {
+        (*self).max_tolerate_errors()
+    }
+}
+
+impl<T> Util for &mut T
+where
+    T: Util,
+{
+    fn verbosity(&self) -> u8 {
+        (**self).verbosity()
+    }
+    fn max_tolerate_errors(&self) -> u32 {
+        (**self).max_tolerate_errors()
+    }
+}
+
+impl<T> Util for Box<T>
+where
+    T: Util,
+{
+    fn verbosity(&self) -> u8 {
+        (**self).verbosity()
+    }
+
+    fn max_tolerate_errors(&self) -> u32 {
+        (**self).max_tolerate_errors()
+    }
+}
+
+impl<T> Util for Arc<T>
+where
+    T: Util,
+{
+    fn verbosity(&self) -> u8 {
+        (**self).verbosity()
+    }
+
+    fn max_tolerate_errors(&self) -> u32 {
+        (**self).max_tolerate_errors()
+    }
 }
 
 /// Trait for all filter options
@@ -68,6 +144,49 @@ pub trait Filter {
     }
 }
 
+impl<T> Filter for &T
+where
+    T: Filter,
+{
+    fn filter_link(&self) -> Option<u8> {
+        (*self).filter_link()
+    }
+    fn filter_fee(&self) -> Option<u16> {
+        (*self).filter_fee()
+    }
+    fn filter_its_stave(&self) -> Option<u16> {
+        (*self).filter_its_stave()
+    }
+}
+impl<T> Filter for Box<T>
+where
+    T: Filter,
+{
+    fn filter_link(&self) -> Option<u8> {
+        (**self).filter_link()
+    }
+    fn filter_fee(&self) -> Option<u16> {
+        (**self).filter_fee()
+    }
+    fn filter_its_stave(&self) -> Option<u16> {
+        (**self).filter_its_stave()
+    }
+}
+impl<T> Filter for Arc<T>
+where
+    T: Filter,
+{
+    fn filter_link(&self) -> Option<u8> {
+        (**self).filter_link()
+    }
+    fn filter_fee(&self) -> Option<u16> {
+        (**self).filter_fee()
+    }
+    fn filter_its_stave(&self) -> Option<u16> {
+        (**self).filter_its_stave()
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 /// The target of an optional filter on the input data
 pub enum FilterTarget {
@@ -91,6 +210,59 @@ pub trait InputOutput {
     fn output_mode(&self) -> DataOutputMode;
 }
 
+impl<T> InputOutput for &T
+where
+    T: InputOutput,
+{
+    fn input_file(&self) -> &Option<std::path::PathBuf> {
+        (*self).input_file()
+    }
+    fn skip_payload(&self) -> bool {
+        (*self).skip_payload()
+    }
+    fn output(&self) -> &Option<std::path::PathBuf> {
+        (*self).output()
+    }
+    fn output_mode(&self) -> DataOutputMode {
+        (*self).output_mode()
+    }
+}
+
+impl<T> InputOutput for Box<T>
+where
+    T: InputOutput,
+{
+    fn input_file(&self) -> &Option<std::path::PathBuf> {
+        (**self).input_file()
+    }
+    fn skip_payload(&self) -> bool {
+        (**self).skip_payload()
+    }
+    fn output(&self) -> &Option<std::path::PathBuf> {
+        (**self).output()
+    }
+    fn output_mode(&self) -> DataOutputMode {
+        (**self).output_mode()
+    }
+}
+impl<T> InputOutput for Arc<T>
+where
+    T: InputOutput,
+{
+    fn input_file(&self) -> &Option<std::path::PathBuf> {
+        (**self).input_file()
+    }
+    fn skip_payload(&self) -> bool {
+        (**self).skip_payload()
+    }
+    fn output(&self) -> &Option<std::path::PathBuf> {
+        (**self).output()
+    }
+    fn output_mode(&self) -> DataOutputMode {
+        (**self).output_mode()
+    }
+}
+
 /// Trait for all check options.
 pub trait Checks {
     /// Type of Check to perform.
@@ -100,10 +272,72 @@ pub trait Checks {
     fn check_its_trigger_period(&self) -> Option<u16>;
 }
 
+impl<T> Checks for &T
+where
+    T: Checks,
+{
+    fn check(&self) -> Option<Check> {
+        (*self).check()
+    }
+    fn check_its_trigger_period(&self) -> Option<u16> {
+        (*self).check_its_trigger_period()
+    }
+}
+
+impl<T> Checks for Box<T>
+where
+    T: Checks,
+{
+    fn check(&self) -> Option<Check> {
+        (**self).check()
+    }
+    fn check_its_trigger_period(&self) -> Option<u16> {
+        (**self).check_its_trigger_period()
+    }
+}
+impl<T> Checks for Arc<T>
+where
+    T: Checks,
+{
+    fn check(&self) -> Option<Check> {
+        (**self).check()
+    }
+    fn check_its_trigger_period(&self) -> Option<u16> {
+        (**self).check_its_trigger_period()
+    }
+}
+
 /// Trait for all view options.
 pub trait Views {
     /// Type of View to generate.
     fn view(&self) -> Option<View>;
+}
+
+impl<T> Views for &T
+where
+    T: Views,
+{
+    fn view(&self) -> Option<View> {
+        (*self).view()
+    }
+}
+
+impl<T> Views for Box<T>
+where
+    T: Views,
+{
+    fn view(&self) -> Option<View> {
+        (**self).view()
+    }
+}
+
+impl<T> Views for Arc<T>
+where
+    T: Views,
+{
+    fn view(&self) -> Option<View> {
+        (**self).view()
+    }
 }
 
 /// Enum for all possible data output modes.
