@@ -14,9 +14,9 @@
 pub(crate) use super::{its, rdh, rdh_running::RdhCruRunningChecker};
 use crate::{
     stats::lib::StatType,
-    util::{
-        config::check::{Check, System},
-        lib::Config,
+    util::config::{
+        check::{Check, ChecksOpt, System},
+        filter::FilterOpt,
     },
     validators::rdh::RdhCruSanityValidator,
     words::{
@@ -29,7 +29,7 @@ use ringbuffer::{AllocRingBuffer, RingBufferExt, RingBufferWrite};
 /// Main validator that handles all checks on a specific link.
 ///
 /// A [LinkValidator] is created for each link that is being checked.
-pub struct LinkValidator<T: RDH, C: Config> {
+pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt> {
     config: std::sync::Arc<C>,
     running_checks: bool,
     /// Producer channel to send stats through.
@@ -44,14 +44,14 @@ pub struct LinkValidator<T: RDH, C: Config> {
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
-impl<T: RDH, C: Config> LinkValidator<T, C> {
+impl<T: RDH, C: ChecksOpt + FilterOpt> LinkValidator<T, C> {
     /// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
     ///
     /// Larger capacity means less overhead, but more memory usage
     /// Too small capacity will cause the producer thread to block
     const CHANNEL_CDP_CAPACITY: usize = 100; // associated constant
 
-    /// Creates a new [LinkValidator] and the [StatType] sender channel to it, from a [Config].
+    /// Creates a new [LinkValidator] and the [StatType] sender channel to it, from a config that implements [ChecksOpt] + [FilterOpt].
     pub fn new(
         global_config: std::sync::Arc<C>,
         send_stats_ch: std::sync::mpsc::Sender<StatType>,
@@ -78,7 +78,7 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
                 send_stats_ch: send_stats_ch.clone(),
                 data_rcv_channel,
                 its_cdp_validator: its::cdp_running::CdpRunningValidator::new(
-                    global_config.clone(),
+                    global_config,
                     send_stats_ch,
                 ),
                 rdh_running_validator: RdhCruRunningChecker::default(),

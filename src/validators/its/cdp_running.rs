@@ -13,9 +13,9 @@ use super::{
 };
 use crate::{
     stats::lib::StatType,
-    util::{
-        config::check::{Check, System},
-        lib::Config,
+    util::config::{
+        check::{Check, ChecksOpt, System},
+        filter::FilterOpt,
     },
     words::{
         its::{
@@ -38,7 +38,7 @@ enum StatusWordKind<'a> {
 }
 
 /// Checks the CDP payload and reports any errors.
-pub struct CdpRunningValidator<T: RDH, C: Config> {
+pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt> {
     config: std::sync::Arc<C>,
     running_checks: bool,
     its_state_machine: ItsPayloadFsmContinuous,
@@ -64,8 +64,8 @@ pub struct CdpRunningValidator<T: RDH, C: Config> {
     is_internal_trigger: bool,
 }
 
-impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
-    /// Creates a new [CdpRunningValidator] from a [Config] and a [StatType] producer channel.
+impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
+    /// Creates a new [CdpRunningValidator] from a config that implements [ChecksOpt] + [FilterOpt] and a [StatType] producer channel.
     pub fn new(
         config: std::sync::Arc<C>,
         stats_send_ch: std::sync::mpsc::Sender<StatType>,

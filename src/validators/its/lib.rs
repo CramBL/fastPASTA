@@ -1,12 +1,16 @@
 //! Contains the [do_payload_checks] which is the entry point for the ITS specific CDP validator
 use super::cdp_running::CdpRunningValidator;
-use crate::{stats::lib::StatType, util::lib::Config, words::lib::RDH};
+use crate::{
+    stats::lib::StatType,
+    util::config::{check::ChecksOpt, filter::FilterOpt},
+    words::lib::RDH,
+};
 
 /// # Arguments
 /// * `cdp_chunk_slice` - A tuple containing the RDH, the payload and the RDH memory position
 /// * `send_stats_channel` - The channel to send stats through
 /// * `cdp_validator` - The CDP validator to use, which is an ITS specific [CdpRunningValidator]
-pub fn do_payload_checks<T: RDH, C: Config>(
+pub fn do_payload_checks<T: RDH, C: ChecksOpt + FilterOpt>(
     cdp_chunk_slice: (&T, &[u8], u64),
     send_stats_channel: &std::sync::mpsc::Sender<StatType>,
     cdp_validator: &mut CdpRunningValidator<T, C>,

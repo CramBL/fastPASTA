@@ -7,15 +7,18 @@
 //!
 //! The [CdpChunk] is a wrapper for the data read from the input, it contains the data and the memory address of the first byte of the data.
 
-use super::bufreader_wrapper::BufferedReaderWrapper;
-use super::data_wrapper::CdpChunk;
-use super::input_scanner::{InputScanner, ScanCDP};
-use super::stdin_reader::StdInReaderSeeker;
-use super::util::buf_reader_with_capacity;
-use crate::stats::lib::{self, StatType, SystemId};
-use crate::util::lib::Config;
-use crate::words;
-use crate::words::lib::RDH;
+use super::{
+    bufreader_wrapper::BufferedReaderWrapper,
+    data_wrapper::CdpChunk,
+    input_scanner::{InputScanner, ScanCDP},
+    stdin_reader::StdInReaderSeeker,
+    util::buf_reader_with_capacity,
+};
+use crate::{
+    stats::lib::{self, StatType, SystemId},
+    util::config::inputoutput::InputOutputOpt,
+    words::{self, lib::RDH},
+};
 use crossbeam_channel::Receiver;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -26,7 +29,7 @@ const CHANNEL_CDP_CHUNK_CAPACITY: usize = 100;
 ///
 /// The input mode is determined by the presence of the input file path in the config
 #[inline]
-pub fn init_reader<C: Config>(
+pub fn init_reader<C: InputOutputOpt>(
     config: &C,
 ) -> Result<Box<dyn BufferedReaderWrapper>, std::io::Error> {
     if let Some(path) = config.input_file() {
