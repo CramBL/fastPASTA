@@ -9,11 +9,11 @@ pub fn main() -> std::process::ExitCode {
     log::trace!("Starting fastpasta with args: {config:#?}");
     log::trace!(
         "Checks enabled: {:#?}",
-        fastpasta::util::lib::Checks::check(&config)
+        fastpasta::util::lib::ChecksOpt::check(&config)
     );
     log::trace!(
         "Views enabled: {:#?}",
-        fastpasta::util::lib::Views::view(&config)
+        fastpasta::util::config::view::ViewOpt::view(&config)
     );
 
     // Launch statistics thread

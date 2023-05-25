@@ -4,7 +4,8 @@
 
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
-use crate::util::lib::{Filter, FilterTarget, InputOutput};
+use crate::util::config::filter::{FilterOpt, FilterTarget};
+use crate::util::lib::InputOutputOpt;
 use crate::words::its::is_match_feeid_layer_stave;
 use crate::words::lib::{SerdeRdh, RDH};
 use crate::{stats::lib::StatType, words::rdh::Rdh0};
@@ -59,7 +60,7 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
 impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     /// Creates a new [InputScanner] from a config that implemenents [Filter] & [InputOutput], [BufferedReaderWrapper], [MemPosTracker] and a producer channel for [StatType].
     pub fn new(
-        config: std::sync::Arc<impl Filter + InputOutput>,
+        config: std::sync::Arc<impl FilterOpt + InputOutputOpt>,
         reader: Box<R>,
         tracker: MemPosTracker,
         stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
@@ -78,7 +79,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     ///
     /// The [Rdh0] is used to determine the RDH version before instantiating the [InputScanner].
     pub fn new_from_rdh0(
-        config: std::sync::Arc<impl Filter + InputOutput>,
+        config: std::sync::Arc<impl FilterOpt + InputOutputOpt>,
         reader: Box<R>,
         stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
         rdh0: Rdh0,

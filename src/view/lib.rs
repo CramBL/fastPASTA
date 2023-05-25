@@ -7,12 +7,12 @@ use crate::{
 /// Calls a specific view generator based on the [View][util::config::View] type.
 #[inline]
 pub fn generate_view<T: RDH>(
-    view: crate::util::config::View,
+    view: crate::util::config::view::View,
     cdp_chunk: input::data_wrapper::CdpChunk<T>,
     send_stats_ch: &std::sync::mpsc::Sender<StatType>,
     its_payload_fsm_cont: &mut ItsPayloadFsmContinuous,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    use util::config::View;
+    use util::config::view::View;
     match view {
         View::Rdh => super::rdh_view::rdh_view(cdp_chunk)?,
         View::Hbf => super::hbf_view::hbf_view(cdp_chunk, send_stats_ch, its_payload_fsm_cont)?,

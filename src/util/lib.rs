@@ -3,14 +3,18 @@
 //! Implementing the [Config] super trait is required by configs passed to structs in other modules as part of instantiation.
 use std::{fmt::Display, sync::Arc};
 
-use super::config::{Check, View};
+use super::config::{
+    filter::FilterOpt,
+    view::{View, ViewOpt},
+    Check,
+};
 
 /// Super trait for all the traits that needed to be implemented by the config struct
 // Generic traits that are required by the config struct
 pub trait Config: Send + Sync + std::marker::Sized
 where
     // Subtraits that group together related configuration options
-    Self: Util + Filter + InputOutput + Checks + Views,
+    Self: UtilOpt + FilterOpt + InputOutputOpt + ChecksOpt + ViewOpt,
 {
     /// Validate the arguments of the config
     fn validate_args(&self) -> Result<(), String> {
@@ -56,16 +60,16 @@ where
 }
 
 /// Trait for all small utility options that are not specific to any other trait
-pub trait Util {
+pub trait UtilOpt {
     /// Verbosity level of the logger: 0 = error, 1 = warn, 2 = info, 3 = debug, 4 = trace
     fn verbosity(&self) -> u8;
     /// Maximum number of errors to tolerate before exiting
     fn max_tolerate_errors(&self) -> u32;
 }
 
-impl<T> Util for &T
+impl<T> UtilOpt for &T
 where
-    T: Util,
+    T: UtilOpt,
 {
     fn verbosity(&self) -> u8 {
         (*self).verbosity()
@@ -75,9 +79,9 @@ where
     }
 }
 
-impl<T> Util for &mut T
+impl<T> UtilOpt for &mut T
 where
-    T: Util,
+    T: UtilOpt,
 {
     fn verbosity(&self) -> u8 {
         (**self).verbosity()
@@ -87,22 +91,9 @@ where
     }
 }
 
-impl<T> Util for Box<T>
+impl<T> UtilOpt for Box<T>
 where
-    T: Util,
-{
-    fn verbosity(&self) -> u8 {
-        (**self).verbosity()
-    }
-
-    fn max_tolerate_errors(&self) -> u32 {
-        (**self).max_tolerate_errors()
-    }
-}
-
-impl<T> Util for Arc<T>
-where
-    T: Util,
+    T: UtilOpt,
 {
     fn verbosity(&self) -> u8 {
         (**self).verbosity()
@@ -113,93 +104,21 @@ where
     }
 }
 
-/// Trait for all filter options
-pub trait Filter {
-    /// Link ID to filter by
-    fn filter_link(&self) -> Option<u8>;
-    /// FEE ID to filter by
-    fn filter_fee(&self) -> Option<u16>;
-    /// ITS layer & stave to filter by
-    fn filter_its_stave(&self) -> Option<u16>;
-
-    /// Get the target of the filter
-    fn filter_target(&self) -> Option<FilterTarget> {
-        #[allow(clippy::manual_map)] // Clippy is wrong here
-        if let Some(link) = self.filter_link() {
-            Some(FilterTarget::Link(link))
-        } else if let Some(fee) = self.filter_fee() {
-            Some(FilterTarget::Fee(fee))
-        } else if let Some(its_layer_stave) = self.filter_its_stave() {
-            Some(FilterTarget::ItsLayerStave(its_layer_stave))
-        } else {
-            None
-        }
-    }
-
-    /// Determine if the filter is enabled
-    fn filter_enabled(&self) -> bool {
-        self.filter_link().is_some()
-            || self.filter_fee().is_some()
-            || self.filter_its_stave().is_some()
-    }
-}
-
-impl<T> Filter for &T
+impl<T> UtilOpt for Arc<T>
 where
-    T: Filter,
+    T: UtilOpt,
 {
-    fn filter_link(&self) -> Option<u8> {
-        (*self).filter_link()
+    fn verbosity(&self) -> u8 {
+        (**self).verbosity()
     }
-    fn filter_fee(&self) -> Option<u16> {
-        (*self).filter_fee()
-    }
-    fn filter_its_stave(&self) -> Option<u16> {
-        (*self).filter_its_stave()
-    }
-}
-impl<T> Filter for Box<T>
-where
-    T: Filter,
-{
-    fn filter_link(&self) -> Option<u8> {
-        (**self).filter_link()
-    }
-    fn filter_fee(&self) -> Option<u16> {
-        (**self).filter_fee()
-    }
-    fn filter_its_stave(&self) -> Option<u16> {
-        (**self).filter_its_stave()
-    }
-}
-impl<T> Filter for Arc<T>
-where
-    T: Filter,
-{
-    fn filter_link(&self) -> Option<u8> {
-        (**self).filter_link()
-    }
-    fn filter_fee(&self) -> Option<u16> {
-        (**self).filter_fee()
-    }
-    fn filter_its_stave(&self) -> Option<u16> {
-        (**self).filter_its_stave()
-    }
-}
 
-#[derive(Debug, Clone, Copy)]
-/// The target of an optional filter on the input data
-pub enum FilterTarget {
-    /// Filter on the link ID
-    Link(u8),
-    /// Filter on the FEE ID
-    Fee(u16),
-    /// Filter on the ITS layer and stave
-    ItsLayerStave(u16),
+    fn max_tolerate_errors(&self) -> u32 {
+        (**self).max_tolerate_errors()
+    }
 }
 
 /// Trait for all input/output options
-pub trait InputOutput {
+pub trait InputOutputOpt {
     /// Input file to read from.
     fn input_file(&self) -> &Option<std::path::PathBuf>;
     /// Determine from args if payload should be skipped at input
@@ -210,9 +129,9 @@ pub trait InputOutput {
     fn output_mode(&self) -> DataOutputMode;
 }
 
-impl<T> InputOutput for &T
+impl<T> InputOutputOpt for &T
 where
-    T: InputOutput,
+    T: InputOutputOpt,
 {
     fn input_file(&self) -> &Option<std::path::PathBuf> {
         (*self).input_file()
@@ -228,9 +147,9 @@ where
     }
 }
 
-impl<T> InputOutput for Box<T>
+impl<T> InputOutputOpt for Box<T>
 where
-    T: InputOutput,
+    T: InputOutputOpt,
 {
     fn input_file(&self) -> &Option<std::path::PathBuf> {
         (**self).input_file()
@@ -245,9 +164,9 @@ where
         (**self).output_mode()
     }
 }
-impl<T> InputOutput for Arc<T>
+impl<T> InputOutputOpt for Arc<T>
 where
-    T: InputOutput,
+    T: InputOutputOpt,
 {
     fn input_file(&self) -> &Option<std::path::PathBuf> {
         (**self).input_file()
@@ -264,7 +183,7 @@ where
 }
 
 /// Trait for all check options.
-pub trait Checks {
+pub trait ChecksOpt {
     /// Type of Check to perform.
     fn check(&self) -> Option<Check>;
 
@@ -272,9 +191,9 @@ pub trait Checks {
     fn check_its_trigger_period(&self) -> Option<u16>;
 }
 
-impl<T> Checks for &T
+impl<T> ChecksOpt for &T
 where
-    T: Checks,
+    T: ChecksOpt,
 {
     fn check(&self) -> Option<Check> {
         (*self).check()
@@ -284,9 +203,9 @@ where
     }
 }
 
-impl<T> Checks for Box<T>
+impl<T> ChecksOpt for Box<T>
 where
-    T: Checks,
+    T: ChecksOpt,
 {
     fn check(&self) -> Option<Check> {
         (**self).check()
@@ -295,48 +214,15 @@ where
         (**self).check_its_trigger_period()
     }
 }
-impl<T> Checks for Arc<T>
+impl<T> ChecksOpt for Arc<T>
 where
-    T: Checks,
+    T: ChecksOpt,
 {
     fn check(&self) -> Option<Check> {
         (**self).check()
     }
     fn check_its_trigger_period(&self) -> Option<u16> {
         (**self).check_its_trigger_period()
-    }
-}
-
-/// Trait for all view options.
-pub trait Views {
-    /// Type of View to generate.
-    fn view(&self) -> Option<View>;
-}
-
-impl<T> Views for &T
-where
-    T: Views,
-{
-    fn view(&self) -> Option<View> {
-        (*self).view()
-    }
-}
-
-impl<T> Views for Box<T>
-where
-    T: Views,
-{
-    fn view(&self) -> Option<View> {
-        (**self).view()
-    }
-}
-
-impl<T> Views for Arc<T>
-where
-    T: Views,
-{
-    fn view(&self) -> Option<View> {
-        (**self).view()
     }
 }
 
@@ -364,6 +250,7 @@ impl Display for DataOutputMode {
 #[allow(missing_docs)]
 pub mod test_util {
     use super::*;
+    use crate::util::config::filter::FilterOpt;
     #[derive(Debug, Clone)]
 
     /// Complete configurable Mock config for testing
@@ -402,7 +289,7 @@ pub mod test_util {
     }
 
     impl Config for MockConfig {}
-    impl Checks for MockConfig {
+    impl ChecksOpt for MockConfig {
         fn check(&self) -> Option<Check> {
             self.check.clone()
         }
@@ -410,12 +297,12 @@ pub mod test_util {
             self.its_trigger_period
         }
     }
-    impl Views for MockConfig {
+    impl ViewOpt for MockConfig {
         fn view(&self) -> Option<View> {
             self.view.clone()
         }
     }
-    impl Filter for MockConfig {
+    impl FilterOpt for MockConfig {
         fn filter_link(&self) -> Option<u8> {
             self.filter_link
         }
@@ -441,7 +328,7 @@ pub mod test_util {
             }
         }
     }
-    impl Util for MockConfig {
+    impl UtilOpt for MockConfig {
         fn verbosity(&self) -> u8 {
             self.verbosity
         }
@@ -450,7 +337,7 @@ pub mod test_util {
             self.max_tolerate_errors
         }
     }
-    impl InputOutput for MockConfig {
+    impl InputOutputOpt for MockConfig {
         fn input_file(&self) -> &Option<std::path::PathBuf> {
             &self.input_file
         }
