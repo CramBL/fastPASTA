@@ -120,15 +120,11 @@ impl<C: Config> StatsController<C> {
             StatType::Error(msg) => {
                 if self.fatal_error.is_some() {
                     // Stop processing any error messages
-                    log::trace!("Fatal error already seen, ignoring error: {}", msg);
+                    log::trace!("Fatal error already seen, ignoring error: {msg}");
                     return;
                 }
                 self.reported_errors.push(msg);
                 if self.max_tolerate_errors > 0 {
-                    let prv_err_cnt = self.total_errors.load(std::sync::atomic::Ordering::SeqCst);
-                    if prv_err_cnt >= self.max_tolerate_errors {
-                        return;
-                    }
                     let prv_err_cnt = self
                         .total_errors
                         .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -154,7 +150,7 @@ impl<C: Config> StatsController<C> {
             StatType::Fatal(err) => {
                 if self.fatal_error.is_some() {
                     // Stop processing any error messages
-                    log::trace!("Fatal error already seen, ignoring error: {}", err);
+                    log::trace!("Fatal error already seen, ignoring error: {err}");
                     return;
                 }
                 self.end_processing_flag
@@ -192,40 +188,6 @@ impl<C: Config> StatsController<C> {
                 }
             }
         }
-    }
-
-    fn add_global_stats_to_report(&mut self, report: &mut Report) {
-        if self.max_tolerate_errors == 0 {
-            report.add_stat(StatSummary::new(
-                "Total Errors".to_string(),
-                self.non_atomic_total_errors.to_string(),
-                None,
-            ));
-        } else {
-            report.add_stat(StatSummary::new(
-                "Total Errors".to_string(),
-                self.total_errors
-                    .load(std::sync::atomic::Ordering::SeqCst)
-                    .to_string(),
-                None,
-            ));
-        }
-        let trigger_type_raw = self.run_trigger_type.0.to_owned();
-        report.add_stat(StatSummary {
-            statistic: "Run Trigger Type".to_string(),
-            value: format!("{trigger_type_raw:#02X}"),
-            notes: self.run_trigger_type.1.to_owned(),
-        });
-        report.add_stat(StatSummary::new(
-            "Total RDHs".to_string(),
-            self.rdhs_seen.to_string(),
-            None,
-        ));
-        report.add_stat(StatSummary::new(
-            "Links observed during scan".to_string(),
-            format_links_observed(self.links_observed.clone()),
-            None,
-        ));
     }
 
     /// Builds and prints the report
@@ -285,6 +247,40 @@ impl<C: Config> StatsController<C> {
         );
 
         report.print();
+    }
+
+    fn add_global_stats_to_report(&mut self, report: &mut Report) {
+        if self.max_tolerate_errors == 0 {
+            report.add_stat(StatSummary::new(
+                "Total Errors".to_string(),
+                self.non_atomic_total_errors.to_string(),
+                None,
+            ));
+        } else {
+            report.add_stat(StatSummary::new(
+                "Total Errors".to_string(),
+                self.total_errors
+                    .load(std::sync::atomic::Ordering::Relaxed)
+                    .to_string(),
+                None,
+            ));
+        }
+        let trigger_type_raw = self.run_trigger_type.0.to_owned();
+        report.add_stat(StatSummary {
+            statistic: "Run Trigger Type".to_string(),
+            value: format!("{trigger_type_raw:#02X}"),
+            notes: self.run_trigger_type.1.to_owned(),
+        });
+        report.add_stat(StatSummary::new(
+            "Total RDHs".to_string(),
+            self.rdhs_seen.to_string(),
+            None,
+        ));
+        report.add_stat(StatSummary::new(
+            "Links observed during scan".to_string(),
+            format_links_observed(self.links_observed.clone()),
+            None,
+        ));
     }
 
     fn check_and_format_observed_data_formats(&self, observed_data_formats: Vec<u8>) -> String {

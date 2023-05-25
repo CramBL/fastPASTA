@@ -4,9 +4,10 @@
 
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
-use crate::util::lib::{Filter, FilterTarget, InputOutput};
+use crate::util::config::filter::{FilterOpt, FilterTarget};
+use crate::util::lib::InputOutputOpt;
 use crate::words::its::is_match_feeid_layer_stave;
-use crate::words::lib::RDH;
+use crate::words::lib::{SerdeRdh, RDH};
 use crate::{stats::lib::StatType, words::rdh::Rdh0};
 use std::io::Read;
 
@@ -42,9 +43,9 @@ pub trait ScanCDP {
     fn current_mem_pos(&self) -> u64;
 }
 
-/// Scans data read through a [BufferedReaderWrapper], tracks the position in memory and sends [StatType] through the [std::sync::mpsc::Sender<StatType>] channel.
+/// Scans data read through a [BufferedReaderWrapper], tracks the position in memory and sends [StatType] through the [`std::sync::mpsc::Sender<StatType>`] channel.
 ///
-/// Uses [Filter] to filter for user specified links.
+/// Uses [FilterOpt] to filter for user specified links.
 /// Implements [ScanCDP] for a [BufferedReaderWrapper].
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     reader: Box<R>,
@@ -57,9 +58,9 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
 }
 
 impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
-    /// Creates a new [InputScanner] from a config that implemenents [Filter] & [InputOutput], [BufferedReaderWrapper], [MemPosTracker] and a producer channel for [StatType].
+    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper], [MemPosTracker] and a producer channel for [StatType].
     pub fn new(
-        config: std::sync::Arc<impl Filter + InputOutput>,
+        config: std::sync::Arc<impl FilterOpt + InputOutputOpt>,
         reader: Box<R>,
         tracker: MemPosTracker,
         stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
@@ -74,11 +75,11 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             initial_rdh0: None,
         }
     }
-    /// Creates a new [InputScanner] from a config that implemenents [Filter] & [InputOutput], [BufferedReaderWrapper], [MemPosTracker], a producer channel for [StatType] and an initial [Rdh0].
+    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper], [MemPosTracker], a producer channel for [StatType] and an initial [Rdh0].
     ///
     /// The [Rdh0] is used to determine the RDH version before instantiating the [InputScanner].
     pub fn new_from_rdh0(
-        config: std::sync::Arc<impl Filter + InputOutput>,
+        config: std::sync::Arc<impl FilterOpt + InputOutputOpt>,
         reader: Box<R>,
         stats_controller_sender_ch: std::sync::mpsc::Sender<StatType>,
         rdh0: Rdh0,
@@ -150,12 +151,13 @@ where
         //  from the input. If so, we use it to create the first RDH.
         let rdh: T = match self.initial_rdh0.is_some() {
             true => {
-                let rdh = RDH::load_from_rdh0(&mut self.reader, self.initial_rdh0.take().unwrap())?;
+                let rdh =
+                    SerdeRdh::load_from_rdh0(&mut self.reader, self.initial_rdh0.take().unwrap())?;
                 // Report the trigger type as the RunTriggerType describing the type of run the data is from
                 self.report_run_trigger_type(&rdh);
                 rdh
             }
-            false => RDH::load(&mut self.reader)?,
+            false => SerdeRdh::load(&mut self.reader)?,
         };
         log::debug!(
             "Loaded RDH at [{:#X}]: \n       {rdh}",
@@ -233,7 +235,7 @@ where
         self.reader
             .seek_relative(self.tracker.next(offset_to_next as u64))?;
         loop {
-            let rdh: T = RDH::load(&mut self.reader)?;
+            let rdh: T = SerdeRdh::load(&mut self.reader)?;
             log::debug!("Loaded RDH: \n      {rdh}");
             log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
             sanity_check_offset_next(

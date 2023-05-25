@@ -4,12 +4,26 @@
 //! The [Cfg] struct implements several options and subcommands, as well as convenience functions to get various parts of the configuration
 
 // Unfortunately needed because of the arg_enum macro not handling doc comments properly
-#![allow(missing_docs)]
 #![allow(non_camel_case_types)]
-use super::lib::{Checks, Config, DataOutputMode, Filter, InputOutput, Util, Views};
+use self::{
+    check::{Check, ChecksOpt},
+    filter::FilterOpt,
+    inputoutput::{DataOutputMode, InputOutputOpt},
+    util::UtilOpt,
+    view::{View, ViewOpt},
+};
+use super::lib::Config;
+
 use crate::words::its::layer_stave_string_to_feeid;
 use std::path::PathBuf;
-use structopt::{clap::arg_enum, StructOpt};
+use structopt::StructOpt;
+
+pub mod check;
+pub mod filter;
+pub mod inputoutput;
+pub mod util;
+pub mod view;
+
 /// The [Cfg] struct uses the [StructOpt] procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
 #[derive(StructOpt, Debug)]
 #[structopt(setting = structopt::clap::AppSettings::ColoredHelp,
@@ -69,7 +83,7 @@ pub struct Cfg {
 /// Implementing the config super trait requires implementing all the sub traits
 impl Config for Cfg {}
 
-impl Views for Cfg {
+impl ViewOpt for Cfg {
     #[inline]
     fn view(&self) -> Option<View> {
         if let Some(sub_cmd) = &self.cmd {
@@ -87,7 +101,7 @@ impl Views for Cfg {
     }
 }
 
-impl Filter for Cfg {
+impl FilterOpt for Cfg {
     #[inline]
     fn filter_link(&self) -> Option<u8> {
         self.filter_link
@@ -112,7 +126,7 @@ impl Filter for Cfg {
     }
 }
 
-impl Checks for Cfg {
+impl ChecksOpt for Cfg {
     #[inline]
     fn check(&self) -> Option<Check> {
         if let Some(sub_cmd) = &self.cmd {
@@ -133,7 +147,7 @@ impl Checks for Cfg {
     }
 }
 
-impl InputOutput for Cfg {
+impl InputOutputOpt for Cfg {
     #[inline]
     fn input_file(&self) -> &Option<PathBuf> {
         &self.file
@@ -180,7 +194,7 @@ impl InputOutput for Cfg {
     }
 }
 
-impl Util for Cfg {
+impl UtilOpt for Cfg {
     #[inline]
     fn verbosity(&self) -> u8 {
         self.verbosity
@@ -192,6 +206,7 @@ impl Util for Cfg {
 }
 
 #[derive(structopt::StructOpt, Debug, Clone)]
+/// [Check] subcommand to enable checks or views, needs to be followed by a [Check] type subcommand and optionally a target system
 pub enum Command {
     /// [Check] subcommand to enable checks, needs to be followed by a [Check] type subcommand and a target system
     Check(Check),
@@ -199,56 +214,12 @@ pub enum Command {
     View(View),
 }
 
-/// Check subcommand to enable checks, needs to be followed by a check type subcommand and a target system
-#[derive(structopt::StructOpt, Debug, Clone)]
-#[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-pub enum Check {
-    /// Perform sanity & running checks on RDH. If a target system is specified (e.g. 'ITS') checks implemented for the target is also performed. If no target system is specified, only the most generic checks are done.
-    #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-    All(Target),
-    /// Perform only sanity checks on RDH. If a target system is specified (e.g. 'ITS') checks implemented for the target is also performed. If no target system is specified, only the most generic checks are done.
-    #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-    Sanity(Target),
-}
-
 impl Check {
     /// Get the target system for the check
-    pub fn target(&self) -> Option<System> {
+    pub fn target(&self) -> Option<check::System> {
         match self {
             Check::All(target) => target.system.clone(),
             Check::Sanity(target) => target.system.clone(),
         }
-    }
-}
-
-/// Data views that can be generated
-#[derive(structopt::StructOpt, Debug, Clone)]
-#[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-pub enum View {
-    /// Print formatted RDHs to stdout
-    #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-    Rdh,
-    /// DEPRECATED! use its-readout-frames instead. Print formatted ITS payload HBFs to stdout, validating the printed words with a Protocol Tracker.
-    #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-    Hbf,
-    /// Print formatted ITS readout frames to stdout
-    #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-    ItsReadoutFrames,
-}
-
-/// Target system for checks
-#[derive(structopt::StructOpt, Debug, Clone)]
-pub struct Target {
-    /// Target system for checks
-    #[structopt(possible_values = &System::variants(), case_insensitive = true)]
-    pub system: Option<System>,
-}
-
-arg_enum! {
-/// List of supported systems to target for checks
-#[derive(Debug, Clone, PartialEq)]
-    pub enum System {
-        ITS,
-        ITS_Stave,
     }
 }

@@ -211,7 +211,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
 mod tests {
     use super::RdhCruRunningChecker;
 
-    use crate::words::lib::{ByteSlice, RDH};
+    use crate::words::lib::{ByteSlice, SerdeRdh};
     use crate::words::rdh::{
         BcReserved, CruidDw, DataformatReserved, FeeId, Rdh0, Rdh1, Rdh2, Rdh3,
     };

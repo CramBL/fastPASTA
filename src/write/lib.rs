@@ -8,7 +8,7 @@ use crossbeam_channel::Receiver;
 use super::writer::BufferedWriter;
 use super::writer::Writer;
 use crate::input::data_wrapper::CdpChunk;
-use crate::util::lib::Config;
+use crate::util::config::inputoutput::InputOutputOpt;
 use crate::words::lib::RDH;
 
 /// The size of the buffer used by the writer
@@ -18,14 +18,14 @@ const BUFFER_SIZE: usize = 1024 * 1024; // 1MB buffer
 
 /// Spawns a thread with the Writer running, and returns the thread handle.
 pub fn spawn_writer<T: RDH + 'static>(
-    config: Arc<impl Config + 'static>,
+    config: Arc<impl InputOutputOpt + 'static>,
     stop_flag: Arc<AtomicBool>,
     data_channel: Receiver<CdpChunk<T>>,
 ) -> thread::JoinHandle<()> {
     let writer_thread = thread::Builder::new().name("Writer".to_string());
     writer_thread
         .spawn({
-            let mut writer = BufferedWriter::<T>::new(&*config, BUFFER_SIZE);
+            let mut writer = BufferedWriter::<T>::new(&config, BUFFER_SIZE);
             move || loop {
                 // Receive chunk from checker
                 let cdps = match data_channel.recv() {

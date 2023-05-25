@@ -5,7 +5,7 @@
 //! Implements drop to flush the remaining data to the file once processing is done.
 
 use crate::input::data_wrapper::CdpChunk;
-use crate::util::lib::Config;
+use crate::util::config::inputoutput::InputOutputOpt;
 use crate::words::lib::RDH;
 
 /// Trait for a writer that can write ALICE readout data to file/stdout.
@@ -32,7 +32,7 @@ pub struct BufferedWriter<T: RDH> {
 
 impl<T: RDH> BufferedWriter<T> {
     /// Create a new BufferedWriter from a config and a max buffer size.
-    pub fn new(config: &impl Config, max_buffer_size: usize) -> Self {
+    pub fn new(config: &impl InputOutputOpt, max_buffer_size: usize) -> Self {
         // Create output file, and buf writer if specified
         let buf_writer = match config.output() {
             Some(path) if "stdout".eq(path.to_str().unwrap()) => None,

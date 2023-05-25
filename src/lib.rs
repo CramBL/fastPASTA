@@ -48,7 +48,10 @@
 use crossbeam_channel::Receiver;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
 use stats::lib::StatType;
-use util::lib::{Config, DataOutputMode};
+use util::{
+    config::{inputoutput::InputOutputOpt, util::UtilOpt},
+    lib::{Config, DataOutputMode},
+};
 use validators::{its::its_payload_fsm_cont::ItsPayloadFsmContinuous, lib::ValidatorDispatcher};
 use words::{
     lib::RdhSubWord,
@@ -228,7 +231,7 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
 }
 
 /// Start the [stderrlog] instance, and immediately use it to log the configured [DataOutputMode].
-pub fn init_error_logger(cfg: &impl Config) {
+pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
     stderrlog::new()
         .module(module_path!())
         .verbosity(cfg.verbosity() as usize)
@@ -284,7 +287,7 @@ mod tests {
         mock_config.input_file = Some(PathBuf::from("tests/test-data/10_rdh.raw"));
         let mock_config = Arc::new(mock_config);
         // Setup a reader
-        let reader = init_reader(&*mock_config).unwrap();
+        let reader = init_reader(&mock_config).unwrap();
 
         let (sender, receiver): (
             std::sync::mpsc::Sender<StatType>,

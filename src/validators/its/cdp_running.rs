@@ -13,7 +13,10 @@ use super::{
 };
 use crate::{
     stats::lib::StatType,
-    util::{config, lib::Config},
+    util::config::{
+        check::{Check, ChecksOpt, System},
+        filter::FilterOpt,
+    },
     words::{
         its::{
             alpide_words::LaneDataFrame,
@@ -35,7 +38,7 @@ enum StatusWordKind<'a> {
 }
 
 /// Checks the CDP payload and reports any errors.
-pub struct CdpRunningValidator<T: RDH, C: Config> {
+pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt> {
     config: std::sync::Arc<C>,
     running_checks: bool,
     its_state_machine: ItsPayloadFsmContinuous,
@@ -61,15 +64,15 @@ pub struct CdpRunningValidator<T: RDH, C: Config> {
     is_internal_trigger: bool,
 }
 
-impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
-    /// Creates a new [CdpRunningValidator] from a [Config] and a [StatType] producer channel.
+impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
+    /// Creates a new [CdpRunningValidator] from a config that implements [ChecksOpt] + [FilterOpt] and a [StatType] producer channel.
     pub fn new(
         config: std::sync::Arc<C>,
         stats_send_ch: std::sync::mpsc::Sender<StatType>,
     ) -> Self {
         Self {
             config: config.clone(),
-            running_checks: matches!(config.check(), Some(config::Check::All(_))),
+            running_checks: matches!(config.check(), Some(Check::All(_))),
             its_state_machine: ItsPayloadFsmContinuous::default(),
             current_rdh: None,
             current_ihw: None,
@@ -87,7 +90,7 @@ impl<T: RDH, C: Config> CdpRunningValidator<T, C> {
             // If the config is set to check ALPIDE data, and a filter for a stave is set, then allocate space ALPIDE data.
             alpide_data_frame: if let Some(check) = config.check() {
                 if let Some(target) = check.target() {
-                    if target == config::System::ITS_Stave && config.filter_its_stave().is_some() {
+                    if target == System::ITS_Stave && config.filter_its_stave().is_some() {
                         Vec::with_capacity(200)
                     } else {
                         Vec::with_capacity(0)
@@ -643,8 +646,7 @@ mod tests {
     use super::*;
     use crate::util::lib::test_util::MockConfig;
     use crate::{
-        util::config::Check,
-        util::config::Target,
+        util::config::check::{Check, Target},
         words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7},
     };
     use std::sync::Arc;

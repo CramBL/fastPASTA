@@ -4,7 +4,7 @@
 //! The [LinkValidator] is responsible for creating and running all the [RDH] subvalidators, and delegating payload depending on target system.
 //! It also contains an [AllocRingBuffer] that is used to store the previous two [RDH]s, to be able to include them in error messages.
 //!
-//! Adding a new system to the validator is done by adding a new module to the [validators](crate::validators) module, and adding the new system to the [System](crate::util::config::System) enum.
+//! Adding a new system to the validator is done by adding a new module to the [validators](crate::validators) module, and adding the new system to the [System](crate::util::config::check::System) enum.
 //! The new module should contain a main payload validator that can be used by the [LinkValidator] to delegate payload to.
 //! Unfortunately it cannot be implemented through trait objects as they cannot be stored in the [LinkValidator] without using dynamic traits.
 //!
@@ -14,9 +14,9 @@
 pub(crate) use super::{its, rdh, rdh_running::RdhCruRunningChecker};
 use crate::{
     stats::lib::StatType,
-    util::{
-        config::{self, Check},
-        lib::Config,
+    util::config::{
+        check::{Check, ChecksOpt, System},
+        filter::FilterOpt,
     },
     validators::rdh::RdhCruSanityValidator,
     words::{
@@ -29,7 +29,7 @@ use ringbuffer::{AllocRingBuffer, RingBufferExt, RingBufferWrite};
 /// Main validator that handles all checks on a specific link.
 ///
 /// A [LinkValidator] is created for each link that is being checked.
-pub struct LinkValidator<T: RDH, C: Config> {
+pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt> {
     config: std::sync::Arc<C>,
     running_checks: bool,
     /// Producer channel to send stats through.
@@ -44,21 +44,21 @@ pub struct LinkValidator<T: RDH, C: Config> {
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
-impl<T: RDH, C: Config> LinkValidator<T, C> {
+impl<T: RDH, C: ChecksOpt + FilterOpt> LinkValidator<T, C> {
     /// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
     ///
     /// Larger capacity means less overhead, but more memory usage
     /// Too small capacity will cause the producer thread to block
     const CHANNEL_CDP_CAPACITY: usize = 100; // associated constant
 
-    /// Creates a new [LinkValidator] and the [StatType] sender channel to it, from a [Config].
+    /// Creates a new [LinkValidator] and the [StatType] sender channel to it, from a config that implements [ChecksOpt] + [FilterOpt].
     pub fn new(
         global_config: std::sync::Arc<C>,
         send_stats_ch: std::sync::mpsc::Sender<StatType>,
     ) -> (Self, crossbeam_channel::Sender<CdpTuple<T>>) {
         let rdh_sanity_validator = if let Some(system) = global_config.check().unwrap().target() {
             match system {
-                config::System::ITS | config::System::ITS_Stave => {
+                System::ITS | System::ITS_Stave => {
                     RdhCruSanityValidator::<T>::with_specialization(rdh::SpecializeChecks::ITS)
                 }
             }
@@ -78,7 +78,7 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
                 send_stats_ch: send_stats_ch.clone(),
                 data_rcv_channel,
                 its_cdp_validator: its::cdp_running::CdpRunningValidator::new(
-                    global_config.clone(),
+                    global_config,
                     send_stats_ch,
                 ),
                 rdh_running_validator: RdhCruRunningChecker::default(),
@@ -104,7 +104,7 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
 
         if let Some(system) = self.config.check().unwrap().target() {
             match system {
-                config::System::ITS | config::System::ITS_Stave => {
+                System::ITS | System::ITS_Stave => {
                     if !payload.is_empty() {
                         super::its::lib::do_payload_checks(
                             (&rdh, &payload, rdh_mem_pos),
@@ -160,7 +160,7 @@ impl<T: RDH, C: Config> LinkValidator<T, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::config::{System, Target};
+    use crate::util::config::check::{System, Target};
     use crate::util::lib::test_util::MockConfig;
     use crate::words::its::test_payloads::*;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
