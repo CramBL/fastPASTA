@@ -35,7 +35,7 @@ pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt> {
     /// Producer channel to send stats through.
     pub send_stats_ch: std::sync::mpsc::Sender<StatType>,
     /// Consumer channel to receive data from.
-    pub data_rcv_channel: crossbeam_channel::Receiver<CdpTuple<T>>,
+    pub data_rcv_channel: flume::Receiver<CdpTuple<T>>,
     its_cdp_validator: its::cdp_running::CdpRunningValidator<T, C>,
     rdh_running_validator: RdhCruRunningChecker<T>,
     rdh_sanity_validator: RdhCruSanityValidator<T>,
@@ -55,7 +55,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> LinkValidator<T, C> {
     pub fn new(
         global_config: std::sync::Arc<C>,
         send_stats_ch: std::sync::mpsc::Sender<StatType>,
-    ) -> (Self, crossbeam_channel::Sender<CdpTuple<T>>) {
+    ) -> (Self, flume::Sender<CdpTuple<T>>) {
         let rdh_sanity_validator = if let Some(system) = global_config.check().unwrap().target() {
             match system {
                 System::ITS | System::ITS_Stave => {
@@ -65,8 +65,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> LinkValidator<T, C> {
         } else {
             RdhCruSanityValidator::default()
         };
-        let (send_channel, data_rcv_channel) =
-            crossbeam_channel::bounded(Self::CHANNEL_CDP_CAPACITY);
+        let (send_channel, data_rcv_channel) = flume::bounded(Self::CHANNEL_CDP_CAPACITY);
         (
             Self {
                 config: global_config.clone(),
@@ -173,7 +172,7 @@ mod tests {
 
         let (mut link_validator, _cdp_tuple_send_ch): (
             LinkValidator<RdhCRU<V7>, MockConfig>,
-            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
+            flume::Sender<CdpTuple<RdhCRU<V7>>>,
         ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
 
         assert_eq!(link_validator.running_checks, false);
@@ -209,7 +208,7 @@ mod tests {
 
         let (mut link_validator, cdp_tuple_send_ch): (
             LinkValidator<RdhCRU<V7>, MockConfig>,
-            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
+            flume::Sender<CdpTuple<RdhCRU<V7>>>,
         ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
 
         assert_eq!(link_validator.running_checks, false);
@@ -250,7 +249,7 @@ mod tests {
 
         let (mut link_validator, cdp_tuple_send_ch): (
             LinkValidator<RdhCRU<V7>, MockConfig>,
-            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
+            flume::Sender<CdpTuple<RdhCRU<V7>>>,
         ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
 
         assert_eq!(link_validator.running_checks, false);
@@ -291,7 +290,7 @@ mod tests {
 
         let (mut link_validator, cdp_tuple_send_ch): (
             LinkValidator<RdhCRU<V7>, MockConfig>,
-            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
+            flume::Sender<CdpTuple<RdhCRU<V7>>>,
         ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
 
         assert_eq!(link_validator.running_checks, false);
@@ -340,7 +339,7 @@ mod tests {
 
         let (mut _link_validator, _cdp_tuple_send_ch): (
             LinkValidator<RdhCRU<V7>, MockConfig>,
-            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
+            flume::Sender<CdpTuple<RdhCRU<V7>>>,
         ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
     }
 }

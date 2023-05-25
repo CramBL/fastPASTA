@@ -8,7 +8,7 @@ type CdpTuple<T> = (T, Vec<u8>, u64);
 /// It receives a [`data_wrapper::CdpChunk<T>`] and dispatches the data to the correct thread running an instance of [LinkValidator].
 pub struct ValidatorDispatcher<T: RDH, C: util::lib::Config> {
     links: Vec<u8>,
-    link_process_channels: Vec<crossbeam_channel::Sender<CdpTuple<T>>>,
+    link_process_channels: Vec<flume::Sender<CdpTuple<T>>>,
     validator_thread_handles: Vec<std::thread::JoinHandle<()>>,
     stats_sender: std::sync::mpsc::Sender<StatType>,
     global_config: std::sync::Arc<C>,
