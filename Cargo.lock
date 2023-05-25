@@ -427,6 +427,7 @@ dependencies = [
  "atty",
  "byteorder",
  "criterion",
+ "crossbeam-channel",
  "fancy-regex",
  "flume",
  "fmt",

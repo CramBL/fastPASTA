@@ -45,7 +45,7 @@
 //! $ fastpasta <input_file> view rdh
 //! ```
 
-use flume::Receiver;
+use crossbeam_channel::Receiver;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
 use stats::lib::StatType;
 use util::{
@@ -125,7 +125,7 @@ pub fn process<T: words::lib::RDH + 'static>(
     // 1. Launch reader thread to read data from file or stdin
     let (reader_handle, reader_rcv_channel): (
         std::thread::JoinHandle<()>,
-        Receiver<input::data_wrapper::CdpChunk<T>>,
+        crossbeam_channel::Receiver<input::data_wrapper::CdpChunk<T>>,
     ) = input::lib::spawn_reader(thread_stopper.clone(), loader, send_stats_ch.clone());
 
     // 2. Launch analysis thread if an analysis action is set (view or check)
@@ -202,7 +202,7 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
                     let cdp_chunk = match data_channel.recv() {
                         Ok(cdp) => cdp,
                         Err(e) => {
-                            debug_assert_eq!(e, flume::RecvError::Disconnected);
+                            debug_assert_eq!(e, crossbeam_channel::RecvError);
                             break;
                         }
                     };
@@ -333,9 +333,9 @@ mod tests {
         let (stat_sender, stat_receiver): (flume::Sender<StatType>, flume::Receiver<StatType>) =
             flume::unbounded();
         let (data_sender, data_receiver): (
-            flume::Sender<CdpChunk<RdhCRU<V7>>>,
-            flume::Receiver<CdpChunk<RdhCRU<V7>>>,
-        ) = flume::unbounded();
+            crossbeam_channel::Sender<CdpChunk<RdhCRU<V7>>>,
+            crossbeam_channel::Receiver<CdpChunk<RdhCRU<V7>>>,
+        ) = crossbeam_channel::unbounded();
         let stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let mut cdp_chunk: CdpChunk<RdhCRU<V7>> = CdpChunk::default();
         cdp_chunk.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);

@@ -19,7 +19,7 @@ use crate::{
     util::config::inputoutput::InputOutputOpt,
     words::{self, lib::RDH},
 };
-use flume::Receiver;
+use crossbeam_channel::Receiver;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Depth of the FIFO where the CDP chunks inserted as they are read
@@ -56,7 +56,7 @@ pub fn spawn_reader<T: RDH + 'static>(
     stats_sender_channel: flume::Sender<StatType>,
 ) -> (std::thread::JoinHandle<()>, Receiver<CdpChunk<T>>) {
     let reader_thread = std::thread::Builder::new().name("Reader".to_string());
-    let (send_channel, rcv_channel) = flume::bounded(CHANNEL_CDP_CHUNK_CAPACITY);
+    let (send_channel, rcv_channel) = crossbeam_channel::bounded(CHANNEL_CDP_CHUNK_CAPACITY);
     let mut local_stop_on_non_full_chunk = false;
     let mut system_id: Option<SystemId> = None; // System ID is only set once
     const CDP_CHUNK_SIZE: usize = 100;

@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
 
-use flume::Receiver;
+use crossbeam_channel::Receiver;
 
 use super::writer::BufferedWriter;
 use super::writer::Writer;
@@ -31,7 +31,7 @@ pub fn spawn_writer<T: RDH + 'static>(
                 let cdps = match data_channel.recv() {
                     Ok(cdp) => cdp,
                     Err(e) => {
-                        debug_assert_eq!(e, flume::RecvError::Disconnected);
+                        debug_assert_eq!(e, crossbeam_channel::RecvError);
                         break;
                     }
                 };
