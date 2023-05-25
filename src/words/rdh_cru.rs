@@ -1,5 +1,5 @@
 //! Contains the definition of the [RDH CRU][RdhCRU].
-use super::lib::{ByteSlice, RdhSubWord, SerdeRdh};
+use super::lib::{ByteSlice, RdhSubWord, SerdeRdh, RDH, RDH_CRU};
 use crate::words::rdh::{CruidDw, DataformatReserved, Rdh0, Rdh1, Rdh2, Rdh3};
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::fmt::{self, Display};
@@ -112,7 +112,9 @@ impl<Version> Debug for RdhCRU<Version> {
     }
 }
 
-impl<Version: std::marker::Send + std::marker::Sync> super::lib::RDH for RdhCRU<Version> {
+impl<Version: Send + Sync> RDH for RdhCRU<Version> {}
+
+impl<Version: Send + Sync> RDH_CRU for RdhCRU<Version> {
     #[inline]
     fn link_id(&self) -> u8 {
         self.link_id
@@ -179,7 +181,7 @@ impl<Version: std::marker::Send + std::marker::Sync> super::lib::RDH for RdhCRU<
     }
 }
 
-impl<Version: std::marker::Send + std::marker::Sync> SerdeRdh for RdhCRU<Version> {
+impl<Version: Send + Sync> SerdeRdh for RdhCRU<Version> {
     #[inline]
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
     where
@@ -385,7 +387,6 @@ mod tests {
     use super::test_data::*;
     use super::*;
     use crate::words::{
-        lib::RDH,
         rdh::{BcReserved, FeeId},
         rdh_cru,
     };
@@ -393,7 +394,7 @@ mod tests {
     #[test]
     fn test_header_text() {
         let header_text = RdhCRU::<V7>::rdh_header_text_with_indent_to_string(7);
-        println!("{}", header_text);
+        println!("{header_text}");
     }
 
     #[test]
@@ -507,7 +508,7 @@ mod tests {
         println!("{rdh_v7}");
         println!("{rdh_v6}");
         let v = rdh_v7.version;
-        println!("{:?}", v);
+        println!("{v:?}");
         print_rdh_cru_v6(rdh_v6);
         print_rdh_cru(rdh_v7);
         println!("{}", RdhCRU::<V7>::rdh_header_text_with_indent_to_string(7));
@@ -543,9 +544,9 @@ mod tests {
         // Check that the fields are correct
         println!("{rdhcruv7}");
 
-        let rdh_from_old = RdhCRU::load(&mut &rdhcruv7.to_byte_slice()[..]).unwrap();
-        let rdh_inferred_from_old = RdhCRU::load(&mut &rdhcruv7.to_byte_slice()[..]).unwrap();
-        let rdh_v7_from_old = RdhCRU::<V7>::load(&mut &rdhcruv7.to_byte_slice()[..]).unwrap();
+        let rdh_from_old = RdhCRU::load(&mut rdhcruv7.to_byte_slice()).unwrap();
+        let rdh_inferred_from_old = RdhCRU::load(&mut rdhcruv7.to_byte_slice()).unwrap();
+        let rdh_v7_from_old = RdhCRU::<V7>::load(&mut rdhcruv7.to_byte_slice()).unwrap();
         println!("{rdh_from_old}");
         assert_eq!(rdhcruv7, rdh_from_old);
         assert_eq!(rdhcruv7.rdh0.header_size, 0x40);

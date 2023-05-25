@@ -382,9 +382,9 @@ mod tests {
     }
 
     fn consume_cdp_chunk<T: RDH>(cdp_chunk: CdpChunk<T>) {
-        for (rdh, payload, mem_pos) in cdp_chunk {
+        cdp_chunk.into_iter().for_each(|(rdh, payload, mem_pos)| {
             println!("rdh: {rdh}, payload: {:?}, mem_pos: {:?}", payload, mem_pos);
-        }
+        });
     }
 
     #[test]

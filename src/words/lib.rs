@@ -24,8 +24,13 @@ pub trait RdhSubWord: Sized + PartialEq + std::fmt::Debug + std::fmt::Display {
 /// * accessing a variety of fields
 pub trait RDH: PartialEq + Sized + std::fmt::Display + std::fmt::Debug + Sync + Send
 where
-    Self: SerdeRdh,
+    Self: SerdeRdh + RDH_CRU,
 {
+}
+
+#[allow(non_camel_case_types)]
+/// Trait for accessing fields of a [RDH] word of the RDH CRU flavor.
+pub trait RDH_CRU {
     /// Returns the version of the [RDH].
     fn version(&self) -> u8;
     /// Returns the subword [RDH0][Rdh0] of the [RDH].
@@ -61,15 +66,84 @@ where
     fn packet_counter(&self) -> u8;
 }
 
+impl<T> RDH_CRU for &T
+where
+    T: RDH_CRU,
+{
+    fn version(&self) -> u8 {
+        (*self).version()
+    }
+
+    fn rdh0(&self) -> &Rdh0 {
+        (*self).rdh0()
+    }
+
+    fn rdh1(&self) -> &Rdh1 {
+        (*self).rdh1()
+    }
+
+    fn rdh2(&self) -> &Rdh2 {
+        (*self).rdh2()
+    }
+
+    fn rdh3(&self) -> &Rdh3 {
+        (*self).rdh3()
+    }
+
+    fn link_id(&self) -> u8 {
+        (*self).link_id()
+    }
+
+    fn payload_size(&self) -> u16 {
+        (*self).payload_size()
+    }
+
+    fn offset_to_next(&self) -> u16 {
+        (*self).offset_to_next()
+    }
+
+    fn stop_bit(&self) -> u8 {
+        (*self).stop_bit()
+    }
+
+    fn pages_counter(&self) -> u16 {
+        (*self).pages_counter()
+    }
+
+    fn data_format(&self) -> u8 {
+        (*self).data_format()
+    }
+
+    fn trigger_type(&self) -> u32 {
+        (*self).trigger_type()
+    }
+
+    fn fee_id(&self) -> u16 {
+        (*self).fee_id()
+    }
+
+    fn cru_id(&self) -> u16 {
+        (*self).cru_id()
+    }
+
+    fn dw(&self) -> u8 {
+        (*self).dw()
+    }
+
+    fn packet_counter(&self) -> u8 {
+        (*self).packet_counter()
+    }
+}
+
 /// Trait to Serialize/Deserialise (serde) [RDH] words.
 pub trait SerdeRdh: Send + Sync + Sized
 where
     Self: ByteSlice,
 {
     /// Deserializes the GBT word from a byte slice
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>;
+    fn load<R: std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error>;
     /// Deserializes the GBT word from an [RDH0][Rdh0] and a byte slice containing the rest of the [RDH]
-    fn load_from_rdh0<T: std::io::Read>(reader: &mut T, rdh0: Rdh0)
+    fn load_from_rdh0<R: std::io::Read>(reader: &mut R, rdh0: Rdh0)
         -> Result<Self, std::io::Error>;
 }
 

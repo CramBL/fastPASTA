@@ -234,7 +234,7 @@ fn collect_its_stats<T: words::lib::RDH>(
 
 #[cfg(test)]
 mod tests {
-    use crate::words::lib::RDH;
+    use crate::words::lib::RDH_CRU;
 
     use super::*;
 
