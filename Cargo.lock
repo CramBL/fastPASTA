@@ -424,7 +424,6 @@ version = "1.6.10"
 dependencies = [
  "assert_cmd",
  "assert_fs",
- "atty",
  "byteorder",
  "criterion",
  "crossbeam-channel",
@@ -432,6 +431,7 @@ dependencies = [
  "flume",
  "fmt",
  "gag",
+ "is-terminal",
  "itertools",
  "log",
  "owo-colors",
@@ -676,6 +676,18 @@ checksum = "eae7b9aee968036d54dce06cebaefd919e4472e753296daccd6d344e3e2df0c2"
 dependencies = [
  "hermit-abi 0.3.1",
  "libc",
+ "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "is-terminal"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "adcf93614601c8129ddf72e2d5633df827ba6551541c6d8c59520a371475be1f"
+dependencies = [
+ "hermit-abi 0.3.1",
+ "io-lifetimes",
+ "rustix",
  "windows-sys 0.48.0",
 ]
 
