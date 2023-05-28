@@ -132,7 +132,10 @@ impl<T: RDH> Drop for BufferedWriter<T> {
 mod tests {
     use std::vec;
 
+    use crate::util::config::check::CheckCommands;
+    use crate::util::config::inputoutput::DataOutputMode;
     use crate::util::config::Cfg;
+    use crate::util::lib::test_util::MockConfig;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
     use clap::Parser;
@@ -141,9 +144,10 @@ mod tests {
 
     const OUTPUT_FILE_STR: &str = " test_filter_link.raw";
     const OUTPUT_CMD: &str = "-o test_filter_link.raw";
+    const INPUT_FILE_STR: &str = "tests/test-data/10_rdh.raw";
     const CONFIG_STR: [&str; 7] = [
         "fastpasta",
-        "../fastpasta_test_files/data_ols_ul.raw",
+        "tests/test-data/10_rdh.raw",
         OUTPUT_CMD,
         "-f",
         "2",
@@ -151,11 +155,21 @@ mod tests {
         "sanity",
     ];
 
+    fn build_test_config() -> MockConfig {
+        let mut cfg = MockConfig::new();
+        cfg.check = Some(CheckCommands::Sanity { system: None });
+        cfg.output = Some(std::path::PathBuf::from(OUTPUT_FILE_STR));
+        cfg.output_mode = DataOutputMode::File;
+        cfg.input_file = Some(std::path::PathBuf::from(INPUT_FILE_STR));
+        cfg.filter_link = Some(2);
+        cfg
+    }
+
     #[test]
     fn test_buffered_writer() {
-        let config: Cfg = <Cfg>::parse_from(CONFIG_STR);
+        let cfg = build_test_config();
         {
-            let writer = BufferedWriter::<RdhCRU<V6>>::new(&config, 10);
+            let writer = BufferedWriter::<RdhCRU<V6>>::new(&cfg, 10);
 
             assert!(writer.buf_writer.is_some());
         }

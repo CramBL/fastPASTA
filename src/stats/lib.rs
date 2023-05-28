@@ -5,7 +5,7 @@ use std::{fmt::Display, sync::atomic::AtomicBool};
 
 /// Spawns a thread with the StatsController running, and returns the thread handle, the channel to send stats to, and the stop flag.
 pub fn init_stats_controller<C: Config + 'static>(
-    config: std::sync::Arc<C>,
+    config: &'static C,
 ) -> (
     std::thread::JoinHandle<()>,
     flume::Sender<StatType>,
@@ -231,9 +231,9 @@ fn collect_its_stats<T: words::lib::RDH>(rdh: &T, stats_sender_channel: &flume::
 
 #[cfg(test)]
 mod tests {
-    use crate::words::lib::RDH_CRU;
-
     use super::*;
+    use crate::words::lib::RDH_CRU;
+    use once_cell::sync::OnceCell;
 
     #[test]
     fn test_collect_its_stats() {
@@ -281,11 +281,15 @@ mod tests {
         assert_eq!(as_string, "ITS");
     }
 
+    use crate::util::lib::test_util::MockConfig;
+    static CONFIG_TEST_INIT_STATS_CONTROLLER: OnceCell<MockConfig> = OnceCell::new();
     #[test]
     fn test_init_stats_controller() {
-        let config = std::sync::Arc::new(crate::util::lib::test_util::MockConfig::default());
+        let mock_config = MockConfig::default();
+        CONFIG_TEST_INIT_STATS_CONTROLLER.set(mock_config).unwrap();
 
-        let (handle, send_ch, stop_flag) = init_stats_controller(config);
+        let (handle, send_ch, stop_flag) =
+            init_stats_controller(CONFIG_TEST_INIT_STATS_CONTROLLER.get().unwrap());
 
         // Stop flag should be false
         assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));

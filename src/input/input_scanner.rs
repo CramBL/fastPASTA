@@ -60,7 +60,7 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
 impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper], [MemPosTracker] and a producer channel for [StatType].
     pub fn new(
-        config: std::sync::Arc<impl FilterOpt + InputOutputOpt>,
+        config: &(impl FilterOpt + InputOutputOpt),
         reader: Box<R>,
         tracker: MemPosTracker,
         stats_controller_sender_ch: flume::Sender<StatType>,
@@ -79,7 +79,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     ///
     /// The [Rdh0] is used to determine the RDH version before instantiating the [InputScanner].
     pub fn new_from_rdh0(
-        config: std::sync::Arc<impl FilterOpt + InputOutputOpt>,
+        config: &(impl FilterOpt + InputOutputOpt),
         reader: Box<R>,
         stats_controller_sender_ch: flume::Sender<StatType>,
         rdh0: Rdh0,
@@ -320,7 +320,7 @@ mod tests {
             flume::Receiver<StatType>,
         ) = flume::unbounded();
 
-        let cfg = std::sync::Arc::new(config);
+        let cfg = config;
         let reader = std::fs::OpenOptions::new()
             .read(true)
             .open(cfg.input_file().to_owned().unwrap())
@@ -329,7 +329,7 @@ mod tests {
 
         (
             InputScanner::new(
-                cfg,
+                &cfg,
                 Box::new(bufreader),
                 MemPosTracker::new(),
                 send_stats_controller_channel,
