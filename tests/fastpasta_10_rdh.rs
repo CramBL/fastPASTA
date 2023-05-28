@@ -114,7 +114,7 @@ fn check_all_its_trigger_period_missing_arg() -> Result<(), Box<dyn std::error::
     cmd.arg(FILE_10_RDH)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("--its-trigger-period")
         .arg("1");
     cmd.assert()
@@ -131,7 +131,7 @@ fn check_all_its_trigger_period_stave_not_found() -> Result<(), Box<dyn std::err
     cmd.arg(FILE_10_RDH)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("-v2")
         .arg("--its-trigger-period")
         .arg("1")
@@ -156,7 +156,7 @@ fn check_all_its_trigger_period_mismatch() -> Result<(), Box<dyn std::error::Err
     cmd.arg(FILE_10_RDH)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("-v3")
         .arg("--its-trigger-period")
         .arg("1")
@@ -180,7 +180,7 @@ fn check_all_its_trigger_period() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_10_RDH)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("-v3")
         .arg("--its-trigger-period")
         .arg("0")
@@ -202,7 +202,7 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_10_RDH)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("-v4")
         .arg("--filter-its-stave")
         .arg("L0_12");
@@ -222,7 +222,7 @@ fn check_all_its_stave_missing_filter() -> Result<(), Box<dyn std::error::Error>
     cmd.arg(FILE_10_RDH)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("-v4");
     cmd.assert().failure();
 

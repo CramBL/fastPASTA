@@ -49,7 +49,7 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_THRS_CDW_LINKS)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("-v4")
         .arg("--filter-its-stave")
         .arg("L0_12");
@@ -68,7 +68,7 @@ fn check_all_its_stave_trigger_period() -> Result<(), Box<dyn std::error::Error>
     cmd.pipe_stdin(FILE_THRS_CDW_LINKS)?
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("-v4")
         .arg("--filter-its-stave")
         .arg("L0_12")
