@@ -72,9 +72,6 @@ impl ItsPayloadWord {
 
 #[cfg(test)]
 mod tests {
-
-    use std::sync::Arc;
-
     use crate::{
         util::lib::test_util::MockConfig,
         util::lib::{CheckCommands, System},
@@ -83,17 +80,29 @@ mod tests {
 
     use super::*;
 
+    static CFG_TEST_DO_PAYLOAD_CHECKS: MockConfig = MockConfig {
+        check: Some(CheckCommands::All {
+            system: Some(System::ITS),
+        }),
+        view: None,
+        filter_link: None,
+        filter_fee: None,
+        filter_its_stave: None,
+        verbosity: 0,
+        max_tolerate_errors: 0,
+        input_file: None,
+        skip_payload: false,
+        output: None,
+        output_mode: crate::util::config::inputoutput::DataOutputMode::None,
+        its_trigger_period: None,
+    };
+
     #[test]
     fn test_do_payload_checks_bad_payload() {
         let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
 
-        let mut mock_config = MockConfig::new();
-        mock_config.check = Some(CheckCommands::All {
-            system: Some(System::ITS),
-        });
-
         let mut cdp_validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(Arc::new(mock_config), send_stats_ch.clone());
+            CdpRunningValidator::new(&CFG_TEST_DO_PAYLOAD_CHECKS, send_stats_ch.clone());
         let rdh = CORRECT_RDH_CRU_V7;
         let payload = vec![0x3D; 100];
         let rdh_mem_pos = 0;

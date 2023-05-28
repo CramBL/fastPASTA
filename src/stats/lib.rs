@@ -5,7 +5,7 @@ use std::{fmt::Display, sync::atomic::AtomicBool};
 
 /// Spawns a thread with the StatsController running, and returns the thread handle, the channel to send stats to, and the stop flag.
 pub fn init_stats_controller<C: Config + 'static>(
-    config: std::sync::Arc<C>,
+    config: &'static C,
 ) -> (
     std::thread::JoinHandle<()>,
     flume::Sender<StatType>,
@@ -281,11 +281,12 @@ mod tests {
         assert_eq!(as_string, "ITS");
     }
 
+    use crate::util::lib::test_util::MockConfig;
+    static CONFIG_TEST_INIT_STATS_CONTROLLER: MockConfig = MockConfig::const_default();
     #[test]
     fn test_init_stats_controller() {
-        let config = std::sync::Arc::new(crate::util::lib::test_util::MockConfig::default());
-
-        let (handle, send_ch, stop_flag) = init_stats_controller(config);
+        let (handle, send_ch, stop_flag) =
+            init_stats_controller(&CONFIG_TEST_INIT_STATS_CONTROLLER);
 
         // Stop flag should be false
         assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));

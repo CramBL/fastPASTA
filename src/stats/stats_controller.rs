@@ -14,7 +14,7 @@ use std::sync::{
 };
 
 /// The StatsController receives stats and builds a summary report that is printed at the end of execution.
-pub struct StatsController<C: Config> {
+pub struct StatsController<C: Config + 'static> {
     /// Total RDHs seen.
     pub rdhs_seen: u64,
     /// Total RDHs filtered.
@@ -25,7 +25,7 @@ pub struct StatsController<C: Config> {
     pub links_observed: Vec<u8>,
     /// Time from [StatsController] is instantiated, to all data processing threads disconnected their [StatType] producer channel.
     pub processing_time: std::time::Instant,
-    config: std::sync::Arc<C>,
+    config: &'static C,
     total_errors: AtomicU32,
     non_atomic_total_errors: u64,
     reported_errors: Vec<String>,
@@ -47,9 +47,9 @@ pub struct StatsController<C: Config> {
     run_trigger_type: (u32, String),
     system_id_observed: Option<SystemId>,
 }
-impl<C: Config> StatsController<C> {
-    /// Creates a new StatsController from a [Config], a [flume::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
-    pub fn new(global_config: std::sync::Arc<C>) -> Self {
+impl<C: Config + 'static> StatsController<C> {
+    /// Creates a new [StatsController] from a [Config], a [flume::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
+    pub fn new(global_config: &'static C) -> Self {
         let (send_stats_channel, recv_stats_channel): (
             flume::Sender<StatType>,
             flume::Receiver<StatType>,
@@ -58,7 +58,7 @@ impl<C: Config> StatsController<C> {
             rdhs_seen: 0,
             rdhs_filtered: 0,
             payload_size: 0,
-            config: global_config.clone(),
+            config: global_config,
             links_observed: Vec::new(),
             processing_time: std::time::Instant::now(),
             total_errors: AtomicU32::new(0),

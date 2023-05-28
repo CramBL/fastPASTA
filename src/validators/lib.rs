@@ -6,17 +6,17 @@ type CdpTuple<T> = (T, Vec<u8>, u64);
 /// The [ValidatorDispatcher] is responsible for creating and managing the [LinkValidator] threads.
 ///
 /// It receives a [`data_wrapper::CdpChunk<T>`] and dispatches the data to the correct thread running an instance of [LinkValidator].
-pub struct ValidatorDispatcher<T: RDH, C: util::lib::Config> {
+pub struct ValidatorDispatcher<T: RDH, C: util::lib::Config + 'static> {
     links: Vec<u8>,
     link_process_channels: Vec<crossbeam_channel::Sender<CdpTuple<T>>>,
     validator_thread_handles: Vec<std::thread::JoinHandle<()>>,
     stats_sender: flume::Sender<StatType>,
-    global_config: std::sync::Arc<C>,
+    global_config: &'static C,
 }
 
 impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C> {
     /// Create a new ValidatorDispatcher from a Config and a stats sender channel
-    pub fn new(global_config: std::sync::Arc<C>, stats_sender: flume::Sender<StatType>) -> Self {
+    pub fn new(global_config: &'static C, stats_sender: flume::Sender<StatType>) -> Self {
         Self {
             links: Vec::new(),
             link_process_channels: Vec::new(),
@@ -45,10 +45,8 @@ impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C>
                 self.links.push(rdh.link_id());
 
                 // Create a new link validator thread to handle the new link
-                let (mut link_validator, send_channel) = LinkValidator::<T, C>::new(
-                    self.global_config.clone(),
-                    self.stats_sender.clone(),
-                );
+                let (mut link_validator, send_channel) =
+                    LinkValidator::<T, C>::new(self.global_config, self.stats_sender.clone());
 
                 // Add the send channel to the new link validator
                 self.link_process_channels.push(send_channel);
@@ -173,19 +171,33 @@ fn chunkify_payload<'a>(
 #[cfg(test)]
 mod tests {
     use crate::input::data_wrapper::CdpChunk;
+    use crate::util::config::check::CheckCommands;
+    use crate::util::lib::test_util::MockConfig;
     use crate::words::its::test_payloads::*;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
     use crate::words::rdh_cru::{RdhCRU, V7};
-    use clap::Parser;
 
     use super::*;
 
+    static CFG_TEST_DISPACTER: MockConfig = MockConfig {
+        check: Some(CheckCommands::Sanity { system: None }),
+        view: None,
+        filter_link: None,
+        filter_fee: None,
+        filter_its_stave: None,
+        verbosity: 0,
+        max_tolerate_errors: 0,
+        input_file: None,
+        skip_payload: false,
+        output: None,
+        output_mode: crate::util::config::inputoutput::DataOutputMode::None,
+        its_trigger_period: None,
+    };
+
     #[test]
     fn test_dispacter() {
-        let config = <util::config::Cfg>::parse_from(["fastpasta", "check", "sanity"]);
-
-        let mut disp: ValidatorDispatcher<RdhCRU<V7>, util::config::Cfg> =
-            ValidatorDispatcher::new(std::sync::Arc::new(config), flume::unbounded().0);
+        let mut disp: ValidatorDispatcher<RdhCRU<V7>, MockConfig> =
+            ValidatorDispatcher::new(&CFG_TEST_DISPACTER, flume::unbounded().0);
 
         let cdp_tuple: CdpTuple<RdhCRU<V7>> = (CORRECT_RDH_CRU_V7, vec![0; 100], 0);
 

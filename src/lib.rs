@@ -70,7 +70,7 @@ pub mod write;
 
 /// Does the initial setup for input data processing
 pub fn init_processing(
-    config: std::sync::Arc<impl Config + 'static>,
+    config: &'static impl Config,
     mut reader: Box<dyn BufferedReaderWrapper>,
     stat_send_channel: flume::Sender<StatType>,
     thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -85,8 +85,7 @@ pub fn init_processing(
         .unwrap();
 
     // Create input scanner from the already read RDH0 (to avoid seeking back and reading it twice, which would also break with stdin piping)
-    let loader =
-        InputScanner::new_from_rdh0(config.clone(), reader, stat_send_channel.clone(), rdh0);
+    let loader = InputScanner::new_from_rdh0(config, reader, stat_send_channel.clone(), rdh0);
 
     // Choose the rest of the execution based on the RDH version
     // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
@@ -118,7 +117,7 @@ pub fn init_processing(
 ///     - Generate views of data with [view::lib::generate_view].
 ///     - Write data to `file` or `stdout` with [write::lib::spawn_writer].
 pub fn process<T: words::lib::RDH + 'static>(
-    config: std::sync::Arc<impl Config + 'static>,
+    config: &'static impl Config,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
     send_stats_ch: flume::Sender<StatType>,
     thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -135,7 +134,7 @@ pub fn process<T: words::lib::RDH + 'static>(
             config.output_mode() == util::lib::DataOutputMode::None || config.filter_enabled(),
         );
         let handle = spawn_analysis(
-            config.clone(),
+            config,
             thread_stopper.clone(),
             send_stats_ch,
             reader_rcv_channel.clone(),
@@ -153,7 +152,7 @@ pub fn process<T: words::lib::RDH + 'static>(
         config.output_mode(),
     ) {
         (None, None, true, output_mode) if output_mode != DataOutputMode::None => Some(
-            write::lib::spawn_writer(config.clone(), thread_stopper, reader_rcv_channel),
+            write::lib::spawn_writer(config, thread_stopper, reader_rcv_channel),
         ),
 
         (Some(_), None, _, output_mode) | (None, Some(_), _, output_mode)
@@ -182,7 +181,7 @@ pub fn process<T: words::lib::RDH + 'static>(
 
 /// Analysis thread that performs checks with [validators::lib::check_cdp_chunk] or generate views with [view::lib::generate_view].
 fn spawn_analysis<T: words::lib::RDH + 'static>(
-    config: std::sync::Arc<impl Config + 'static>,
+    config: &'static impl Config,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
     stats_sender_channel: flume::Sender<StatType>,
     data_channel: Receiver<input::data_wrapper::CdpChunk<T>>,
@@ -194,7 +193,7 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
             move || {
                 // Setup for check case
                 let mut validator_dispatcher =
-                    ValidatorDispatcher::new(config.clone(), stats_sender_channel.clone());
+                    ValidatorDispatcher::new(config, stats_sender_channel.clone());
                 // Setup for view case
                 let mut its_payload_fsm_cont = ItsPayloadFsmContinuous::default();
                 // Start analysis
@@ -247,12 +246,12 @@ pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
     }
 }
 
-/// Get the [config][util::config::Cfg] from the command line arguments and return it as an [Arc][std::sync::Arc].
-pub fn get_config() -> Result<std::sync::Arc<util::config::Cfg>, String> {
+/// Get the [config][util::config::Cfg] from the command line arguments and set the static [CONFIG][crate::util::config::CONFIG] variable.
+pub fn init_config() -> Result<(), String> {
     let cfg = util::config::Cfg::parse();
     cfg.validate_args()?;
-
-    Ok(std::sync::Arc::new(cfg))
+    crate::util::config::CONFIG.set(cfg).unwrap();
+    Ok(())
 }
 
 /// Exit with [std::process::ExitCode] `SUCCESS`.
@@ -278,8 +277,11 @@ mod tests {
     use crate::input::data_wrapper::CdpChunk;
     use crate::words::rdh_cru::test_data::*;
     use crate::{input::lib::init_reader, util::lib::test_util::MockConfig};
+    use once_cell::sync::OnceCell;
     use pretty_assertions::assert_eq;
-    use std::{path::PathBuf, sync::Arc};
+    use std::path::PathBuf;
+
+    static CFG_TEST_INIT_PROCESSING: OnceCell<MockConfig> = OnceCell::new();
 
     #[test]
     fn test_init_processing() {
@@ -287,9 +289,11 @@ mod tests {
         let mut mock_config = MockConfig::new();
         // Set input file from one of the files used for regression testing
         mock_config.input_file = Some(PathBuf::from("tests/test-data/10_rdh.raw"));
-        let mock_config = Arc::new(mock_config);
+
+        CFG_TEST_INIT_PROCESSING.set(mock_config).unwrap();
+
         // Setup a reader
-        let reader = init_reader(&mock_config).unwrap();
+        let reader = init_reader(CFG_TEST_INIT_PROCESSING.get().unwrap()).unwrap();
 
         let (sender, receiver): (flume::Sender<StatType>, flume::Receiver<StatType>) =
             flume::unbounded();
@@ -297,7 +301,12 @@ mod tests {
         let stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
         // Act
-        init_processing(mock_config, reader, sender, stop_flag.clone());
+        init_processing(
+            CFG_TEST_INIT_PROCESSING.get().unwrap(),
+            reader,
+            sender,
+            stop_flag.clone(),
+        );
 
         // Receive all messages
         let mut stats: Vec<StatType> = Vec::new();
@@ -327,11 +336,13 @@ mod tests {
         assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));
     }
 
+    static CFG_TEST_SPAWN_ANALYSIS: OnceCell<MockConfig> = OnceCell::new();
+
     #[test]
     fn test_spawn_analysis() {
         // Setup Mock Config, no checks or views to be done
         let mock_config = MockConfig::default();
-        let mock_config = Arc::new(mock_config);
+        CFG_TEST_SPAWN_ANALYSIS.set(mock_config).unwrap();
         let (stat_sender, stat_receiver): (flume::Sender<StatType>, flume::Receiver<StatType>) =
             flume::unbounded();
         let (data_sender, data_receiver) = crossbeam_channel::unbounded();
@@ -340,7 +351,12 @@ mod tests {
         cdp_chunk.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);
 
         // Act
-        spawn_analysis(mock_config, stop_flag.clone(), stat_sender, data_receiver);
+        spawn_analysis(
+            CFG_TEST_SPAWN_ANALYSIS.get().unwrap(),
+            stop_flag.clone(),
+            stat_sender,
+            data_receiver,
+        );
         data_sender.send(cdp_chunk).unwrap();
         drop(data_sender);
         // Sleep to give the thread time to process the data

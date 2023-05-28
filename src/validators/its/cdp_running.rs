@@ -38,8 +38,8 @@ enum StatusWordKind<'a> {
 }
 
 /// Checks the CDP payload and reports any errors.
-pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt> {
-    config: std::sync::Arc<C>,
+pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
+    config: &'static C,
     running_checks: bool,
     its_state_machine: ItsPayloadFsmContinuous,
     current_rdh: Option<T>,
@@ -66,9 +66,9 @@ pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt> {
 
 impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
     /// Creates a new [CdpRunningValidator] from a config that implements [ChecksOpt] + [FilterOpt] and a [StatType] producer channel.
-    pub fn new(config: std::sync::Arc<C>, stats_send_ch: flume::Sender<StatType>) -> Self {
+    pub fn new(config: &'static C, stats_send_ch: flume::Sender<StatType>) -> Self {
         Self {
-            config: config.clone(),
+            config,
             running_checks: matches!(config.check(), Some(CheckCommands::All { system: _ })),
             its_state_machine: ItsPayloadFsmContinuous::default(),
             current_rdh: None,
@@ -646,7 +646,8 @@ mod tests {
         util::config::check::CheckCommands,
         words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7},
     };
-    use std::sync::Arc;
+
+    static MOCK_CONFIG_DEFAULT: MockConfig = MockConfig::const_default();
 
     #[test]
     fn test_validate_ihw() {
@@ -657,9 +658,8 @@ mod tests {
         ];
 
         let (send, stats_recv_ch) = flume::unbounded();
-        let mock_config = MockConfig::default();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(Arc::new(mock_config), send);
+            CdpRunningValidator::new(&MOCK_CONFIG_DEFAULT, send);
         let rdh_mem_pos = 0;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos);
@@ -677,9 +677,8 @@ mod tests {
         ];
 
         let (send, stats_recv_ch) = flume::unbounded();
-        let mock_config = MockConfig::default();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(Arc::new(mock_config), send);
+            CdpRunningValidator::new(&MOCK_CONFIG_DEFAULT, send);
         let rdh_mem_pos = 0x0;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos);
@@ -704,9 +703,8 @@ mod tests {
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
 
         let (send, stats_recv_ch) = flume::unbounded();
-        let mock_config = MockConfig::default();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(Arc::new(mock_config), send);
+            CdpRunningValidator::new(&MOCK_CONFIG_DEFAULT, send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
@@ -732,9 +730,8 @@ mod tests {
         let raw_data_tdt_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF2];
 
         let (send, stats_recv_ch) = flume::unbounded();
-        let mock_config = MockConfig::default();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(Arc::new(mock_config), send);
+            CdpRunningValidator::new(&MOCK_CONFIG_DEFAULT, send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
@@ -763,6 +760,21 @@ mod tests {
         }
     }
 
+    static CFG_TEST_EXPECT_IHW_INVALIDATE_TDH_AND_NEXT_NEXT: MockConfig = MockConfig {
+        check: Some(CheckCommands::All { system: None }),
+        view: None,
+        filter_link: None,
+        filter_fee: None,
+        filter_its_stave: None,
+        verbosity: 0,
+        max_tolerate_errors: 0,
+        input_file: None,
+        skip_payload: false,
+        output: None,
+        output_mode: crate::util::config::inputoutput::DataOutputMode::None,
+        its_trigger_period: None,
+    };
+
     #[test]
     fn test_expect_ihw_invalidate_tdh_and_next_next() {
         const _VALID_ID: u8 = 0xF0;
@@ -772,11 +784,9 @@ mod tests {
         let raw_data_tdt_next_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF3];
 
         let (send, stats_recv_ch) = flume::unbounded();
-        let mut mock_config = MockConfig::new();
-        mock_config.check = Some(CheckCommands::All { system: None });
 
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(Arc::new(mock_config), send);
+            CdpRunningValidator::new(&CFG_TEST_EXPECT_IHW_INVALIDATE_TDH_AND_NEXT_NEXT, send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
