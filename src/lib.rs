@@ -45,6 +45,7 @@
 //! $ fastpasta <input_file> view rdh
 //! ```
 
+use clap::Parser;
 use crossbeam_channel::Receiver;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
 use stats::lib::StatType;
@@ -248,7 +249,7 @@ pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
 
 /// Get the [config][util::config::Cfg] from the command line arguments and return it as an [Arc][std::sync::Arc].
 pub fn get_config() -> std::sync::Arc<util::config::Cfg> {
-    let cfg = <util::config::Cfg as structopt::StructOpt>::from_args();
+    let cfg = util::config::Cfg::parse();
     cfg.validate_args().expect("Invalid config");
     std::sync::Arc::new(cfg)
 }

@@ -1,22 +1,22 @@
 //! Contains the [Cfg] struct that parses and stores the command line arguments
 //!
-//! [Cfg] uses procedural macros from the [StructOpt] library to implement most of the argument parsing and validation logic.
+//! [Cfg] uses procedural macros from the `clap` library to implement most of the argument parsing and validation logic.
 //! The [Cfg] struct implements several options and subcommands, as well as convenience functions to get various parts of the configuration
 
 // Unfortunately needed because of the arg_enum macro not handling doc comments properly
 #![allow(non_camel_case_types)]
 use self::{
-    check::{Check, ChecksOpt},
+    check::{CheckCommands, ChecksOpt},
     filter::FilterOpt,
     inputoutput::{DataOutputMode, InputOutputOpt},
     util::UtilOpt,
-    view::{View, ViewOpt},
+    view::{ViewCommands, ViewOpt},
 };
 use super::lib::Config;
 
 use crate::words::its::layer_stave_string_to_feeid;
+use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
-use structopt::StructOpt;
 
 pub mod check;
 pub mod filter;
@@ -24,56 +24,58 @@ pub mod inputoutput;
 pub mod util;
 pub mod view;
 
-/// The [Cfg] struct uses the [StructOpt] procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
-#[derive(StructOpt, Debug)]
-#[structopt(setting = structopt::clap::AppSettings::ColoredHelp,
-    name = "fastPASTA - fast Protocol Analysis Scanning Tool for ALICE",
-    author = "Marc König <mbkj@tutamail.com>",
-    about = "\nfastpasta scans through ALICE Readout System's raw data output.\n\
+/// The [Cfg] struct uses procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
+#[derive(Parser, Debug)]
+#[command(name = "fastPASTA - fast Protocol Analysis Scanning Tool for ALICE")]
+#[command(bin_name = "fastpasta", version)]
+#[command(author = "Marc König <mbkj@tutamail.com>")]
+#[command(about = "fastPASTA scans through ALICE Readout System's raw data output.")]
+#[command(
+    long_about = "\nfastpasta scans through ALICE Readout System's raw data output.\n\
 It can report validation fails, display data in a human\n\
 readable way, or filter the data.\n\
 \n\
 Project home page: https://gitlab.cern.ch/mkonig/fastpasta"
-    )]
+)]
+#[command(propagate_version = true)]
 pub struct Cfg {
     /// Input file (default: stdin)
-    #[structopt(name = "Raw Data File", global = true, parse(from_os_str))]
+    #[arg(name = "Raw Data File", global = true)]
     file: Option<PathBuf>,
 
-    /// Commands such as [Check] or [View] that accepts further subcommands
-    #[structopt(subcommand)]
+    /// Commands such as `Check` or `View` that accepts further subcommands
+    #[command(subcommand)]
     cmd: Option<Command>,
 
     /// Verbosity level 0-4 (Errors, Warnings, Info, Debug, Trace)
-    #[structopt(short = "v", long = "verbosity", default_value = "1", global = true)]
+    #[arg(short = 'v', long = "verbosity", default_value_t = 1, global = true)]
     verbosity: u8,
 
     /// Max tolerate errors before exiting, if set to 0 -> no limit to errors
-    #[structopt(short = "e", long = "max-errors", default_value = "0", global = true)]
+    #[arg(short = 'e', long = "max-errors", default_value_t = 0, global = true)]
     max_tolerate_errors: u32,
 
     /// Set CRU link ID to filter by (e.g. 5)
-    #[structopt(short = "f", long, global = true, group = "filter")]
+    #[arg(short = 'f', long, global = true, group = "filter")]
     filter_link: Option<u8>,
 
     /// Set FEE ID to filter by (e.g. 20522)
-    #[structopt(short = "F", long, global = true, group = "filter")]
+    #[arg(short = 'F', long, global = true, group = "filter")]
     filter_fee: Option<u16>,
 
     /// Set ITS layer & stave to filter by (e.g. L5_42)
-    #[structopt(long, global = true, group = "filter")]
+    #[arg(long, name = "filter-its-stave", global = true, group = "filter")]
     filter_its_stave: Option<String>,
 
     /// Enables checks on the ITS trigger period with the specified value, usable with the `check all its_stave` command
-    #[structopt(short = "p", long, global = true, requires("filter-its-stave"))]
+    #[arg(short = 'p', long, global = true, requires = "filter-its-stave")]
     its_trigger_period: Option<u16>,
 
     /// Output raw data (default: stdout), requires setting a filter option. If Checks or Views are enabled, the output is supressed.
-    #[structopt(
+    #[arg(
         name = "OUTPUT DATA",
-        short = "o",
+        short = 'o',
         long = "output",
-        parse(from_os_str),
         global = true,
         requires("filter")
     )]
@@ -85,15 +87,11 @@ impl Config for Cfg {}
 
 impl ViewOpt for Cfg {
     #[inline]
-    fn view(&self) -> Option<View> {
+    fn view(&self) -> Option<ViewCommands> {
         if let Some(sub_cmd) = &self.cmd {
             match sub_cmd {
-                Command::View(view) => match view {
-                    View::Rdh => Some(View::Rdh),
-                    View::Hbf => Some(View::Hbf),
-                    View::ItsReadoutFrames => Some(View::ItsReadoutFrames),
-                },
-                _ => None,
+                Command::View(view_sub_cmd) => Some(view_sub_cmd.cmd),
+                Command::Check(_) => None,
             }
         } else {
             None
@@ -128,12 +126,12 @@ impl FilterOpt for Cfg {
 
 impl ChecksOpt for Cfg {
     #[inline]
-    fn check(&self) -> Option<Check> {
+    fn check(&self) -> Option<CheckCommands> {
         if let Some(sub_cmd) = &self.cmd {
             match sub_cmd {
-                Command::Check(checks) => match checks {
-                    Check::All(target) => Some(Check::All(target.clone())),
-                    Check::Sanity(target) => Some(Check::Sanity(target.clone())),
+                Command::Check(checks) => match checks.cmd {
+                    CheckCommands::All { system } => Some(CheckCommands::All { system }),
+                    CheckCommands::Sanity { system } => Some(CheckCommands::Sanity { system }),
                 },
                 Command::View(_) => None,
             }
@@ -182,9 +180,10 @@ impl InputOutputOpt for Cfg {
     fn skip_payload(&self) -> bool {
         match (self.view(), self.check(), self.output_mode()) {
             // Skip payload in these cases
-            (Some(View::Rdh), _, _) => true,
-            (_, Some(Check::All(target)), _) | (_, Some(Check::Sanity(target)), _)
-                if target.system.is_none() =>
+            (Some(ViewCommands::Rdh), _, _) => true,
+            (_, Some(CheckCommands::All { system: sys }), _)
+            | (_, Some(CheckCommands::Sanity { system: sys }), _)
+                if sys.is_none() =>
             {
                 true
             }
@@ -205,21 +204,36 @@ impl UtilOpt for Cfg {
     }
 }
 
-#[derive(structopt::StructOpt, Debug, Clone)]
-/// [Check] subcommand to enable checks or views, needs to be followed by a [Check] type subcommand and optionally a target system
-pub enum Command {
-    /// [Check] subcommand to enable checks, needs to be followed by a [Check] type subcommand and a target system
-    Check(Check),
-    /// [View] subcommand to enable views, needs to be followed by a [View] type subcommand
-    View(View),
+/// Holds the [CheckCommands] subcommands
+#[derive(Debug, Args)]
+#[command(args_conflicts_with_subcommands = true)]
+pub struct CheckArgs {
+    #[command(subcommand)]
+    cmd: CheckCommands,
+}
+/// Holds the [ViewCommands] subcommands
+#[derive(Debug, Args)]
+#[command(args_conflicts_with_subcommands = true)]
+pub struct ViewArgs {
+    #[command(subcommand)]
+    cmd: ViewCommands,
 }
 
-impl Check {
+#[derive(Debug, Subcommand)]
+/// Subcommand to enable checks or views, needs to be followed by a [CheckCommands] (and optionally a target system) or [ViewCommands] subcommand.
+pub enum Command {
+    /// [Command] subcommand to enable checks, needs to be followed by a [CheckCommands] type subcommand and a target system
+    Check(CheckArgs),
+    /// [Command] subcommand to enable views, needs to be followed by a [ViewCommands] type subcommand
+    View(ViewArgs),
+}
+
+impl CheckCommands {
     /// Get the target system for the check
     pub fn target(&self) -> Option<check::System> {
         match self {
-            Check::All(target) => target.system.clone(),
-            Check::Sanity(target) => target.system.clone(),
+            CheckCommands::All { system: sys } => *sys,
+            CheckCommands::Sanity { system: sys } => *sys,
         }
     }
 }

@@ -4,11 +4,11 @@
 
 /// Re-export all the sub traits and enums
 pub use super::config::{
-    check::{Check, ChecksOpt, System, Target},
+    check::{CheckCommands, ChecksOpt, System, Target},
     filter::{FilterOpt, FilterTarget},
     inputoutput::{DataOutputMode, InputOutputOpt},
     util::UtilOpt,
-    view::{View, ViewOpt},
+    view::{ViewCommands, ViewOpt},
 };
 
 /// Super trait for all the traits that needed to be implemented by the config struct
@@ -72,8 +72,8 @@ pub mod test_util {
 
     /// Complete configurable Mock config for testing
     pub struct MockConfig {
-        pub check: Option<Check>,
-        pub view: Option<View>,
+        pub check: Option<CheckCommands>,
+        pub view: Option<ViewCommands>,
         pub filter_link: Option<u8>,
         pub filter_fee: Option<u16>,
         pub filter_its_stave: Option<String>,
@@ -88,6 +88,12 @@ pub mod test_util {
 
     impl Default for MockConfig {
         fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    impl MockConfig {
+        pub fn new() -> Self {
             Self {
                 check: None,
                 view: None,
@@ -107,7 +113,7 @@ pub mod test_util {
 
     impl Config for MockConfig {}
     impl ChecksOpt for MockConfig {
-        fn check(&self) -> Option<Check> {
+        fn check(&self) -> Option<CheckCommands> {
             self.check.clone()
         }
         fn check_its_trigger_period(&self) -> Option<u16> {
@@ -115,8 +121,8 @@ pub mod test_util {
         }
     }
     impl ViewOpt for MockConfig {
-        fn view(&self) -> Option<View> {
-            self.view.clone()
+        fn view(&self) -> Option<ViewCommands> {
+            self.view
         }
     }
     impl FilterOpt for MockConfig {

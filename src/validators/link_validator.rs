@@ -15,7 +15,7 @@ pub(crate) use super::{its, rdh, rdh_running::RdhCruRunningChecker};
 use crate::{
     stats::lib::StatType,
     util::config::{
-        check::{Check, ChecksOpt, System},
+        check::{CheckCommands, ChecksOpt, System},
         filter::FilterOpt,
     },
     validators::rdh::RdhCruSanityValidator,
@@ -71,8 +71,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> LinkValidator<T, C> {
             Self {
                 config: global_config.clone(),
                 running_checks: match global_config.check().unwrap() {
-                    Check::All(_) => true,
-                    Check::Sanity(_) => false,
+                    CheckCommands::All { system: _ } => true,
+                    CheckCommands::Sanity { system: _ } => false,
                 },
 
                 send_stats_ch: send_stats_ch.clone(),
@@ -160,7 +160,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> LinkValidator<T, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::config::check::{System, Target};
+    use crate::util::config::check::System;
     use crate::util::lib::test_util::MockConfig;
     use crate::words::its::test_payloads::*;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
@@ -168,15 +168,13 @@ mod tests {
     #[test]
     fn test_run_link_validator() {
         let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
-        let mut mock_config = MockConfig::default();
-        mock_config.check = Some(Check::Sanity(Target { system: None }));
+        let mut mock_config = MockConfig::new();
+        mock_config.check = Some(CheckCommands::Sanity { system: None });
 
-        let (mut link_validator, _cdp_tuple_send_ch): (
-            LinkValidator<RdhCRU<V7>, MockConfig>,
-            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
-        ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
+        let (mut link_validator, _cdp_tuple_send_ch) =
+            LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
 
-        assert_eq!(link_validator.running_checks, false);
+        assert!(!link_validator.running_checks);
 
         // Spawn the link validator in a thread
         let _handle = std::thread::spawn(move || {
@@ -202,17 +200,15 @@ mod tests {
     #[test]
     fn test_valid_payloads_flavor_0() {
         let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
-        let mut mock_config = MockConfig::default();
-        mock_config.check = Some(Check::Sanity(Target {
+        let mut mock_config = MockConfig::new();
+        mock_config.check = Some(CheckCommands::Sanity {
             system: Some(System::ITS),
-        }));
+        });
 
-        let (mut link_validator, cdp_tuple_send_ch): (
-            LinkValidator<RdhCRU<V7>, MockConfig>,
-            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
-        ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
+        let (mut link_validator, cdp_tuple_send_ch) =
+            LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
 
-        assert_eq!(link_validator.running_checks, false);
+        assert!(!link_validator.running_checks);
 
         // Spawn the link validator in a thread
         let _handle = std::thread::spawn(move || {
@@ -243,17 +239,15 @@ mod tests {
     #[test]
     fn test_valid_payloads_flavor_2() {
         let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
-        let mut mock_config = MockConfig::default();
-        mock_config.check = Some(Check::Sanity(Target {
+        let mut mock_config = MockConfig::new();
+        mock_config.check = Some(CheckCommands::Sanity {
             system: Some(System::ITS),
-        }));
+        });
 
-        let (mut link_validator, cdp_tuple_send_ch): (
-            LinkValidator<RdhCRU<V7>, MockConfig>,
-            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
-        ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
+        let (mut link_validator, cdp_tuple_send_ch) =
+            LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
 
-        assert_eq!(link_validator.running_checks, false);
+        assert!(!link_validator.running_checks);
 
         // Spawn the link validator in a thread
         let _handle = std::thread::spawn(move || {
@@ -284,17 +278,15 @@ mod tests {
     #[test]
     fn test_invalid_payloads_flavor_2_bad_tdh_one_error() {
         let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
-        let mut mock_config = MockConfig::default();
-        mock_config.check = Some(Check::Sanity(Target {
+        let mut mock_config = MockConfig::new();
+        mock_config.check = Some(CheckCommands::Sanity {
             system: Some(System::ITS),
-        }));
+        });
 
-        let (mut link_validator, cdp_tuple_send_ch): (
-            LinkValidator<RdhCRU<V7>, MockConfig>,
-            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
-        ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
+        let (mut link_validator, cdp_tuple_send_ch) =
+            LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
 
-        assert_eq!(link_validator.running_checks, false);
+        assert!(!link_validator.running_checks);
 
         // Spawn the link validator in a thread
         let _handle = std::thread::spawn(move || {
@@ -335,12 +327,14 @@ mod tests {
     fn test_init_link_validator_no_checks_enabled() {
         // Should panic because no checks are enabled in the config, doesn't make sense to run the link validator
         let (send_stats_ch, _) = flume::unbounded();
-        let mut mock_config = MockConfig::default();
+        let mut mock_config = MockConfig::new();
         mock_config.check = None; // No checks enabled in the config
 
+        type RdhV7 = RdhCRU<V7>;
+
         let (mut _link_validator, _cdp_tuple_send_ch): (
-            LinkValidator<RdhCRU<V7>, MockConfig>,
-            crossbeam_channel::Sender<CdpTuple<RdhCRU<V7>>>,
+            LinkValidator<RdhV7, MockConfig>,
+            crossbeam_channel::Sender<CdpTuple<RdhV7>>,
         ) = LinkValidator::new(std::sync::Arc::new(mock_config), send_stats_ch);
     }
 }

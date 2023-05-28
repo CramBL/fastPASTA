@@ -176,16 +176,13 @@ mod tests {
     use crate::words::its::test_payloads::*;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
     use crate::words::rdh_cru::{RdhCRU, V7};
+    use clap::Parser;
 
     use super::*;
 
     #[test]
     fn test_dispacter() {
-        let config = <util::config::Cfg as structopt::StructOpt>::from_iter(&[
-            "fastpasta",
-            "check",
-            "sanity",
-        ]);
+        let config = <util::config::Cfg>::parse_from(["fastpasta", "check", "sanity"]);
 
         let mut disp: ValidatorDispatcher<RdhCRU<V7>, util::config::Cfg> =
             ValidatorDispatcher::new(std::sync::Arc::new(config), flume::unbounded().0);

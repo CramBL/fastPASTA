@@ -298,7 +298,7 @@ mod tests {
         let res = rdh_cru_checker.check(&rdh_1);
         assert!(res.is_err());
         println!("{:?}", res);
-        assert!(res.unwrap_err().contains(&"Orbit"));
+        assert!(res.unwrap_err().contains("Orbit"));
     }
 
     #[test]
@@ -349,9 +349,9 @@ mod tests {
         assert!(res.is_err());
         println!("{:?}", res);
         let err_str = res.unwrap_err();
-        assert!(err_str.contains(&"Orbit"));
-        assert!(err_str.contains(&"Trigger"));
-        assert!(err_str.contains(&"Detector"));
-        assert!(err_str.contains(&"FeeId"));
+        assert!(err_str.contains("Orbit"));
+        assert!(err_str.contains("Trigger"));
+        assert!(err_str.contains("Detector"));
+        assert!(err_str.contains("FeeId"));
     }
 }
