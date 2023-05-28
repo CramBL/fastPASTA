@@ -207,6 +207,7 @@ impl UtilOpt for Cfg {
 /// Holds the [CheckCommands] subcommands
 #[derive(Debug, Args)]
 #[command(args_conflicts_with_subcommands = true)]
+#[command(arg_required_else_help = true)]
 pub struct CheckArgs {
     #[command(subcommand)]
     cmd: CheckCommands,
@@ -214,6 +215,7 @@ pub struct CheckArgs {
 /// Holds the [ViewCommands] subcommands
 #[derive(Debug, Args)]
 #[command(args_conflicts_with_subcommands = true)]
+#[command(arg_required_else_help = true)]
 pub struct ViewArgs {
     #[command(subcommand)]
     cmd: ViewCommands,
@@ -222,9 +224,11 @@ pub struct ViewArgs {
 #[derive(Debug, Subcommand)]
 /// Subcommand to enable checks or views, needs to be followed by a [CheckCommands] (and optionally a target system) or [ViewCommands] subcommand.
 pub enum Command {
-    /// [Command] subcommand to enable checks, needs to be followed by a [CheckCommands] type subcommand and a target system
+    /// Subcommand to enable checks, needs to be followed by a [CheckCommands] type subcommand and a target system
+    #[command(arg_required_else_help = true)]
     Check(CheckArgs),
-    /// [Command] subcommand to enable views, needs to be followed by a [ViewCommands] type subcommand
+    /// Subcommand to enable views, needs to be followed by a [ViewCommands] type subcommand
+    #[command(arg_required_else_help = true)]
     View(ViewArgs),
 }
 
