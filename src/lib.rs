@@ -248,10 +248,11 @@ pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
 }
 
 /// Get the [config][util::config::Cfg] from the command line arguments and return it as an [Arc][std::sync::Arc].
-pub fn get_config() -> std::sync::Arc<util::config::Cfg> {
+pub fn get_config() -> Result<std::sync::Arc<util::config::Cfg>, String> {
     let cfg = util::config::Cfg::parse();
-    cfg.validate_args().expect("Invalid config");
-    std::sync::Arc::new(cfg)
+    cfg.validate_args()?;
+
+    Ok(std::sync::Arc::new(cfg))
 }
 
 /// Exit with [std::process::ExitCode] `SUCCESS`.

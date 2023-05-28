@@ -5,7 +5,13 @@ use fastpasta::{
 };
 
 pub fn main() -> std::process::ExitCode {
-    let config = fastpasta::get_config();
+    let config = match fastpasta::get_config() {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!("{e}");
+            return std::process::ExitCode::from(1);
+        }
+    };
     fastpasta::init_error_logger(&config);
     log::trace!("Starting fastpasta with args: {:#?}", config);
     log::trace!("Checks enabled: {:#?}", config.check());
