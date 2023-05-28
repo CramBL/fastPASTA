@@ -14,7 +14,7 @@ use super::{
 use crate::{
     stats::lib::StatType,
     util::config::{
-        check::{Check, ChecksOpt, System},
+        check::{CheckCommands, ChecksOpt, System},
         filter::FilterOpt,
     },
     words::{
@@ -69,7 +69,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
     pub fn new(config: std::sync::Arc<C>, stats_send_ch: flume::Sender<StatType>) -> Self {
         Self {
             config: config.clone(),
-            running_checks: matches!(config.check(), Some(Check::All(_))),
+            running_checks: matches!(config.check(), Some(CheckCommands::All { system: _ })),
             its_state_machine: ItsPayloadFsmContinuous::default(),
             current_rdh: None,
             current_ihw: None,
@@ -643,7 +643,7 @@ mod tests {
     use super::*;
     use crate::util::lib::test_util::MockConfig;
     use crate::{
-        util::config::check::{Check, Target},
+        util::config::check::CheckCommands,
         words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7},
     };
     use std::sync::Arc;
@@ -772,8 +772,8 @@ mod tests {
         let raw_data_tdt_next_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF3];
 
         let (send, stats_recv_ch) = flume::unbounded();
-        let mut mock_config = MockConfig::default();
-        mock_config.check = Some(Check::All(Target { system: None }));
+        let mut mock_config = MockConfig::new();
+        mock_config.check = Some(CheckCommands::All { system: None });
 
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
             CdpRunningValidator::new(Arc::new(mock_config), send);

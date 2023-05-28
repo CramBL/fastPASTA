@@ -4,7 +4,7 @@ use crate::util::*;
 mod util;
 
 // Asserts that the end of processing report summary contains correct information
-fn validate_report_summary(byte_output: &Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
+fn validate_report_summary(byte_output: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     let match_patterns = vec![
         "Trigger Type.*0x6803",
         "RDH.*Version.*7",
@@ -120,7 +120,7 @@ fn check_all_its_stave_not_found() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_TDH_NO_DATA_IHW)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("--filter-its-stave")
         .arg("l0_0");
     cmd.assert().success();
@@ -140,7 +140,7 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_TDH_NO_DATA_IHW)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("--filter-its-stave")
         .arg("L6_11");
     cmd.assert().success();
@@ -178,7 +178,7 @@ fn check_all_its_stave_trigger_period() -> Result<(), Box<dyn std::error::Error>
 
     cmd.arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("--filter-its-stave")
         .arg("L6_11")
         .arg(FILE_TDH_NO_DATA_IHW)

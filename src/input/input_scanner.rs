@@ -302,6 +302,7 @@ mod tests {
     use crate::util::config::Cfg;
     use crate::words::lib::ByteSlice;
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
+    use clap::Parser;
     use pretty_assertions::assert_eq;
     use std::io::Write;
     use std::{fs::File, io::BufReader, path::PathBuf};
@@ -313,14 +314,7 @@ mod tests {
         flume::Receiver<StatType>,
     ) {
         use super::*;
-        let config: Cfg = <Cfg as structopt::StructOpt>::from_iter(&[
-            "fastpasta",
-            path,
-            "-f",
-            "0",
-            "check",
-            "sanity",
-        ]);
+        let config: Cfg = <Cfg>::parse_from(["fastpasta", path, "-f", "0", "check", "sanity"]);
         let (send_stats_controller_channel, recv_stats_controller_channel): (
             flume::Sender<StatType>,
             flume::Receiver<StatType>,

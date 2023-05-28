@@ -20,10 +20,12 @@ use crate::{
     words::{self, lib::RDH},
 };
 use crossbeam_channel::Receiver;
+use is_terminal::IsTerminal;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Depth of the FIFO where the CDP chunks inserted as they are read
 const CHANNEL_CDP_CHUNK_CAPACITY: usize = 100;
+const READER_BUFFER_SIZE: usize = 1024 * 50; // 50KB
 
 /// Initializes the reader based on the input mode (file or stdin) and returns it
 ///
@@ -35,15 +37,19 @@ pub fn init_reader<C: InputOutputOpt>(
     if let Some(path) = config.input_file() {
         log::trace!("Reading from file: {:?}", &path);
         let f = std::fs::OpenOptions::new().read(true).open(path)?;
-        Ok(Box::new(buf_reader_with_capacity(f, 1024 * 50)))
+        Ok(Box::new(buf_reader_with_capacity(f, READER_BUFFER_SIZE)))
     } else {
         log::trace!("Reading from stdin");
-        if atty::is(atty::Stream::Stdin) {
-            log::error!("stdin not redirected!");
+        if !std::io::stdin().is_terminal() {
+            Ok(Box::new(StdInReaderSeeker {
+                reader: std::io::stdin(),
+            }))
+        } else {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "stdin not redirected!",
+            ))
         }
-        Ok(Box::new(StdInReaderSeeker {
-            reader: std::io::stdin(),
-        }))
     }
 }
 

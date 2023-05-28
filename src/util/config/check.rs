@@ -1,9 +1,9 @@
-#![allow(missing_docs)] // Necessary as the arg_enum macro doesn't allow comments
 //! Trait for all check options.
+use clap::{Args, Subcommand, ValueEnum};
 /// A config that implements this trait can be used to enable checks.
 pub trait ChecksOpt {
     /// Type of Check to perform.
-    fn check(&self) -> Option<Check>;
+    fn check(&self) -> Option<CheckCommands>;
 
     /// Return the check on ITS trigger period if it is set.
     fn check_its_trigger_period(&self) -> Option<u16>;
@@ -13,7 +13,7 @@ impl<T> ChecksOpt for &T
 where
     T: ChecksOpt,
 {
-    fn check(&self) -> Option<Check> {
+    fn check(&self) -> Option<CheckCommands> {
         (*self).check()
     }
     fn check_its_trigger_period(&self) -> Option<u16> {
@@ -25,7 +25,7 @@ impl<T> ChecksOpt for Box<T>
 where
     T: ChecksOpt,
 {
-    fn check(&self) -> Option<Check> {
+    fn check(&self) -> Option<CheckCommands> {
         (**self).check()
     }
     fn check_its_trigger_period(&self) -> Option<u16> {
@@ -36,7 +36,7 @@ impl<T> ChecksOpt for std::sync::Arc<T>
 where
     T: ChecksOpt,
 {
-    fn check(&self) -> Option<Check> {
+    fn check(&self) -> Option<CheckCommands> {
         (**self).check()
     }
     fn check_its_trigger_period(&self) -> Option<u16> {
@@ -45,31 +45,32 @@ where
 }
 
 /// Check subcommand to enable checks, needs to be followed by a check type subcommand and a target system
-#[derive(structopt::StructOpt, Debug, Clone)]
-#[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-pub enum Check {
+#[derive(Subcommand, Debug, Clone, PartialEq)]
+pub enum CheckCommands {
     /// Perform sanity & running checks on RDH. If a target system is specified (e.g. 'ITS') checks implemented for the target is also performed. If no target system is specified, only the most generic checks are done.
-    #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-    All(Target),
+    All {
+        /// Optional target system for checks
+        system: Option<System>,
+    },
     /// Perform only sanity checks on RDH. If a target system is specified (e.g. 'ITS') checks implemented for the target is also performed. If no target system is specified, only the most generic checks are done.
-    #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-    Sanity(Target),
+    Sanity {
+        /// Optional target system for checks
+        system: Option<System>,
+    },
 }
 
 /// Target system for checks
-#[derive(structopt::StructOpt, Debug, Clone)]
+#[derive(Args, Debug, Clone)]
 pub struct Target {
     /// Target system for checks
-    #[structopt(possible_values = &System::variants(), case_insensitive = true)]
     pub system: Option<System>,
 }
 
-use structopt::clap::arg_enum;
-arg_enum! {
 /// List of supported systems to target for checks
-#[derive(Debug, Clone, PartialEq)]
-    pub enum System {
-        ITS,
-        ITS_Stave,
-    }
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
+pub enum System {
+    /// Specify ITS as the target system for checks.
+    ITS,
+    /// Specify ITS stave as the target system for checks.
+    ITS_Stave,
 }

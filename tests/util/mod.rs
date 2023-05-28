@@ -24,7 +24,7 @@ pub const FILE_OUTPUT_TMP: &str = "tests/test-data/output.tmp";
 
 /// Helper function to match the raw output of stderr or stdout, with a pattern a fixed amount of times
 pub fn match_on_output(
-    byte_output: &Vec<u8>,
+    byte_output: &[u8],
     re_str: &str,
     match_count: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -33,7 +33,7 @@ pub fn match_on_output(
     // Make the predicate function
     let pred_regex = predicate::function(|&x| re.find_iter(x).count() == match_count);
     // Convert the output to string as utf-8
-    let str_res = std::str::from_utf8(&byte_output).expect("invalid utf-8 sequence");
+    let str_res = std::str::from_utf8(byte_output).expect("invalid utf-8 sequence");
     // Evaluate the output with the predicate
     assert!(pred_regex.eval(&str_res));
     Ok(())
@@ -41,7 +41,7 @@ pub fn match_on_output(
 
 /// Helper function to match the raw output of stderr or stdout, with a pattern a fixed amount of times, case insensitive
 pub fn match_on_out_no_case(
-    byte_output: &Vec<u8>,
+    byte_output: &[u8],
     re_str: &str,
     match_count: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -50,7 +50,7 @@ pub fn match_on_out_no_case(
     // Make the predicate function
     let pred_regex = predicate::function(|&x| re.find_iter(x).count() == match_count);
     // Convert the output to string as utf-8
-    let str_res = std::str::from_utf8(&byte_output).expect("invalid utf-8 sequence");
+    let str_res = std::str::from_utf8(byte_output).expect("invalid utf-8 sequence");
     // Evaluate the output with the predicate
     assert!(
         pred_regex.eval(&str_res),
@@ -61,7 +61,7 @@ pub fn match_on_out_no_case(
 
 /// Helper function takes in the output of stderr and asserts that there are no errors or warnings
 pub fn assert_no_errors_or_warn(
-    stderr_byte_output: &Vec<u8>,
+    stderr_byte_output: &[u8],
 ) -> Result<(), Box<dyn std::error::Error>> {
     match_on_out_no_case(stderr_byte_output, "error - ", 0)?;
     match_on_out_no_case(stderr_byte_output, "warn - ", 0)?;

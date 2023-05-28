@@ -360,7 +360,7 @@ mod tests {
             stop_bit: 0x00,
             reserved0: 0x00,
         };
-        let rdh2_2 = rdh2.clone();
+        let rdh2_2 = rdh2;
 
         assert_eq!(rdh2, rdh2_2);
     }
@@ -373,7 +373,7 @@ mod tests {
             reserved0: 0x0000,
         };
         println!("{:?}", rdh3);
-        let rdh3_2 = rdh3.clone();
+        let rdh3_2 = rdh3;
 
         assert_eq!(rdh3, rdh3_2);
     }

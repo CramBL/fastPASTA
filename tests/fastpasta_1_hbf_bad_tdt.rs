@@ -44,7 +44,7 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_1_HBF_BAD_TDT)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("-v4")
         .arg("--filter-its-stave")
         .arg("l0_12");

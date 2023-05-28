@@ -89,7 +89,7 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("-v2")
         .arg("--filter-its-stave")
         .arg("L1_6")

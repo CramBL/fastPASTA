@@ -1,20 +1,21 @@
 use fastpasta::{
     input::lib::init_reader,
     stats::lib::{init_stats_controller, StatType},
+    util::lib::{ChecksOpt, ViewOpt},
 };
 
 pub fn main() -> std::process::ExitCode {
-    let config = fastpasta::get_config();
+    let config = match fastpasta::get_config() {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!("{e}");
+            return std::process::ExitCode::from(1);
+        }
+    };
     fastpasta::init_error_logger(&config);
-    log::trace!("Starting fastpasta with args: {config:#?}");
-    log::trace!(
-        "Checks enabled: {:#?}",
-        fastpasta::util::lib::ChecksOpt::check(&config)
-    );
-    log::trace!(
-        "Views enabled: {:#?}",
-        fastpasta::util::config::view::ViewOpt::view(&config)
-    );
+    log::trace!("Starting fastpasta with args: {:#?}", config);
+    log::trace!("Checks enabled: {:#?}", config.check());
+    log::trace!("Views enabled: {:#?}", config.view());
 
     // Launch statistics thread
     // If max allowed errors is reached, stop the processing from the stats thread

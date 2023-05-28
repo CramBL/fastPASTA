@@ -45,6 +45,7 @@
 //! $ fastpasta <input_file> view rdh
 //! ```
 
+use clap::Parser;
 use crossbeam_channel::Receiver;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
 use stats::lib::StatType;
@@ -247,10 +248,11 @@ pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
 }
 
 /// Get the [config][util::config::Cfg] from the command line arguments and return it as an [Arc][std::sync::Arc].
-pub fn get_config() -> std::sync::Arc<util::config::Cfg> {
-    let cfg = <util::config::Cfg as structopt::StructOpt>::from_args();
-    cfg.validate_args().expect("Invalid config");
-    std::sync::Arc::new(cfg)
+pub fn get_config() -> Result<std::sync::Arc<util::config::Cfg>, String> {
+    let cfg = util::config::Cfg::parse();
+    cfg.validate_args()?;
+
+    Ok(std::sync::Arc::new(cfg))
 }
 
 /// Exit with [std::process::ExitCode] `SUCCESS`.
@@ -282,7 +284,7 @@ mod tests {
     #[test]
     fn test_init_processing() {
         // Setup Mock Config
-        let mut mock_config = MockConfig::default();
+        let mut mock_config = MockConfig::new();
         // Set input file from one of the files used for regression testing
         mock_config.input_file = Some(PathBuf::from("tests/test-data/10_rdh.raw"));
         let mock_config = Arc::new(mock_config);
@@ -332,10 +334,7 @@ mod tests {
         let mock_config = Arc::new(mock_config);
         let (stat_sender, stat_receiver): (flume::Sender<StatType>, flume::Receiver<StatType>) =
             flume::unbounded();
-        let (data_sender, data_receiver): (
-            crossbeam_channel::Sender<CdpChunk<RdhCRU<V7>>>,
-            crossbeam_channel::Receiver<CdpChunk<RdhCRU<V7>>>,
-        ) = crossbeam_channel::unbounded();
+        let (data_sender, data_receiver) = crossbeam_channel::unbounded();
         let stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let mut cdp_chunk: CdpChunk<RdhCRU<V7>> = CdpChunk::default();
         cdp_chunk.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);

@@ -135,6 +135,7 @@ mod tests {
     use crate::util::config::Cfg;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
+    use clap::Parser;
 
     use super::*;
 
@@ -152,7 +153,7 @@ mod tests {
 
     #[test]
     fn test_buffered_writer() {
-        let config: Cfg = <Cfg as structopt::StructOpt>::from_iter(&CONFIG_STR);
+        let config: Cfg = <Cfg>::parse_from(CONFIG_STR);
         {
             let writer = BufferedWriter::<RdhCRU<V6>>::new(&config, 10);
 
@@ -170,7 +171,7 @@ mod tests {
     // Should panic, Because when the writer is dropped, it flushes the buffer, which will panic because the number of RDHs and payloads are not equal
     // Empty payloads are counted.
     fn test_push_2_rdh_v7_buffer_is_2() {
-        let config: Cfg = <Cfg as structopt::StructOpt>::from_iter(&CONFIG_STR);
+        let config: Cfg = <Cfg>::parse_from(CONFIG_STR);
         let rdhs = vec![CORRECT_RDH_CRU_V7, CORRECT_RDH_CRU_V7];
         let length = rdhs.len();
         println!("length: {}", length);
@@ -189,7 +190,7 @@ mod tests {
 
     #[test]
     fn test_push_2_rdh_v7_and_empty_payloads_buffers_are_2() {
-        let config: Cfg = <Cfg as structopt::StructOpt>::from_iter(&CONFIG_STR);
+        let config: Cfg = <Cfg>::parse_from(CONFIG_STR);
         let mut cdp_chunk = CdpChunk::new();
 
         cdp_chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);

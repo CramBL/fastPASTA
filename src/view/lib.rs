@@ -4,19 +4,23 @@ use crate::{
     validators::its::its_payload_fsm_cont::ItsPayloadFsmContinuous, words::lib::RDH,
 };
 
-/// Calls a specific view generator based on the [View][util::config::view::View] type.
+/// Calls a specific view generator based on the [View][util::config::view::ViewCommands] type.
 #[inline]
 pub fn generate_view<T: RDH>(
-    view: crate::util::config::view::View,
+    view: crate::util::config::view::ViewCommands,
     cdp_chunk: input::data_wrapper::CdpChunk<T>,
     send_stats_ch: &flume::Sender<StatType>,
     its_payload_fsm_cont: &mut ItsPayloadFsmContinuous,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    use util::config::view::View;
+    use util::config::view::ViewCommands;
     match view {
-        View::Rdh => super::rdh_view::rdh_view(cdp_chunk)?,
-        View::Hbf => super::hbf_view::hbf_view(cdp_chunk, send_stats_ch, its_payload_fsm_cont)?,
-        View::ItsReadoutFrames => super::its_readout_frame_view::its_readout_frame_view(cdp_chunk)?,
+        ViewCommands::Rdh => super::rdh_view::rdh_view(cdp_chunk)?,
+        ViewCommands::Hbf => {
+            super::hbf_view::hbf_view(cdp_chunk, send_stats_ch, its_payload_fsm_cont)?
+        }
+        ViewCommands::ItsReadoutFrames => {
+            super::its_readout_frame_view::its_readout_frame_view(cdp_chunk)?
+        }
     }
     Ok(())
 }

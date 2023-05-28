@@ -4,7 +4,7 @@ use crate::util::*;
 mod util;
 
 // Asserts that the end of processing report summary contains correct information
-fn validate_report_summary(byte_output: &Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
+fn validate_report_summary(byte_output: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     let match_patterns = vec![
         "Trigger Type.*0x6A03",
         "Trigger Type.*SOC",
@@ -114,7 +114,7 @@ fn check_all_its_trigger_period_missing_arg() -> Result<(), Box<dyn std::error::
     cmd.arg(FILE_10_RDH)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("--its-trigger-period")
         .arg("1");
     cmd.assert()
@@ -131,7 +131,7 @@ fn check_all_its_trigger_period_stave_not_found() -> Result<(), Box<dyn std::err
     cmd.arg(FILE_10_RDH)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("-v2")
         .arg("--its-trigger-period")
         .arg("1")
@@ -156,7 +156,7 @@ fn check_all_its_trigger_period_mismatch() -> Result<(), Box<dyn std::error::Err
     cmd.arg(FILE_10_RDH)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("-v3")
         .arg("--its-trigger-period")
         .arg("1")
@@ -180,7 +180,7 @@ fn check_all_its_trigger_period() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_10_RDH)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("-v3")
         .arg("--its-trigger-period")
         .arg("0")
@@ -202,7 +202,7 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_10_RDH)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("-v4")
         .arg("--filter-its-stave")
         .arg("L0_12");
@@ -222,7 +222,7 @@ fn check_all_its_stave_missing_filter() -> Result<(), Box<dyn std::error::Error>
     cmd.arg(FILE_10_RDH)
         .arg("check")
         .arg("all")
-        .arg("its_stave")
+        .arg("its-stave")
         .arg("-v4");
     cmd.assert().failure();
 
