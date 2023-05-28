@@ -77,19 +77,6 @@ audit:
 
 ### build ###
 
-# Build a binary with debug enabled if pushed to master branch
-rust-latest:
-  stage: build
-  script:
-    - cargo build --verbose
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
-  artifacts:
-    name: "debug_${CI_COMMIT_SHA}"
-    paths:
-    - ./target
-    expire_in: 2 weeks
-
 # Build a binary with nightly rust for later jobs
 rust-nightly-build:
   stage: build
