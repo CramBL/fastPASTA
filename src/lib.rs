@@ -283,7 +283,7 @@ mod tests {
     #[test]
     fn test_init_processing() {
         // Setup Mock Config
-        let mut mock_config = MockConfig::default();
+        let mut mock_config = MockConfig::new();
         // Set input file from one of the files used for regression testing
         mock_config.input_file = Some(PathBuf::from("tests/test-data/10_rdh.raw"));
         let mock_config = Arc::new(mock_config);
@@ -333,10 +333,7 @@ mod tests {
         let mock_config = Arc::new(mock_config);
         let (stat_sender, stat_receiver): (flume::Sender<StatType>, flume::Receiver<StatType>) =
             flume::unbounded();
-        let (data_sender, data_receiver): (
-            crossbeam_channel::Sender<CdpChunk<RdhCRU<V7>>>,
-            crossbeam_channel::Receiver<CdpChunk<RdhCRU<V7>>>,
-        ) = crossbeam_channel::unbounded();
+        let (data_sender, data_receiver) = crossbeam_channel::unbounded();
         let stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let mut cdp_chunk: CdpChunk<RdhCRU<V7>> = CdpChunk::default();
         cdp_chunk.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);

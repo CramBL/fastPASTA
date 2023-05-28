@@ -4,7 +4,7 @@ use crate::util::*;
 mod util;
 
 // Asserts that the end of processing report summary contains correct information
-fn validate_report_summary(byte_output: &Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
+fn validate_report_summary(byte_output: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     let match_patterns = vec![
         "Trigger Type.*0x6A03",
         "Trigger Type.*SOC",
