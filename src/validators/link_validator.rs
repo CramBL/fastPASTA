@@ -159,33 +159,25 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + 'static> LinkValidator<T, C> {
 
 #[cfg(test)]
 mod tests {
+    use once_cell::sync::OnceCell;
+
     use super::*;
     use crate::util::config::check::System;
     use crate::util::lib::test_util::MockConfig;
     use crate::words::its::test_payloads::*;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
 
-    static CFG_TEST_RUN_LINK_VALIDATOR: MockConfig = MockConfig {
-        check: Some(CheckCommands::Sanity { system: None }),
-        view: None,
-        filter_link: None,
-        filter_fee: None,
-        filter_its_stave: None,
-        verbosity: 0,
-        max_tolerate_errors: 0,
-        input_file: None,
-        skip_payload: false,
-        output: None,
-        output_mode: crate::util::config::inputoutput::DataOutputMode::None,
-        its_trigger_period: None,
-    };
+    static CFG_TEST_RUN_LINK_VALIDATOR: OnceCell<MockConfig> = OnceCell::new();
 
     #[test]
     fn test_run_link_validator() {
         let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
+        let mut mock_config = MockConfig::new();
+        mock_config.check = Some(CheckCommands::Sanity { system: None });
+        CFG_TEST_RUN_LINK_VALIDATOR.set(mock_config).unwrap();
 
         let (mut link_validator, _cdp_tuple_send_ch) =
-            LinkValidator::new(&CFG_TEST_RUN_LINK_VALIDATOR, send_stats_ch);
+            LinkValidator::new(CFG_TEST_RUN_LINK_VALIDATOR.get().unwrap(), send_stats_ch);
 
         assert!(!link_validator.running_checks);
 
@@ -210,29 +202,21 @@ mod tests {
         assert!(stats_msg.is_err());
     }
 
-    static CFG_TEST_VALID_PAYLOADS_FLAVOR_0: MockConfig = MockConfig {
-        check: Some(CheckCommands::Sanity {
-            system: Some(System::ITS),
-        }),
-        view: None,
-        filter_link: None,
-        filter_fee: None,
-        filter_its_stave: None,
-        verbosity: 0,
-        max_tolerate_errors: 0,
-        input_file: None,
-        skip_payload: false,
-        output: None,
-        output_mode: crate::util::config::inputoutput::DataOutputMode::None,
-        its_trigger_period: None,
-    };
-
+    static CFG_TEST_VALID_PAYLOADS_FLAVOR_0: OnceCell<MockConfig> = OnceCell::new();
     #[test]
     fn test_valid_payloads_flavor_0() {
+        let mut mock_config = MockConfig::new();
+        mock_config.check = Some(CheckCommands::Sanity {
+            system: Some(System::ITS),
+        });
+        CFG_TEST_VALID_PAYLOADS_FLAVOR_0.set(mock_config).unwrap();
+
         let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
 
-        let (mut link_validator, cdp_tuple_send_ch) =
-            LinkValidator::new(&CFG_TEST_VALID_PAYLOADS_FLAVOR_0, send_stats_ch);
+        let (mut link_validator, cdp_tuple_send_ch) = LinkValidator::new(
+            CFG_TEST_VALID_PAYLOADS_FLAVOR_0.get().unwrap(),
+            send_stats_ch,
+        );
 
         assert!(!link_validator.running_checks);
 
@@ -262,29 +246,20 @@ mod tests {
         }
     }
 
-    static CFG_TEST_VALID_PAYLOADS_FLAVOR_2: MockConfig = MockConfig {
-        check: Some(CheckCommands::Sanity {
-            system: Some(System::ITS),
-        }),
-        view: None,
-        filter_link: None,
-        filter_fee: None,
-        filter_its_stave: None,
-        verbosity: 0,
-        max_tolerate_errors: 0,
-        input_file: None,
-        skip_payload: false,
-        output: None,
-        output_mode: crate::util::config::inputoutput::DataOutputMode::None,
-        its_trigger_period: None,
-    };
-
+    static CFG_TEST_VALID_PAYLOADS_FLAVOR_2: OnceCell<MockConfig> = OnceCell::new();
     #[test]
     fn test_valid_payloads_flavor_2() {
+        let mut mock_config = MockConfig::new();
+        mock_config.check = Some(CheckCommands::Sanity {
+            system: Some(System::ITS),
+        });
+        CFG_TEST_VALID_PAYLOADS_FLAVOR_2.set(mock_config).unwrap();
         let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
 
-        let (mut link_validator, cdp_tuple_send_ch) =
-            LinkValidator::new(&CFG_TEST_VALID_PAYLOADS_FLAVOR_2, send_stats_ch);
+        let (mut link_validator, cdp_tuple_send_ch) = LinkValidator::new(
+            CFG_TEST_VALID_PAYLOADS_FLAVOR_2.get().unwrap(),
+            send_stats_ch,
+        );
 
         assert!(!link_validator.running_checks);
 
@@ -314,28 +289,23 @@ mod tests {
         }
     }
 
-    static CFG_TEST_INVALID_PAYLOADS_FLAVOR_2_BAD_TDH_ONE_ERROR: MockConfig = MockConfig {
-        check: Some(CheckCommands::Sanity {
-            system: Some(System::ITS),
-        }),
-        view: None,
-        filter_link: None,
-        filter_fee: None,
-        filter_its_stave: None,
-        verbosity: 0,
-        max_tolerate_errors: 0,
-        input_file: None,
-        skip_payload: false,
-        output: None,
-        output_mode: crate::util::config::inputoutput::DataOutputMode::None,
-        its_trigger_period: None,
-    };
+    static CFG_TEST_INVALID_PAYLOADS_FLAVOR_2_BAD_TDH_ONE_ERROR: OnceCell<MockConfig> =
+        OnceCell::new();
 
     #[test]
     fn test_invalid_payloads_flavor_2_bad_tdh_one_error() {
+        let mut mock_config = MockConfig::new();
+        mock_config.check = Some(CheckCommands::Sanity {
+            system: Some(System::ITS),
+        });
+        CFG_TEST_INVALID_PAYLOADS_FLAVOR_2_BAD_TDH_ONE_ERROR
+            .set(mock_config)
+            .unwrap();
         let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
         let (mut link_validator, cdp_tuple_send_ch) = LinkValidator::new(
-            &CFG_TEST_INVALID_PAYLOADS_FLAVOR_2_BAD_TDH_ONE_ERROR,
+            CFG_TEST_INVALID_PAYLOADS_FLAVOR_2_BAD_TDH_ONE_ERROR
+                .get()
+                .unwrap(),
             send_stats_ch,
         );
 
@@ -375,7 +345,7 @@ mod tests {
         }
     }
 
-    static CFG_TEST_INIT_LINK_VALIDATOR_NO_CHECKS_ENABLED: MockConfig = MockConfig::const_default();
+    static CFG_TEST_INIT_LINK_VALIDATOR_NO_CHECKS_ENABLED: OnceCell<MockConfig> = OnceCell::new();
 
     #[test]
     #[should_panic]
@@ -383,13 +353,18 @@ mod tests {
         // Should panic because no checks are enabled in the config, doesn't make sense to run the link validator
         let (send_stats_ch, _) = flume::unbounded();
 
+        let mut cfg = MockConfig::new();
+        cfg.check = Some(CheckCommands::Sanity { system: None });
+
         type RdhV7 = RdhCRU<V7>;
 
         let (mut _link_validator, _cdp_tuple_send_ch): (
             LinkValidator<RdhV7, MockConfig>,
             crossbeam_channel::Sender<CdpTuple<RdhV7>>,
         ) = LinkValidator::new(
-            &CFG_TEST_INIT_LINK_VALIDATOR_NO_CHECKS_ENABLED,
+            CFG_TEST_INIT_LINK_VALIDATOR_NO_CHECKS_ENABLED
+                .get()
+                .unwrap(),
             send_stats_ch,
         );
     }

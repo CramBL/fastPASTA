@@ -112,23 +112,6 @@ pub mod test_util {
                 its_trigger_period: None,
             }
         }
-
-        pub const fn const_default() -> Self {
-            Self {
-                check: None,
-                view: None,
-                filter_link: None,
-                filter_fee: None,
-                filter_its_stave: None,
-                verbosity: 0,
-                max_tolerate_errors: 0,
-                input_file: None,
-                skip_payload: false,
-                output: None,
-                output_mode: DataOutputMode::None,
-                its_trigger_period: None,
-            }
-        }
     }
 
     impl Config for MockConfig {}

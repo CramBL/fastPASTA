@@ -176,28 +176,20 @@ mod tests {
     use crate::words::its::test_payloads::*;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
     use crate::words::rdh_cru::{RdhCRU, V7};
+    use once_cell::sync::OnceCell;
 
     use super::*;
 
-    static CFG_TEST_DISPACTER: MockConfig = MockConfig {
-        check: Some(CheckCommands::Sanity { system: None }),
-        view: None,
-        filter_link: None,
-        filter_fee: None,
-        filter_its_stave: None,
-        verbosity: 0,
-        max_tolerate_errors: 0,
-        input_file: None,
-        skip_payload: false,
-        output: None,
-        output_mode: crate::util::config::inputoutput::DataOutputMode::None,
-        its_trigger_period: None,
-    };
+    static CFG_TEST_DISPACTER: OnceCell<MockConfig> = OnceCell::new();
 
     #[test]
     fn test_dispacter() {
+        let mut cfg = MockConfig::new();
+        cfg.check = Some(CheckCommands::Sanity { system: None });
+        CFG_TEST_DISPACTER.set(cfg).unwrap();
+
         let mut disp: ValidatorDispatcher<RdhCRU<V7>, MockConfig> =
-            ValidatorDispatcher::new(&CFG_TEST_DISPACTER, flume::unbounded().0);
+            ValidatorDispatcher::new(CFG_TEST_DISPACTER.get().unwrap(), flume::unbounded().0);
 
         let cdp_tuple: CdpTuple<RdhCRU<V7>> = (CORRECT_RDH_CRU_V7, vec![0; 100], 0);
 

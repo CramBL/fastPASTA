@@ -72,6 +72,8 @@ impl ItsPayloadWord {
 
 #[cfg(test)]
 mod tests {
+    use once_cell::sync::OnceCell;
+
     use crate::{
         util::lib::test_util::MockConfig,
         util::lib::{CheckCommands, System},
@@ -80,29 +82,23 @@ mod tests {
 
     use super::*;
 
-    static CFG_TEST_DO_PAYLOAD_CHECKS: MockConfig = MockConfig {
-        check: Some(CheckCommands::All {
-            system: Some(System::ITS),
-        }),
-        view: None,
-        filter_link: None,
-        filter_fee: None,
-        filter_its_stave: None,
-        verbosity: 0,
-        max_tolerate_errors: 0,
-        input_file: None,
-        skip_payload: false,
-        output: None,
-        output_mode: crate::util::config::inputoutput::DataOutputMode::None,
-        its_trigger_period: None,
-    };
+    static CFG_TEST_DO_PAYLOAD_CHECKS: OnceCell<MockConfig> = OnceCell::new();
 
     #[test]
     fn test_do_payload_checks_bad_payload() {
+        let mut mock_config = MockConfig::new();
+        mock_config.check = Some(CheckCommands::All {
+            system: Some(System::ITS),
+        });
+        CFG_TEST_DO_PAYLOAD_CHECKS.set(mock_config).unwrap();
+
         let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
 
         let mut cdp_validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(&CFG_TEST_DO_PAYLOAD_CHECKS, send_stats_ch.clone());
+            CdpRunningValidator::new(
+                CFG_TEST_DO_PAYLOAD_CHECKS.get().unwrap(),
+                send_stats_ch.clone(),
+            );
         let rdh = CORRECT_RDH_CRU_V7;
         let payload = vec![0x3D; 100];
         let rdh_mem_pos = 0;
@@ -114,7 +110,7 @@ mod tests {
         while let Ok(stats) = rcv_stats_ch.try_recv() {
             // the payload is only made up of 0x3D, so there should be errors, and all mentioning `3D`
             assert!(stats.to_string().contains("3D"));
-            println!("Stats: {:?}", stats)
+            println!("Stats: {stats:?}")
         }
     }
 }

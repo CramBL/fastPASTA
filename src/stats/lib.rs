@@ -231,9 +231,9 @@ fn collect_its_stats<T: words::lib::RDH>(rdh: &T, stats_sender_channel: &flume::
 
 #[cfg(test)]
 mod tests {
-    use crate::words::lib::RDH_CRU;
-
     use super::*;
+    use crate::words::lib::RDH_CRU;
+    use once_cell::sync::OnceCell;
 
     #[test]
     fn test_collect_its_stats() {
@@ -282,11 +282,14 @@ mod tests {
     }
 
     use crate::util::lib::test_util::MockConfig;
-    static CONFIG_TEST_INIT_STATS_CONTROLLER: MockConfig = MockConfig::const_default();
+    static CONFIG_TEST_INIT_STATS_CONTROLLER: OnceCell<MockConfig> = OnceCell::new();
     #[test]
     fn test_init_stats_controller() {
+        let mock_config = MockConfig::default();
+        CONFIG_TEST_INIT_STATS_CONTROLLER.set(mock_config).unwrap();
+
         let (handle, send_ch, stop_flag) =
-            init_stats_controller(&CONFIG_TEST_INIT_STATS_CONTROLLER);
+            init_stats_controller(CONFIG_TEST_INIT_STATS_CONTROLLER.get().unwrap());
 
         // Stop flag should be false
         assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));

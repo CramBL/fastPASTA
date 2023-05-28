@@ -646,8 +646,9 @@ mod tests {
         util::config::check::CheckCommands,
         words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7},
     };
+    use once_cell::sync::OnceCell;
 
-    static MOCK_CONFIG_DEFAULT: MockConfig = MockConfig::const_default();
+    static MOCK_CONFIG_DEFAULT: OnceCell<MockConfig> = OnceCell::new();
 
     #[test]
     fn test_validate_ihw() {
@@ -656,10 +657,13 @@ mod tests {
         let raw_data_ihw = [
             0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, VALID_ID,
         ];
-
         let (send, stats_recv_ch) = flume::unbounded();
+        if MOCK_CONFIG_DEFAULT.set(MockConfig::default()).is_err() {
+            // Ignore as it just means it was set by another test
+        }
+
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(&MOCK_CONFIG_DEFAULT, send);
+            CdpRunningValidator::new(MOCK_CONFIG_DEFAULT.get().unwrap(), send);
         let rdh_mem_pos = 0;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos);
@@ -675,10 +679,13 @@ mod tests {
         let raw_data_ihw = [
             0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, INVALID_ID,
         ];
+        if MOCK_CONFIG_DEFAULT.set(MockConfig::default()).is_err() {
+            // Ignore as it just means it was set by another test
+        }
 
         let (send, stats_recv_ch) = flume::unbounded();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(&MOCK_CONFIG_DEFAULT, send);
+            CdpRunningValidator::new(MOCK_CONFIG_DEFAULT.get().unwrap(), send);
         let rdh_mem_pos = 0x0;
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos);
@@ -701,10 +708,13 @@ mod tests {
         const _VALID_ID: u8 = 0xF0;
         // Boring but very typical TDT, everything is 0 except for packet_done
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
+        if MOCK_CONFIG_DEFAULT.set(MockConfig::default()).is_err() {
+            // Ignore as it just means it was set by another test
+        }
 
         let (send, stats_recv_ch) = flume::unbounded();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(&MOCK_CONFIG_DEFAULT, send);
+            CdpRunningValidator::new(MOCK_CONFIG_DEFAULT.get().unwrap(), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
@@ -728,10 +738,13 @@ mod tests {
         // Boring but very typical TDT, everything is 0 except for packet_done
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
         let raw_data_tdt_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF2];
+        if MOCK_CONFIG_DEFAULT.set(MockConfig::default()).is_err() {
+            // Ignore as it just means it was set by another test
+        }
 
         let (send, stats_recv_ch) = flume::unbounded();
         let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(&MOCK_CONFIG_DEFAULT, send);
+            CdpRunningValidator::new(MOCK_CONFIG_DEFAULT.get().unwrap(), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
@@ -760,20 +773,7 @@ mod tests {
         }
     }
 
-    static CFG_TEST_EXPECT_IHW_INVALIDATE_TDH_AND_NEXT_NEXT: MockConfig = MockConfig {
-        check: Some(CheckCommands::All { system: None }),
-        view: None,
-        filter_link: None,
-        filter_fee: None,
-        filter_its_stave: None,
-        verbosity: 0,
-        max_tolerate_errors: 0,
-        input_file: None,
-        skip_payload: false,
-        output: None,
-        output_mode: crate::util::config::inputoutput::DataOutputMode::None,
-        its_trigger_period: None,
-    };
+    static CFG_TEST_EXPECT_IHW_INVALIDATE_TDH_AND_NEXT_NEXT: OnceCell<MockConfig> = OnceCell::new();
 
     #[test]
     fn test_expect_ihw_invalidate_tdh_and_next_next() {
@@ -784,9 +784,18 @@ mod tests {
         let raw_data_tdt_next_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF3];
 
         let (send, stats_recv_ch) = flume::unbounded();
+        let mut mock_config = MockConfig::new();
+        mock_config.check = Some(CheckCommands::All { system: None });
+        CFG_TEST_EXPECT_IHW_INVALIDATE_TDH_AND_NEXT_NEXT
+            .set(mock_config)
+            .unwrap();
 
-        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
-            CdpRunningValidator::new(&CFG_TEST_EXPECT_IHW_INVALIDATE_TDH_AND_NEXT_NEXT, send);
+        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> = CdpRunningValidator::new(
+            CFG_TEST_EXPECT_IHW_INVALIDATE_TDH_AND_NEXT_NEXT
+                .get()
+                .unwrap(),
+            send,
+        );
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
         validator.set_current_rdh(&CORRECT_RDH_CRU_V7, rdh_mem_pos); // Data format is 2
