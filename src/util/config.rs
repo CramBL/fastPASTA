@@ -67,7 +67,7 @@ pub struct Cfg {
     #[arg(long, name = "filter-its-stave", global = true, group = "filter")]
     filter_its_stave: Option<String>,
 
-    /// Enables checks on the ITS trigger period with the specified value, usable with the `check all its_stave` command
+    /// Enables checks on the ITS trigger period with the specified value, usable with the `check all its-stave` command
     #[arg(short = 'p', long, global = true, requires = "filter-its-stave")]
     its_trigger_period: Option<u16>,
 
