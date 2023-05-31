@@ -46,6 +46,7 @@ pub struct StatsController<C: Config + 'static> {
     fee_id_seen: Vec<u16>,
     run_trigger_type: (u32, String),
     system_id_observed: Option<SystemId>,
+    any_errors_flag: Arc<AtomicBool>,
 }
 impl<C: Config + 'static> StatsController<C> {
     /// Creates a new [StatsController] from a [Config], a [flume::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
@@ -67,7 +68,7 @@ impl<C: Config + 'static> StatsController<C> {
             max_tolerate_errors: global_config.max_tolerate_errors(),
             recv_stats_channel,
             send_stats_channel: Some(send_stats_channel),
-            end_processing_flag: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            end_processing_flag: Arc::new(AtomicBool::new(false)),
             rdh_version: 0,
             data_formats_observed: Vec::new(),
             hbfs_seen: 0,
@@ -76,6 +77,7 @@ impl<C: Config + 'static> StatsController<C> {
             fee_id_seen: Vec::new(),
             run_trigger_type: (0, String::from("")),
             system_id_observed: None,
+            any_errors_flag: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -91,6 +93,13 @@ impl<C: Config + 'static> StatsController<C> {
     /// Returns a cloned reference to the end processing flag.
     pub fn end_processing_flag(&self) -> Arc<AtomicBool> {
         self.end_processing_flag.clone()
+    }
+
+    /// Returns a cloned reference to the any errors flag
+    ///
+    /// The flag is set if there's any errors in the input data at end of processing.
+    pub fn any_errors_flag(&self) -> Arc<AtomicBool> {
+        self.any_errors_flag.clone()
     }
 
     /// Starts the event loop for the StatsController
@@ -111,6 +120,12 @@ impl<C: Config + 'static> StatsController<C> {
             self.non_atomic_total_errors += self.reported_errors.len() as u64;
             self.print_errors();
             self.print();
+        }
+        if self.total_errors.load(std::sync::atomic::Ordering::SeqCst) > 0
+            || self.non_atomic_total_errors > 0
+        {
+            self.any_errors_flag
+                .store(true, std::sync::atomic::Ordering::SeqCst);
         }
     }
 

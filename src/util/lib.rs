@@ -34,6 +34,11 @@ where
                 }
             }
         }
+        if let Some(exit_code_val) = self.exit_code_any_errors() {
+            if exit_code_val == 0 {
+                return Err("Invalid config: Exit code for any errors cannot be 0".to_string());
+            }
+        }
         Ok(())
     }
 }
@@ -87,6 +92,7 @@ pub mod test_util {
         pub output: Option<std::path::PathBuf>,
         pub output_mode: DataOutputMode,
         pub its_trigger_period: Option<u16>,
+        pub exit_code_any_errors: Option<u8>,
     }
 
     impl Default for MockConfig {
@@ -110,6 +116,7 @@ pub mod test_util {
                 output: None,
                 output_mode: DataOutputMode::None,
                 its_trigger_period: None,
+                exit_code_any_errors: None,
             }
         }
     }
@@ -161,6 +168,10 @@ pub mod test_util {
 
         fn max_tolerate_errors(&self) -> u32 {
             self.max_tolerate_errors
+        }
+
+        fn exit_code_any_errors(&self) -> Option<u8> {
+            self.exit_code_any_errors
         }
     }
     impl InputOutputOpt for MockConfig {
