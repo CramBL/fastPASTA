@@ -74,7 +74,7 @@ pub fn init_processing(
     mut reader: Box<dyn BufferedReaderWrapper>,
     stat_send_channel: flume::Sender<StatType>,
     thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
-) -> std::process::ExitCode {
+) -> std::io::Result<()> {
     // Determine RDH version
     let rdh0 = Rdh0::load(&mut reader).expect("Failed to read first RDH0");
     let rdh_version = rdh0.header_id;
@@ -92,19 +92,28 @@ pub fn init_processing(
     match rdh_version {
         6 => match process::<RdhCRU<V6>>(config, loader, stat_send_channel.clone(), thread_stopper)
         {
-            Ok(_) => exit_success(),
-            Err(e) => exit_fatal(stat_send_channel, e.to_string(), 2),
+            Ok(_) => Ok(()),
+            Err(e) => {
+                stat_send_channel
+                    .send(StatType::Fatal(e.to_string()))
+                    .unwrap();
+                Err(e)
+            }
         },
         7 => match process::<RdhCRU<V7>>(config, loader, stat_send_channel.clone(), thread_stopper)
         {
-            Ok(_) => exit_success(),
-            Err(e) => exit_fatal(stat_send_channel, e.to_string(), 2),
+            Ok(_) => Ok(()),
+            Err(e) => {
+                stat_send_channel
+                    .send(StatType::Fatal(e.to_string()))
+                    .unwrap();
+                Err(e)
+            }
         },
-        _ => exit_fatal(
-            stat_send_channel,
+        _ => Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
             format!("Unknown RDH version: {rdh_version}"),
-            3,
-        ),
+        )),
     }
 }
 
@@ -254,23 +263,6 @@ pub fn init_config() -> Result<(), String> {
     Ok(())
 }
 
-/// Exit with [std::process::ExitCode] `SUCCESS`.
-fn exit_success() -> std::process::ExitCode {
-    log::info!("Exit successful");
-    std::process::ExitCode::SUCCESS
-}
-
-fn exit_fatal(
-    stat_send_channel: flume::Sender<StatType>,
-    error_string: String,
-    exit_code: u8,
-) -> std::process::ExitCode {
-    stat_send_channel
-        .send(StatType::Fatal(error_string))
-        .unwrap();
-    std::process::ExitCode::from(exit_code)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -306,7 +298,8 @@ mod tests {
             reader,
             sender,
             stop_flag.clone(),
-        );
+        )
+        .unwrap();
 
         // Receive all messages
         let mut stats: Vec<StatType> = Vec::new();

@@ -10,17 +10,25 @@ pub fn init_stats_controller<C: Config + 'static>(
     std::thread::JoinHandle<()>,
     flume::Sender<StatType>,
     std::sync::Arc<AtomicBool>,
+    std::sync::Arc<AtomicBool>,
 ) {
     let mut stats = StatsController::new(config);
     let send_stats_channel = stats.send_channel();
     let thread_stop_flag = stats.end_processing_flag();
+    let any_errors_flag = stats.any_errors_flag();
+
     let stats_thread = std::thread::Builder::new()
         .name("stats_thread".to_string())
         .spawn(move || {
             stats.run();
         })
         .expect("Failed to spawn stats thread");
-    (stats_thread, send_stats_channel, thread_stop_flag)
+    (
+        stats_thread,
+        send_stats_channel,
+        thread_stop_flag,
+        any_errors_flag,
+    )
 }
 
 // Stat collection functionality
@@ -288,7 +296,7 @@ mod tests {
         let mock_config = MockConfig::default();
         CONFIG_TEST_INIT_STATS_CONTROLLER.set(mock_config).unwrap();
 
-        let (handle, send_ch, stop_flag) =
+        let (handle, send_ch, stop_flag, _errors_flag) =
             init_stats_controller(CONFIG_TEST_INIT_STATS_CONTROLLER.get().unwrap());
 
         // Stop flag should be false
