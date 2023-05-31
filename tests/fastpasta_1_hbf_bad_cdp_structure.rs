@@ -60,6 +60,28 @@ fn check_all_its_err_msg() -> Result<(), Box<dyn std::error::Error>> {
         .arg("all")
         .arg("its")
         .arg("-v2");
+    cmd.assert().success();
+    cmd.assert().code(0);
+
+    // 1 Error from a stateful check
+    // Eror message should indicate: In position 0xE0, something about DDW0 and RDH
+    match_on_out_no_case(&cmd.output()?.stderr, "0xe0.*(DDW0|RDH).*(DDW0|RDH)", 1)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_err_msg_custom_exit_code() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_1_HBF_BAD_CDP_STRUCTURE)
+        .arg("check")
+        .arg("all")
+        .arg("its")
+        .arg("-v2")
+        .arg("-E")
+        .arg("123");
+    cmd.assert().code(123);
 
     // 1 Error from a stateful check
     // Eror message should indicate: In position 0xE0, something about DDW0 and RDH

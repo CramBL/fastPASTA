@@ -406,3 +406,20 @@ fn filter_link_check_sanity_pipe_between_fastpasta() -> Result<(), Box<dyn std::
 
     Ok(())
 }
+
+#[test]
+fn check_sanity_custom_exit_code() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("sanity")
+        .arg("-E")
+        .arg("1");
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    Ok(())
+}
