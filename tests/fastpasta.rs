@@ -3,6 +3,47 @@ mod util;
 
 /// Test that all test data files can be parsed successfully
 #[test]
+fn fastpasta_version() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg("--version").arg("-v2");
+    cmd.assert().success();
+
+    match_on_out_no_case(&cmd.output().unwrap().stdout, "fastpasta", 1)?;
+    match_on_out_no_case(
+        &cmd.output().unwrap().stdout,
+        r"fastpasta.*[1-9]{1,2}\.[0-9]{1,4}\.[0-9]{1,10}", // Match first number from 1-9 as major version 1 is already out
+        1,
+    )?;
+
+    Ok(())
+}
+
+#[test]
+fn fastpasta_help() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    // Long help
+    cmd.arg("--help").arg("-v2");
+    cmd.assert().success().stdout(
+        predicate::str::contains("Arguments").and(
+            predicate::str::contains("Subcommand").and(
+                predicate::str::contains("Options").and(
+                    predicate::str::contains("Commands").and(
+                        predicate::str::contains("Usage")
+                            .and(predicate::str::contains("help"))
+                            .and(predicate::str::contains("version")),
+                    ),
+                ),
+            ),
+        ),
+    );
+
+    Ok(())
+}
+
+/// Test that all test data files can be parsed successfully
+#[test]
 fn file_exists_exit_successful_10_rdh() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
