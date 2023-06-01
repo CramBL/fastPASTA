@@ -47,7 +47,7 @@ pub fn main() -> std::process::ExitCode {
 
     if exit_code == 0 {
         log::info!("Exit successful from data processing");
-        if let Some(custom_exit_code) = Cfg::global().exit_code_any_errors() {
+        if let Some(custom_exit_code) = Cfg::global().any_errors_exit_code() {
             if any_errors_flag.load(std::sync::atomic::Ordering::Relaxed) {
                 std::process::ExitCode::from(custom_exit_code)
             } else {

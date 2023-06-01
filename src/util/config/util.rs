@@ -6,8 +6,8 @@ pub trait UtilOpt {
     fn verbosity(&self) -> u8;
     /// Maximum number of errors to tolerate before exiting
     fn max_tolerate_errors(&self) -> u32;
-    /// Set the error code for if any errors are detected in the input data
-    fn exit_code_any_errors(&self) -> Option<u8>;
+    /// Set the exit code for if any errors are detected in the input data
+    fn any_errors_exit_code(&self) -> Option<u8>;
 }
 
 impl<T> UtilOpt for &T
@@ -21,8 +21,8 @@ where
         (*self).max_tolerate_errors()
     }
 
-    fn exit_code_any_errors(&self) -> Option<u8> {
-        (*self).exit_code_any_errors()
+    fn any_errors_exit_code(&self) -> Option<u8> {
+        (*self).any_errors_exit_code()
     }
 }
 
@@ -36,8 +36,8 @@ where
     fn max_tolerate_errors(&self) -> u32 {
         (**self).max_tolerate_errors()
     }
-    fn exit_code_any_errors(&self) -> Option<u8> {
-        (**self).exit_code_any_errors()
+    fn any_errors_exit_code(&self) -> Option<u8> {
+        (**self).any_errors_exit_code()
     }
 }
 
@@ -53,8 +53,8 @@ where
         (**self).max_tolerate_errors()
     }
 
-    fn exit_code_any_errors(&self) -> Option<u8> {
-        (**self).exit_code_any_errors()
+    fn any_errors_exit_code(&self) -> Option<u8> {
+        (**self).any_errors_exit_code()
     }
 }
 
@@ -70,7 +70,7 @@ where
         (**self).max_tolerate_errors()
     }
 
-    fn exit_code_any_errors(&self) -> Option<u8> {
-        (**self).exit_code_any_errors()
+    fn any_errors_exit_code(&self) -> Option<u8> {
+        (**self).any_errors_exit_code()
     }
 }

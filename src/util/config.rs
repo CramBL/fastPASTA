@@ -57,9 +57,9 @@ pub struct Cfg {
     #[arg(short = 'e', long = "max-errors", default_value_t = 0, global = true)]
     max_tolerate_errors: u32,
 
-    /// Set the error code for if any errors are detected in the input data
+    /// Set the exit code for if any errors are detected in the input data (cannot be 0)
     #[arg(short = 'E', long = "any-errors-exit-code", global = true)]
-    exit_code_any_errors: Option<u8>,
+    any_errors_exit_code: Option<u8>,
 
     /// Set CRU link ID to filter by (e.g. 5)
     #[arg(short = 'f', long, global = true, group = "filter")]
@@ -215,8 +215,8 @@ impl UtilOpt for Cfg {
     fn max_tolerate_errors(&self) -> u32 {
         self.max_tolerate_errors
     }
-    fn exit_code_any_errors(&self) -> Option<u8> {
-        self.exit_code_any_errors
+    fn any_errors_exit_code(&self) -> Option<u8> {
+        self.any_errors_exit_code
     }
 }
 

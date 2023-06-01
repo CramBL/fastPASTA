@@ -34,7 +34,7 @@ where
                 }
             }
         }
-        if let Some(exit_code_val) = self.exit_code_any_errors() {
+        if let Some(exit_code_val) = self.any_errors_exit_code() {
             if exit_code_val == 0 {
                 return Err("Invalid config: Exit code for any errors cannot be 0".to_string());
             }
@@ -170,7 +170,7 @@ pub mod test_util {
             self.max_tolerate_errors
         }
 
-        fn exit_code_any_errors(&self) -> Option<u8> {
+        fn any_errors_exit_code(&self) -> Option<u8> {
             self.exit_code_any_errors
         }
     }
