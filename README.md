@@ -30,7 +30,7 @@ To verify or view curated content of the scanned raw binary data from ALICE.
 - [Examples of use](#examples-of-use)
     - [Read from stdin -\> filter link -\> view RDHs](#read-from-stdin---filter-link---view-rdhs)
     - [Read from file -\> filter by link -\> validate](#read-from-file---filter-by-link---validate)
-    - [Read from file -\> view HBFs with `less`](#read-from-file---view-hbfs-with-less)
+    - [Read from file -\> view ITS readout frames with `less`](#read-from-file---view-its-readout-frames-with-less)
 - [Error messages](#error-messages)
     - [Messages are formatted as follows:](#messages-are-formatted-as-follows)
     - [Example of failed RDH sanity check](#example-of-failed-rdh-sanity-check)
@@ -102,14 +102,14 @@ Filter link 3 and check `sanity` include sanity checks specific to ITS
 $ fastpasta input.raw -f 3 check sanity its # target `its` is case-insensitive
 ```
 
-### Read from file -> view HBFs with `less`
-Generate HBF view
+### Read from file -> view ITS readout frames with `less`
+Generate ITS readout frame view
 ```shell
-$ fastpasta input.raw view hbf | less
+$ fastpasta input.raw view its-readout-frames | less
 ```
-View only HBFs from link #3
+View only readout frames from link #3
 ```shell
-$ fastpasta input.raw view hbf -f 3 | less
+$ fastpasta input.raw view its-readout-frames -f 3 | less
 ```
 
 # Error messages
