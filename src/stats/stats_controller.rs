@@ -119,7 +119,11 @@ impl<C: Config + 'static> StatsController<C> {
         } else {
             self.non_atomic_total_errors += self.reported_errors.len() as u64;
             self.print_errors();
-            self.print();
+
+            // Print the summary report if any RDHs were seen. If not, it's likely that an early error occurred and no data was processed.
+            if self.rdhs_seen > 0 {
+                self.print();
+            }
         }
         if self.total_errors.load(std::sync::atomic::Ordering::SeqCst) > 0
             || self.non_atomic_total_errors > 0
