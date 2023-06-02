@@ -118,7 +118,7 @@ impl<C: Config + 'static> StatsController<C> {
             log::info!("View active or output is being piped, skipping report summary printout.")
         } else {
             self.non_atomic_total_errors += self.reported_errors.len() as u64;
-            self.print_errors();
+            self.print_mem_ordered_errors();
 
             // Print the summary report if any RDHs were seen. If not, it's likely that an early error occurred and no data was processed.
             if self.rdhs_seen > 0 {
@@ -142,7 +142,14 @@ impl<C: Config + 'static> StatsController<C> {
                     log::trace!("Fatal error already seen, ignoring error: {msg}");
                     return;
                 }
-                self.reported_errors.push(msg);
+
+                // If any of filter link is set, errors in the data are reported sequentially so just print them as they are reived
+                if self.config.filter_link().is_some() {
+                    log::error!("{msg}");
+                } else {
+                    self.reported_errors.push(msg);
+                }
+
                 if self.max_tolerate_errors > 0 {
                     let prv_err_cnt = self
                         .total_errors
@@ -354,7 +361,7 @@ impl<C: Config + 'static> StatsController<C> {
         filtered_stats
     }
 
-    fn print_errors(&mut self) {
+    fn print_mem_ordered_errors(&mut self) {
         // Regex to extract the memory address from the error message
         let re = regex::Regex::new(r"0x(?P<mem_pos>[0-9a-fA-F]+):").unwrap();
         // Sort the errors by memory address
