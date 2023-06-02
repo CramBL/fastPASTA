@@ -1,10 +1,7 @@
 use fastpasta::{
     input::lib::init_reader,
     stats::lib::{init_stats_controller, StatType},
-    util::{
-        config::Cfg,
-        lib::{ChecksOpt, UtilOpt, ViewOpt},
-    },
+    util::config::Cfg,
 };
 
 pub fn main() -> std::process::ExitCode {
@@ -14,9 +11,6 @@ pub fn main() -> std::process::ExitCode {
     };
 
     fastpasta::init_error_logger(Cfg::global());
-    log::trace!("Starting fastpasta with args: {:#?}", Cfg::global());
-    log::trace!("Checks enabled: {:#?}", Cfg::global().check());
-    log::trace!("Views enabled: {:#?}", Cfg::global().view());
 
     // Launch statistics thread
     // If max allowed errors is reached, stop the processing from the stats thread
@@ -24,22 +18,7 @@ pub fn main() -> std::process::ExitCode {
         init_stats_controller(Cfg::global());
 
     // Handles SIGINT, SIGTERM and SIGHUP (as the `termination` feature is  enabled)
-    ctrlc::set_handler({
-        let stop_flag = stop_flag.clone();
-        let mut stop_sig_count = 0;
-        move || {
-            log::warn!(
-                "Stop Ctrl+C, SIGTERM, or SIGHUP received, stopping gracefully, please wait..."
-            );
-            stop_flag.store(true, std::sync::atomic::Ordering::SeqCst);
-            stop_sig_count += 1;
-            if stop_sig_count > 1 {
-                log::warn!("Second stop signal received, ungraceful shutdown.");
-                std::process::exit(1);
-            }
-        }
-    })
-    .expect("Error setting Ctrl-C handler");
+    fastpasta::util::lib::init_ctrlc_handler(stop_flag.clone());
 
     let exit_code: u8 = match init_reader(Cfg::global()) {
         Ok(readable) => {
@@ -63,18 +42,5 @@ pub fn main() -> std::process::ExitCode {
 
     stat_controller.join().expect("Failed to join stats thread");
 
-    if exit_code == 0 {
-        log::info!("Exit successful from data processing");
-        if let Some(custom_exit_code) = Cfg::global().any_errors_exit_code() {
-            if any_errors_flag.load(std::sync::atomic::Ordering::Relaxed) {
-                std::process::ExitCode::from(custom_exit_code)
-            } else {
-                std::process::ExitCode::SUCCESS
-            }
-        } else {
-            std::process::ExitCode::SUCCESS
-        }
-    } else {
-        std::process::ExitCode::from(exit_code)
-    }
+    fastpasta::util::lib::exit(exit_code, any_errors_flag)
 }

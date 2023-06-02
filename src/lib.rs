@@ -50,7 +50,7 @@ use crossbeam_channel::Receiver;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
 use stats::lib::StatType;
 use util::{
-    config::{inputoutput::InputOutputOpt, util::UtilOpt},
+    config::{check::ChecksOpt, inputoutput::InputOutputOpt, util::UtilOpt, view::ViewOpt, Cfg},
     lib::{Config, DataOutputMode},
 };
 use validators::{its::its_payload_fsm_cont::ItsPayloadFsmContinuous, lib::ValidatorDispatcher};
@@ -255,6 +255,9 @@ pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
             log::trace!("Data ouput set to suppressed")
         }
     }
+    log::trace!("Starting fastpasta with args: {:#?}", Cfg::global());
+    log::trace!("Checks enabled: {:#?}", Cfg::global().check());
+    log::trace!("Views enabled: {:#?}", Cfg::global().view());
 }
 
 /// Get the [config][util::config::Cfg] from the command line arguments and set the static [CONFIG][crate::util::config::CONFIG] variable.
