@@ -2,7 +2,6 @@
 //!
 //! Implementing the [Config] super trait is required by configs passed to structs in other modules as part of instantiation.
 
-use crate::util::config::Cfg;
 use std::sync::{atomic::AtomicBool, Arc};
 
 /// Re-export all the sub traits and enums
@@ -12,6 +11,7 @@ pub use super::config::{
     inputoutput::{DataOutputMode, InputOutputOpt},
     util::UtilOpt,
     view::{ViewCommands, ViewOpt},
+    Cfg,
 };
 
 /// Super trait for all the traits that needed to be implemented by the config struct
@@ -70,6 +70,33 @@ where
     fn validate_args(&self) -> Result<(), String> {
         (**self).validate_args()
     }
+}
+
+/// Start the [stderrlog] instance, and immediately use it to log the configured [DataOutputMode].
+pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(cfg.verbosity() as usize)
+        .init()
+        .expect("Failed to initialize logger");
+    match cfg.output_mode() {
+        DataOutputMode::Stdout => log::trace!("Data ouput set to stdout"),
+        DataOutputMode::File => log::trace!("Data ouput set to file"),
+        DataOutputMode::None => {
+            log::trace!("Data ouput set to suppressed")
+        }
+    }
+    log::trace!("Starting fastpasta with args: {:#?}", Cfg::global());
+    log::trace!("Checks enabled: {:#?}", Cfg::global().check());
+    log::trace!("Views enabled: {:#?}", Cfg::global().view());
+}
+
+/// Get the [config][super::config::Cfg] from the command line arguments and set the static [CONFIG][crate::util::config::CONFIG] variable.
+pub fn init_config() -> Result<(), String> {
+    let cfg = <super::config::Cfg as clap::Parser>::parse();
+    cfg.validate_args()?;
+    crate::util::config::CONFIG.set(cfg).unwrap();
+    Ok(())
 }
 
 /// Initializes the Ctrl+C handler to facilitate graceful shutdown on Ctrl+C

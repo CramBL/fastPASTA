@@ -5,12 +5,12 @@ use fastpasta::{
 };
 
 pub fn main() -> std::process::ExitCode {
-    if let Err(e) = fastpasta::init_config() {
+    if let Err(e) = fastpasta::util::lib::init_config() {
         eprintln!("{e}");
         return std::process::ExitCode::from(1);
     };
 
-    fastpasta::init_error_logger(Cfg::global());
+    fastpasta::util::lib::init_error_logger(Cfg::global());
 
     // Launch statistics thread
     // If max allowed errors is reached, stop the processing from the stats thread

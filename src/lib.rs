@@ -45,14 +45,10 @@
 //! $ fastpasta <input_file> view rdh
 //! ```
 
-use clap::Parser;
 use crossbeam_channel::Receiver;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
 use stats::lib::StatType;
-use util::{
-    config::{check::ChecksOpt, inputoutput::InputOutputOpt, util::UtilOpt, view::ViewOpt, Cfg},
-    lib::{Config, DataOutputMode},
-};
+use util::lib::{Config, DataOutputMode};
 use validators::{its::its_payload_fsm_cont::ItsPayloadFsmContinuous, lib::ValidatorDispatcher};
 use words::{
     lib::RdhSubWord,
@@ -239,33 +235,6 @@ fn spawn_analysis<T: words::lib::RDH + 'static>(
             }
         })
         .expect("Failed to spawn checker thread")
-}
-
-/// Start the [stderrlog] instance, and immediately use it to log the configured [DataOutputMode].
-pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
-    stderrlog::new()
-        .module(module_path!())
-        .verbosity(cfg.verbosity() as usize)
-        .init()
-        .expect("Failed to initialize logger");
-    match cfg.output_mode() {
-        util::lib::DataOutputMode::Stdout => log::trace!("Data ouput set to stdout"),
-        util::lib::DataOutputMode::File => log::trace!("Data ouput set to file"),
-        util::lib::DataOutputMode::None => {
-            log::trace!("Data ouput set to suppressed")
-        }
-    }
-    log::trace!("Starting fastpasta with args: {:#?}", Cfg::global());
-    log::trace!("Checks enabled: {:#?}", Cfg::global().check());
-    log::trace!("Views enabled: {:#?}", Cfg::global().view());
-}
-
-/// Get the [config][util::config::Cfg] from the command line arguments and set the static [CONFIG][crate::util::config::CONFIG] variable.
-pub fn init_config() -> Result<(), String> {
-    let cfg = util::config::Cfg::parse();
-    cfg.validate_args()?;
-    crate::util::config::CONFIG.set(cfg).unwrap();
-    Ok(())
 }
 
 #[cfg(test)]
