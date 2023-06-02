@@ -26,10 +26,17 @@ pub fn main() -> std::process::ExitCode {
     // Handles SIGINT, SIGTERM and SIGHUP (as the `termination` feature is  enabled)
     ctrlc::set_handler({
         let stop_flag = stop_flag.clone();
+        let mut stop_sig_count = 0;
         move || {
-            log::warn!("Stop Ctrl+C, SIGTERM, or SIGHUP received, stopping...");
+            log::warn!(
+                "Stop Ctrl+C, SIGTERM, or SIGHUP received, stopping gracefully, please wait..."
+            );
             stop_flag.store(true, std::sync::atomic::Ordering::SeqCst);
-            std::process::exit(0);
+            stop_sig_count += 1;
+            if stop_sig_count > 1 {
+                log::warn!("Second stop signal received, ungraceful shutdown.");
+                std::process::exit(1);
+            }
         }
     })
     .expect("Error setting Ctrl-C handler");
