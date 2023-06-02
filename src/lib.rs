@@ -45,22 +45,19 @@
 //! $ fastpasta <input_file> view rdh
 //! ```
 
-use crossbeam_channel::Receiver;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
 use stats::lib::StatType;
 use util::lib::{Config, DataOutputMode};
-use validators::{its::its_payload_fsm_cont::ItsPayloadFsmContinuous, lib::ValidatorDispatcher};
 use words::{
     lib::RdhSubWord,
     rdh::Rdh0,
     rdh_cru::{RdhCRU, V6, V7},
 };
 
+pub mod analyze;
 pub mod input;
 pub mod stats;
 pub mod util;
-pub mod validators;
-pub mod view;
 pub mod words;
 pub mod write;
 
@@ -116,8 +113,8 @@ pub fn init_processing(
 /// Follows these steps:
 /// 1. Setup reading (`file` or `stdin`) using [input::lib::spawn_reader].
 /// 2. Depending on [Config] do one of:
-///     - Validate data by dispatching it to validators with [validators::lib::ValidatorDispatcher].
-///     - Generate views of data with [view::lib::generate_view].
+///     - Validate data by dispatching it to validators with [ValidatorDispatcher][crate::analyze::validators::lib::ValidatorDispatcher].
+///     - Generate views of data with [analyze::view::lib::generate_view].
 ///     - Write data to `file` or `stdout` with [write::lib::spawn_writer].
 pub fn process<T: words::lib::RDH + 'static>(
     config: &'static impl Config,
@@ -136,7 +133,7 @@ pub fn process<T: words::lib::RDH + 'static>(
         debug_assert!(
             config.output_mode() == util::lib::DataOutputMode::None || config.filter_enabled(),
         );
-        let handle = spawn_analysis(
+        let handle = analyze::lib::spawn_analysis(
             config,
             stop_flag.clone(),
             send_stats_ch,
@@ -184,57 +181,6 @@ pub fn process<T: words::lib::RDH + 'static>(
         output.join().expect("Could not join writer thread");
     }
     Ok(())
-}
-
-/// Analysis thread that performs checks with [validators::lib::check_cdp_chunk] or generate views with [view::lib::generate_view].
-fn spawn_analysis<T: words::lib::RDH + 'static>(
-    config: &'static impl Config,
-    stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
-    stats_sender_channel: flume::Sender<StatType>,
-    data_channel: Receiver<input::data_wrapper::CdpChunk<T>>,
-) -> std::thread::JoinHandle<()> {
-    let analysis_thread = std::thread::Builder::new().name("Analysis".to_string());
-
-    analysis_thread
-        .spawn({
-            move || {
-                // Setup for check case
-                let mut validator_dispatcher =
-                    ValidatorDispatcher::new(config, stats_sender_channel.clone());
-                // Setup for view case
-                let mut its_payload_fsm_cont = ItsPayloadFsmContinuous::default();
-                // Start analysis
-                while !stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
-                    // Receive chunk from reader
-                    let cdp_chunk = match data_channel.recv() {
-                        Ok(cdp) => cdp,
-                        Err(e) => {
-                            debug_assert_eq!(e, crossbeam_channel::RecvError);
-                            break;
-                        }
-                    };
-
-                    // Do checks or view
-                    if config.check().is_some() {
-                        validator_dispatcher.dispatch_cdp_chunk(cdp_chunk);
-                    } else if config.view().is_some() {
-                        if let Err(e) = view::lib::generate_view(
-                            config.view().unwrap(),
-                            cdp_chunk,
-                            &stats_sender_channel,
-                            &mut its_payload_fsm_cont,
-                        ) {
-                            stats_sender_channel
-                                .send(StatType::Fatal(e.to_string()))
-                                .expect("Couldn't send to StatsController");
-                        }
-                    }
-                }
-                // Join all threads the dispatcher spawned
-                validator_dispatcher.join();
-            }
-        })
-        .expect("Failed to spawn checker thread")
 }
 
 #[cfg(test)]
@@ -318,7 +264,7 @@ mod tests {
         cdp_chunk.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);
 
         // Act
-        spawn_analysis(
+        analyze::lib::spawn_analysis(
             CFG_TEST_SPAWN_ANALYSIS.get().unwrap(),
             stop_flag.clone(),
             stat_sender,

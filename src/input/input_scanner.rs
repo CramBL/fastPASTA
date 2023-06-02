@@ -116,7 +116,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     }
     fn report_run_trigger_type<T: RDH>(&self, rdh: &T) {
         let raw_trigger_type = rdh.trigger_type();
-        let run_trigger_type_str = crate::view::lib::rdh_trigger_type_as_string(rdh);
+        let run_trigger_type_str = crate::analyze::view::lib::rdh_trigger_type_as_string(rdh);
         self.stats_controller_sender_ch
             .send(StatType::RunTriggerType((
                 raw_trigger_type,

@@ -1,7 +1,7 @@
 use crate::{
+    analyze::validators::{its::lib::ItsPayloadWord, lib::preprocess_payload},
+    analyze::view::lib::format_word_slice,
     input,
-    validators::{its::lib::ItsPayloadWord, lib::preprocess_payload},
-    view::lib::format_word_slice,
     words::lib::RDH,
 };
 use std::io::Write;
@@ -90,14 +90,14 @@ fn print_rdh_its_readout_frame_view<T: RDH>(
 ///     * The type of PayloadWord from the ITS payload protocol
 ///     * The memory position of the word
 fn generate_its_readout_frame_word_view(
-    word_type: crate::validators::its::lib::ItsPayloadWord,
+    word_type: crate::analyze::validators::its::lib::ItsPayloadWord,
     gbt_word_slice: &[u8],
     mem_pos_str: String,
     stdio_lock: &mut std::io::StdoutLock,
 ) -> Result<(), std::io::Error> {
     use crate::words::its::status_words::util::*;
 
-    let word_slice_str = crate::view::lib::format_word_slice(gbt_word_slice);
+    let word_slice_str = crate::analyze::view::lib::format_word_slice(gbt_word_slice);
     match word_type {
         ItsPayloadWord::IHW => {
             writeln!(stdio_lock, "{mem_pos_str} IHW {word_slice_str}")?;
