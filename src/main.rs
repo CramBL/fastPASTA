@@ -23,6 +23,17 @@ pub fn main() -> std::process::ExitCode {
     let (stat_controller, stat_send_channel, stop_flag, any_errors_flag) =
         init_stats_controller(Cfg::global());
 
+    // Handles SIGINT, SIGTERM and SIGHUP (as the `termination` feature is  enabled)
+    ctrlc::set_handler({
+        let stop_flag = stop_flag.clone();
+        move || {
+            log::warn!("Stop Ctrl+C, SIGTERM, or SIGHUP received, stopping...");
+            stop_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+            std::process::exit(0);
+        }
+    })
+    .expect("Error setting Ctrl-C handler");
+
     let exit_code: u8 = match init_reader(Cfg::global()) {
         Ok(readable) => {
             match fastpasta::init_processing(Cfg::global(), readable, stat_send_channel, stop_flag)
