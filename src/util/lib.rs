@@ -78,7 +78,6 @@ where
 pub fn init_ctrlc_handler(stop_flag: Arc<AtomicBool>) {
     // Handles SIGINT, SIGTERM and SIGHUP (as the `termination` feature is  enabled)
     ctrlc::set_handler({
-        let stop_flag = stop_flag;
         let mut stop_sig_count = 0;
         move || {
             log::warn!(
