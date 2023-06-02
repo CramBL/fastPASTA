@@ -58,7 +58,7 @@ impl AlpideWord {
     }
 }
 
-/// Contains information from a single ALPIDE chip in a singel frame
+/// Contains information from a single ALPIDE chip in a single frame
 ///
 /// Unsafe if used outside of the context of a single frame
 pub struct AlpideFrameChipData {

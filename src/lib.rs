@@ -45,26 +45,19 @@
 //! $ fastpasta <input_file> view rdh
 //! ```
 
-use clap::Parser;
-use crossbeam_channel::Receiver;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
 use stats::lib::StatType;
-use util::{
-    config::{inputoutput::InputOutputOpt, util::UtilOpt},
-    lib::{Config, DataOutputMode},
-};
-use validators::{its::its_payload_fsm_cont::ItsPayloadFsmContinuous, lib::ValidatorDispatcher};
+use util::lib::{Config, DataOutputMode};
 use words::{
     lib::RdhSubWord,
     rdh::Rdh0,
     rdh_cru::{RdhCRU, V6, V7},
 };
 
+pub mod analyze;
 pub mod input;
 pub mod stats;
 pub mod util;
-pub mod validators;
-pub mod view;
 pub mod words;
 pub mod write;
 
@@ -73,7 +66,7 @@ pub fn init_processing(
     config: &'static impl Config,
     mut reader: Box<dyn BufferedReaderWrapper>,
     stat_send_channel: flume::Sender<StatType>,
-    thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
     // Determine RDH version
     let rdh0 = Rdh0::load(&mut reader).expect("Failed to read first RDH0");
@@ -90,8 +83,7 @@ pub fn init_processing(
     // Choose the rest of the execution based on the RDH version
     // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
     match rdh_version {
-        6 => match process::<RdhCRU<V6>>(config, loader, stat_send_channel.clone(), thread_stopper)
-        {
+        6 => match process::<RdhCRU<V6>>(config, loader, stat_send_channel.clone(), stop_flag) {
             Ok(_) => Ok(()),
             Err(e) => {
                 stat_send_channel
@@ -100,8 +92,7 @@ pub fn init_processing(
                 Err(e)
             }
         },
-        7 => match process::<RdhCRU<V7>>(config, loader, stat_send_channel.clone(), thread_stopper)
-        {
+        7 => match process::<RdhCRU<V7>>(config, loader, stat_send_channel.clone(), stop_flag) {
             Ok(_) => Ok(()),
             Err(e) => {
                 stat_send_channel
@@ -122,29 +113,29 @@ pub fn init_processing(
 /// Follows these steps:
 /// 1. Setup reading (`file` or `stdin`) using [input::lib::spawn_reader].
 /// 2. Depending on [Config] do one of:
-///     - Validate data by dispatching it to validators with [validators::lib::ValidatorDispatcher].
-///     - Generate views of data with [view::lib::generate_view].
+///     - Validate data by dispatching it to validators with [ValidatorDispatcher][crate::analyze::validators::lib::ValidatorDispatcher].
+///     - Generate views of data with [analyze::view::lib::generate_view].
 ///     - Write data to `file` or `stdout` with [write::lib::spawn_writer].
 pub fn process<T: words::lib::RDH + 'static>(
     config: &'static impl Config,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
     send_stats_ch: flume::Sender<StatType>,
-    thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
     // 1. Launch reader thread to read data from file or stdin
     let (reader_handle, reader_rcv_channel): (
         std::thread::JoinHandle<()>,
         crossbeam_channel::Receiver<input::data_wrapper::CdpChunk<T>>,
-    ) = input::lib::spawn_reader(thread_stopper.clone(), loader, send_stats_ch.clone());
+    ) = input::lib::spawn_reader(stop_flag.clone(), loader, send_stats_ch.clone());
 
     // 2. Launch analysis thread if an analysis action is set (view or check)
     let analysis_handle = if config.check().is_some() || config.view().is_some() {
         debug_assert!(
             config.output_mode() == util::lib::DataOutputMode::None || config.filter_enabled(),
         );
-        let handle = spawn_analysis(
+        let handle = analyze::lib::spawn_analysis(
             config,
-            thread_stopper.clone(),
+            stop_flag.clone(),
             send_stats_ch,
             reader_rcv_channel.clone(),
         );
@@ -161,7 +152,7 @@ pub fn process<T: words::lib::RDH + 'static>(
         config.output_mode(),
     ) {
         (None, None, true, output_mode) if output_mode != DataOutputMode::None => Some(
-            write::lib::spawn_writer(config, thread_stopper, reader_rcv_channel),
+            write::lib::spawn_writer(config, stop_flag, reader_rcv_channel),
         ),
 
         (Some(_), None, _, output_mode) | (None, Some(_), _, output_mode)
@@ -170,9 +161,13 @@ pub fn process<T: words::lib::RDH + 'static>(
             log::warn!(
                 "Config: Output destination set when checks or views are also set -> output will be ignored!"
             );
+            drop(reader_rcv_channel);
             None
         }
-        _ => None,
+        _ => {
+            drop(reader_rcv_channel);
+            None
+        }
     };
 
     reader_handle.join().expect("Error joining reader thread");
@@ -185,81 +180,6 @@ pub fn process<T: words::lib::RDH + 'static>(
     if let Some(output) = output_handle {
         output.join().expect("Could not join writer thread");
     }
-    Ok(())
-}
-
-/// Analysis thread that performs checks with [validators::lib::check_cdp_chunk] or generate views with [view::lib::generate_view].
-fn spawn_analysis<T: words::lib::RDH + 'static>(
-    config: &'static impl Config,
-    stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
-    stats_sender_channel: flume::Sender<StatType>,
-    data_channel: Receiver<input::data_wrapper::CdpChunk<T>>,
-) -> std::thread::JoinHandle<()> {
-    let analysis_thread = std::thread::Builder::new().name("Analysis".to_string());
-
-    analysis_thread
-        .spawn({
-            move || {
-                // Setup for check case
-                let mut validator_dispatcher =
-                    ValidatorDispatcher::new(config, stats_sender_channel.clone());
-                // Setup for view case
-                let mut its_payload_fsm_cont = ItsPayloadFsmContinuous::default();
-                // Start analysis
-                while !stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
-                    // Receive chunk from reader
-                    let cdp_chunk = match data_channel.recv() {
-                        Ok(cdp) => cdp,
-                        Err(e) => {
-                            debug_assert_eq!(e, crossbeam_channel::RecvError);
-                            break;
-                        }
-                    };
-
-                    // Do checks or view
-                    if config.check().is_some() {
-                        validator_dispatcher.dispatch_cdp_chunk(cdp_chunk);
-                    } else if config.view().is_some() {
-                        if let Err(e) = view::lib::generate_view(
-                            config.view().unwrap(),
-                            cdp_chunk,
-                            &stats_sender_channel,
-                            &mut its_payload_fsm_cont,
-                        ) {
-                            stats_sender_channel
-                                .send(StatType::Fatal(e.to_string()))
-                                .expect("Couldn't send to StatsController");
-                        }
-                    }
-                }
-                // Join all threads the dispatcher spawned
-                validator_dispatcher.join();
-            }
-        })
-        .expect("Failed to spawn checker thread")
-}
-
-/// Start the [stderrlog] instance, and immediately use it to log the configured [DataOutputMode].
-pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
-    stderrlog::new()
-        .module(module_path!())
-        .verbosity(cfg.verbosity() as usize)
-        .init()
-        .expect("Failed to initialize logger");
-    match cfg.output_mode() {
-        util::lib::DataOutputMode::Stdout => log::trace!("Data ouput set to stdout"),
-        util::lib::DataOutputMode::File => log::trace!("Data ouput set to file"),
-        util::lib::DataOutputMode::None => {
-            log::trace!("Data ouput set to suppressed")
-        }
-    }
-}
-
-/// Get the [config][util::config::Cfg] from the command line arguments and set the static [CONFIG][crate::util::config::CONFIG] variable.
-pub fn init_config() -> Result<(), String> {
-    let cfg = util::config::Cfg::parse();
-    cfg.validate_args()?;
-    crate::util::config::CONFIG.set(cfg).unwrap();
     Ok(())
 }
 
@@ -344,7 +264,7 @@ mod tests {
         cdp_chunk.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);
 
         // Act
-        spawn_analysis(
+        analyze::lib::spawn_analysis(
             CFG_TEST_SPAWN_ANALYSIS.get().unwrap(),
             stop_flag.clone(),
             stat_sender,

@@ -1,11 +1,11 @@
 use crate::{
-    input,
-    stats::lib::StatType,
-    validators::{
+    analyze::validators::{
         its::its_payload_fsm_cont::{self, ItsPayloadFsmContinuous},
         its::lib::ItsPayloadWord,
         lib::preprocess_payload,
     },
+    input,
+    stats::lib::StatType,
     words::lib::RDH,
 };
 use std::io::Write;
@@ -99,14 +99,14 @@ fn print_rdh_hbf_view<T: RDH>(
 }
 
 fn generate_hbf_word_view(
-    word_type: crate::validators::its::lib::ItsPayloadWord,
+    word_type: crate::analyze::validators::its::lib::ItsPayloadWord,
     gbt_word_slice: &[u8],
     mem_pos_str: String,
     stdio_lock: &mut std::io::StdoutLock,
 ) -> Result<(), std::io::Error> {
     use crate::words::its::status_words::util::*;
 
-    let word_slice_str = crate::view::lib::format_word_slice(gbt_word_slice);
+    let word_slice_str = crate::analyze::view::lib::format_word_slice(gbt_word_slice);
     match word_type {
         ItsPayloadWord::IHW | ItsPayloadWord::IHW_continuation => {
             writeln!(stdio_lock, "{mem_pos_str} IHW {word_slice_str}")?;

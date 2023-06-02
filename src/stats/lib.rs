@@ -12,6 +12,7 @@ pub fn init_stats_controller<C: Config + 'static>(
     std::sync::Arc<AtomicBool>,
     std::sync::Arc<AtomicBool>,
 ) {
+    log::trace!("Initializing stats controller");
     let mut stats = StatsController::new(config);
     let send_stats_channel = stats.send_channel();
     let thread_stop_flag = stats.end_processing_flag();

@@ -17,7 +17,7 @@ pub fn do_payload_checks<T: RDH, C: ChecksOpt + FilterOpt>(
 ) {
     let (rdh, payload, rdh_mem_pos) = cdp_chunk_slice;
     cdp_validator.set_current_rdh(rdh, rdh_mem_pos);
-    match crate::validators::lib::preprocess_payload(payload) {
+    match crate::analyze::validators::lib::preprocess_payload(payload) {
         Ok(gbt_word_chunks) => gbt_word_chunks.for_each(|gbt_word| {
             cdp_validator.check(&gbt_word[..10]); // Take 10 bytes as flavor 0 would have additional 6 bytes of padding
         }),

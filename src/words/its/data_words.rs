@@ -1,5 +1,7 @@
 //! Contains utility functions for working with data words in a CDP payload
 
+use std::ops::RangeInclusive;
+
 /// Takes an ob data word ID and returns the lane number
 #[inline]
 pub fn ob_data_word_id_to_lane(data_word_id: u8) -> u8 {
@@ -27,18 +29,18 @@ pub fn ob_data_word_id_to_connector(data_word_id: u8) -> u8 {
 #[inline]
 fn ob_lane(ob_id: ObLane) -> u8 {
     let lane_id = ob_id.0;
-    if lane_id <= VALID_OL_CONNECT0_ID_MIN_MAX.1 {
+    if lane_id <= *VALID_OL_CONNECT0_ID.end() {
         // 0-6
-        lane_id % VALID_OL_CONNECT0_ID_MIN_MAX.0
-    } else if lane_id <= VALID_OL_CONNECT1_ID_MIN_MAX.1 {
+        lane_id % VALID_OL_CONNECT0_ID.start()
+    } else if lane_id <= *VALID_OL_CONNECT1_ID.end() {
         // 7-13
-        7 + (lane_id % VALID_OL_CONNECT1_ID_MIN_MAX.0)
-    } else if lane_id <= VALID_OL_CONNECT2_ID_MIN_MAX.1 {
+        7 + (lane_id % VALID_OL_CONNECT1_ID.start())
+    } else if lane_id <= *VALID_OL_CONNECT2_ID.end() {
         // 14-20
-        14 + (lane_id % VALID_OL_CONNECT2_ID_MIN_MAX.0)
+        14 + (lane_id % VALID_OL_CONNECT2_ID.start())
     } else {
         // 21-27
-        21 + (lane_id % VALID_OL_CONNECT3_ID_MIN_MAX.0)
+        21 + (lane_id % VALID_OL_CONNECT3_ID.start())
     }
 }
 
@@ -82,27 +84,27 @@ impl DataWordContents {
 }
 
 /// Convenience tuple of the min/max range for the ID of an IL data word (9 lanes)
-pub const VALID_IL_ID_MIN_MAX: (u8, u8) = (0x20, 0x28);
+pub const VALID_IL_ID: RangeInclusive<u8> = 0x20..=0x28;
 
 // Tuples for ID ranges of the 16 ML lanes
 /// Convenience tuple of the min/max range for the ID of an ML data word from connector 0
-pub const VALID_ML_CONNECT0_ID_MIN_MAX: (u8, u8) = (0x43, 0x46);
+pub const VALID_ML_CONNECT0_ID: RangeInclusive<u8> = 0x43..=0x46;
 /// Convenience tuple of the min/max range for the ID of an ML data word from connector 1
-pub const VALID_ML_CONNECT1_ID_MIN_MAX: (u8, u8) = (0x48, 0x4B);
+pub const VALID_ML_CONNECT1_ID: RangeInclusive<u8> = 0x48..=0x4B;
 /// Convenience tuple of the min/max range for the ID of an ML data word from connector 2
-pub const VALID_ML_CONNECT2_ID_MIN_MAX: (u8, u8) = (0x53, 0x56);
+pub const VALID_ML_CONNECT2_ID: RangeInclusive<u8> = 0x53..=0x56;
 /// Convenience tuple of the min/max range for the ID of an ML data word from connector 3
-pub const VALID_ML_CONNECT3_ID_MIN_MAX: (u8, u8) = (0x58, 0x5B);
+pub const VALID_ML_CONNECT3_ID: RangeInclusive<u8> = 0x58..=0x5B;
 
 // Tuples for the ID ranges of the 28 OL lanes
 /// Convenience tuple of the min/max range for the ID of an OL data word from connector 0
-pub const VALID_OL_CONNECT0_ID_MIN_MAX: (u8, u8) = (0x40, 0x46);
+pub const VALID_OL_CONNECT0_ID: RangeInclusive<u8> = 0x40..=0x46;
 /// Convenience tuple of the min/max range for the ID of an OL data word from connector 1
-pub const VALID_OL_CONNECT1_ID_MIN_MAX: (u8, u8) = (0x48, 0x4E);
+pub const VALID_OL_CONNECT1_ID: RangeInclusive<u8> = 0x48..=0x4E;
 /// Convenience tuple of the min/max range for the ID of an OL data word from connector 2
-pub const VALID_OL_CONNECT2_ID_MIN_MAX: (u8, u8) = (0x50, 0x56);
+pub const VALID_OL_CONNECT2_ID: RangeInclusive<u8> = 0x50..=0x56;
 /// Convenience tuple of the min/max range for the ID of an OL data word from connector 3
-pub const VALID_OL_CONNECT3_ID_MIN_MAX: (u8, u8) = (0x58, 0x5E);
+pub const VALID_OL_CONNECT3_ID: RangeInclusive<u8> = 0x58..=0x5E;
 
 /// Newtype for the inner barrel, to avoid comparing lanes from different barrels (zero cost abstraction)
 #[repr(transparent)]
@@ -169,27 +171,5 @@ mod tests {
                 let connector = ob_data_word_id_to_connector(id);
                 assert_eq!(connector, correct_connector[idx])
             });
-    }
-
-    #[test]
-    fn test_valid_valids() {
-        let (min, max) = VALID_IL_ID_MIN_MAX;
-        assert!(min <= max);
-        let (min, max) = VALID_ML_CONNECT0_ID_MIN_MAX;
-        assert!(min <= max);
-        let (min, max) = VALID_ML_CONNECT1_ID_MIN_MAX;
-        assert!(min <= max);
-        let (min, max) = VALID_ML_CONNECT2_ID_MIN_MAX;
-        assert!(min <= max);
-        let (min, max) = VALID_ML_CONNECT3_ID_MIN_MAX;
-        assert!(min <= max);
-        let (min, max) = VALID_OL_CONNECT0_ID_MIN_MAX;
-        assert!(min <= max);
-        let (min, max) = VALID_OL_CONNECT1_ID_MIN_MAX;
-        assert!(min <= max);
-        let (min, max) = VALID_OL_CONNECT2_ID_MIN_MAX;
-        assert!(min <= max);
-        let (min, max) = VALID_OL_CONNECT3_ID_MIN_MAX;
-        assert!(min <= max);
     }
 }

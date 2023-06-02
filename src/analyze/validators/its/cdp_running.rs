@@ -339,23 +339,9 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 ib_slice,
             );
         }
+        // Fancy way of checking if a stave filter is set and we should collect ALPIDE data
         if self.alpide_data_frame.capacity() != 0 {
-            // Fancy way of checking if a stave filter is set and we should collect ALPIDE data
-            match self
-                .alpide_data_frame
-                .iter_mut()
-                .find(|lane_data_frame| lane_data_frame.lane_id == ib_slice[9])
-            {
-                Some(lane_data_frame) => {
-                    lane_data_frame
-                        .lane_data
-                        .push(DataWordContents::from_data_word_slice(ib_slice));
-                }
-                None => self.alpide_data_frame.push(LaneDataFrame {
-                    lane_id: ib_slice[9],
-                    lane_data: vec![DataWordContents::from_data_word_slice(ib_slice)],
-                }),
-            }
+            self.store_lane_data(ib_slice);
         }
     }
 
@@ -382,23 +368,27 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 ob_slice,
             );
         }
+        // Fancy way of checking if a stave filter is set and we should collect ALPIDE data
         if self.alpide_data_frame.capacity() != 0 {
-            // Fancy way of checking if a stave filter is set and we should collect ALPIDE data
-            match self
-                .alpide_data_frame
-                .iter_mut()
-                .find(|lane_data_frame| lane_data_frame.lane_id == ob_slice[9])
-            {
-                Some(lane_data_frame) => {
-                    lane_data_frame
-                        .lane_data
-                        .push(DataWordContents::from_data_word_slice(ob_slice));
-                }
-                None => self.alpide_data_frame.push(LaneDataFrame {
-                    lane_id: ob_slice[9],
-                    lane_data: vec![DataWordContents::from_data_word_slice(ob_slice)],
-                }),
+            self.store_lane_data(ob_slice);
+        }
+    }
+
+    fn store_lane_data(&mut self, data_slice: &[u8]) {
+        match self
+            .alpide_data_frame
+            .iter_mut()
+            .find(|lane_data_frame| lane_data_frame.lane_id == data_slice[9])
+        {
+            Some(lane_data_frame) => {
+                lane_data_frame
+                    .lane_data
+                    .push(DataWordContents::from_data_word_slice(data_slice));
             }
+            None => self.alpide_data_frame.push(LaneDataFrame {
+                lane_id: data_slice[9],
+                lane_data: vec![DataWordContents::from_data_word_slice(data_slice)],
+            }),
         }
     }
 

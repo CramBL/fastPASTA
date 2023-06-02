@@ -2,6 +2,8 @@
 //!
 //! Implementing the [Config] super trait is required by configs passed to structs in other modules as part of instantiation.
 
+use std::sync::{atomic::AtomicBool, Arc};
+
 /// Re-export all the sub traits and enums
 pub use super::config::{
     check::{CheckCommands, ChecksOpt, System, Target},
@@ -9,6 +11,7 @@ pub use super::config::{
     inputoutput::{DataOutputMode, InputOutputOpt},
     util::UtilOpt,
     view::{ViewCommands, ViewOpt},
+    Cfg,
 };
 
 /// Super trait for all the traits that needed to be implemented by the config struct
@@ -69,6 +72,73 @@ where
     }
 }
 
+/// Start the [stderrlog] instance, and immediately use it to log the configured [DataOutputMode].
+pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
+    stderrlog::new()
+        .module("fastpasta")
+        .verbosity(cfg.verbosity() as usize)
+        .init()
+        .expect("Failed to initialize logger");
+    match cfg.output_mode() {
+        DataOutputMode::Stdout => log::trace!("Data ouput set to stdout"),
+        DataOutputMode::File => log::trace!("Data ouput set to file"),
+        DataOutputMode::None => {
+            log::trace!("Data output set to suppressed")
+        }
+    }
+    log::trace!("Starting fastpasta with args: {:#?}", Cfg::global());
+    log::trace!("Checks enabled: {:#?}", Cfg::global().check());
+    log::trace!("Views enabled: {:#?}", Cfg::global().view());
+}
+
+/// Get the [config][super::config::Cfg] from the command line arguments and set the static [CONFIG][crate::util::config::CONFIG] variable.
+pub fn init_config() -> Result<(), String> {
+    let cfg = <super::config::Cfg as clap::Parser>::parse();
+    cfg.validate_args()?;
+    crate::util::config::CONFIG.set(cfg).unwrap();
+    Ok(())
+}
+
+/// Initializes the Ctrl+C handler to facilitate graceful shutdown on Ctrl+C
+///
+/// Also handles SIGTERM and SIGHUP if the `termination` feature is enabled
+pub fn init_ctrlc_handler(stop_flag: Arc<AtomicBool>) {
+    // Handles SIGINT, SIGTERM and SIGHUP (as the `termination` feature is  enabled)
+    ctrlc::set_handler({
+        let mut stop_sig_count = 0;
+        move || {
+            log::warn!(
+                "Stop Ctrl+C, SIGTERM, or SIGHUP received, stopping gracefully, please wait..."
+            );
+            stop_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+            stop_sig_count += 1;
+            if stop_sig_count > 1 {
+                log::warn!("Second stop signal received, ungraceful shutdown.");
+                std::process::exit(1);
+            }
+        }
+    })
+    .expect("Error setting Ctrl-C handler");
+}
+
+/// Exits the program with the appropriate exit code
+pub fn exit(exit_code: u8, any_errors_flag: Arc<AtomicBool>) -> std::process::ExitCode {
+    if exit_code == 0 {
+        log::info!("Exit successful from data processing");
+        if let Some(custom_exit_code) = Cfg::global().any_errors_exit_code() {
+            if any_errors_flag.load(std::sync::atomic::Ordering::Relaxed) {
+                std::process::ExitCode::from(custom_exit_code)
+            } else {
+                std::process::ExitCode::SUCCESS
+            }
+        } else {
+            std::process::ExitCode::SUCCESS
+        }
+    } else {
+        std::process::ExitCode::from(exit_code)
+    }
+}
+
 #[allow(missing_docs)]
 pub mod test_util {
     use super::*;
@@ -77,7 +147,6 @@ pub mod test_util {
         inputoutput::{DataOutputMode, InputOutputOpt},
     };
     #[derive(Debug, Clone)]
-
     /// Complete configurable Mock config for testing
     pub struct MockConfig {
         pub check: Option<CheckCommands>,

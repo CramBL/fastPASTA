@@ -1,27 +1,24 @@
 use fastpasta::{
     input::lib::init_reader,
     stats::lib::{init_stats_controller, StatType},
-    util::{
-        config::Cfg,
-        lib::{ChecksOpt, UtilOpt, ViewOpt},
-    },
+    util::config::Cfg,
 };
 
 pub fn main() -> std::process::ExitCode {
-    if let Err(e) = fastpasta::init_config() {
+    if let Err(e) = fastpasta::util::lib::init_config() {
         eprintln!("{e}");
         return std::process::ExitCode::from(1);
     };
 
-    fastpasta::init_error_logger(Cfg::global());
-    log::trace!("Starting fastpasta with args: {:#?}", Cfg::global());
-    log::trace!("Checks enabled: {:#?}", Cfg::global().check());
-    log::trace!("Views enabled: {:#?}", Cfg::global().view());
+    fastpasta::util::lib::init_error_logger(Cfg::global());
 
     // Launch statistics thread
     // If max allowed errors is reached, stop the processing from the stats thread
     let (stat_controller, stat_send_channel, stop_flag, any_errors_flag) =
         init_stats_controller(Cfg::global());
+
+    // Handles SIGINT, SIGTERM and SIGHUP (as the `termination` feature is  enabled)
+    fastpasta::util::lib::init_ctrlc_handler(stop_flag.clone());
 
     let exit_code: u8 = match init_reader(Cfg::global()) {
         Ok(readable) => {
@@ -45,18 +42,5 @@ pub fn main() -> std::process::ExitCode {
 
     stat_controller.join().expect("Failed to join stats thread");
 
-    if exit_code == 0 {
-        log::info!("Exit successful from data processing");
-        if let Some(custom_exit_code) = Cfg::global().any_errors_exit_code() {
-            if any_errors_flag.load(std::sync::atomic::Ordering::Relaxed) {
-                std::process::ExitCode::from(custom_exit_code)
-            } else {
-                std::process::ExitCode::SUCCESS
-            }
-        } else {
-            std::process::ExitCode::SUCCESS
-        }
-    } else {
-        std::process::ExitCode::from(exit_code)
-    }
+    fastpasta::util::lib::exit(exit_code, any_errors_flag)
 }
