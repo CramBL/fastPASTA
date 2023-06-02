@@ -73,7 +73,7 @@ pub fn init_processing(
     config: &'static impl Config,
     mut reader: Box<dyn BufferedReaderWrapper>,
     stat_send_channel: flume::Sender<StatType>,
-    thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
     // Determine RDH version
     let rdh0 = Rdh0::load(&mut reader).expect("Failed to read first RDH0");
@@ -90,8 +90,7 @@ pub fn init_processing(
     // Choose the rest of the execution based on the RDH version
     // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
     match rdh_version {
-        6 => match process::<RdhCRU<V6>>(config, loader, stat_send_channel.clone(), thread_stopper)
-        {
+        6 => match process::<RdhCRU<V6>>(config, loader, stat_send_channel.clone(), stop_flag) {
             Ok(_) => Ok(()),
             Err(e) => {
                 stat_send_channel
@@ -100,8 +99,7 @@ pub fn init_processing(
                 Err(e)
             }
         },
-        7 => match process::<RdhCRU<V7>>(config, loader, stat_send_channel.clone(), thread_stopper)
-        {
+        7 => match process::<RdhCRU<V7>>(config, loader, stat_send_channel.clone(), stop_flag) {
             Ok(_) => Ok(()),
             Err(e) => {
                 stat_send_channel
@@ -129,13 +127,13 @@ pub fn process<T: words::lib::RDH + 'static>(
     config: &'static impl Config,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
     send_stats_ch: flume::Sender<StatType>,
-    thread_stopper: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
     // 1. Launch reader thread to read data from file or stdin
     let (reader_handle, reader_rcv_channel): (
         std::thread::JoinHandle<()>,
         crossbeam_channel::Receiver<input::data_wrapper::CdpChunk<T>>,
-    ) = input::lib::spawn_reader(thread_stopper.clone(), loader, send_stats_ch.clone());
+    ) = input::lib::spawn_reader(stop_flag.clone(), loader, send_stats_ch.clone());
 
     // 2. Launch analysis thread if an analysis action is set (view or check)
     let analysis_handle = if config.check().is_some() || config.view().is_some() {
@@ -144,7 +142,7 @@ pub fn process<T: words::lib::RDH + 'static>(
         );
         let handle = spawn_analysis(
             config,
-            thread_stopper.clone(),
+            stop_flag.clone(),
             send_stats_ch,
             reader_rcv_channel.clone(),
         );
@@ -161,7 +159,7 @@ pub fn process<T: words::lib::RDH + 'static>(
         config.output_mode(),
     ) {
         (None, None, true, output_mode) if output_mode != DataOutputMode::None => Some(
-            write::lib::spawn_writer(config, thread_stopper, reader_rcv_channel),
+            write::lib::spawn_writer(config, stop_flag, reader_rcv_channel),
         ),
 
         (Some(_), None, _, output_mode) | (None, Some(_), _, output_mode)
