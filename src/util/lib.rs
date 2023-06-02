@@ -75,7 +75,7 @@ where
 /// Start the [stderrlog] instance, and immediately use it to log the configured [DataOutputMode].
 pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
     stderrlog::new()
-        .module(module_path!())
+        .module("fastpasta")
         .verbosity(cfg.verbosity() as usize)
         .init()
         .expect("Failed to initialize logger");
@@ -83,7 +83,7 @@ pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
         DataOutputMode::Stdout => log::trace!("Data ouput set to stdout"),
         DataOutputMode::File => log::trace!("Data ouput set to file"),
         DataOutputMode::None => {
-            log::trace!("Data ouput set to suppressed")
+            log::trace!("Data output set to suppressed")
         }
     }
     log::trace!("Starting fastpasta with args: {:#?}", Cfg::global());
