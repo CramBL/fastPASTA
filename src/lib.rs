@@ -168,9 +168,13 @@ pub fn process<T: words::lib::RDH + 'static>(
             log::warn!(
                 "Config: Output destination set when checks or views are also set -> output will be ignored!"
             );
+            drop(reader_rcv_channel);
             None
         }
-        _ => None,
+        _ => {
+            drop(reader_rcv_channel);
+            None
+        }
     };
 
     reader_handle.join().expect("Error joining reader thread");
