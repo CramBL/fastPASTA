@@ -13,7 +13,7 @@ impl RelativeOffset {
 }
 
 #[inline]
-fn deserialize_rdh_manual(rdh_cru_size_bytes: u64, filename: &str, iterations: usize) {
+fn deserialize_rdh_current(filename: &str, iterations: usize) {
     let filepath = std::path::PathBuf::from(filename);
     let file = std::fs::OpenOptions::new()
         .read(true)
@@ -22,30 +22,49 @@ fn deserialize_rdh_manual(rdh_cru_size_bytes: u64, filename: &str, iterations: u
     let mut buf_reader = std::io::BufReader::new(file);
     for _i in 1..iterations {
         let rdh_tmp: RdhCRU<V7> = SerdeRdh::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
-        let relative_offset =
-            RelativeOffset::new((rdh_tmp.offset_to_next() as u64) - rdh_cru_size_bytes);
-        buf_reader
-            .seek_relative(relative_offset.0)
-            .expect("Error seeking");
-        if rdh_tmp.rdh0().header_id != 7 {
-            println!("WRONG header ID: {}", rdh_tmp.rdh0().header_id);
-        }
+    }
+}
+
+#[inline]
+fn deserialize_rdh_alt(filename: &str, iterations: usize) {
+    let filepath = std::path::PathBuf::from(filename);
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .open(&filepath)
+        .expect("File not found");
+    let mut buf_reader = std::io::BufReader::new(file);
+    for _i in 1..iterations {
+        let rdh_tmp: RdhCRU<V7> =
+            SerdeRdh::load_alt(&mut buf_reader).expect("Failed to load RdhCRUv7");
+    }
+}
+
+#[inline]
+fn deserialize_rdh_buf(filename: &str, iterations: usize) {
+    let filepath = std::path::PathBuf::from(filename);
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .open(&filepath)
+        .expect("File not found");
+    let mut buf_reader = std::io::BufReader::new(file);
+    for _i in 1..iterations {
+        let rdh_tmp: RdhCRU<V7> =
+            SerdeRdh::load_buf(&mut buf_reader).expect("Failed to load RdhCRUv7");
     }
 }
 
 pub fn bench_deserialization(c: &mut Criterion) {
     let mut group = c.benchmark_group("deserialization");
-    const RDH_CRU_SIZE_BYTES: u64 = 64;
-    let filename = "../fastpasta_test_files/data_ols_its-ul-v0.5_3.4GB";
-    for i in [1000, 10000, 50000].iter() {
-        group.bench_with_input(BenchmarkId::new("manual", i.to_string()), i, |b, i| {
-            b.iter(|| {
-                deserialize_rdh_manual(
-                    black_box(RDH_CRU_SIZE_BYTES),
-                    black_box(filename),
-                    black_box(*i),
-                )
-            })
+    let filename = "../fastpasta_test_files/data_ols_ul.raw";
+    for i in [1_000, 10_000, 100_000, 1_000_000].iter() {
+        group.bench_with_input(BenchmarkId::new("current", i.to_string()), i, |b, i| {
+            b.iter(|| deserialize_rdh_current(black_box(filename), black_box(*i)))
+        });
+        group.bench_with_input(BenchmarkId::new("alternative", i.to_string()), i, |b, i| {
+            b.iter(|| deserialize_rdh_alt(black_box(filename), black_box(*i)))
+        });
+        group.bench_with_input(BenchmarkId::new("from_buf", i.to_string()), i, |b, i| {
+            b.iter(|| deserialize_rdh_buf(black_box(filename), black_box(*i)))
         });
     }
     group.finish();
@@ -89,7 +108,7 @@ fn rdh0_deserialize_alternative_macro(filename: &str, iterations: usize) {
     let mut buf_reader = std::io::BufReader::new(file);
     for _i in 1..iterations {
         //println!("Iteration: {}", _i);
-        let _rdh0_tmp: Rdh0 = Rdh0::load_alt_macro(&mut buf_reader).expect("Failed to load Rdh0");
+        let _rdh0_tmp: Rdh0 = Rdh0::load_alt(&mut buf_reader).expect("Failed to load Rdh0");
     }
 }
 
