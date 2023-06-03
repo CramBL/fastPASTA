@@ -151,15 +151,13 @@ where
         //  from the input. If so, we use it to create the first RDH.
         let rdh: T = match self.initial_rdh0.is_some() {
             true => {
-                let rdh = SerdeRdh::load_buf_from_rdh0(
-                    &mut self.reader,
-                    self.initial_rdh0.take().unwrap(),
-                )?;
+                let rdh =
+                    SerdeRdh::load_from_rdh0(&mut self.reader, self.initial_rdh0.take().unwrap())?;
                 // Report the trigger type as the RunTriggerType describing the type of run the data is from
                 self.report_run_trigger_type(&rdh);
                 rdh
             }
-            false => SerdeRdh::load_buf(&mut self.reader)?,
+            false => SerdeRdh::load(&mut self.reader)?,
         };
         log::debug!(
             "Loaded RDH at [{:#X}]: \n       {rdh}",
@@ -237,7 +235,7 @@ where
         self.reader
             .seek_relative(self.tracker.next(offset_to_next as u64))?;
         loop {
-            let rdh: T = SerdeRdh::load_buf(&mut self.reader)?;
+            let rdh: T = SerdeRdh::load(&mut self.reader)?;
             log::debug!("Loaded RDH: \n      {rdh}");
             log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
             sanity_check_offset_next(
