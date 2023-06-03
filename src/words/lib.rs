@@ -10,9 +10,12 @@ use super::{
 /// * pretty printing to stdout
 /// * deserialize the GBT words from the binary file
 pub trait RdhSubWord: Sized + PartialEq + std::fmt::Debug + std::fmt::Display {
+    /// Deserializes the GBT word from a provided reader
+    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error> {
+        let raw = super::lib::macros::load_bytes!(8, reader);
+        Self::from_buf(&raw)
+    }
     /// Deserializes the GBT word from a byte slice
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>;
-    fn load_alt<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>;
     fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error>;
 }
 
@@ -142,23 +145,35 @@ pub trait SerdeRdh: Send + Sync + Sized
 where
     Self: ByteSlice,
 {
-    /// Deserializes the GBT word from a byte slice
-    fn load<R: std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error>;
+    /// Deserializes a [RDH] from a reader where the next 64 bytes contain a [RDH]
+    #[inline]
+    fn load<R: std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error>
+    where
+        Self: Sized,
+    {
+        let buf = super::lib::macros::load_bytes!(64, reader);
+        Self::from_buf(&buf)
+    }
 
-    /// Deserializes the GBT word from an [RDH0][Rdh0] and a byte slice containing the rest of the [RDH]
-    fn load_from_rdh0<R: std::io::Read>(reader: &mut R, rdh0: Rdh0)
-        -> Result<Self, std::io::Error>;
-
-    fn load_alt<R: std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error>;
-    fn load_alt_from_rdh0<R: std::io::Read>(
+    /// Deserializes a [RDH] from a [RDH0][Rdh0] and a reader where the next 56 bytes contain the rest of the [RDH]
+    #[inline]
+    fn load_from_rdh0<R: std::io::Read>(
         reader: &mut R,
         rdh0: Rdh0,
-    ) -> Result<Self, std::io::Error>;
-    fn load_buf<R: std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error>;
-    fn load_buf_from_rdh0<R: std::io::Read>(
-        reader: &mut R,
-        rdh0: Rdh0,
-    ) -> Result<Self, std::io::Error>;
+    ) -> Result<Self, std::io::Error> {
+        let buf = super::lib::macros::load_bytes!(56, reader);
+        Self::from_rdh0_and_buf(rdh0, &buf)
+    }
+
+    /// Serializes a [RDH] from a byte slice
+    #[inline]
+    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
+        let rdh0 = Rdh0::from_buf(&buf[0..=7])?;
+        Self::from_rdh0_and_buf(rdh0, &buf[8..=63])
+    }
+
+    /// Deserializes a [RDH] from a [RDH0][Rdh0] and a byte slice
+    fn from_rdh0_and_buf(rdh0: Rdh0, buf: &[u8]) -> Result<Self, std::io::Error>;
 }
 
 /// Trait used to convert a struct to a byte slice.
