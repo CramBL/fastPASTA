@@ -17,10 +17,15 @@ Releases and associated changelogs can be found at [releases](https://gitlab.cer
 
 To verify or view curated content of the scanned raw binary data from ALICE.
 
+## Demo
+
+![output](doc/fastpasta_demo.gif)
+
 # Table of Contents
 - [fastPASTA](#fastpasta)
   - [fast Protocol Analysis Scanner Tool for ALICE](#fast-protocol-analysis-scanner-tool-for-alice)
   - [Purpose](#purpose)
+  - [Demo](#demo)
 - [Table of Contents](#table-of-contents)
 - [Quickstart](#quickstart)
   - [Prerequisite](#prerequisite)
