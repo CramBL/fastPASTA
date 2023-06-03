@@ -20,7 +20,7 @@ use crate::{
     words::{self, lib::RDH},
 };
 use crossbeam_channel::Receiver;
-use is_terminal::IsTerminal;
+use std::io::IsTerminal;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Depth of the FIFO where the CDP chunks inserted as they are read

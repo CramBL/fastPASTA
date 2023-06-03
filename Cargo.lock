@@ -495,7 +495,6 @@ dependencies = [
  "flume",
  "fmt",
  "gag",
- "is-terminal",
  "itertools",
  "log",
  "owo-colors",
