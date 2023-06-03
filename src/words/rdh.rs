@@ -50,28 +50,18 @@ impl Display for Rdh0 {
 }
 
 impl RdhSubWord for Rdh0 {
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh0, std::io::Error> {
-        // Create a helper macro for loading an array of the given size from
-        // the reader.
-        macro_rules! load_bytes {
-            ($size:literal) => {{
-                // Create a buffer array of the given size
-                let mut buf = [0u8; $size];
-                // Read into the buffer
-                reader.read_exact(&mut buf)?;
-                buf
-            }};
-        }
+    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh0 {
-            header_id: load_bytes!(1)[0],
-            header_size: load_bytes!(1)[0],
-            fee_id: FeeId(LittleEndian::read_u16(&load_bytes!(2))),
-            priority_bit: load_bytes!(1)[0],
-            system_id: load_bytes!(1)[0],
-            reserved0: LittleEndian::read_u16(&load_bytes!(2)),
+            header_id: buf[0],
+            header_size: buf[1],
+            fee_id: FeeId(LittleEndian::read_u16(&buf[2..=3])),
+            priority_bit: buf[4],
+            system_id: buf[5],
+            reserved0: LittleEndian::read_u16(&buf[6..=7]),
         })
     }
 }
+
 impl Debug for Rdh0 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let tmp_header_id = self.header_id;
@@ -125,22 +115,10 @@ impl Rdh1 {
 }
 
 impl RdhSubWord for Rdh1 {
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh1, std::io::Error> {
-        // Create a helper macro for loading an array of the given size from
-        // the reader.
-        macro_rules! load_bytes {
-            ($size:literal) => {{
-                // Create a buffer array of the given size
-                let mut buf = [0u8; $size];
-                // Read into the buffer
-                reader.read_exact(&mut buf)?;
-                buf
-            }};
-        }
-
+    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh1 {
-            bc_reserved0: BcReserved(LittleEndian::read_u32(&load_bytes!(4))),
-            orbit: LittleEndian::read_u32(&load_bytes!(4)),
+            bc_reserved0: BcReserved(LittleEndian::read_u32(&buf[0..=3])),
+            orbit: LittleEndian::read_u32(&buf[4..=7]),
         })
     }
 }
@@ -192,24 +170,12 @@ impl Rdh2 {
 }
 
 impl RdhSubWord for Rdh2 {
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh2, std::io::Error> {
-        // Create a helper macro for loading an array of the given size from
-        // the reader.
-        macro_rules! load_bytes {
-            ($size:literal) => {{
-                // Create a buffer array of the given size
-                let mut buf = [0u8; $size];
-                // Read into the buffer
-                reader.read_exact(&mut buf)?;
-                buf
-            }};
-        }
-
+    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh2 {
-            trigger_type: LittleEndian::read_u32(&load_bytes!(4)),
-            pages_counter: LittleEndian::read_u16(&load_bytes!(2)),
-            stop_bit: load_bytes!(1)[0],
-            reserved0: load_bytes!(1)[0],
+            trigger_type: LittleEndian::read_u32(&buf[0..=3]),
+            pages_counter: LittleEndian::read_u16(&buf[4..=5]),
+            stop_bit: buf[6],
+            reserved0: buf[7],
         })
     }
 }
@@ -259,26 +225,15 @@ pub struct Rdh3 {
     pub reserved0: u16,
 }
 impl RdhSubWord for Rdh3 {
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh3, std::io::Error> {
-        // Create a helper macro for loading an array of the given size from
-        // the reader.
-        macro_rules! load_bytes {
-            ($size:literal) => {{
-                // Create a buffer array of the given size
-                let mut buf = [0u8; $size];
-                // Read into the buffer
-                reader.read_exact(&mut buf)?;
-                buf
-            }};
-        }
-
+    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh3 {
-            detector_field: LittleEndian::read_u32(&load_bytes!(4)),
-            par_bit: LittleEndian::read_u16(&load_bytes!(2)),
-            reserved0: LittleEndian::read_u16(&load_bytes!(2)),
+            detector_field: LittleEndian::read_u32(&buf[0..=3]),
+            par_bit: LittleEndian::read_u16(&buf[4..=5]),
+            reserved0: LittleEndian::read_u16(&buf[6..=7]),
         })
     }
 }
+
 impl PartialEq for Rdh3 {
     fn eq(&self, other: &Self) -> bool {
         self.detector_field == other.detector_field

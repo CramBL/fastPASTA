@@ -1,7 +1,7 @@
 //! Contains the definition of the [RDH CRU][RdhCRU].
 use super::lib::{ByteSlice, RdhSubWord, SerdeRdh, RDH, RDH_CRU};
 use crate::words::rdh::{CruidDw, DataformatReserved, Rdh0, Rdh1, Rdh2, Rdh3};
-use byteorder::{LittleEndian, ReadBytesExt};
+use byteorder::{ByteOrder, LittleEndian};
 use std::fmt::{self, Display};
 use std::{fmt::Debug, marker::PhantomData};
 /// Unit struct to mark a [RdhCRU] as version 6.
@@ -183,49 +183,20 @@ impl<Version: Send + Sync> RDH_CRU for RdhCRU<Version> {
 
 impl<Version: Send + Sync> SerdeRdh for RdhCRU<Version> {
     #[inline]
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
-    where
-        Self: Sized,
-    {
-        let rdh0 = match Rdh0::load(reader) {
-            Ok(rdh0) => rdh0,
-            Err(e) => return Err(e),
-        };
-        Self::load_from_rdh0(reader, rdh0)
-    }
-    #[inline]
-    fn load_from_rdh0<T: std::io::Read>(
-        reader: &mut T,
-        rdh0: Rdh0,
-    ) -> Result<Self, std::io::Error> {
-        let offset_new_packet = reader.read_u16::<LittleEndian>()?;
-        let memory_size = reader.read_u16::<LittleEndian>()?;
-        let link_id = reader.read_u8()?;
-        let packet_counter = reader.read_u8()?;
-        // cru_id is 12 bit and the following dw is 4 bit
-        let tmp_cruid_dw = CruidDw(reader.read_u16::<LittleEndian>()?);
-        let rdh1 = Rdh1::load(reader)?;
-        // Now the next 64 bits contain the reserved0 and data_format
-        // [7:0]data_format, [63:8]reserved0
-        let tmp_dataformat_reserverd0 = DataformatReserved(reader.read_u64::<LittleEndian>()?);
-        let rdh2 = Rdh2::load(reader)?;
-        let reserved1 = reader.read_u64::<LittleEndian>()?;
-        let rdh3 = Rdh3::load(reader)?;
-        let reserved2 = reader.read_u64::<LittleEndian>()?;
-        // Finally return the RdhCRU
+    fn from_rdh0_and_buf(rdh0: Rdh0, buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(RdhCRU {
             rdh0,
-            offset_new_packet,
-            memory_size,
-            link_id,
-            packet_counter,
-            cruid_dw: tmp_cruid_dw,
-            rdh1,
-            dataformat_reserved0: tmp_dataformat_reserverd0,
-            rdh2,
-            reserved1,
-            rdh3,
-            reserved2,
+            offset_new_packet: LittleEndian::read_u16(&buf[0..=1]),
+            memory_size: LittleEndian::read_u16(&buf[2..=3]),
+            link_id: buf[4],
+            packet_counter: buf[5],
+            cruid_dw: CruidDw(LittleEndian::read_u16(&buf[6..=7])),
+            rdh1: Rdh1::from_buf(&buf[8..=15])?,
+            dataformat_reserved0: DataformatReserved(LittleEndian::read_u64(&buf[16..=23])),
+            rdh2: Rdh2::from_buf(&buf[24..=31])?,
+            reserved1: LittleEndian::read_u64(&buf[32..=39]),
+            rdh3: Rdh3::from_buf(&buf[40..=47])?,
+            reserved2: LittleEndian::read_u64(&buf[48..=55]),
             version: PhantomData,
         })
     }

@@ -10,8 +10,13 @@ use super::{
 /// * pretty printing to stdout
 /// * deserialize the GBT words from the binary file
 pub trait RdhSubWord: Sized + PartialEq + std::fmt::Debug + std::fmt::Display {
+    /// Deserializes the GBT word from a provided reader
+    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error> {
+        let raw = super::lib::macros::load_bytes!(8, reader);
+        Self::from_buf(&raw)
+    }
     /// Deserializes the GBT word from a byte slice
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>;
+    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error>;
 }
 
 /// Trait that all [RDH] words must implement
@@ -140,11 +145,35 @@ pub trait SerdeRdh: Send + Sync + Sized
 where
     Self: ByteSlice,
 {
-    /// Deserializes the GBT word from a byte slice
-    fn load<R: std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error>;
-    /// Deserializes the GBT word from an [RDH0][Rdh0] and a byte slice containing the rest of the [RDH]
-    fn load_from_rdh0<R: std::io::Read>(reader: &mut R, rdh0: Rdh0)
-        -> Result<Self, std::io::Error>;
+    /// Deserializes a [RDH] from a reader where the next 64 bytes contain a [RDH]
+    #[inline]
+    fn load<R: std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error>
+    where
+        Self: Sized,
+    {
+        let buf = super::lib::macros::load_bytes!(64, reader);
+        Self::from_buf(&buf)
+    }
+
+    /// Deserializes a [RDH] from a [RDH0][Rdh0] and a reader where the next 56 bytes contain the rest of the [RDH]
+    #[inline]
+    fn load_from_rdh0<R: std::io::Read>(
+        reader: &mut R,
+        rdh0: Rdh0,
+    ) -> Result<Self, std::io::Error> {
+        let buf = super::lib::macros::load_bytes!(56, reader);
+        Self::from_rdh0_and_buf(rdh0, &buf)
+    }
+
+    /// Serializes a [RDH] from a byte slice
+    #[inline]
+    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
+        let rdh0 = Rdh0::from_buf(&buf[0..=7])?;
+        Self::from_rdh0_and_buf(rdh0, &buf[8..=63])
+    }
+
+    /// Deserializes a [RDH] from a [RDH0][Rdh0] and a byte slice
+    fn from_rdh0_and_buf(rdh0: Rdh0, buf: &[u8]) -> Result<Self, std::io::Error>;
 }
 
 /// Trait used to convert a struct to a byte slice.
@@ -175,4 +204,20 @@ unsafe fn any_as_u8_slice<T: Sized>(packed: &T) -> &[u8] {
     use core::{mem::size_of, slice::from_raw_parts};
     // Create read-only reference to T as a byte slice, safe as long as no padding bytes are read
     from_raw_parts((packed as *const T) as *const u8, size_of::<T>())
+}
+
+/// Module containing macros related to protocol words.
+pub mod macros {
+    #[macro_export]
+    /// Macro to load a given number of bytes from a reader into a byte array buffer, to avoid heap allocation.
+    macro_rules! load_bytes {
+        ($size:literal, $reader:ident) => {{
+            // Create a buffer array of the given size
+            let mut buf = [0u8; $size];
+            // Read into the buffer
+            $reader.read_exact(&mut buf)?;
+            buf
+        }};
+    }
+    pub use load_bytes;
 }
