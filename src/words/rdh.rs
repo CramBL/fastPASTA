@@ -1,7 +1,7 @@
 //! Contains struct definitions of the RDH subwords: [RDH0][Rdh0], [RDH1][Rdh1], [RDH2][Rdh2], [RDH3][Rdh3].
 // ITS data format: https://gitlab.cern.ch/alice-its-wp10-firmware/RU_mainFPGA/-/wikis/ITS%20Data%20Format#Introduction
 use super::lib::RdhSubWord;
-use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
+use byteorder::{ByteOrder, LittleEndian};
 use std::fmt::{self, Debug, Display};
 
 // Newtype pattern used to enforce type safety on fields that are not byte-aligned
@@ -50,40 +50,6 @@ impl Display for Rdh0 {
 }
 
 impl RdhSubWord for Rdh0 {
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh0, std::io::Error> {
-        // Create a helper macro for loading an array of the given size from
-        // the reader.
-        macro_rules! load_bytes {
-            ($size:literal) => {{
-                // Create a buffer array of the given size
-                let mut buf = [0u8; $size];
-                // Read into the buffer
-                reader.read_exact(&mut buf)?;
-                buf
-            }};
-        }
-        Ok(Rdh0 {
-            header_id: load_bytes!(1)[0],
-            header_size: load_bytes!(1)[0],
-            fee_id: FeeId(LittleEndian::read_u16(&load_bytes!(2))),
-            priority_bit: load_bytes!(1)[0],
-            system_id: load_bytes!(1)[0],
-            reserved0: LittleEndian::read_u16(&load_bytes!(2)),
-        })
-    }
-
-    fn load_alt<T: std::io::Read>(reader: &mut T) -> Result<Rdh0, std::io::Error> {
-        let raw = super::lib::macros::load_bytes!(8, reader);
-        Ok(Rdh0 {
-            header_id: raw[0],
-            header_size: raw[1],
-            fee_id: FeeId(LittleEndian::read_u16(&raw[2..=3])),
-            priority_bit: raw[4],
-            system_id: raw[5],
-            reserved0: LittleEndian::read_u16(&raw[6..=7]),
-        })
-    }
-
     fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh0 {
             header_id: buf[0],
@@ -92,22 +58,6 @@ impl RdhSubWord for Rdh0 {
             priority_bit: buf[4],
             system_id: buf[5],
             reserved0: LittleEndian::read_u16(&buf[6..=7]),
-        })
-    }
-}
-
-impl Rdh0 {
-    pub fn load_no_macro<T: std::io::Read>(reader: &mut T) -> Result<Rdh0, std::io::Error> {
-        // Create a helper macro for loading an array of the given size from
-        // the reader.
-
-        Ok(Rdh0 {
-            header_id: reader.read_u8()?,
-            header_size: reader.read_u8()?,
-            fee_id: FeeId(reader.read_u16::<LittleEndian>()?),
-            priority_bit: reader.read_u8()?,
-            system_id: reader.read_u8()?,
-            reserved0: reader.read_u16::<LittleEndian>()?,
         })
     }
 }
@@ -165,33 +115,6 @@ impl Rdh1 {
 }
 
 impl RdhSubWord for Rdh1 {
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh1, std::io::Error> {
-        // Create a helper macro for loading an array of the given size from
-        // the reader.
-        macro_rules! load_bytes {
-            ($size:literal) => {{
-                // Create a buffer array of the given size
-                let mut buf = [0u8; $size];
-                // Read into the buffer
-                reader.read_exact(&mut buf)?;
-                buf
-            }};
-        }
-
-        Ok(Rdh1 {
-            bc_reserved0: BcReserved(LittleEndian::read_u32(&load_bytes!(4))),
-            orbit: LittleEndian::read_u32(&load_bytes!(4)),
-        })
-    }
-
-    fn load_alt<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error> {
-        let raw = super::lib::macros::load_bytes!(8, reader);
-        Ok(Rdh1 {
-            bc_reserved0: BcReserved(LittleEndian::read_u32(&raw[0..=3])),
-            orbit: LittleEndian::read_u32(&raw[4..=7]),
-        })
-    }
-
     fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh1 {
             bc_reserved0: BcReserved(LittleEndian::read_u32(&buf[0..=3])),
@@ -247,37 +170,6 @@ impl Rdh2 {
 }
 
 impl RdhSubWord for Rdh2 {
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh2, std::io::Error> {
-        // Create a helper macro for loading an array of the given size from
-        // the reader.
-        macro_rules! load_bytes {
-            ($size:literal) => {{
-                // Create a buffer array of the given size
-                let mut buf = [0u8; $size];
-                // Read into the buffer
-                reader.read_exact(&mut buf)?;
-                buf
-            }};
-        }
-
-        Ok(Rdh2 {
-            trigger_type: LittleEndian::read_u32(&load_bytes!(4)),
-            pages_counter: LittleEndian::read_u16(&load_bytes!(2)),
-            stop_bit: load_bytes!(1)[0],
-            reserved0: load_bytes!(1)[0],
-        })
-    }
-
-    fn load_alt<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error> {
-        let raw = super::lib::macros::load_bytes!(8, reader);
-        Ok(Rdh2 {
-            trigger_type: LittleEndian::read_u32(&raw[0..=3]),
-            pages_counter: LittleEndian::read_u16(&raw[4..=5]),
-            stop_bit: raw[6],
-            reserved0: raw[7],
-        })
-    }
-
     fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh2 {
             trigger_type: LittleEndian::read_u32(&buf[0..=3]),
@@ -333,35 +225,6 @@ pub struct Rdh3 {
     pub reserved0: u16,
 }
 impl RdhSubWord for Rdh3 {
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Rdh3, std::io::Error> {
-        // Create a helper macro for loading an array of the given size from
-        // the reader.
-        macro_rules! load_bytes {
-            ($size:literal) => {{
-                // Create a buffer array of the given size
-                let mut buf = [0u8; $size];
-                // Read into the buffer
-                reader.read_exact(&mut buf)?;
-                buf
-            }};
-        }
-
-        Ok(Rdh3 {
-            detector_field: LittleEndian::read_u32(&load_bytes!(4)),
-            par_bit: LittleEndian::read_u16(&load_bytes!(2)),
-            reserved0: LittleEndian::read_u16(&load_bytes!(2)),
-        })
-    }
-
-    fn load_alt<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error> {
-        let raw = super::lib::macros::load_bytes!(8, reader);
-        Ok(Rdh3 {
-            detector_field: LittleEndian::read_u32(&raw[0..=3]),
-            par_bit: LittleEndian::read_u16(&raw[4..=5]),
-            reserved0: LittleEndian::read_u16(&raw[6..=7]),
-        })
-    }
-
     fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh3 {
             detector_field: LittleEndian::read_u32(&buf[0..=3]),
