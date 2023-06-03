@@ -72,7 +72,7 @@ impl ItsPayloadWord {
 
 #[cfg(test)]
 mod tests {
-    use once_cell::sync::OnceCell;
+    use std::sync::OnceLock;
 
     use crate::{
         util::lib::test_util::MockConfig,
@@ -82,7 +82,7 @@ mod tests {
 
     use super::*;
 
-    static CFG_TEST_DO_PAYLOAD_CHECKS: OnceCell<MockConfig> = OnceCell::new();
+    static CFG_TEST_DO_PAYLOAD_CHECKS: OnceLock<MockConfig> = OnceLock::new();
 
     #[test]
     fn test_do_payload_checks_bad_payload() {

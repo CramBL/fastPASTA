@@ -498,7 +498,6 @@ dependencies = [
  "is-terminal",
  "itertools",
  "log",
- "once_cell",
  "owo-colors",
  "predicates",
  "pretty_assertions",

@@ -636,9 +636,9 @@ mod tests {
         util::config::check::CheckCommands,
         words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7},
     };
-    use once_cell::sync::OnceCell;
+    use std::sync::OnceLock;
 
-    static MOCK_CONFIG_DEFAULT: OnceCell<MockConfig> = OnceCell::new();
+    static MOCK_CONFIG_DEFAULT: OnceLock<MockConfig> = OnceLock::new();
 
     #[test]
     fn test_validate_ihw() {
@@ -763,7 +763,7 @@ mod tests {
         }
     }
 
-    static CFG_TEST_EXPECT_IHW_INVALIDATE_TDH_AND_NEXT_NEXT: OnceCell<MockConfig> = OnceCell::new();
+    static CFG_TEST_EXPECT_IHW_INVALIDATE_TDH_AND_NEXT_NEXT: OnceLock<MockConfig> = OnceLock::new();
 
     #[test]
     fn test_expect_ihw_invalidate_tdh_and_next_next() {

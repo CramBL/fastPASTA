@@ -176,11 +176,11 @@ mod tests {
     use crate::words::its::test_payloads::*;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
     use crate::words::rdh_cru::{RdhCRU, V7};
-    use once_cell::sync::OnceCell;
+    use std::sync::OnceLock;
 
     use super::*;
 
-    static CFG_TEST_DISPACTER: OnceCell<MockConfig> = OnceCell::new();
+    static CFG_TEST_DISPACTER: OnceLock<MockConfig> = OnceLock::new();
 
     #[test]
     fn test_dispacter() {
