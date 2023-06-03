@@ -3,8 +3,11 @@ use std::{
     vec,
 };
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use fastpasta::words::lib::{ByteSlice, SerdeRdh, RDH_CRU};
+use criterion::{black_box, BenchmarkId, Criterion};
+use fastpasta::words::{
+    lib::{ByteSlice, RdhSubWord, SerdeRdh, RDH_CRU},
+    rdh::Rdh0,
+};
 use fastpasta::{words::rdh_cru::RdhCRU, words::rdh_cru::V7};
 pub struct RelativeOffset(i64);
 impl RelativeOffset {
@@ -41,7 +44,7 @@ fn buffered_read_custom_capacity(n: usize) {
 
 #[inline]
 
-fn bench_buffer_capacity(c: &mut Criterion) {
+pub fn bench_buffer_capacity(c: &mut Criterion) {
     let mut group = c.benchmark_group("buffered_read");
     static KB: usize = 1024;
     static MB: usize = 1024 * KB;
@@ -89,7 +92,7 @@ fn parse_rdh_manual(rdh_cru_size_bytes: u64, filename: &str, iterations: usize) 
     }
 }
 
-fn bench_deserialization(c: &mut Criterion) {
+pub fn bench_deserialization(c: &mut Criterion) {
     let mut group = c.benchmark_group("deserialization");
     const RDH_CRU_SIZE_BYTES: u64 = 64;
     let filename = "../fastpasta_test_files/data_ols_its-ul-v0.5_3.4GB";
@@ -141,7 +144,7 @@ fn write_rdh_manual(fileout: &str) {
     });
 }
 
-fn bench_serialization_write(c: &mut Criterion) {
+pub fn bench_serialization_write(c: &mut Criterion) {
     let mut group = c.benchmark_group("serialization_write");
 
     let filename_manual = "manualrds.raw";
@@ -156,71 +159,61 @@ fn bench_serialization_write(c: &mut Criterion) {
     group.finish();
 }
 
-// Sanity checking on RDHs
 #[inline]
-fn sanity_check_rdhs(rdh_cru_size_bytes: u64, filename: &str, iterations: usize) {
+fn rdh0_deserialize(filename: &str, iterations: usize) {
     let filepath = std::path::PathBuf::from(filename);
     let file = std::fs::OpenOptions::new()
         .read(true)
         .open(&filepath)
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
-    let mut rdh_validator = fastpasta::validators::rdh::RdhCruSanityValidator::default();
-    let mut rdhs = 0;
-
-    loop {
-        let tmp_rdh = match RdhCRU::<V7>::load(&mut buf_reader) {
-            Ok(rdh) => rdh,
-            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                print!("EOF reached! ");
-                break;
-            }
-            Err(e) => {
-                println!("Error: {e}");
-                break;
-            }
-        };
-        let relative_offset =
-            RelativeOffset::new((tmp_rdh.offset_to_next() as u64) - rdh_cru_size_bytes);
-        buf_reader
-            .seek_relative(relative_offset.0)
-            .expect("Error seeking");
-        match rdh_validator.sanity_check(&tmp_rdh) {
-            Ok(_) => (),
-            Err(e) => {
-                println!("Error: {e}");
-            }
-        }
-        rdhs += 1;
-        if rdhs == iterations {
-            break;
-        }
+    for _i in 1..iterations {
+        //println!("Iteration: {}", _i);
+        let rdh0_tmp: Rdh0 = Rdh0::load(&mut buf_reader).expect("Failed to load Rdh0");
     }
 }
 
-fn bench_rdh_sanity_check(c: &mut Criterion) {
-    let mut group = c.benchmark_group("rdh_sanity_check");
-    const RDH_CRU_SIZE_BYTES: u64 = 64;
-    let filename = "../fastpasta_test_files/data_ols_its-ul-v0.5_3.4GB";
-    for i in [1000, 10000, 50000, 100000, 1000000].iter() {
-        group.bench_with_input(BenchmarkId::new("manual", i.to_string()), i, |b, i| {
-            b.iter(|| {
-                sanity_check_rdhs(
-                    black_box(RDH_CRU_SIZE_BYTES),
-                    black_box(filename),
-                    black_box(*i),
-                )
-            })
+#[inline]
+fn rdh0_deserialize_no_macro(filename: &str, iterations: usize) {
+    let filepath = std::path::PathBuf::from(filename);
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .open(&filepath)
+        .expect("File not found");
+    let mut buf_reader = std::io::BufReader::new(file);
+    for _i in 1..iterations {
+        //println!("Iteration: {}", _i);
+        let rdh0_tmp: Rdh0 = Rdh0::load_no_macro(&mut buf_reader).expect("Failed to load Rdh0");
+    }
+}
+
+#[inline]
+fn rdh0_deserialize_alternative_macro(filename: &str, iterations: usize) {
+    let filepath = std::path::PathBuf::from(filename);
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .open(&filepath)
+        .expect("File not found");
+    let mut buf_reader = std::io::BufReader::new(file);
+    for _i in 1..iterations {
+        //println!("Iteration: {}", _i);
+        let rdh0_tmp: Rdh0 = Rdh0::load_alt_macro(&mut buf_reader).expect("Failed to load Rdh0");
+    }
+}
+
+pub fn bench_rdh0_deserialization(c: &mut Criterion) {
+    let mut group = c.benchmark_group("rdh0_deserialization");
+    let filename = "../fastpasta_test_files/data_ols_ul.raw";
+    for i in [1000, 10000, 50000, 100000, 500000, 1000000].iter() {
+        group.bench_with_input(BenchmarkId::new("Current", i.to_string()), i, |b, i| {
+            b.iter(|| rdh0_deserialize(black_box(filename), black_box(*i)))
+        });
+        group.bench_with_input(BenchmarkId::new("Alternative", i.to_string()), i, |b, i| {
+            b.iter(|| rdh0_deserialize_alternative_macro(black_box(filename), black_box(*i)))
+        });
+        group.bench_with_input(BenchmarkId::new("No macro", i.to_string()), i, |b, i| {
+            b.iter(|| rdh0_deserialize_no_macro(black_box(filename), black_box(*i)))
         });
     }
     group.finish();
 }
-
-criterion_group!(
-    benches,
-    bench_buffer_capacity,
-    bench_deserialization,
-    bench_serialization_write,
-    bench_rdh_sanity_check
-);
-criterion_main!(benches);
