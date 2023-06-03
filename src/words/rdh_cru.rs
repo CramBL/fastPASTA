@@ -1,7 +1,7 @@
 //! Contains the definition of the [RDH CRU][RdhCRU].
 use super::lib::{ByteSlice, RdhSubWord, SerdeRdh, RDH, RDH_CRU};
 use crate::words::rdh::{CruidDw, DataformatReserved, Rdh0, Rdh1, Rdh2, Rdh3};
-use byteorder::{LittleEndian, ReadBytesExt};
+use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use std::fmt::{self, Display};
 use std::{fmt::Debug, marker::PhantomData};
 /// Unit struct to mark a [RdhCRU] as version 6.
@@ -193,6 +193,7 @@ impl<Version: Send + Sync> SerdeRdh for RdhCRU<Version> {
         };
         Self::load_from_rdh0(reader, rdh0)
     }
+
     #[inline]
     fn load_from_rdh0<T: std::io::Read>(
         reader: &mut T,
@@ -226,6 +227,100 @@ impl<Version: Send + Sync> SerdeRdh for RdhCRU<Version> {
             reserved1,
             rdh3,
             reserved2,
+            version: PhantomData,
+        })
+    }
+
+    #[inline]
+    fn load_alt<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
+    where
+        Self: Sized,
+    {
+        let rdh0 = match Rdh0::load_alt(reader) {
+            Ok(rdh0) => rdh0,
+            Err(e) => return Err(e),
+        };
+        Self::load_alt_from_rdh0(reader, rdh0)
+    }
+
+    fn load_alt_from_rdh0<R: std::io::Read>(
+        reader: &mut R,
+        rdh0: Rdh0,
+    ) -> Result<Self, std::io::Error> {
+        use super::lib::macros::load_bytes;
+        let raw0 = load_bytes!(8, reader);
+        let offset_new_packet = LittleEndian::read_u16(&raw0[0..=1]);
+        let memory_size = LittleEndian::read_u16(&raw0[2..=3]);
+        let link_id = raw0[4];
+        let packet_counter = raw0[5];
+        let tmp_cruid_dw = CruidDw(LittleEndian::read_u16(&raw0[6..=7]));
+        let rdh1 = Rdh1::load_alt(reader)?;
+        let raw1 = load_bytes!(8, reader);
+        let tmp_dataformat_reserverd0 = DataformatReserved(LittleEndian::read_u64(&raw1[0..=7]));
+        let rdh2 = Rdh2::load_alt(reader)?;
+        let raw2 = load_bytes!(8, reader);
+        let reserved1 = LittleEndian::read_u64(&raw2[0..=7]);
+        let rdh3 = Rdh3::load_alt(reader)?;
+        let raw3 = load_bytes!(8, reader);
+        let reserved2 = LittleEndian::read_u64(&raw3[0..=7]);
+        Ok(RdhCRU {
+            rdh0,
+            offset_new_packet,
+            memory_size,
+            link_id,
+            packet_counter,
+            cruid_dw: tmp_cruid_dw,
+            rdh1,
+            dataformat_reserved0: tmp_dataformat_reserverd0,
+            rdh2,
+            reserved1,
+            rdh3,
+            reserved2,
+            version: PhantomData,
+        })
+    }
+
+    #[inline]
+    fn load_buf<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
+    where
+        Self: Sized,
+    {
+        let buf = super::lib::macros::load_bytes!(64, reader);
+        Ok(RdhCRU {
+            rdh0: Rdh0::from_buf(&buf[0..=7])?,
+            offset_new_packet: LittleEndian::read_u16(&buf[8..=9]),
+            memory_size: LittleEndian::read_u16(&buf[10..=11]),
+            link_id: buf[12],
+            packet_counter: buf[13],
+            cruid_dw: CruidDw(LittleEndian::read_u16(&buf[14..=15])),
+            rdh1: Rdh1::from_buf(&buf[16..=23])?,
+            dataformat_reserved0: DataformatReserved(LittleEndian::read_u64(&buf[24..=31])),
+            rdh2: Rdh2::from_buf(&buf[32..=39])?,
+            reserved1: LittleEndian::read_u64(&buf[40..=47]),
+            rdh3: Rdh3::from_buf(&buf[48..=55])?,
+            reserved2: LittleEndian::read_u64(&buf[56..=63]),
+            version: PhantomData,
+        })
+    }
+
+    fn load_buf_from_rdh0<R: std::io::Read>(
+        reader: &mut R,
+        rdh0: Rdh0,
+    ) -> Result<Self, std::io::Error> {
+        let buf = super::lib::macros::load_bytes!(56, reader);
+        Ok(RdhCRU {
+            rdh0,
+            offset_new_packet: LittleEndian::read_u16(&buf[0..=1]),
+            memory_size: LittleEndian::read_u16(&buf[2..=3]),
+            link_id: buf[4],
+            packet_counter: buf[5],
+            cruid_dw: CruidDw(LittleEndian::read_u16(&buf[6..=7])),
+            rdh1: Rdh1::from_buf(&buf[8..=15])?,
+            dataformat_reserved0: DataformatReserved(LittleEndian::read_u64(&buf[16..=23])),
+            rdh2: Rdh2::from_buf(&buf[24..=31])?,
+            reserved1: LittleEndian::read_u64(&buf[32..=39]),
+            rdh3: Rdh3::from_buf(&buf[40..=47])?,
+            reserved2: LittleEndian::read_u64(&buf[48..=55]),
             version: PhantomData,
         })
     }
@@ -553,5 +648,40 @@ mod tests {
         assert_ne!(rdhcruv7, CORRECT_RDH_CRU_V7);
         assert_eq!(rdh_inferred_from_old, rdh_v7_from_old);
         dbg!(rdhcruv7);
+    }
+
+    #[test]
+    fn test_load_buf_rdhcruv7_from_byte_slice() {
+        let rdhcruv7_current = RdhCRU::<V7>::load(
+            &mut &[
+                0x07, 0x40, 0x2a, 0x50, 0x00, 0x20, 0x00, 0x00, 0xe0, 0x13, 0xe0, 0x13, 0x00, 0x00,
+                0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x75, 0xd5, 0x7d, 0x0b, 0x02, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x6a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            ][..],
+        )
+        .unwrap();
+        // Create an instace of an RDH-CRU v7
+        // byte slice values taken from a valid rdh from real data
+        let rdhcruv7 = RdhCRU::<V7>::load_buf(
+            &mut &[
+                0x07, 0x40, 0x2a, 0x50, 0x00, 0x20, 0x00, 0x00, 0xe0, 0x13, 0xe0, 0x13, 0x00, 0x00,
+                0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x75, 0xd5, 0x7d, 0x0b, 0x02, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x6a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            ][..],
+        )
+        .unwrap();
+        // Check that the fields are correct
+        println!("{rdhcruv7}");
+
+        assert_eq!(rdhcruv7, rdhcruv7_current);
+
+        // let rdh_from_old = RdhCRU::load(&mut rdhcruv7.to_byte_slice()).unwrap();
+        // let rdh_inferred_from_old = RdhCRU::load(&mut rdhcruv7.to_byte_slice()).unwrap();
+        // let rdh_v7_from_old = RdhCRU::<V7>::load(&mut rdhcruv7.to_byte_slice()).unwrap();
+        // println!("{rdh_from_old}");
     }
 }

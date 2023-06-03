@@ -12,6 +12,8 @@ use super::{
 pub trait RdhSubWord: Sized + PartialEq + std::fmt::Debug + std::fmt::Display {
     /// Deserializes the GBT word from a byte slice
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>;
+    fn load_alt<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>;
+    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error>;
 }
 
 /// Trait that all [RDH] words must implement
@@ -142,9 +144,21 @@ where
 {
     /// Deserializes the GBT word from a byte slice
     fn load<R: std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error>;
+
     /// Deserializes the GBT word from an [RDH0][Rdh0] and a byte slice containing the rest of the [RDH]
     fn load_from_rdh0<R: std::io::Read>(reader: &mut R, rdh0: Rdh0)
         -> Result<Self, std::io::Error>;
+
+    fn load_alt<R: std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error>;
+    fn load_alt_from_rdh0<R: std::io::Read>(
+        reader: &mut R,
+        rdh0: Rdh0,
+    ) -> Result<Self, std::io::Error>;
+    fn load_buf<R: std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error>;
+    fn load_buf_from_rdh0<R: std::io::Read>(
+        reader: &mut R,
+        rdh0: Rdh0,
+    ) -> Result<Self, std::io::Error>;
 }
 
 /// Trait used to convert a struct to a byte slice.
@@ -175,4 +189,20 @@ unsafe fn any_as_u8_slice<T: Sized>(packed: &T) -> &[u8] {
     use core::{mem::size_of, slice::from_raw_parts};
     // Create read-only reference to T as a byte slice, safe as long as no padding bytes are read
     from_raw_parts((packed as *const T) as *const u8, size_of::<T>())
+}
+
+/// Module containing macros related to protocol words.
+pub mod macros {
+    #[macro_export]
+    /// Macro to load a given number of bytes from a reader into a byte array buffer, to avoid heap allocation.
+    macro_rules! load_bytes {
+        ($size:literal, $reader:ident) => {{
+            // Create a buffer array of the given size
+            let mut buf = [0u8; $size];
+            // Read into the buffer
+            $reader.read_exact(&mut buf)?;
+            buf
+        }};
+    }
+    pub use load_bytes;
 }
