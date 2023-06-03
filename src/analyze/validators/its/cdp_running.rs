@@ -84,17 +84,13 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
             payload_mem_pos: 0,
             gbt_word_padding_size_bytes: 0,
             is_new_data: false,
-            // If the config is set to check ALPIDE data, and a filter for a stave is set, then allocate space ALPIDE data.
-            alpide_data_frame: if let Some(check) = config.check() {
-                if let Some(target) = check.target() {
-                    if target == System::ITS_Stave && config.filter_its_stave().is_some() {
-                        Vec::with_capacity(200)
-                    } else {
-                        Vec::with_capacity(0)
-                    }
-                } else {
-                    Vec::with_capacity(0)
-                }
+            // If the config is set to check ALPIDE data, and a filter for a stave is set, then allocate space for ALPIDE data.
+            alpide_data_frame: if config.check().is_some_and(|check| {
+                check.target().is_some_and(|target| {
+                    target == System::ITS_Stave && config.filter_its_stave().is_some()
+                })
+            }) {
+                Vec::with_capacity(200)
             } else {
                 Vec::with_capacity(0)
             },

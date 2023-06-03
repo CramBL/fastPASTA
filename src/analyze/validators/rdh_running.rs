@@ -135,13 +135,11 @@ impl<T: RDH> RdhCruRunningChecker<T> {
     /// If the previous stop bit was 1, the current RDH's orbit counter should be different
     #[inline]
     fn check_orbit_counter_changes(&self, rdh1: &Rdh1) -> Result<(), String> {
-        if let Some(last_rdh_cru) = &self.last_rdh_cru {
-            if last_rdh_cru.stop_bit() == 1 {
-                let current_orbit = rdh1.orbit;
-                if last_rdh_cru.rdh1().orbit == current_orbit {
-                    return Err(format!("Orbit same as previous {current_orbit}."));
-                }
-            }
+        if self.last_rdh_cru.as_ref().is_some_and(|last_rdh_cru| {
+            last_rdh_cru.stop_bit() == 1 && last_rdh_cru.rdh1().orbit == rdh1.orbit
+        }) {
+            let current_orbit = rdh1.orbit;
+            return Err(format!("Orbit same as previous {current_orbit}."));
         }
         Ok(())
     }
