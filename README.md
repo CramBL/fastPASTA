@@ -132,7 +132,7 @@ flowchart TD;
   or
   target system"};
   check_all -- "its" --> check_all_its{{$ fastpasta check all its}};
-  check_all -- "its\-stave" --> check_all_its_stave{Which ITS stave?};
+  check_all -- "its-stave" --> check_all_its_stave{Which ITS stave?};
   check_all_its_stave -- "--filter-its-stave LX_YZ" --> check_all_its_stave_filter{{$ fastpasta check all its-stave --filter-its-stave L5_12}};
 ```
 
