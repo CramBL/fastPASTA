@@ -36,7 +36,7 @@ To verify or view curated content of the scanned raw binary data from ALICE.
     - [Read from stdin -\> filter link -\> view RDHs](#read-from-stdin---filter-link---view-rdhs)
     - [Read from file -\> filter by link -\> validate](#read-from-file---filter-by-link---validate)
     - [Read from file -\> view ITS readout frames with `less`](#read-from-file---view-its-readout-frames-with-less)
-  - [Command structure](#command-structure)
+  - [Command flow](#command-flow)
 - [Error messages](#error-messages)
     - [Messages are formatted as follows:](#messages-are-formatted-as-follows)
     - [Example of failed RDH sanity check](#example-of-failed-rdh-sanity-check)
@@ -120,29 +120,28 @@ $ fastpasta input.raw view its-readout-frames -f 3 | less
 ```
 
 
-## Command structure
+## Command flow
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": false}} }%%
 flowchart TD;
-  start["`**fastpasta**`"] --> top_sub_cmd{"`**Check or view?**`"};
+  start["fastpasta"] --> top_sub_cmd{"Check or view?"};
 
-  top_sub_cmd -- "`**view**`" --> view_type{"`**Type of view**`"};
-  view_type -- "`**rdh**`" --> view_rdh{{$ fastpasta view rdh}};
-  view_type -- "`**its\-readout\-frames**`" --> view_ro_frames{{$ fastpasta view its-readout-frames}};
+  top_sub_cmd -- "view" --> view_type{"Type of view"};
+  view_type -- "rdh" --> view_rdh{{$ fastpasta view rdh}};
+  view_type -- "its-readout-frames" --> view_ro_frames{{$ fastpasta view its-readout-frames}};
 
-  top_sub_cmd -- "`**check**`" --> check_type{"`**Type of check**`"};
+  top_sub_cmd -- "check" --> check_type{"Type of check"};
 
-  check_type -- "`**sanity**`" --> check_sanity{"`$ fastpasta check sanity
+  check_type -- "sanity" --> check_sanity{"$ fastpasta check sanity
   or
-  *target system*`"};
-  check_sanity -- "`**its**`" --> check_sanity_its{{$ fastpasta check sanity its}};
+  target system"};
+  check_sanity -- "its" --> check_sanity_its{{$ fastpasta check sanity its}};
 
-  check_type -- "`**all**`" --> check_all{"`$ fastpasta check all
+  check_type -- "all" --> check_all{"$ fastpasta check all
   or
-  *target system*`"};
-  check_all -- "`**its**`" --> check_all_its{{$ fastpasta check all its}};
-  check_all -- "`**its\-stave**`" --> check_all_its_stave{Which ITS stave?};
-  check_all_its_stave -- "`\-\-filter\-its\-stave LX_YZ`" --> check_all_its_stave_filter{{$ fastpasta check all its-stave --filter-its-stave L5_12}};
+  target system"};
+  check_all -- "its" --> check_all_its{{$ fastpasta check all its}};
+  check_all -- "its\-stave" --> check_all_its_stave{Which ITS stave?};
+  check_all_its_stave -- "--filter-its-stave LX_YZ" --> check_all_its_stave_filter{{$ fastpasta check all its-stave --filter-its-stave L5_12}};
 ```
 
 # Error messages
