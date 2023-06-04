@@ -96,17 +96,9 @@ Enable all generic checks: `sanity` (stateless) AND `running` (stateful)
 ```shell
 $ fastpasta input.raw --filter-link 0 check all
 ```
-Same as above but only enable `sanity` checks
+Enable all `sanity` checks and include checks applicable to `ITS` only
 ```shell
-$ fastpasta input.raw check sanity -f 0
-```
-Enable all `sanity` and `running` checks and include checks applicable to `ITS` only
-```shell
-$ fastpasta input.raw check all ITS --filter-link 0
-```
-Filter link 3 and check `sanity` include sanity checks specific to ITS
-```shell
-$ fastpasta input.raw -f 3 check sanity its # target `its` is case-insensitive
+$ fastpasta input.raw check sanity its --filter-link 0
 ```
 
 ### Read from file -> view ITS readout frames with `less`
