@@ -189,11 +189,11 @@ mod tests {
     use crate::input::data_wrapper::CdpChunk;
     use crate::words::rdh_cru::test_data::*;
     use crate::{input::lib::init_reader, util::lib::test_util::MockConfig};
-    use once_cell::sync::OnceCell;
     use pretty_assertions::assert_eq;
     use std::path::PathBuf;
+    use std::sync::OnceLock;
 
-    static CFG_TEST_INIT_PROCESSING: OnceCell<MockConfig> = OnceCell::new();
+    static CFG_TEST_INIT_PROCESSING: OnceLock<MockConfig> = OnceLock::new();
 
     #[test]
     fn test_init_processing() {
@@ -249,7 +249,7 @@ mod tests {
         assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));
     }
 
-    static CFG_TEST_SPAWN_ANALYSIS: OnceCell<MockConfig> = OnceCell::new();
+    static CFG_TEST_SPAWN_ANALYSIS: OnceLock<MockConfig> = OnceLock::new();
 
     #[test]
     fn test_spawn_analysis() {

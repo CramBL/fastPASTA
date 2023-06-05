@@ -15,8 +15,8 @@ use self::{
 use super::lib::Config;
 use crate::words::its::layer_stave_string_to_feeid;
 use clap::{Args, Parser, Subcommand};
-use once_cell::sync::OnceCell;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 pub mod check;
 pub mod filter;
@@ -24,7 +24,7 @@ pub mod inputoutput;
 pub mod util;
 pub mod view;
 /// The [CONFIG] static variable is used to store the [Cfg] created from the parsed command line arguments
-pub static CONFIG: OnceCell<Cfg> = OnceCell::new();
+pub static CONFIG: OnceLock<Cfg> = OnceLock::new();
 
 /// The [Cfg] struct uses procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
 #[derive(Parser, Debug)]

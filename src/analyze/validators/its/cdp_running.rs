@@ -84,17 +84,13 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
             payload_mem_pos: 0,
             gbt_word_padding_size_bytes: 0,
             is_new_data: false,
-            // If the config is set to check ALPIDE data, and a filter for a stave is set, then allocate space ALPIDE data.
-            alpide_data_frame: if let Some(check) = config.check() {
-                if let Some(target) = check.target() {
-                    if target == System::ITS_Stave && config.filter_its_stave().is_some() {
-                        Vec::with_capacity(200)
-                    } else {
-                        Vec::with_capacity(0)
-                    }
-                } else {
-                    Vec::with_capacity(0)
-                }
+            // If the config is set to check ALPIDE data, and a filter for a stave is set, then allocate space for ALPIDE data.
+            alpide_data_frame: if config.check().is_some_and(|check| {
+                check.target().is_some_and(|target| {
+                    target == System::ITS_Stave && config.filter_its_stave().is_some()
+                })
+            }) {
+                Vec::with_capacity(200)
             } else {
                 Vec::with_capacity(0)
             },
@@ -644,9 +640,9 @@ mod tests {
         util::config::check::CheckCommands,
         words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7},
     };
-    use once_cell::sync::OnceCell;
+    use std::sync::OnceLock;
 
-    static MOCK_CONFIG_DEFAULT: OnceCell<MockConfig> = OnceCell::new();
+    static MOCK_CONFIG_DEFAULT: OnceLock<MockConfig> = OnceLock::new();
 
     #[test]
     fn test_validate_ihw() {
@@ -771,7 +767,7 @@ mod tests {
         }
     }
 
-    static CFG_TEST_EXPECT_IHW_INVALIDATE_TDH_AND_NEXT_NEXT: OnceCell<MockConfig> = OnceCell::new();
+    static CFG_TEST_EXPECT_IHW_INVALIDATE_TDH_AND_NEXT_NEXT: OnceLock<MockConfig> = OnceLock::new();
 
     #[test]
     fn test_expect_ihw_invalidate_tdh_and_next_next() {

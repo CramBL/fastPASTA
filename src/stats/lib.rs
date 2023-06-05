@@ -242,7 +242,7 @@ fn collect_its_stats<T: words::lib::RDH>(rdh: &T, stats_sender_channel: &flume::
 mod tests {
     use super::*;
     use crate::words::lib::RDH_CRU;
-    use once_cell::sync::OnceCell;
+    use std::sync::OnceLock;
 
     #[test]
     fn test_collect_its_stats() {
@@ -291,7 +291,7 @@ mod tests {
     }
 
     use crate::util::lib::test_util::MockConfig;
-    static CONFIG_TEST_INIT_STATS_CONTROLLER: OnceCell<MockConfig> = OnceCell::new();
+    static CONFIG_TEST_INIT_STATS_CONTROLLER: OnceLock<MockConfig> = OnceLock::new();
     #[test]
     fn test_init_stats_controller() {
         let mock_config = MockConfig::default();

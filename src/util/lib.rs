@@ -37,10 +37,8 @@ where
                 }
             }
         }
-        if let Some(exit_code_val) = self.any_errors_exit_code() {
-            if exit_code_val == 0 {
-                return Err("Invalid config: Exit code for any errors cannot be 0".to_string());
-            }
+        if self.any_errors_exit_code().is_some_and(|val| val == 0) {
+            return Err("Invalid config: Exit code for any errors cannot be 0".to_string());
         }
         Ok(())
     }
@@ -125,12 +123,11 @@ pub fn init_ctrlc_handler(stop_flag: Arc<AtomicBool>) {
 pub fn exit(exit_code: u8, any_errors_flag: Arc<AtomicBool>) -> std::process::ExitCode {
     if exit_code == 0 {
         log::info!("Exit successful from data processing");
-        if let Some(custom_exit_code) = Cfg::global().any_errors_exit_code() {
-            if any_errors_flag.load(std::sync::atomic::Ordering::Relaxed) {
-                std::process::ExitCode::from(custom_exit_code)
-            } else {
-                std::process::ExitCode::SUCCESS
-            }
+
+        if Cfg::global().any_errors_exit_code().is_some()
+            && any_errors_flag.load(std::sync::atomic::Ordering::Relaxed)
+        {
+            std::process::ExitCode::from(Cfg::global().any_errors_exit_code().unwrap())
         } else {
             std::process::ExitCode::SUCCESS
         }

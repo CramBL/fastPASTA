@@ -158,7 +158,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + 'static> LinkValidator<T, C> {
 
 #[cfg(test)]
 mod tests {
-    use once_cell::sync::OnceCell;
+    use std::sync::OnceLock;
 
     use super::*;
     use crate::util::config::check::System;
@@ -166,7 +166,7 @@ mod tests {
     use crate::words::its::test_payloads::*;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
 
-    static CFG_TEST_RUN_LINK_VALIDATOR: OnceCell<MockConfig> = OnceCell::new();
+    static CFG_TEST_RUN_LINK_VALIDATOR: OnceLock<MockConfig> = OnceLock::new();
 
     #[test]
     fn test_run_link_validator() {
@@ -201,7 +201,7 @@ mod tests {
         assert!(stats_msg.is_err());
     }
 
-    static CFG_TEST_VALID_PAYLOADS_FLAVOR_0: OnceCell<MockConfig> = OnceCell::new();
+    static CFG_TEST_VALID_PAYLOADS_FLAVOR_0: OnceLock<MockConfig> = OnceLock::new();
     #[test]
     fn test_valid_payloads_flavor_0() {
         let mut mock_config = MockConfig::new();
@@ -245,7 +245,7 @@ mod tests {
         }
     }
 
-    static CFG_TEST_VALID_PAYLOADS_FLAVOR_2: OnceCell<MockConfig> = OnceCell::new();
+    static CFG_TEST_VALID_PAYLOADS_FLAVOR_2: OnceLock<MockConfig> = OnceLock::new();
     #[test]
     fn test_valid_payloads_flavor_2() {
         let mut mock_config = MockConfig::new();
@@ -288,8 +288,8 @@ mod tests {
         }
     }
 
-    static CFG_TEST_INVALID_PAYLOADS_FLAVOR_2_BAD_TDH_ONE_ERROR: OnceCell<MockConfig> =
-        OnceCell::new();
+    static CFG_TEST_INVALID_PAYLOADS_FLAVOR_2_BAD_TDH_ONE_ERROR: OnceLock<MockConfig> =
+        OnceLock::new();
 
     #[test]
     fn test_invalid_payloads_flavor_2_bad_tdh_one_error() {
@@ -344,7 +344,7 @@ mod tests {
         }
     }
 
-    static CFG_TEST_INIT_LINK_VALIDATOR_NO_CHECKS_ENABLED: OnceCell<MockConfig> = OnceCell::new();
+    static CFG_TEST_INIT_LINK_VALIDATOR_NO_CHECKS_ENABLED: OnceLock<MockConfig> = OnceLock::new();
 
     #[test]
     #[should_panic]

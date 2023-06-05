@@ -22,7 +22,11 @@ pub fn do_payload_checks<T: RDH, C: ChecksOpt + FilterOpt>(
             cdp_validator.check(&gbt_word[..10]); // Take 10 bytes as flavor 0 would have additional 6 bytes of padding
         }),
         Err(e) => {
-            send_stats_channel.send(StatType::Error(e)).unwrap();
+            send_stats_channel
+                .send(StatType::Error(format!(
+                    "{rdh_mem_pos:#X}: Payload error following RDH at this location: {e}"
+                )))
+                .unwrap();
             cdp_validator.reset_fsm();
         }
     }
@@ -72,7 +76,7 @@ impl ItsPayloadWord {
 
 #[cfg(test)]
 mod tests {
-    use once_cell::sync::OnceCell;
+    use std::sync::OnceLock;
 
     use crate::{
         util::lib::test_util::MockConfig,
@@ -82,7 +86,7 @@ mod tests {
 
     use super::*;
 
-    static CFG_TEST_DO_PAYLOAD_CHECKS: OnceCell<MockConfig> = OnceCell::new();
+    static CFG_TEST_DO_PAYLOAD_CHECKS: OnceLock<MockConfig> = OnceLock::new();
 
     #[test]
     fn test_do_payload_checks_bad_payload() {
