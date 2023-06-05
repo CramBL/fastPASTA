@@ -46,7 +46,7 @@ To verify or view curated content of the scanned raw binary data from ALICE.
 - [Project status](#project-status)
 - [Benchmarks and comparisons](#benchmarks-and-comparisons)
     - [Verifying all RDHs of 260MB file with data from 1 link](#verifying-all-rdhs-of-260mb-file-with-data-from-1-link)
-    - [Verifying all RDHs in 2GB file with data from 12 different links](#verifying-all-rdhs-in-2gb-file-with-data-from-12-different-links)
+    - [Verifying all RDHs in 3GB file with data from 2 different GBT links](#verifying-all-rdhs-in-3gb-file-with-data-from-2-different-gbt-links)
     - [Verifying all RDHs and payloads in 260MB file with data from 1 link](#verifying-all-rdhs-and-payloads-in-260mb-file-with-data-from-1-link)
 - [Need more performance?](#need-more-performance)
     - [Background](#background)
@@ -190,11 +190,11 @@ In the tables below `fastPASTA` is compared with `rawdata-parser` and `decode.py
 |rawdata-parser| `./rawdata-parser --skip-packet-counter-checks input.raw` | 0.381 ± 0.012 | 0.356 | 0.438|
 |decode.py| `python3 decode.py -i 20522 -f input.raw --skip_data` | 13.674 ± 0.386 | 13.610 | 14.499 |
 
-### Verifying all RDHs in 2GB file with data from 12 different links
+### Verifying all RDHs in 3GB file with data from 2 different GBT links
 | Tool | Command | Mean [s] | Min [s] | Max [s] |
 |:---|:---|---:|---:|---:|
-|fastPASTA| `fastpasta input.raw check all` | 0.459 ± 0.018 | 0.411 | 0.535 |
-|rawdata-parser| `./rawdata-parser --skip-packet-counter-checks input.raw` | 3.080 ± 0.047 | 3.005 | 3.178 |
+|fastPASTA| `fastpasta input.raw check all` | 0.504 ± 0.010 | 0.482 | 0.530 |
+|rawdata-parser| `rawdata-parser input.raw` | 2.951 ± 0.102 | 2.867 | 3.300 |
 |decode.py| Verifying multiple links simultaneously is not supported | N/A | N/A | N/A |
 
 ### Verifying all RDHs and payloads in 260MB file with data from 1 link
