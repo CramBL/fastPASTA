@@ -61,7 +61,7 @@ pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
     // Flag to start storing ALPIDE data, if the config is set to check ALPIDE data, and a filter for a stave is set.
     // Set to true when a TDH with internal trigger bit set is found.
     // Set to false when it's true and a TDT is found.
-    is_internal_trigger: bool,
+    is_readout_frame: bool,
 }
 
 impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
@@ -94,7 +94,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
             } else {
                 Vec::with_capacity(0)
             },
-            is_internal_trigger: false,
+            is_readout_frame: false,
         }
     }
 
@@ -262,8 +262,11 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                             Some(Tdh::load(&mut <&[u8]>::clone(&prev_tdh.to_byte_slice())).unwrap())
                     }
                 }
-                // If the current TDH has internal trigger set, set the flag
-                self.is_internal_trigger = tdh.internal_trigger() == 1;
+                // If the current TDH does not have continuation set, then it is the start of a new readout frame
+                if tdh.continuation() == 0 {
+                    self.is_readout_frame = true;
+                }
+
                 // Swap current and last TDH, then replace current with the new TDH
                 std::mem::swap(&mut self.current_tdh, &mut self.previous_tdh);
                 self.current_tdh = Some(tdh);
@@ -274,8 +277,10 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
                     self.report_error(&format!("[E50] {e}"), tdt_as_slice);
                 }
-                self.is_internal_trigger = false;
-                self.process_alpide_data();
+                if tdt.packet_done() {
+                    self.is_readout_frame = false;
+                    self.process_alpide_data();
+                }
                 self.current_tdt = Some(tdt);
             }
             StatusWordKind::Ddw0(ddw0_as_slice) => {
@@ -297,8 +302,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
     /// Takes a slice of bytes expected to be a data word, and checks if it has a valid identifier.
     #[inline]
     fn process_data_word(&mut self, data_word_slice: &[u8]) {
-        let id_index = 9;
-        if self.is_new_data && data_word_slice[id_index] == 0xF8 {
+        const ID_INDEX: usize = 9;
+        if self.is_new_data && data_word_slice[ID_INDEX] == 0xF8 {
             // CDW
             self.process_cdw(data_word_slice);
         } else {
@@ -308,7 +313,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 log::debug!("Data word: {data_word_slice:?}");
             }
 
-            let id_3_msb = data_word_slice[id_index] >> 5;
+            let id_3_msb = data_word_slice[ID_INDEX] >> 5;
             if id_3_msb == 0b001 {
                 // Inner Barrel
                 self.process_ib_data_word(data_word_slice);
@@ -549,7 +554,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
 
     /// Process ALPIDE data for a readout frame, per lane.
     fn process_alpide_data(&mut self) {
-        debug_assert!(!self.is_internal_trigger);
+        debug_assert!(!self.is_readout_frame);
         if self.alpide_data_frame.is_empty() {
             return;
         }
@@ -562,7 +567,9 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 // Process data for each lane
                 let mut decoder = AlpideFrameDecoder::default(); // New decoder for each lane
                 let mut previous_slice: Option<DataWordContents> = None; // Used for debugging, if a slice has warnings i.e. bytes that the decoder could not understand
+
                 log::trace!("Processing lane ID: {:02X}", lane_data_frame.lane_id);
+
                 lane_data_frame.lane_data.drain(..).for_each(|dw| {
                     // Process each slice (9 bytes from an ITS data word)
                     decoder.process(&dw.bytes);
@@ -603,6 +610,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                         errors_per_lane.push((lane_data_frame.lane_id, vec![msg]));
                     }
                 }
+
                 //decoder.print_chip_bunch_counters();
             });
         // Format and send all errors
