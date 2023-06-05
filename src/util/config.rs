@@ -70,7 +70,13 @@ pub struct Cfg {
     filter_fee: Option<u16>,
 
     /// Set ITS layer & stave to filter by (e.g. L5_42)
-    #[arg(long, name = "filter-its-stave", global = true, group = "filter")]
+    #[arg(
+        short = 's',
+        long,
+        name = "filter-its-stave",
+        global = true,
+        group = "filter"
+    )]
     filter_its_stave: Option<String>,
 
     /// Enables checks on the ITS trigger period with the specified value, usable with the `check all its-stave` command

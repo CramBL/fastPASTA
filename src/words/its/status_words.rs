@@ -1,7 +1,7 @@
 //! Definitions for status words: [IHW][Ihw], [TDH][Tdh], [TDT][Tdt], [DDW0][Ddw0] & [CDW][Cdw].
 
 use super::super::lib::ByteSlice;
-use byteorder::{LittleEndian, ReadBytesExt};
+use byteorder::{ByteOrder, LittleEndian};
 use std::fmt::{Debug, Display};
 
 pub mod util {
@@ -193,9 +193,16 @@ pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display 
     /// Returns the id of the status word
     fn id(&self) -> u8;
     /// Deserializes the status word from a reader and a byte slice
+    #[inline]
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
     where
-        Self: Sized;
+        Self: Sized,
+    {
+        let buf = super::super::lib::macros::load_bytes!(10, reader);
+        Self::from_buf(&buf)
+    }
+    /// Deserializes the GBT word from a byte slice
+    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error>;
     /// Sanity check that returns true if all reserved bits are 0
     fn is_reserved_0(&self) -> bool;
 }
@@ -264,21 +271,16 @@ impl StatusWord for Ihw {
         (self.id >> 8) as u8
     }
 
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
-    where
-        Self: Sized,
-    {
-        let active_lanes = reader.read_u32::<LittleEndian>()?;
-        let reserved = reader.read_u32::<LittleEndian>()?;
-        let id = reader.read_u16::<LittleEndian>()?;
-        Ok(Ihw {
-            active_lanes,
-            reserved,
-            id,
-        })
-    }
     fn is_reserved_0(&self) -> bool {
         self.reserved() == 0
+    }
+
+    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
+        Ok(Ihw {
+            active_lanes: LittleEndian::read_u32(&buf[0..=3]),
+            reserved: LittleEndian::read_u32(&buf[4..=7]),
+            id: LittleEndian::read_u16(&buf[8..=9]),
+        })
     }
 }
 
@@ -375,25 +377,19 @@ impl StatusWord for Tdh {
         (self.reserved0_id >> 8) as u8
     }
 
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
-    where
-        Self: Sized,
-    {
-        let trigger_type_internal_trigger_no_data_continuation_reserved2 =
-            reader.read_u16::<LittleEndian>()?;
-        let trigger_bc_reserved1 = reader.read_u16::<LittleEndian>()?;
-        let trigger_orbit = reader.read_u32::<LittleEndian>()?;
-        let reserved0_id = reader.read_u16::<LittleEndian>()?;
-
-        Ok(Tdh {
-            trigger_type_internal_trigger_no_data_continuation_reserved2,
-            trigger_bc_reserved1,
-            trigger_orbit,
-            reserved0_id,
-        })
-    }
     fn is_reserved_0(&self) -> bool {
         self.reserved0() == 0 && self.reserved1() == 0 && self.reserved2() == 0
+    }
+
+    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
+        Ok(Tdh {
+            trigger_type_internal_trigger_no_data_continuation_reserved2: LittleEndian::read_u16(
+                &buf[0..=1],
+            ),
+            trigger_bc_reserved1: LittleEndian::read_u16(&buf[2..=3]),
+            trigger_orbit: LittleEndian::read_u32(&buf[4..=7]),
+            reserved0_id: LittleEndian::read_u16(&buf[8..=9]),
+        })
     }
 }
 
@@ -503,28 +499,19 @@ impl StatusWord for Tdt {
         self.id
     }
 
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
-    where
-        Self: Sized,
-    {
-        let lane_status_15_0 = reader.read_u32::<LittleEndian>()?;
-        let lane_status_23_16 = reader.read_u16::<LittleEndian>()?;
-        let lane_status_27_24 = reader.read_u8()?;
-        let timeout_to_start_timeout_start_stop_timeout_in_idle_res2 = reader.read_u8()?;
-        let res0_lane_starts_violation_res1_transmission_timeout_packet_done = reader.read_u8()?;
-        let id = reader.read_u8()?;
-
-        Ok(Self {
-            lane_status_15_0,
-            lane_status_23_16,
-            lane_status_27_24,
-            timeout_to_start_timeout_start_stop_timeout_in_idle_res2,
-            res0_lane_starts_violation_res1_transmission_timeout_packet_done,
-            id,
-        })
-    }
     fn is_reserved_0(&self) -> bool {
         self.reserved0() == 0 && self.reserved1() == 0 && self.reserved2() == 0
+    }
+
+    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
+        Ok(Self {
+            lane_status_15_0: LittleEndian::read_u32(&buf[0..=3]),
+            lane_status_23_16: LittleEndian::read_u16(&buf[4..=5]),
+            lane_status_27_24: buf[6],
+            timeout_to_start_timeout_start_stop_timeout_in_idle_res2: buf[7],
+            res0_lane_starts_violation_res1_transmission_timeout_packet_done: buf[8],
+            id: buf[9],
+        })
     }
 }
 
@@ -618,21 +605,16 @@ impl StatusWord for Ddw0 {
         self.id
     }
 
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
-    where
-        Self: Sized,
-    {
-        let res3_lane_status = reader.read_u64::<LittleEndian>()?;
-        let index = reader.read_u8()?;
-        let id = reader.read_u8()?;
-        Ok(Self {
-            res3_lane_status,
-            index,
-            id,
-        })
-    }
     fn is_reserved_0(&self) -> bool {
         (self.index & 0b0000_0101) == 0 && (self.res3_lane_status & 0xFF00_0000_0000_0000) == 0
+    }
+
+    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
+        Ok(Self {
+            res3_lane_status: LittleEndian::read_u64(&buf[0..=7]),
+            index: buf[8],
+            id: buf[9],
+        })
     }
 }
 
@@ -691,22 +673,16 @@ impl StatusWord for Cdw {
         self.id
     }
 
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
-    where
-        Self: Sized,
-    {
-        let calibration_word_index_lsb_calibration_user_fields =
-            reader.read_u64::<LittleEndian>()?;
-        let calibration_word_index_msb = reader.read_u8()?;
-        let id = reader.read_u8()?;
-        Ok(Self {
-            calibration_word_index_lsb_calibration_user_fields,
-            calibration_word_index_msb,
-            id,
-        })
-    }
     fn is_reserved_0(&self) -> bool {
         true // No reserved bits
+    }
+
+    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
+        Ok(Self {
+            calibration_word_index_lsb_calibration_user_fields: LittleEndian::read_u64(&buf[0..=7]),
+            calibration_word_index_msb: buf[8],
+            id: buf[9],
+        })
     }
 }
 

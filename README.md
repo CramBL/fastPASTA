@@ -17,20 +17,26 @@ Releases and associated changelogs can be found at [releases](https://gitlab.cer
 
 To verify or view curated content of the scanned raw binary data from ALICE.
 
+## Demo
+
+![output](doc/fastpasta_demo.gif)
+
 # Table of Contents
 - [fastPASTA](#fastpasta)
   - [fast Protocol Analysis Scanner Tool for ALICE](#fast-protocol-analysis-scanner-tool-for-alice)
   - [Purpose](#purpose)
+  - [Demo](#demo)
 - [Table of Contents](#table-of-contents)
 - [Quickstart](#quickstart)
   - [Prerequisite](#prerequisite)
   - [Install via cargo (comes with Rust)](#install-via-cargo-comes-with-rust)
   - [Building from source](#building-from-source)
   - [See help, including examples of use](#see-help-including-examples-of-use)
-- [Examples of use](#examples-of-use)
+  - [Examples of use](#examples-of-use)
     - [Read from stdin -\> filter link -\> view RDHs](#read-from-stdin---filter-link---view-rdhs)
     - [Read from file -\> filter by link -\> validate](#read-from-file---filter-by-link---validate)
     - [Read from file -\> view ITS readout frames with `less`](#read-from-file---view-its-readout-frames-with-less)
+  - [Command flow](#command-flow)
 - [Error messages](#error-messages)
     - [Messages are formatted as follows:](#messages-are-formatted-as-follows)
     - [Example of failed RDH sanity check](#example-of-failed-rdh-sanity-check)
@@ -70,7 +76,8 @@ Run `cargo build -r` and find the binary in /target/release/fastpasta
 $ fastpasta -h
 ```
 
-# Examples of use
+## Examples of use
+
 ### Read from stdin -> filter link -> view RDHs
 ```shell
 
@@ -89,17 +96,9 @@ Enable all generic checks: `sanity` (stateless) AND `running` (stateful)
 ```shell
 $ fastpasta input.raw --filter-link 0 check all
 ```
-Same as above but only enable `sanity` checks
+Enable all `sanity` checks and include checks applicable to `ITS` only
 ```shell
-$ fastpasta input.raw check sanity -f 0
-```
-Enable all `sanity` and `running` checks and include checks applicable to `ITS` only
-```shell
-$ fastpasta input.raw check all ITS --filter-link 0
-```
-Filter link 3 and check `sanity` include sanity checks specific to ITS
-```shell
-$ fastpasta input.raw -f 3 check sanity its # target `its` is case-insensitive
+$ fastpasta input.raw check sanity its --filter-link 0
 ```
 
 ### Read from file -> view ITS readout frames with `less`
@@ -110,6 +109,31 @@ $ fastpasta input.raw view its-readout-frames | less
 View only readout frames from link #3
 ```shell
 $ fastpasta input.raw view its-readout-frames -f 3 | less
+```
+
+
+## Command flow
+```mermaid
+flowchart TD;
+  start["fastpasta"] --> top_sub_cmd{"Check or view?"};
+
+  top_sub_cmd -- "view" --> view_type{"Type of view"};
+  view_type -- "rdh" --> view_rdh{{$ fastpasta view rdh}};
+  view_type -- "its-readout-frames" --> view_ro_frames{{$ fastpasta view its-readout-frames}};
+
+  top_sub_cmd -- "check" --> check_type{"Type of check"};
+
+  check_type -- "sanity" --> check_sanity{"$ fastpasta check sanity
+  or
+  target system"};
+  check_sanity -- "its" --> check_sanity_its{{$ fastpasta check sanity its}};
+
+  check_type -- "all" --> check_all{"$ fastpasta check all
+  or
+  target system"};
+  check_all -- "its" --> check_all_its{{$ fastpasta check all its}};
+  check_all -- "its-stave" --> check_all_its_stave{Which ITS stave?};
+  check_all_its_stave -- "--filter-its-stave LX_YZ" --> check_all_its_stave_filter{{$ fastpasta check all its-stave --filter-its-stave L5_12}};
 ```
 
 # Error messages
