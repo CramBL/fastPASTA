@@ -22,7 +22,11 @@ pub fn do_payload_checks<T: RDH, C: ChecksOpt + FilterOpt>(
             cdp_validator.check(&gbt_word[..10]); // Take 10 bytes as flavor 0 would have additional 6 bytes of padding
         }),
         Err(e) => {
-            send_stats_channel.send(StatType::Error(e)).unwrap();
+            send_stats_channel
+                .send(StatType::Error(format!(
+                    "{rdh_mem_pos:#X}: Payload error following RDH at this location: {e}"
+                )))
+                .unwrap();
             cdp_validator.reset_fsm();
         }
     }

@@ -369,7 +369,7 @@ impl<C: Config + 'static> StatsController<C> {
             self.reported_errors.sort_by_key(|e| {
                 let addr = re
                     .captures(e)
-                    .expect("Error message should contain a memory address, none found with regex");
+                    .unwrap_or_else(|| panic!("Error parsing memory address from error msg: {e}"));
                 u64::from_str_radix(&addr["mem_pos"], 16).expect("Error parsing memory address")
             });
         }
