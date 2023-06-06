@@ -16,71 +16,70 @@ pub struct AlpideFrameDecoder {
 }
 
 impl AlpideFrameDecoder {
-    pub fn process(&mut self, alpide_bytes: &[u8]) {
+    pub fn process(&mut self, alpide_byte: u8) {
         use crate::words::its::alpide_words::AlpideWord;
         self.warning_count = 0; // Reset warnings
-        log::trace!("Processing {:02X?} bytes", alpide_bytes);
-        for (i, b) in alpide_bytes.iter().enumerate() {
-            if self.skip_n_bytes > 0 {
-                self.skip_n_bytes -= 1;
-                continue;
+        log::trace!("Processing {:02X?} bytes", alpide_byte);
+
+        if self.skip_n_bytes > 0 {
+            self.skip_n_bytes -= 1;
+            return;
+        }
+        if self.next_is_bc {
+            if let Err(msg) = self.store_bunch_counter(alpide_byte) {
+                self.warning_count += 1;
+                self.errors.push(msg);
             }
-            if self.next_is_bc {
-                if let Err(msg) = self.store_bunch_counter(*b) {
-                    self.warning_count += 1;
-                    self.errors.push(msg);
+
+            // Done with the byte containing the bunch counter
+            self.next_is_bc = false;
+
+            // Skip to next byte
+            return;
+        }
+
+        if !self.is_header_seen && alpide_byte == 0 {
+            return; // Padding byte
+        }
+
+        match AlpideWord::from_byte(alpide_byte) {
+            Ok(word) => match word {
+                AlpideWord::ChipHeader => {
+                    self.is_header_seen = true;
+                    let chip_id = alpide_byte & 0b1111;
+                    self.last_chip_id = chip_id;
+                    self.next_is_bc = true;
+                    log::trace!("{alpide_byte}: ChipHeader");
                 }
-
-                // Done with the byte containing the bunch counter
-                self.next_is_bc = false;
-
-                // Skip to next byte
-                continue;
-            }
-
-            if !self.is_header_seen && *b == 0 {
-                continue; // IDLE word
-            }
-
-            match AlpideWord::from_byte(*b) {
-                Ok(word) => match word {
-                    AlpideWord::ChipHeader => {
-                        self.is_header_seen = true;
-                        let chip_id = *b & 0b1111;
-                        self.last_chip_id = chip_id;
-                        self.next_is_bc = true;
-                        log::trace!("{i}: ChipHeader");
-                    }
-                    AlpideWord::ChipEmptyFrame => {
-                        self.is_header_seen = false;
-                        let chip_id = *b & 0b1111;
-                        self.last_chip_id = chip_id;
-                        self.next_is_bc = true;
-                        log::trace!("{i}: ChipEmptyFrame");
-                    }
-                    AlpideWord::ChipTrailer => {
-                        self.is_header_seen = false;
-                        log::trace!("{i}: ChipTrailer");
-                    } // Reset the header seen flag
-                    AlpideWord::RegionHeader => {
-                        self.is_header_seen = true;
-                        log::trace!("{i}: RegionHeader");
-                    } // Do nothing at the moment
-                    AlpideWord::DataShort => {
-                        self.skip_n_bytes = 1;
-                        log::trace!("{i}: DataShort");
-                    } // Skip the next byte
-                    AlpideWord::DataLong => {
-                        self.skip_n_bytes = 2;
-                        log::trace!("{i}: DataLong");
-                    } // Skip the next 2 bytes
-                    AlpideWord::BusyOn => log::trace!("{i}: BusyOn word seen!"),
-                    AlpideWord::BusyOff => log::trace!("{i}: BusyOff word seen!"),
-                },
-                Err(_) => {
-                    self.warning_count += 1;
-                    log::warn!("Unknown ALPIDE word: {b:#02X} at index {i}")
+                AlpideWord::ChipEmptyFrame => {
+                    self.is_header_seen = false;
+                    let chip_id = alpide_byte & 0b1111;
+                    self.last_chip_id = chip_id;
+                    self.next_is_bc = true;
+                    log::trace!("{alpide_byte}: ChipEmptyFrame");
                 }
+                AlpideWord::ChipTrailer => {
+                    self.is_header_seen = false;
+                    log::trace!("{alpide_byte}: ChipTrailer");
+                } // Reset the header seen flag
+                AlpideWord::RegionHeader => {
+                    self.is_header_seen = true;
+                    log::trace!("{alpide_byte}: RegionHeader");
+                } // Do nothing at the moment
+                AlpideWord::DataShort => {
+                    self.skip_n_bytes = 1;
+                    log::trace!("{alpide_byte}: DataShort");
+                } // Skip the next byte
+                AlpideWord::DataLong => {
+                    self.skip_n_bytes = 2;
+                    log::trace!("{alpide_byte}: DataLong");
+                } // Skip the next 2 bytes
+                AlpideWord::BusyOn => log::trace!("{alpide_byte}: BusyOn word seen!"),
+                AlpideWord::BusyOff => log::trace!("{alpide_byte}: BusyOff word seen!"),
+            },
+            Err(_) => {
+                self.warning_count += 1;
+                log::warn!("Unknown ALPIDE word: {alpide_byte:#02X}")
             }
         }
     }
