@@ -1,9 +1,11 @@
 #![allow(dead_code)]
-use crate::words::its::alpide_words::AlpideFrameChipData;
+use crate::words::its::alpide_words::{AlpideFrameChipData, LaneDataFrame};
 use itertools::Itertools;
 
 #[derive(Default)]
 pub struct AlpideFrameDecoder {
+    // Works on a single lane at a time
+    lane_id: u8,
     is_header_seen: bool, // Set when a Chip Header is seen, reset when a Chip Trailer is seen
     last_chip_id: u8,     // 4 bits
     last_region_id: u8,   // 5 bits
@@ -11,14 +13,31 @@ pub struct AlpideFrameDecoder {
     chip_data: Vec<AlpideFrameChipData>,
     // Indicate that the next byte should be saved as bunch counter for frame
     next_is_bc: bool,
-    warning_count: u8,
     errors: Vec<String>,
 }
 
 impl AlpideFrameDecoder {
+    pub fn process_alpide_frame(&mut self, lane_data_frame: LaneDataFrame) {
+        self.lane_id = lane_data_frame.lane_id;
+        log::debug!(
+            "Processing ALPIDE frame for lane {}",
+            lane_data_frame.lane_id
+        );
+        lane_data_frame
+            .lane_data
+            .into_iter()
+            .for_each(|alpide_byte| {
+                self.process(alpide_byte);
+            });
+        // Check all bunch counters match
+        if let Err(msg) = self.check_bunch_counters() {
+            // if it is already in the errors_per_lane, add it to the list
+            self.errors.push(msg);
+        }
+    }
+
     pub fn process(&mut self, alpide_byte: u8) {
         use crate::words::its::alpide_words::AlpideWord;
-        self.warning_count = 0; // Reset warnings
         log::trace!("Processing {:02X?} bytes", alpide_byte);
 
         if self.skip_n_bytes > 0 {
@@ -27,7 +46,6 @@ impl AlpideFrameDecoder {
         }
         if self.next_is_bc {
             if let Err(msg) = self.store_bunch_counter(alpide_byte) {
-                self.warning_count += 1;
                 self.errors.push(msg);
             }
 
@@ -78,7 +96,6 @@ impl AlpideFrameDecoder {
                 AlpideWord::BusyOff => log::trace!("{alpide_byte}: BusyOff word seen!"),
             },
             Err(_) => {
-                self.warning_count += 1;
                 log::warn!("Unknown ALPIDE word: {alpide_byte:#02X}")
             }
         }
@@ -120,7 +137,7 @@ impl AlpideFrameDecoder {
             });
     }
 
-    pub fn check_bunch_counters(&self) -> Result<(), String> {
+    fn check_bunch_counters(&self) -> Result<(), String> {
         // Return all unique bunch counters
         let unique_bcs = self
             .chip_data
@@ -158,14 +175,6 @@ impl AlpideFrameDecoder {
         } else {
             Ok(())
         }
-    }
-
-    pub fn has_warnings(&self) -> bool {
-        !self.warning_count == 0
-    }
-
-    pub fn warning_count(&self) -> u8 {
-        self.warning_count
     }
 
     pub fn has_errors(&self) -> bool {
