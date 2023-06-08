@@ -72,10 +72,12 @@ fn print_rdh_its_readout_frame_view<T: RDH>(
     stdio_lock: &mut std::io::StdoutLock,
 ) -> Result<(), std::io::Error> {
     let trig_str = super::lib::rdh_trigger_type_as_string(rdh);
+    let orbit = rdh.rdh1().orbit;
+    let orbit_bc_str = format!("{orbit}_{bc:>4}", bc = rdh.rdh1().bc());
 
     writeln!(
         stdio_lock,
-        "{rdh_mem_pos:>8X}: RDH v{} stop={}{trig_str:>28}                                #{:<18}",
+        "{rdh_mem_pos:>8X}: RDH v{} stop={}{trig_str:>28}                                #{}   {orbit_bc_str:>31}",
         rdh.version(),
         rdh.stop_bit(),
         rdh.link_id()
