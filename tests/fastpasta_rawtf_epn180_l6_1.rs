@@ -1,5 +1,3 @@
-use predicates::str::contains;
-
 use crate::util::*;
 mod util;
 
@@ -121,10 +119,10 @@ fn check_all_its_stave_bad_trigger_period() -> Result<(), Box<dyn std::error::Er
     cmd.arg("check")
         .arg("all")
         .arg("its-stave")
-        .arg("--filter-its-stave")
-        .arg("L6_1")
+        .arg("-s")
+        .arg("l6_1")
         .arg(FILE_RAWTF_EPN180_L6_1)
-        .arg("--its-trigger-period")
+        .arg("-p")
         .arg("1337")
         .arg("-v4");
     cmd.assert().success();
@@ -135,6 +133,28 @@ fn check_all_its_stave_bad_trigger_period() -> Result<(), Box<dyn std::error::Er
         (EXPECTED_ALPIDE_ERRORS + EXPECTED_TRIGGER_PERIOD_ERRORS).into(),
     )?;
     match_on_out_no_case(&cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
+
+    Ok(())
+}
+
+#[test]
+fn view_hbf() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg("view")
+        .arg("its-readout-frames")
+        .arg(FILE_RAWTF_EPN180_L6_1);
+
+    use predicate::str::contains;
+    cmd.assert().success().stdout(
+        contains("RDH").count(3).and(
+            contains("IHW").count(2).and(
+                contains("TDH")
+                    .count(25)
+                    .and(contains("TDT").count(18).and(contains("DDW").count(1))),
+            ),
+        ),
+    );
 
     Ok(())
 }
