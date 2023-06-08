@@ -44,12 +44,6 @@ pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 impl<T: RDH, C: ChecksOpt + FilterOpt + 'static> LinkValidator<T, C> {
-    /// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
-    ///
-    /// Larger capacity means less overhead, but more memory usage
-    /// Too small capacity will cause the producer thread to block
-    const CHANNEL_CDP_CAPACITY: usize = 100; // associated constant
-
     /// Creates a new [LinkValidator] and the [StatType] sender channel to it, from a config that implements [ChecksOpt] + [FilterOpt].
     pub fn new(
         global_config: &'static C,
@@ -64,8 +58,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + 'static> LinkValidator<T, C> {
         } else {
             RdhCruSanityValidator::default()
         };
-        let (send_channel, data_rcv_channel) =
-            crossbeam_channel::bounded(Self::CHANNEL_CDP_CAPACITY);
+        let (send_channel, data_rcv_channel) = crossbeam_channel::unbounded();
+        //crossbeam_channel::bounded(Self::CHANNEL_CDP_CAPACITY);
         (
             Self {
                 config: global_config,
