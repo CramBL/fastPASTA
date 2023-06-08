@@ -342,12 +342,9 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 ib_slice,
             );
         }
-        // If there is no readout frame, we are not collecting data.
-        if self.alpide_readout_frame.is_some() {
-            self.alpide_readout_frame
-                .as_mut()
-                .unwrap()
-                .store_lane_data(ib_slice);
+        // Matches if there is an alpide_readout_frame. If not we are not collecting data ie. ALPIDE checks are not enabled.
+        if let Some(alpide_readout_frame) = &mut self.alpide_readout_frame {
+            alpide_readout_frame.store_lane_data(ib_slice);
         }
     }
 
@@ -375,11 +372,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
             );
         }
         // If there is no readout frame, we are not collecting data.
-        if self.alpide_readout_frame.is_some() {
-            self.alpide_readout_frame
-                .as_mut()
-                .unwrap()
-                .store_lane_data(ob_slice);
+        if let Some(alpide_readout_frame) = &mut self.alpide_readout_frame {
+            alpide_readout_frame.store_lane_data(ob_slice);
         }
     }
 
@@ -560,7 +554,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
             .drain(..)
             .for_each(|lane_data_frame| {
                 // Process data for each lane
-                let mut decoder = AlpideFrameDecoder::default(); // New decoder for each lane
+                // New decoder for each lane
+                let mut decoder = AlpideFrameDecoder::default();
                 let lane_id = lane_data_frame.lane_id;
                 log::trace!("Processing lane ID: {lane_id:02X}");
                 decoder.process_alpide_frame(lane_data_frame);
@@ -569,7 +564,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                     let mut lane_error_string = format!("\n\tLane {lane_id} errors:");
 
                     decoder.consume_errors().for_each(|err| {
-                        //lane_error_string.push_str("\n\t");
                         lane_error_string.push_str(&err);
                     });
                     lane_error_msgs.push((lane_id, lane_error_string));
