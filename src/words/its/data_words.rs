@@ -59,30 +59,6 @@ fn ob_lane(ob_id: ObLane) -> u8 {
 //      [2:0] = input number on the connector
 //           * 0b000 - 0b111 (0-6 on the connector)
 
-/// A container for the contents of a data word (excludes ID)
-pub struct DataWordContents {
-    pub(crate) bytes: [u8; 9],
-}
-
-impl DataWordContents {
-    /// Takes a 10 byte slice and returns a DataWordContents struct
-    pub fn from_data_word_slice(data_word: &[u8]) -> Self {
-        Self {
-            bytes: [
-                data_word[0],
-                data_word[1],
-                data_word[2],
-                data_word[3],
-                data_word[4],
-                data_word[5],
-                data_word[6],
-                data_word[7],
-                data_word[8],
-            ],
-        }
-    }
-}
-
 /// Convenience tuple of the min/max range for the ID of an IL data word (9 lanes)
 pub const VALID_IL_ID: RangeInclusive<u8> = 0x20..=0x28;
 

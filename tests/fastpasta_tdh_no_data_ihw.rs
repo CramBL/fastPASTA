@@ -167,7 +167,7 @@ fn check_all_its_stave_trigger_period_invalid_config() -> Result<(), Box<dyn std
         .arg("198");
     cmd.assert().failure();
 
-    match_on_out_no_case(&cmd.output()?.stderr, "invalid.*its_stave.*command", 1)?;
+    match_on_out_no_case(&cmd.output()?.stderr, "invalid.*its-stave.*command", 1)?;
 
     Ok(())
 }

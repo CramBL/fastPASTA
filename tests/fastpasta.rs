@@ -208,6 +208,22 @@ fn file_exists_exit_successful_tdh_no_data_ihw() -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
+#[test]
+fn file_exists_exit_successful_rawtf_epn180_l6_1() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_RAWTF_EPN180_L6_1)
+        .arg("check")
+        .arg("sanity")
+        .arg("-v4");
+    cmd.assert().success();
+
+    // Take the output of stderr and match it with a pattern once
+    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+
+    Ok(())
+}
+
 /// Check that a not found file returns a fatal error, with a description of an OS error
 ///
 /// Try with all the different verbosity values 0-4

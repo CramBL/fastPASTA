@@ -1,7 +1,42 @@
 #![allow(dead_code)]
 //! Word definitions and utility functions for working with ALPIDE data words
 
-use super::data_words::DataWordContents;
+/// Struct for storing the contents of a single ALPIDE readout frame
+#[derive(Default)]
+pub struct AlpideReadoutFrame {
+    pub(crate) frame_start_mem_pos: u64,
+    pub(crate) frame_end_mem_pos: u64,
+    pub(crate) lane_data_frames: Vec<LaneDataFrame>,
+}
+
+impl AlpideReadoutFrame {
+    /// Create a new ALPIDE readout frame from the given memory position.
+    pub fn new(start_mem_pos: u64) -> Self {
+        Self {
+            frame_start_mem_pos: start_mem_pos,
+            ..Default::default()
+        }
+    }
+
+    /// Stores the 9 data bytes from an ITS data word byte data slice (does not store the ID byte more than once) by appending it to the lane data.
+    pub fn store_lane_data(&mut self, data_slice: &[u8]) {
+        match self
+            .lane_data_frames
+            .iter_mut()
+            .find(|lane_data_frame| lane_data_frame.lane_id == data_slice[9])
+        {
+            Some(lane_data_frame) => {
+                lane_data_frame
+                    .lane_data
+                    .extend_from_slice(&data_slice[0..=8]);
+            }
+            None => self.lane_data_frames.push(LaneDataFrame {
+                lane_id: data_slice[9],
+                lane_data: data_slice[0..=8].to_vec(),
+            }),
+        }
+    }
+}
 
 /// Struct for storing the contents of data words for a specific lane, in a readout frame
 #[derive(Default)]
@@ -9,7 +44,7 @@ pub struct LaneDataFrame {
     /// The lane ID
     pub(crate) lane_id: u8,
     /// The data contents of data words (the 9 bytes of data excluding the ID)
-    pub(crate) lane_data: Vec<DataWordContents>,
+    pub(crate) lane_data: Vec<u8>,
 }
 
 /// All the possible words that can be found in the ALPIDE data stream

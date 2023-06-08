@@ -2,8 +2,6 @@
 //!
 //! [CdpRunningValidator] delegates sanity checks to word specific sanity checkers.
 
-use itertools::Itertools;
-
 use super::{
     alpide_words::AlpideFrameDecoder,
     data_words::DATA_WORD_SANITY_CHECKER,
@@ -19,11 +17,8 @@ use crate::{
     },
     words::{
         its::{
-            alpide_words::LaneDataFrame,
-            data_words::{
-                ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane,
-                DataWordContents,
-            },
+            alpide_words::AlpideReadoutFrame,
+            data_words::{ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane},
             status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
         },
         lib::{ByteSlice, RDH},
@@ -40,7 +35,8 @@ enum StatusWordKind<'a> {
 /// Checks the CDP payload and reports any errors.
 pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
     config: &'static C,
-    running_checks: bool,
+    running_checks_enabled: bool,
+    alpide_checks_enabled: bool,
     its_state_machine: ItsPayloadFsmContinuous,
     current_rdh: Option<T>,
     current_ihw: Option<Ihw>,
@@ -55,9 +51,8 @@ pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
     payload_mem_pos: u64,
     gbt_word_padding_size_bytes: u8,
     is_new_data: bool, // Flag used to indicate start of new CDP payload where a CDW is valid
-    // Stores the ALPIDE data from TDH with internal trigger bit set, to the next TDT.
-    // Stores one entry per Lane.
-    alpide_data_frame: Vec<LaneDataFrame>,
+    // Stores the ALPIDE data from an ITS readout frame, if the config is set to check ALPIDE data, and a filter for a stave is set.
+    alpide_readout_frame: Option<AlpideReadoutFrame>,
     // Flag to start storing ALPIDE data, if the config is set to check ALPIDE data, and a filter for a stave is set.
     // Set to true when a TDH with internal trigger bit set is found.
     // Set to false when it's true and a TDT is found.
@@ -69,7 +64,15 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
     pub fn new(config: &'static C, stats_send_ch: flume::Sender<StatType>) -> Self {
         Self {
             config,
-            running_checks: matches!(config.check(), Some(CheckCommands::All { system: _ })),
+            running_checks_enabled: matches!(
+                config.check(),
+                Some(CheckCommands::All { system: _ })
+            ),
+            alpide_checks_enabled: config.check().is_some_and(|check| {
+                check.target().is_some_and(|target| {
+                    target == System::ITS_Stave && config.filter_its_stave().is_some()
+                })
+            }),
             its_state_machine: ItsPayloadFsmContinuous::default(),
             current_rdh: None,
             current_ihw: None,
@@ -85,15 +88,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
             gbt_word_padding_size_bytes: 0,
             is_new_data: false,
             // If the config is set to check ALPIDE data, and a filter for a stave is set, then allocate space for ALPIDE data.
-            alpide_data_frame: if config.check().is_some_and(|check| {
-                check.target().is_some_and(|target| {
-                    target == System::ITS_Stave && config.filter_its_stave().is_some()
-                })
-            }) {
-                Vec::with_capacity(200)
-            } else {
-                Vec::with_capacity(0)
-            },
+            alpide_readout_frame: None,
             is_readout_frame: false,
         }
     }
@@ -164,7 +159,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
             Ok(word) => match word {
                 ItsPayloadWord::IHW => {
                     self.process_status_word(StatusWordKind::Ihw(gbt_word));
-                    if self.running_checks {
+                    if self.running_checks_enabled {
                         self.check_rdh_at_initial_ihw(gbt_word);
                     }
                 }
@@ -174,20 +169,20 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
 
                 ItsPayloadWord::TDH => {
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                    if self.running_checks {
+                    if self.running_checks_enabled {
                         self.check_tdh_no_continuation(gbt_word);
                         self.check_tdh_trigger_interval(gbt_word);
                     }
                 }
                 ItsPayloadWord::TDH_continuation => {
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                    if self.running_checks {
+                    if self.running_checks_enabled {
                         self.check_tdh_continuation(gbt_word);
                     }
                 }
                 ItsPayloadWord::TDH_after_packet_done => {
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
-                    if self.running_checks {
+                    if self.running_checks_enabled {
                         self.check_tdh_by_was_tdt_packet_done_true(gbt_word);
                         self.check_tdh_trigger_interval(gbt_word);
                     }
@@ -263,8 +258,10 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                     }
                 }
                 // If the current TDH does not have continuation set, then it is the start of a new readout frame
-                if tdh.continuation() == 0 {
+                if !self.is_readout_frame && tdh.continuation() == 0 && self.alpide_checks_enabled {
                     self.is_readout_frame = true;
+                    self.alpide_readout_frame =
+                        Some(AlpideReadoutFrame::new(self.calc_current_word_mem_pos()));
                 }
 
                 // Swap current and last TDH, then replace current with the new TDH
@@ -277,9 +274,14 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
                     self.report_error(&format!("[E50] {e}"), tdt_as_slice);
                 }
-                if tdt.packet_done() {
+                if tdt.packet_done() && self.alpide_checks_enabled {
                     self.is_readout_frame = false;
-                    self.process_alpide_data();
+                    self.alpide_readout_frame
+                        .as_mut()
+                        .unwrap()
+                        .frame_end_mem_pos = self.calc_current_word_mem_pos();
+                    let alpide_readout_frame = self.alpide_readout_frame.take().unwrap();
+                    self.process_alpide_data(alpide_readout_frame);
                 }
                 self.current_tdt = Some(tdt);
             }
@@ -291,7 +293,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 }
 
                 // Additional state dependent checks on RDH
-                if self.running_checks {
+                if self.running_checks_enabled {
                     self.check_rdh_at_ddw0(ddw0_as_slice);
                 }
                 self.current_ddw0 = Some(ddw0);
@@ -328,7 +330,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
 
     #[inline]
     fn process_ib_data_word(&mut self, ib_slice: &[u8]) {
-        if !self.running_checks {
+        if !self.running_checks_enabled {
             return;
         }
         let lane_id = ib_slice[9] & 0x1F;
@@ -340,15 +342,15 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 ib_slice,
             );
         }
-        // Fancy way of checking if a stave filter is set and we should collect ALPIDE data
-        if self.alpide_data_frame.capacity() != 0 {
-            self.store_lane_data(ib_slice);
+        // Matches if there is an alpide_readout_frame. If not we are not collecting data ie. ALPIDE checks are not enabled.
+        if let Some(alpide_readout_frame) = &mut self.alpide_readout_frame {
+            alpide_readout_frame.store_lane_data(ib_slice);
         }
     }
 
     #[inline]
     fn process_ob_data_word(&mut self, ob_slice: &[u8]) {
-        if !self.running_checks {
+        if !self.running_checks_enabled {
             return;
         }
         let lane_id = ob_data_word_id_to_lane(ob_slice[9]);
@@ -369,33 +371,15 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 ob_slice,
             );
         }
-        // Fancy way of checking if a stave filter is set and we should collect ALPIDE data
-        if self.alpide_data_frame.capacity() != 0 {
-            self.store_lane_data(ob_slice);
-        }
-    }
-
-    fn store_lane_data(&mut self, data_slice: &[u8]) {
-        match self
-            .alpide_data_frame
-            .iter_mut()
-            .find(|lane_data_frame| lane_data_frame.lane_id == data_slice[9])
-        {
-            Some(lane_data_frame) => {
-                lane_data_frame
-                    .lane_data
-                    .push(DataWordContents::from_data_word_slice(data_slice));
-            }
-            None => self.alpide_data_frame.push(LaneDataFrame {
-                lane_id: data_slice[9],
-                lane_data: vec![DataWordContents::from_data_word_slice(data_slice)],
-            }),
+        // If there is no readout frame, we are not collecting data.
+        if let Some(alpide_readout_frame) = &mut self.alpide_readout_frame {
+            alpide_readout_frame.store_lane_data(ob_slice);
         }
     }
 
     #[inline]
     fn process_cdw(&mut self, cdw_slice: &[u8]) {
-        if !self.running_checks {
+        if !self.running_checks_enabled {
             return;
         }
         let cdw = Cdw::load(&mut <&[u8]>::clone(&cdw_slice)).unwrap();
@@ -553,77 +537,51 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
     }
 
     /// Process ALPIDE data for a readout frame, per lane.
-    fn process_alpide_data(&mut self) {
+    fn process_alpide_data(&mut self, mut alpide_readout_frame: AlpideReadoutFrame) {
         debug_assert!(!self.is_readout_frame);
-        if self.alpide_data_frame.is_empty() {
-            return;
-        }
-        // Contains the lane id and a vector of the associated error messages from the decoding of the data frame
-        let mut errors_per_lane: Vec<(u8, Vec<String>)> = Vec::new();
+        debug_assert!(
+            alpide_readout_frame.frame_start_mem_pos != 0,
+            "Frame start mem pos not set"
+        );
+
+        let mem_pos_start = alpide_readout_frame.frame_start_mem_pos;
+        let mem_pos_end = alpide_readout_frame.frame_end_mem_pos;
+        let mut lane_error_msgs: Vec<(u8, String)> = Vec::new();
+
         // Process the data frame
-        self.alpide_data_frame
+        alpide_readout_frame
+            .lane_data_frames
             .drain(..)
-            .for_each(|mut lane_data_frame| {
+            .for_each(|lane_data_frame| {
                 // Process data for each lane
-                let mut decoder = AlpideFrameDecoder::default(); // New decoder for each lane
-                let mut previous_slice: Option<DataWordContents> = None; // Used for debugging, if a slice has warnings i.e. bytes that the decoder could not understand
+                // New decoder for each lane
+                let mut decoder = AlpideFrameDecoder::default();
+                let lane_id = lane_data_frame.lane_id;
+                log::trace!("Processing lane ID: {lane_id:02X}");
+                decoder.process_alpide_frame(lane_data_frame);
 
-                log::trace!("Processing lane ID: {:02X}", lane_data_frame.lane_id);
-
-                lane_data_frame.lane_data.drain(..).for_each(|dw| {
-                    // Process each slice (9 bytes from an ITS data word)
-                    decoder.process(&dw.bytes);
-                    if decoder.has_warnings() {
-                        if let Some(prev_slice) = &previous_slice {
-                            log::warn!(
-                                "Decoder gave {} warnings for slice.\
-                        \n\tPrevious: {:02X?}\
-                        \n\tCurrent : {:02X?}",
-                                decoder.warning_count(),
-                                prev_slice.bytes,
-                                dw.bytes
-                            );
-                        } else {
-                            log::warn!(
-                                "Decoder gave {} warnings for slice.\
-                        \n\tCurrent : {:02X?}",
-                                decoder.warning_count(),
-                                dw.bytes
-                            );
-                        }
-                    }
-                    previous_slice = Some(dw);
-                });
                 if decoder.has_errors() {
-                    let errors = decoder.consume_errors().collect_vec();
-                    errors_per_lane.push((lane_data_frame.lane_id, errors));
-                }
-                // Check all bunch counters match
-                if let Err(msg) = decoder.check_bunch_counters() {
-                    // if it is already in the errors_per_lane, add it to the list
-                    if let Some((_, errors)) = errors_per_lane
-                        .iter_mut()
-                        .find(|(lane_id, _)| *lane_id == lane_data_frame.lane_id)
-                    {
-                        errors.push(msg);
-                    } else {
-                        errors_per_lane.push((lane_data_frame.lane_id, vec![msg]));
-                    }
-                }
+                    let mut lane_error_string = format!("\n\tLane {lane_id} errors:");
 
-                //decoder.print_chip_bunch_counters();
-            });
-        // Format and send all errors
-        if !errors_per_lane.is_empty() {
-            let mut error_string = format!(
-                "{mem_pos:#X}: TDT at this location ended a data frame with detected errors:",
-                mem_pos = self.calc_current_word_mem_pos()
-            );
-            for (lane_id, errors) in errors_per_lane {
-                error_string.push_str(&format!("\n\tLane {lane_id} errors:"));
-                for err in errors {
-                    error_string.push_str(&err);
+                    decoder.consume_errors().for_each(|err| {
+                        lane_error_string.push_str(&err);
+                    });
+                    lane_error_msgs.push((lane_id, lane_error_string));
                 }
+            });
+
+        // Format and send all errors
+        if !lane_error_msgs.is_empty() {
+            let lane_error_ids_str = lane_error_msgs
+                .iter()
+                .map(|(lane_id, _)| format!("{lane_id}"))
+                .collect::<Vec<String>>()
+                .join(", ");
+            let mut error_string = format!(
+                "{mem_pos_start:#X}: ALPIDE data frame ending at {mem_pos_end:#X} has errors in lane [{lane_error_ids_str}]:"
+            );
+            for (_lane_id, lane_error_msg) in lane_error_msgs {
+                error_string.push_str(&lane_error_msg);
             }
             self.stats_send_ch
                 .send(StatType::Error(error_string))

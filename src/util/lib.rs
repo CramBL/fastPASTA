@@ -33,7 +33,7 @@ where
                         );
                     }
                 } else if self.check_its_trigger_period().is_some() {
-                    return Err("Invalid config: Specifying trigger period has to be done with the `check all its_stave` command".to_string());
+                    return Err("Invalid config: Specifying trigger period has to be done with the `check all its-stave` command".to_string());
                 }
             }
         }
