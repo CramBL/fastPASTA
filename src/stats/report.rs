@@ -168,13 +168,6 @@ fn format_global_stats_sub_table(global_stats_table: &mut Table) {
         .with(style.clone())
         .with(Modify::new(Rows::single(0)).with(Format::content(|x| x.to_uppercase())))
         .with(Modify::new(Columns::single(0)).with(Format::content(|s| s.blue().to_string())))
-        .with(Modify::new(Rows::single(1)).with(Format::content(|s| {
-            if s == "0" {
-                s.bright_green().to_string()
-            } else {
-                s.red().to_string()
-            }
-        })))
         .with(
             Modify::new(Columns::single(1)).with(Format::content(|s| s.bright_cyan().to_string())),
         )

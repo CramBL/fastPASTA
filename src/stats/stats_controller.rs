@@ -3,7 +3,6 @@
 //! Finally when the event loop breaks (at the end of execution), it will print a summary of the stats collected, using the Report struct.
 
 use owo_colors::OwoColorize;
-
 use super::lib::{StatType, SystemId};
 use crate::{
     stats::report::{Report, StatSummary},
@@ -268,11 +267,19 @@ impl<C: Config + 'static> StatsController<C> {
     }
 
     fn add_global_stats_to_report(&mut self, report: &mut Report) {
-        report.add_stat(StatSummary::new(
-            "Total Errors".to_string(),
-            self.total_errors.to_string(),
-            None,
-        ));
+        if self.total_errors == 0 {
+            report.add_stat(StatSummary::new(
+                "Total Errors".green().to_string(),
+                self.total_errors.green().to_string(),
+                None,
+            ));
+        } else {
+            report.add_stat(StatSummary::new(
+                "Total Errors".red().to_string(),
+                self.total_errors.red().to_string(),
+                None,
+            ));
+        }
 
         let trigger_type_raw = self.run_trigger_type.0.to_owned();
         report.add_stat(StatSummary {
@@ -451,8 +458,8 @@ fn summerize_filtered_fee_ids(fee_id: u16, fee_ids_seen: &[u16]) -> StatSummary 
     if fee_ids_seen.contains(&fee_id) {
         filtered_feeid_stat.value = fee_id.to_string();
     } else {
-        filtered_feeid_stat.value = "<<none>>".to_string();
-        filtered_feeid_stat.notes = format!("not found: {fee_id}");
+        filtered_feeid_stat.value = "none".red().to_string();
+        filtered_feeid_stat.notes = format!("not found: {fee_id}").red().to_string();
     }
     filtered_feeid_stat
 }
@@ -468,8 +475,8 @@ fn summerize_filtered_its_layer_staves(
     if layers_staves_seen.contains(&(layer, stave)) {
         filtered_feeid_stat.value = format!("L{layer}_{stave}");
     } else {
-        filtered_feeid_stat.value = "<<none>>".to_string();
-        filtered_feeid_stat.notes = format!("not found: L{layer}_{stave}");
+        filtered_feeid_stat.value = "none".red().to_string();
+        filtered_feeid_stat.notes = format!("not found: L{layer}_{stave}").red().to_string();
     }
     filtered_feeid_stat
 }
