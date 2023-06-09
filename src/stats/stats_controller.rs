@@ -8,10 +8,8 @@ use crate::{
     util::lib::{Config, DataOutputMode, FilterTarget},
     words,
 };
-use std::sync::{
-    atomic::{AtomicBool, AtomicU32},
-    Arc,
-};
+use owo_colors::OwoColorize;
+use std::sync::{atomic::AtomicBool, Arc};
 
 /// The StatsController receives stats and builds a summary report that is printed at the end of execution.
 pub struct StatsController<C: Config + 'static> {
@@ -26,8 +24,7 @@ pub struct StatsController<C: Config + 'static> {
     /// Time from [StatsController] is instantiated, to all data processing threads disconnected their [StatType] producer channel.
     pub processing_time: std::time::Instant,
     config: &'static C,
-    total_errors: AtomicU32,
-    non_atomic_total_errors: u64,
+    total_errors: u64,
     reported_errors: Vec<String>,
     max_tolerate_errors: u32,
     // The channel where stats are received from other threads.
@@ -62,8 +59,7 @@ impl<C: Config + 'static> StatsController<C> {
             config: global_config,
             links_observed: Vec::new(),
             processing_time: std::time::Instant::now(),
-            total_errors: AtomicU32::new(0),
-            non_atomic_total_errors: 0,
+            total_errors: 0,
             reported_errors: Vec::new(),
             max_tolerate_errors: global_config.max_tolerate_errors(),
             recv_stats_channel,
@@ -117,7 +113,6 @@ impl<C: Config + 'static> StatsController<C> {
             // Avoid printing the report in the middle of a view, or if output is being redirected
             log::info!("View active or output is being piped, skipping report summary printout.")
         } else {
-            self.non_atomic_total_errors += self.reported_errors.len() as u64;
             self.print_mem_ordered_errors();
 
             // Print the summary report if any RDHs were seen. If not, it's likely that an early error occurred and no data was processed.
@@ -125,16 +120,13 @@ impl<C: Config + 'static> StatsController<C> {
                 self.print();
             }
         }
-        if self.total_errors.load(std::sync::atomic::Ordering::SeqCst) > 0
-            || self.non_atomic_total_errors > 0
-        {
+        if self.total_errors > 0 {
             self.any_errors_flag
                 .store(true, std::sync::atomic::Ordering::SeqCst);
         }
     }
 
     fn update(&mut self, stat: StatType) {
-        //self.print();
         match stat {
             StatType::Error(msg) => {
                 if self.fatal_error.is_some() {
@@ -150,12 +142,11 @@ impl<C: Config + 'static> StatsController<C> {
                     self.reported_errors.push(msg);
                 }
 
+                self.total_errors += 1;
+
                 if self.max_tolerate_errors > 0 {
-                    let prv_err_cnt = self
-                        .total_errors
-                        .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                    log::trace!("Error count: {}", prv_err_cnt + 1);
-                    if prv_err_cnt + 1 == self.max_tolerate_errors {
+                    log::trace!("Error count: {}", self.total_errors);
+                    if self.total_errors == self.max_tolerate_errors.into() {
                         log::trace!("Errors reached maximum tolerated errors, exiting...");
                         self.end_processing_flag
                             .store(true, std::sync::atomic::Ordering::SeqCst);
@@ -276,21 +267,20 @@ impl<C: Config + 'static> StatsController<C> {
     }
 
     fn add_global_stats_to_report(&mut self, report: &mut Report) {
-        if self.max_tolerate_errors == 0 {
+        if self.total_errors == 0 {
             report.add_stat(StatSummary::new(
-                "Total Errors".to_string(),
-                self.non_atomic_total_errors.to_string(),
+                "Total Errors".green().to_string(),
+                self.total_errors.green().to_string(),
                 None,
             ));
         } else {
             report.add_stat(StatSummary::new(
-                "Total Errors".to_string(),
-                self.total_errors
-                    .load(std::sync::atomic::Ordering::Relaxed)
-                    .to_string(),
+                "Total Errors".red().to_string(),
+                self.total_errors.red().to_string(),
                 None,
             ));
         }
+
         let trigger_type_raw = self.run_trigger_type.0.to_owned();
         report.add_stat(StatSummary {
             statistic: "Run Trigger Type".to_string(),
@@ -394,12 +384,12 @@ fn format_payload(payload_size: u64) -> String {
     match payload_size {
         0..=1024 => format!("{} B", payload_size),
         1025..=1048576 => {
-            format!("{:.3} KiB", payload_size as f64 / 1024_f64)
+            format!("{:.2} KiB", payload_size as f64 / 1024_f64)
         }
         1048577..=1073741824 => {
-            format!("{:.3} MiB", payload_size as f64 / 1048576_f64)
+            format!("{:.2} MiB", payload_size as f64 / 1048576_f64)
         }
-        _ => format!("{:.3} GiB", payload_size as f64 / 1073741824_f64),
+        _ => format!("{:.2} GiB", payload_size as f64 / 1073741824_f64),
     }
 }
 
@@ -455,8 +445,8 @@ fn summerize_filtered_links(link_to_filter: u8, links_observed: &[u8]) -> StatSu
     if links_observed.contains(&link_to_filter) {
         filtered_links_stat.value = link_to_filter.to_string();
     } else {
-        filtered_links_stat.value = "<<none>>".to_string();
-        filtered_links_stat.notes = format!("not found: {link_to_filter}");
+        filtered_links_stat.value = "none".red().to_string();
+        filtered_links_stat.notes = format!("not found: {link_to_filter}").red().to_string();
     }
     filtered_links_stat
 }
@@ -468,8 +458,8 @@ fn summerize_filtered_fee_ids(fee_id: u16, fee_ids_seen: &[u16]) -> StatSummary 
     if fee_ids_seen.contains(&fee_id) {
         filtered_feeid_stat.value = fee_id.to_string();
     } else {
-        filtered_feeid_stat.value = "<<none>>".to_string();
-        filtered_feeid_stat.notes = format!("not found: {fee_id}");
+        filtered_feeid_stat.value = "none".red().to_string();
+        filtered_feeid_stat.notes = format!("not found: {fee_id}").red().to_string();
     }
     filtered_feeid_stat
 }
@@ -485,8 +475,8 @@ fn summerize_filtered_its_layer_staves(
     if layers_staves_seen.contains(&(layer, stave)) {
         filtered_feeid_stat.value = format!("L{layer}_{stave}");
     } else {
-        filtered_feeid_stat.value = "<<none>>".to_string();
-        filtered_feeid_stat.notes = format!("not found: L{layer}_{stave}");
+        filtered_feeid_stat.value = "none".red().to_string();
+        filtered_feeid_stat.notes = format!("not found: L{layer}_{stave}").red().to_string();
     }
     filtered_feeid_stat
 }

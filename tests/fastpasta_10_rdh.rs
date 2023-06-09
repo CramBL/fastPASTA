@@ -141,11 +141,7 @@ fn check_all_its_trigger_period_stave_not_found() -> Result<(), Box<dyn std::err
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
 
-    match_on_out_no_case(
-        &cmd.output()?.stdout,
-        "its stave.*<<none>>.*not found.*l3_2",
-        1,
-    )?;
+    match_on_out_no_case(&cmd.output()?.stdout, "its stave.*none.*not found.*l3_2", 1)?;
 
     Ok(())
 }

@@ -1,11 +1,13 @@
+use owo_colors::OwoColorize;
 /// The Report struct is used by the StatsController to structure the report printed at the end of execution
 ///
 /// Report contains several StatSummary structs that are used to generate the report table
-use owo_colors::OwoColorize;
 use tabled::{
-    format::Format,
-    object::{Columns, Rows},
-    Alignment, Modify, Panel, Table, Tabled,
+    settings::{
+        object::{Columns, Rows},
+        Alignment, Format, Modify, Panel,
+    },
+    Table, Tabled,
 };
 /// Describes the columns of the report table
 #[derive(Tabled)]
@@ -82,61 +84,45 @@ impl Report {
         self.fatal_error = Some(error);
     }
     pub fn print(&mut self) {
-        let is_windows = std::env::consts::OS.to_lowercase().contains("windows"); // Windows can't have ANSI colors :(
-
         let mut global_stats_table = Table::new(&self.stats);
-        format_global_stats_sub_table(&mut global_stats_table, is_windows);
+        format_global_stats_sub_table(&mut global_stats_table);
         let mut detected_attributes_table = Table::new(&self.detected_attributes);
+
         detected_attributes_table = format_sub_table(
-            &detected_attributes_table,
+            detected_attributes_table,
             "Detected Attributes".to_string(),
-            if is_windows {
-                SubtableColor::NoColor
-            } else {
-                SubtableColor::Yellow
-            },
+            SubtableColor::Yellow,
         );
 
         if self.filter_stats_table.is_some() {
             let filter_stats_table = format_sub_table(
-                self.filter_stats_table.as_ref().unwrap(),
+                self.filter_stats_table.take().unwrap(),
                 "Filter Stats".to_string(),
-                if is_windows {
-                    SubtableColor::NoColor
-                } else {
-                    SubtableColor::Purple
-                },
+                SubtableColor::Purple,
             );
-            let multi_table = tabled::col![
+            let mut multi_table = tabled::col![
                 global_stats_table,
                 tabled::row![detected_attributes_table, filter_stats_table]
             ];
-            self.report_table = Some(format_super_table(
-                &multi_table,
-                self.processing_time,
-                is_windows,
-            ));
+            multi_table.with(tabled::settings::Style::rounded());
+            self.report_table = Some(format_super_table(&multi_table, self.processing_time));
         } else {
-            let multi_table =
+            let mut multi_table =
                 tabled::col![global_stats_table, tabled::row![detected_attributes_table]];
-            self.report_table = Some(format_super_table(
-                &multi_table,
-                self.processing_time,
-                is_windows,
-            ));
+            multi_table.with(tabled::settings::Style::rounded());
+            self.report_table = Some(format_super_table(&multi_table, self.processing_time));
         }
+
         if self.fatal_error.is_some() {
             let mut error_table = self.report_table.clone().unwrap();
             error_table
                 .with(Panel::header("FATAL ERROR - EARLY TERMINATION"))
-                .with(
-                    Modify::new(Rows::single(0))
-                        .with(Alignment::center())
-                        .with(Format::new(|x| {
-                            let x = x.to_uppercase();
-                            x.red().to_string()
-                        })),
-                );
+                .with(Modify::new(Rows::single(0)).with(Alignment::center()).with(
+                    Format::content(|x| {
+                        let x = x.to_uppercase();
+                        x.red().to_string()
+                    }),
+                ));
             self.report_table = Some(error_table);
         }
         println!("{}", self.report_table.as_ref().unwrap());
@@ -144,99 +130,61 @@ impl Report {
 }
 
 /// The super table is the table that contains all the other tables
-fn format_super_table(
-    super_table: &Table,
-    processing_time: std::time::Duration,
-    is_os_windows: bool,
-) -> Table {
+fn format_super_table(super_table: &Table, processing_time: std::time::Duration) -> Table {
     let mut modded_table = super_table.clone();
-    let style = tabled::Style::modern()
-        .horizontals([tabled::style::HorizontalLine::new(
-            1,
-            tabled::Style::modern().get_horizontal(),
-        )
-        .main(Some('═'))
-        .intersection(None)])
-        .verticals([tabled::style::VerticalLine::new(
-            1,
-            tabled::Style::modern().get_vertical(),
-        )]);
 
-    modded_table.with(style).with(Panel::header("Report")).with(
+    modded_table.with(Panel::header("Report")).with(
         Modify::new(Rows::single(0))
             .with(Alignment::center())
-            .with(Format::new(|x| {
-                let mut x = x.to_uppercase();
-                if !is_os_windows {
-                    x = x.green().to_string()
-                }
-                x
-            })),
+            .with(Format::content(|x| x.to_uppercase().green().to_string())),
     );
 
-    let height = modded_table.count_rows();
+    let row_count = modded_table.count_rows();
     modded_table
         .with(Panel::footer(format!("Processed in {processing_time:?}")))
         .with(
-            Modify::new(Rows::single(height))
+            Modify::new(Rows::single(row_count))
                 .with(Alignment::center())
-                .with(Format::new(|x| {
-                    if is_os_windows {
-                        x.to_string()
-                    } else {
-                        x.dimmed().to_string()
-                    }
-                })),
+                .with(Format::content(|x| x.dimmed().to_string())),
         );
     modded_table
 }
 
-fn format_global_stats_sub_table(global_stats_table: &mut Table, os_is_windows: bool) {
-    let style = tabled::Style::modern()
-        .off_left()
-        .off_right()
-        .off_top()
-        .off_bottom()
-        .off_vertical()
-        .horizontals([tabled::style::HorizontalLine::new(
+fn format_global_stats_sub_table(global_stats_table: &mut Table) {
+    let style = tabled::settings::Style::rounded()
+        .remove_left()
+        .remove_right()
+        .remove_top()
+        .remove_bottom()
+        .remove_vertical()
+        .horizontals([tabled::settings::style::HorizontalLine::new(
             1,
-            tabled::Style::modern().get_horizontal(),
+            tabled::settings::Style::rounded().get_horizontal(),
         )
         .main(Some('═'))
         .intersection(None)]);
 
-    if os_is_windows {
-        // Boring no colors
-        global_stats_table
-            .with(style)
-            .with(Modify::new(Rows::single(0)).with(Format::new(|x| x.to_uppercase())))
-            .with(Modify::new(Columns::new(2..)).with(Format::new(|s| s.to_string())))
-            .with(Panel::header("Global Stats"))
-            .with(
-                Modify::new(Rows::single(0))
-                    .with(Alignment::center())
-                    .with(Format::new(|x| x.to_uppercase())),
-            );
-    } else {
-        // Fun ANSI colors
-        global_stats_table
-            .with(style)
-            .with(Modify::new(Rows::single(0)).with(Format::new(|x| x.to_uppercase())))
-            .with(Modify::new(Columns::single(0)).with(Format::new(|s| s.blue().to_string())))
-            .with(
-                Modify::new(Columns::single(1)).with(Format::new(|s| s.bright_cyan().to_string())),
-            )
-            .with(Modify::new(Columns::new(2..)).with(Format::new(|s| s.yellow().to_string())))
-            .with(Panel::header("Global Stats"))
-            .with(
-                Modify::new(Rows::single(0))
-                    .with(Alignment::center())
-                    .with(Format::new(|x| {
-                        let x = x.to_uppercase();
-                        x.bright_yellow().to_string()
-                    })),
-            );
-    }
+    global_stats_table
+        .with(style.clone())
+        .with(Modify::new(Rows::single(0)).with(Format::content(|x| x.to_uppercase())))
+        .with(Modify::new(Columns::single(0)).with(Format::content(|s| s.blue().to_string())))
+        .with(
+            Modify::new(Columns::single(1)).with(Format::content(|s| s.bright_cyan().to_string())),
+        )
+        .with(Modify::new(Columns::new(2..)).with(Format::content(|s| s.yellow().to_string())))
+        .with(Panel::header("Global Stats"))
+        .with(
+            Modify::new(Rows::single(0))
+                .with(Alignment::center())
+                .with(Format::content(|x| {
+                    let x = x.to_uppercase();
+                    x.bright_yellow().to_string()
+                })),
+        );
+    global_stats_table
+        .with(style)
+        .with(Modify::new(Columns::single(1)).with(Format::content(|s| s.green().to_string())))
+        .with(Modify::new(Rows::single(1)).with(Format::content(|s| s.red().to_string())));
 }
 
 #[allow(dead_code)]
@@ -246,21 +194,20 @@ enum SubtableColor {
     Blue,
     Yellow,
     Red,
-    NoColor, // Windows...
 }
 /// Formats a subtable to use the same style as the main table
-/// Adds a header to the subtable in all caps, purple, and aligned center
-fn format_sub_table(subtable: &Table, header: String, color: SubtableColor) -> Table {
-    let mut modded_subtable = subtable.clone();
-    let style = tabled::Style::modern()
-        .off_left()
-        .off_right()
-        .off_top()
-        .off_bottom()
-        .off_vertical()
-        .horizontals([tabled::style::HorizontalLine::new(
+/// Adds a header to the subtable in all caps, aligned center, and with the chosen color
+fn format_sub_table(subtable: Table, header: String, color: SubtableColor) -> Table {
+    let mut modded_subtable = subtable;
+    let style = tabled::settings::Style::rounded()
+        .remove_left()
+        .remove_right()
+        .remove_top()
+        .remove_bottom()
+        .remove_vertical()
+        .horizontals([tabled::settings::style::HorizontalLine::new(
             1,
-            tabled::Style::modern().get_horizontal(),
+            tabled::settings::Style::rounded().get_horizontal(),
         )
         .main(Some('═'))
         .intersection(None)]);
@@ -268,7 +215,7 @@ fn format_sub_table(subtable: &Table, header: String, color: SubtableColor) -> T
     modded_subtable.with(Panel::header(header)).with(
         Modify::new(Rows::single(0))
             .with(Alignment::center())
-            .with(Format::new(|x| {
+            .with(Format::content(|x| {
                 let x = x.to_uppercase();
                 match color {
                     SubtableColor::Purple => x.bright_purple().to_string(),
@@ -276,18 +223,16 @@ fn format_sub_table(subtable: &Table, header: String, color: SubtableColor) -> T
                     SubtableColor::Blue => x.blue().to_string(),
                     SubtableColor::Yellow => x.yellow().to_string(),
                     SubtableColor::Red => x.red().to_string(),
-                    SubtableColor::NoColor => x, // Colors are not available for Windows
                 }
             })),
     );
     modded_subtable.with(
-        Modify::new(Rows::single(1)).with(Format::new(|x| match color {
+        Modify::new(Rows::single(1)).with(Format::content(|x| match color {
             SubtableColor::Purple => x.bright_purple().to_string(),
             SubtableColor::Green => x.green().to_string(),
             SubtableColor::Blue => x.blue().to_string(),
             SubtableColor::Yellow => x.yellow().to_string(),
             SubtableColor::Red => x.red().to_string(),
-            SubtableColor::NoColor => x.to_string(), // Colors are not available for Windows
         })),
     );
 
@@ -353,7 +298,7 @@ mod tests {
 
         let mut filter_table = Table::new(vec![filtered_links, observed_links]);
         println!("before:\n{filter_table}");
-        format_global_stats_sub_table(&mut filter_table, true);
+        format_global_stats_sub_table(&mut filter_table);
         println!("After:\n{filter_table}");
         assert_stdout_contains!(println!("{filter_table}"), "Filtered links");
     }
