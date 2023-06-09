@@ -2,13 +2,13 @@
 //! It also controls the stop flag, which can be used to stop the program if a fatal error occurs, or if the config contains a max number of errors to tolerate.
 //! Finally when the event loop breaks (at the end of execution), it will print a summary of the stats collected, using the Report struct.
 
-use owo_colors::OwoColorize;
 use super::lib::{StatType, SystemId};
 use crate::{
     stats::report::{Report, StatSummary},
     util::lib::{Config, DataOutputMode, FilterTarget},
     words,
 };
+use owo_colors::OwoColorize;
 use std::sync::{atomic::AtomicBool, Arc};
 
 /// The StatsController receives stats and builds a summary report that is printed at the end of execution.
