@@ -153,6 +153,7 @@ pub mod test_util {
         pub output_mode: DataOutputMode,
         pub its_trigger_period: Option<u16>,
         pub exit_code_any_errors: Option<u8>,
+        pub mute_errors: bool,
     }
 
     impl Default for MockConfig {
@@ -177,6 +178,7 @@ pub mod test_util {
                 output_mode: DataOutputMode::None,
                 its_trigger_period: None,
                 exit_code_any_errors: None,
+                mute_errors: false,
             }
         }
     }
@@ -232,6 +234,10 @@ pub mod test_util {
 
         fn any_errors_exit_code(&self) -> Option<u8> {
             self.exit_code_any_errors
+        }
+
+        fn mute_errors(&self) -> bool {
+            self.mute_errors
         }
     }
     impl InputOutputOpt for MockConfig {

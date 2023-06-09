@@ -8,6 +8,9 @@ pub trait UtilOpt {
     fn max_tolerate_errors(&self) -> u32;
     /// Set the exit code for if any errors are detected in the input data
     fn any_errors_exit_code(&self) -> Option<u8>;
+
+    /// If set, error messages are not displayed
+    fn mute_errors(&self) -> bool;
 }
 
 impl<T> UtilOpt for &T
@@ -24,6 +27,10 @@ where
     fn any_errors_exit_code(&self) -> Option<u8> {
         (*self).any_errors_exit_code()
     }
+
+    fn mute_errors(&self) -> bool {
+        (*self).mute_errors()
+    }
 }
 
 impl<T> UtilOpt for &mut T
@@ -38,6 +45,9 @@ where
     }
     fn any_errors_exit_code(&self) -> Option<u8> {
         (**self).any_errors_exit_code()
+    }
+    fn mute_errors(&self) -> bool {
+        (**self).mute_errors()
     }
 }
 
@@ -56,6 +66,9 @@ where
     fn any_errors_exit_code(&self) -> Option<u8> {
         (**self).any_errors_exit_code()
     }
+    fn mute_errors(&self) -> bool {
+        (**self).mute_errors()
+    }
 }
 
 impl<T> UtilOpt for std::sync::Arc<T>
@@ -72,5 +85,9 @@ where
 
     fn any_errors_exit_code(&self) -> Option<u8> {
         (**self).any_errors_exit_code()
+    }
+
+    fn mute_errors(&self) -> bool {
+        (**self).mute_errors()
     }
 }
