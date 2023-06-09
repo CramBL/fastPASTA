@@ -192,7 +192,7 @@ fn check_all_its_trigger_period() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
+fn check_all_its_stave_filter() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
     cmd.arg(FILE_10_RDH)
@@ -205,14 +205,13 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
     cmd.assert().success();
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
-
     match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l0_12", 1)?;
 
     Ok(())
 }
 
 #[test]
-fn check_all_its_stave_missing_filter() -> Result<(), Box<dyn std::error::Error>> {
+fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
     cmd.arg(FILE_10_RDH)
@@ -220,9 +219,9 @@ fn check_all_its_stave_missing_filter() -> Result<(), Box<dyn std::error::Error>
         .arg("all")
         .arg("its-stave")
         .arg("-v4");
-    cmd.assert().failure();
+    cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output()?.stderr, "invalid.*specify.*stave", 1)?;
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
 
     Ok(())
 }

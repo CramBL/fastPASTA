@@ -1,25 +1,36 @@
 //! Contains the [ValidatorDispatcher], that manages [LinkValidator]s and iterates over and comnsumes a [`data_wrapper::CdpChunk<T>`], dispatching the data to the correct thread based on the Link ID running an instance of [LinkValidator].
 use super::link_validator::LinkValidator;
-use crate::{input::data_wrapper, stats::lib::StatType, util, words::lib::RDH};
+use crate::{
+    input::data_wrapper,
+    stats::lib::StatType,
+    util::{
+        self,
+        config::check::{CheckCommands, System},
+    },
+    words::lib::RDH,
+};
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 /// The [ValidatorDispatcher] is responsible for creating and managing the [LinkValidator] threads.
 ///
 /// It receives a [`data_wrapper::CdpChunk<T>`] and dispatches the data to the correct thread running an instance of [LinkValidator].
 pub struct ValidatorDispatcher<T: RDH, C: util::lib::Config + 'static> {
-    links: Vec<u8>,
-    link_process_channels: Vec<crossbeam_channel::Sender<CdpTuple<T>>>,
+    processors: Vec<DispatchId>,
+    process_channels: Vec<crossbeam_channel::Sender<CdpTuple<T>>>,
     validator_thread_handles: Vec<std::thread::JoinHandle<()>>,
     stats_sender: flume::Sender<StatType>,
     global_config: &'static C,
 }
 
+#[derive(PartialEq, Clone, Copy)]
+struct DispatchId(u16);
+
 impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C> {
     /// Create a new ValidatorDispatcher from a Config and a stats sender channel
     pub fn new(global_config: &'static C, stats_sender: flume::Sender<StatType>) -> Self {
         Self {
-            links: Vec::new(),
-            link_process_channels: Vec::new(),
+            processors: Vec::new(),
+            process_channels: Vec::new(),
             validator_thread_handles: Vec::new(),
             stats_sender,
             global_config,
@@ -32,49 +43,74 @@ impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C>
     pub fn dispatch_cdp_chunk(&mut self, cdp_chunk: data_wrapper::CdpChunk<T>) {
         // Iterate over the CDP chunk
         cdp_chunk.into_iter().for_each(|(rdh, data, mem_pos)| {
-            // Check if the link id of the current rdh is already in the list of links
-            if let Some(link_index) = self.links.iter().position(|&link| link == rdh.link_id()) {
-                // If the link was found, use its index to send the data through the correct link validator's channel
-                self.link_process_channels
-                    .get(link_index)
-                    .unwrap()
-                    .send((rdh, data, mem_pos))
-                    .unwrap();
+            // Dispatch by FEE ID if system targeted for checks is ITS Stave (gonna be a lot of data to parse for each stave!)
+            let id = if self.global_config.check().is_some_and(|c| {
+                if let CheckCommands::All { system } = c {
+                    system.is_some_and(|s| s == System::ITS_Stave)
+                } else {
+                    false
+                }
+            }) {
+                DispatchId(rdh.fee_id())
             } else {
-                // If the link wasn't found, add it to the list of links
-                self.links.push(rdh.link_id());
+                // Dispatch by link ID as
+                DispatchId(rdh.link_id() as u16)
+            };
 
-                // Create a new link validator thread to handle the new link
-                let (mut link_validator, send_channel) =
-                    LinkValidator::<T, C>::new(self.global_config, self.stats_sender.clone());
-
-                // Add the send channel to the new link validator
-                self.link_process_channels.push(send_channel);
-
-                // Spawn a thread where the newly created link validator will run
-                self.validator_thread_handles.push(
-                    std::thread::Builder::new()
-                        .name(format!("Link {} Validator", rdh.link_id()))
-                        .spawn({
-                            move || {
-                                link_validator.run();
-                            }
-                        })
-                        .expect("Failed to spawn link validator thread"),
-                );
-                // Send the data through the newly created link validator's channel, by taking the last element of the vector
-                self.link_process_channels
-                    .last()
-                    .unwrap()
-                    .send((rdh, data, mem_pos))
-                    .unwrap();
-            }
+            self.dispatch_by_id(rdh, data, mem_pos, id);
         });
+    }
+
+    fn init_validator(&mut self, id: DispatchId) -> LinkValidator<T, C> {
+        // Add a new ID to the list of processors
+        self.processors.push(id);
+
+        // Create a new link validator thread to handle a new ID that should be processed
+        let (link_validator, send_channel) =
+            LinkValidator::<T, C>::new(self.global_config, self.stats_sender.clone());
+
+        // Add the send channel to the new link validator
+        self.process_channels.push(send_channel);
+
+        link_validator
+    }
+
+    fn dispatch_by_id(&mut self, rdh: T, data: Vec<u8>, mem_pos: u64, id: DispatchId) {
+        // Check if the ID to dispatch by is already in the list of processors
+        if let Some(index) = self.processors.iter().position(|&proc_id| proc_id == id) {
+            // If the ID was found, use its index to send the data through the correct link validator's channel
+            self.process_channels
+                .get(index)
+                .unwrap()
+                .send((rdh, data, mem_pos))
+                .unwrap();
+        } else {
+            // If the ID wasn't found, make a new validator to handle that ID
+            let mut validator = self.init_validator(id);
+
+            // Spawn a thread where the newly created link validator will run
+            self.validator_thread_handles.push(
+                std::thread::Builder::new()
+                    .name(format!("Validator #{}", id.0))
+                    .spawn({
+                        move || {
+                            validator.run();
+                        }
+                    })
+                    .expect("Failed to spawn link validator thread"),
+            );
+            // Send the data through the newly created link validator's channel, by taking the last element of the vector
+            self.process_channels
+                .last()
+                .unwrap()
+                .send((rdh, data, mem_pos))
+                .unwrap();
+        }
     }
 
     /// Disconnects all the link validator's receiver channels and joins all link validator threads
     pub fn join(&mut self) {
-        self.link_process_channels.clear();
+        self.process_channels.clear();
         self.validator_thread_handles.drain(..).for_each(|handle| {
             handle.join().expect("Failed to join a validator thread");
         });
