@@ -88,33 +88,24 @@ impl Report {
         detected_attributes_table = format_sub_table(
             &detected_attributes_table,
             "Detected Attributes".to_string(),
-
-                SubtableColor::Yellow
-            ,
+            SubtableColor::Yellow,
         );
 
         if self.filter_stats_table.is_some() {
             let filter_stats_table = format_sub_table(
                 self.filter_stats_table.as_ref().unwrap(),
                 "Filter Stats".to_string(),
-                    SubtableColor::Purple
-                ,
+                SubtableColor::Purple,
             );
             let multi_table = tabled::col![
                 global_stats_table,
                 tabled::row![detected_attributes_table, filter_stats_table]
             ];
-            self.report_table = Some(format_super_table(
-                &multi_table,
-                self.processing_time
-            ));
+            self.report_table = Some(format_super_table(&multi_table, self.processing_time));
         } else {
             let multi_table =
                 tabled::col![global_stats_table, tabled::row![detected_attributes_table]];
-            self.report_table = Some(format_super_table(
-                &multi_table,
-                self.processing_time
-            ));
+            self.report_table = Some(format_super_table(&multi_table, self.processing_time));
         }
         if self.fatal_error.is_some() {
             let mut error_table = self.report_table.clone().unwrap();
@@ -135,10 +126,7 @@ impl Report {
 }
 
 /// The super table is the table that contains all the other tables
-fn format_super_table(
-    super_table: &Table,
-    processing_time: std::time::Duration
-) -> Table {
+fn format_super_table(super_table: &Table, processing_time: std::time::Duration) -> Table {
     let mut modded_table = super_table.clone();
     let style = tabled::Style::modern()
         .horizontals([tabled::style::HorizontalLine::new(
@@ -155,9 +143,7 @@ fn format_super_table(
     modded_table.with(style).with(Panel::header("Report")).with(
         Modify::new(Rows::single(0))
             .with(Alignment::center())
-            .with(Format::new(|x| {
-                x.to_uppercase().green().to_string()
-            })),
+            .with(Format::new(|x| x.to_uppercase().green().to_string())),
     );
 
     let height = modded_table.count_rows();
@@ -166,9 +152,7 @@ fn format_super_table(
         .with(
             Modify::new(Rows::single(height))
                 .with(Alignment::center())
-                .with(Format::new(|x| {
-                    x.dimmed().to_string()
-                })),
+                .with(Format::new(|x| x.dimmed().to_string())),
         );
     modded_table
 }
@@ -187,14 +171,11 @@ fn format_global_stats_sub_table(global_stats_table: &mut Table) {
         .main(Some('═'))
         .intersection(None)]);
 
-
     global_stats_table
         .with(style)
         .with(Modify::new(Rows::single(0)).with(Format::new(|x| x.to_uppercase())))
         .with(Modify::new(Columns::single(0)).with(Format::new(|s| s.blue().to_string())))
-        .with(
-            Modify::new(Columns::single(1)).with(Format::new(|s| s.bright_cyan().to_string())),
-        )
+        .with(Modify::new(Columns::single(1)).with(Format::new(|s| s.bright_cyan().to_string())))
         .with(Modify::new(Columns::new(2..)).with(Format::new(|s| s.yellow().to_string())))
         .with(Panel::header("Global Stats"))
         .with(
@@ -205,7 +186,6 @@ fn format_global_stats_sub_table(global_stats_table: &mut Table) {
                     x.bright_yellow().to_string()
                 })),
         );
-
 }
 
 #[allow(dead_code)]
@@ -245,7 +225,7 @@ fn format_sub_table(subtable: &Table, header: String, color: SubtableColor) -> T
                     SubtableColor::Blue => x.blue().to_string(),
                     SubtableColor::Yellow => x.yellow().to_string(),
                     SubtableColor::Red => x.red().to_string(),
-                    SubtableColor::NoColor => x, // Colors are not available for Windows
+                    SubtableColor::NoColor => x,
                 }
             })),
     );
@@ -256,7 +236,7 @@ fn format_sub_table(subtable: &Table, header: String, color: SubtableColor) -> T
             SubtableColor::Blue => x.blue().to_string(),
             SubtableColor::Yellow => x.yellow().to_string(),
             SubtableColor::Red => x.red().to_string(),
-            SubtableColor::NoColor => x.to_string(), // Colors are not available for Windows
+            SubtableColor::NoColor => x.to_string(),
         })),
     );
 
