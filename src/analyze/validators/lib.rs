@@ -91,7 +91,7 @@ impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C>
             // Spawn a thread where the newly created link validator will run
             self.validator_thread_handles.push(
                 std::thread::Builder::new()
-                    .name(format!("Link {} Validator", id.0))
+                    .name(format!("Validator #{}", id.0))
                     .spawn({
                         move || {
                             validator.run();
