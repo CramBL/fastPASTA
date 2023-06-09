@@ -6,8 +6,12 @@ use super::lib::{StatType, SystemId};
 use crate::{
     stats::report::{Report, StatSummary},
     util::lib::{Config, DataOutputMode, FilterTarget},
-    words,
+    words::{
+        self,
+        its::{layer_from_feeid, stave_number_from_feeid},
+    },
 };
+use itertools::Itertools;
 use owo_colors::OwoColorize;
 use std::sync::{atomic::AtomicBool, Arc};
 
@@ -40,6 +44,7 @@ pub struct StatsController<C: Config + 'static> {
     hbfs_seen: u32,
     fatal_error: Option<String>,
     layers_staves_seen: Vec<(u8, u8)>,
+    staves_with_errors: Vec<(u8, u8)>,
     fee_id_seen: Vec<u16>,
     run_trigger_type: (u32, String),
     system_id_observed: Option<SystemId>,
@@ -70,6 +75,7 @@ impl<C: Config + 'static> StatsController<C> {
             hbfs_seen: 0,
             fatal_error: None,
             layers_staves_seen: Vec::new(),
+            staves_with_errors: Vec::new(),
             fee_id_seen: Vec::new(),
             run_trigger_type: (0, String::from("")),
             system_id_observed: None,
@@ -113,7 +119,7 @@ impl<C: Config + 'static> StatsController<C> {
             // Avoid printing the report in the middle of a view, or if output is being redirected
             log::info!("View active or output is being piped, skipping report summary printout.")
         } else {
-            self.print_mem_ordered_errors();
+            self.process_error_messages();
 
             // Print the summary report if any RDHs were seen. If not, it's likely that an early error occurred and no data was processed.
             if self.rdhs_seen > 0 {
@@ -146,7 +152,7 @@ impl<C: Config + 'static> StatsController<C> {
 
                 if self.max_tolerate_errors > 0 {
                     log::trace!("Error count: {}", self.total_errors);
-                    if self.total_errors == self.max_tolerate_errors.into() {
+                    if self.total_errors == self.max_tolerate_errors as u64 {
                         log::trace!("Errors reached maximum tolerated errors, exiting...");
                         self.end_processing_flag
                             .store(true, std::sync::atomic::Ordering::SeqCst);
@@ -207,6 +213,65 @@ impl<C: Config + 'static> StatsController<C> {
         }
     }
 
+    fn process_error_messages(&mut self) {
+        self.sort_errors_by_memory_address();
+        self.check_error_for_stave_id();
+
+        // Print the errors, limited if there's a max error limit set
+        if self.max_tolerate_errors > 0 {
+            self.reported_errors
+                .drain(..)
+                .take(self.max_tolerate_errors as usize)
+                .for_each(|e| {
+                    log::error!("{e}");
+                });
+        } else {
+            self.reported_errors.drain(..).for_each(|e| {
+                log::error!("{e}");
+            });
+        }
+    }
+
+    fn sort_errors_by_memory_address(&mut self) {
+        // Regex to extract the memory address from the error message
+        let re = regex::Regex::new(r"0x(?P<mem_pos>[0-9a-fA-F]+):").unwrap();
+        // Sort the errors by memory address
+        if !self.reported_errors.is_empty() {
+            self.reported_errors.sort_by_key(|e| {
+                let addr = re
+                    .captures(e)
+                    .unwrap_or_else(|| panic!("Error parsing memory address from error msg: {e}"));
+                u64::from_str_radix(&addr["mem_pos"], 16).expect("Error parsing memory address")
+            });
+        }
+    }
+
+    fn check_error_for_stave_id(&mut self) {
+        let re: regex::Regex =
+            regex::Regex::new("FEE(?:.|)ID:(?P<fee_id>[1-9][0-9]{0,4})").unwrap();
+
+        self.reported_errors.iter().for_each(|err_msg| {
+            let fee_id_match: Option<regex::Captures> = re.captures(err_msg);
+            if let Some(id_capture) = fee_id_match {
+                let fee_id = id_capture["fee_id"].parse::<u16>().unwrap();
+                let layer = layer_from_feeid(fee_id);
+                let stave = stave_number_from_feeid(fee_id);
+
+                let stave_with_error = self
+                    .layers_staves_seen
+                    .iter()
+                    .find(|(l, s)| *l == layer && *s == stave)
+                    .expect(
+                        "FEE ID found in error message that does not match any layer/stave seen",
+                    );
+
+                if !self.staves_with_errors.contains(stave_with_error) {
+                    self.staves_with_errors.push(*stave_with_error);
+                }
+            }
+        });
+    }
+
     /// Builds and prints the report
     fn print(&mut self) {
         let mut report = Report::new(self.processing_time.elapsed());
@@ -230,7 +295,10 @@ impl<C: Config + 'static> StatsController<C> {
                 // If no filtering, the layers and staves seen is from the total RDHs
                 report.add_stat(StatSummary::new(
                     "Layers and Staves seen".to_string(),
-                    format_layers_and_staves(self.layers_staves_seen.clone()),
+                    format_layers_and_staves(
+                        self.layers_staves_seen.drain(..).collect_vec(),
+                        self.staves_with_errors.drain(..).collect_vec(),
+                    ),
                     None,
                 ));
             } else {
@@ -350,33 +418,6 @@ impl<C: Config + 'static> StatsController<C> {
 
         filtered_stats
     }
-
-    fn print_mem_ordered_errors(&mut self) {
-        // Regex to extract the memory address from the error message
-        let re = regex::Regex::new(r"0x(?P<mem_pos>[0-9a-fA-F]+):").unwrap();
-        // Sort the errors by memory address
-        if !self.reported_errors.is_empty() {
-            self.reported_errors.sort_by_key(|e| {
-                let addr = re
-                    .captures(e)
-                    .unwrap_or_else(|| panic!("Error parsing memory address from error msg: {e}"));
-                u64::from_str_radix(&addr["mem_pos"], 16).expect("Error parsing memory address")
-            });
-        }
-        // Print the errors, limited if there's a limit set
-        if self.max_tolerate_errors > 0 {
-            self.reported_errors
-                .drain(..)
-                .take(self.max_tolerate_errors as usize)
-                .for_each(|e| {
-                    log::error!("{e}");
-                });
-        } else {
-            self.reported_errors.drain(..).for_each(|e| {
-                log::error!("{e}");
-            });
-        }
-    }
 }
 
 /// Format and add payload size seen/loaded
@@ -405,17 +446,27 @@ fn format_links_observed(links_observed: Vec<u8>) -> String {
 }
 
 /// Sort and format layers and staves seen
-fn format_layers_and_staves(layers_staves_seen: Vec<(u8, u8)>) -> String {
-    let mut layers_staves_seen = layers_staves_seen;
+fn format_layers_and_staves(
+    mut layers_staves_seen: Vec<(u8, u8)>,
+    mut layers_stave_with_errors: Vec<(u8, u8)>,
+) -> String {
     layers_staves_seen.sort();
+    layers_stave_with_errors.sort();
+
     layers_staves_seen
         .iter()
         .enumerate()
         .map(|(i, (layer, stave))| {
             if i > 0 && i % 7 == 0 {
-                format!("L{layer}_{stave}\n")
+                if layers_stave_with_errors.contains(&(*layer, *stave)) {
+                    format!("L{layer}_{stave}\n").red().to_string()
+                } else {
+                    format!("L{layer}_{stave}\n").white().to_string()
+                }
+            } else if layers_stave_with_errors.contains(&(*layer, *stave)) {
+                format!("L{layer}_{stave} ").red().to_string()
             } else {
-                format!("L{layer}_{stave} ")
+                format!("L{layer}_{stave} ").white().to_string()
             }
         })
         .collect::<Vec<String>>()
