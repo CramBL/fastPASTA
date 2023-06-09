@@ -394,12 +394,12 @@ fn format_payload(payload_size: u64) -> String {
     match payload_size {
         0..=1024 => format!("{} B", payload_size),
         1025..=1048576 => {
-            format!("{:.3} KiB", payload_size as f64 / 1024_f64)
+            format!("{:.2} KiB", payload_size as f64 / 1024_f64)
         }
         1048577..=1073741824 => {
-            format!("{:.3} MiB", payload_size as f64 / 1048576_f64)
+            format!("{:.2} MiB", payload_size as f64 / 1048576_f64)
         }
-        _ => format!("{:.3} GiB", payload_size as f64 / 1073741824_f64),
+        _ => format!("{:.2} GiB", payload_size as f64 / 1073741824_f64),
     }
 }
 
