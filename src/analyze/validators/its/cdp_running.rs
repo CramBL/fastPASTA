@@ -69,9 +69,9 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 Some(CheckCommands::All { system: _ })
             ),
             alpide_checks_enabled: config.check().is_some_and(|check| {
-                check.target().is_some_and(|target| {
-                    target == System::ITS_Stave && config.filter_its_stave().is_some()
-                })
+                check
+                    .target()
+                    .is_some_and(|target| target == System::ITS_Stave)
             }),
             its_state_machine: ItsPayloadFsmContinuous::default(),
             current_rdh: None,
@@ -578,7 +578,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 .collect::<Vec<String>>()
                 .join(", ");
             let mut error_string = format!(
-                "{mem_pos_start:#X}: ALPIDE data frame ending at {mem_pos_end:#X} has errors in lane [{lane_error_ids_str}]:"
+                "{mem_pos_start:#X}: FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has errors in lane [{lane_error_ids_str}]:", feeid=self.current_rdh.as_ref().unwrap().fee_id()
             );
             for (_lane_id, lane_error_msg) in lane_error_msgs {
                 error_string.push_str(&lane_error_msg);

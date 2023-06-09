@@ -25,14 +25,8 @@ where
     fn validate_args(&self) -> Result<(), String> {
         if let Some(check) = self.check() {
             if let Some(target) = check.target() {
-                if matches!(target, System::ITS_Stave) {
-                    if self.filter_its_stave().is_none() {
-                        return Err(
-                            "Invalid config: Cannot check ITS stave without specifying a stave"
-                                .to_string(),
-                        );
-                    }
-                } else if self.check_its_trigger_period().is_some() {
+                if !matches!(target, System::ITS_Stave) && self.check_its_trigger_period().is_some()
+                {
                     return Err("Invalid config: Specifying trigger period has to be done with the `check all its-stave` command".to_string());
                 }
             }
