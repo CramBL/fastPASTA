@@ -1,6 +1,14 @@
 //! Contains the [ValidatorDispatcher], that manages [LinkValidator]s and iterates over and comnsumes a [`data_wrapper::CdpChunk<T>`], dispatching the data to the correct thread based on the Link ID running an instance of [LinkValidator].
 use super::link_validator::LinkValidator;
-use crate::{input::data_wrapper, stats::lib::StatType, util, words::lib::RDH};
+use crate::{
+    input::data_wrapper,
+    stats::lib::StatType,
+    util::{
+        self,
+        config::check::{CheckCommands, System},
+    },
+    words::lib::RDH,
+};
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 /// The [ValidatorDispatcher] is responsible for creating and managing the [LinkValidator] threads.
@@ -35,7 +43,20 @@ impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C>
     pub fn dispatch_cdp_chunk(&mut self, cdp_chunk: data_wrapper::CdpChunk<T>) {
         // Iterate over the CDP chunk
         cdp_chunk.into_iter().for_each(|(rdh, data, mem_pos)| {
-            let id = DispatchId(rdh.link_id() as u16);
+            // Dispatch by FEE ID if system targeted for checks is ITS Stave (gonna be a lot of data to parse for each stave!)
+            let id = if self.global_config.check().is_some_and(|c| {
+                if let CheckCommands::All { system } = c {
+                    system.is_some_and(|s| s == System::ITS_Stave)
+                } else {
+                    false
+                }
+            }) {
+                DispatchId(rdh.fee_id())
+            } else {
+                // Dispatch by link ID as
+                DispatchId(rdh.link_id() as u16)
+            };
+
             self.dispatch_by_id(rdh, data, mem_pos, id);
         });
     }
