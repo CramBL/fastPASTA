@@ -52,7 +52,7 @@ fn check_all_its_stave_not_found() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
+fn check_all_its_stave_filter() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
     const EXPECTED_ALPIDE_ERRORS: u8 = 18;
@@ -155,6 +155,66 @@ fn view_hbf() -> Result<(), Box<dyn std::error::Error>> {
             ),
         ),
     );
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    const EXPECTED_ALPIDE_ERRORS: u8 = 18;
+
+    cmd.arg(FILE_RAWTF_EPN180_L6_1)
+        .arg("check")
+        .arg("all")
+        .arg("its-stave");
+    cmd.assert().success();
+
+    match_on_out_no_case(
+        &cmd.output()?.stdout,
+        &format!("errors.*{EXPECTED_ALPIDE_ERRORS}"),
+        1,
+    )?;
+
+    match_on_out_no_case(
+        &cmd.output()?.stderr,
+        // Errors that have ALPIDE and lane 66 in them
+        "error - 0x.*alpide.*lane.*66",
+        EXPECTED_ALPIDE_ERRORS.into(),
+    )?;
+    match_on_out_no_case(&cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_stave_mute_errors() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    const EXPECTED_ALPIDE_ERRORS: u8 = 18;
+
+    cmd.arg(FILE_RAWTF_EPN180_L6_1)
+        .arg("check")
+        .arg("all")
+        .arg("its-stave")
+        .arg("--mute-errors");
+    cmd.assert().success();
+
+    match_on_out_no_case(
+        &cmd.output()?.stdout,
+        &format!("errors.*{EXPECTED_ALPIDE_ERRORS}"),
+        1,
+    )?;
+
+    match_on_out_no_case(
+        &cmd.output()?.stderr,
+        // Errors that have ALPIDE and lane 66 in them
+        "error - 0x.*alpide.*lane.*66",
+        // Expect 0 error messages as they are muted
+        0,
+    )?;
+    match_on_out_no_case(&cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
 
     Ok(())
 }

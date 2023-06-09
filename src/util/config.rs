@@ -92,6 +92,10 @@ pub struct Cfg {
         requires("filter")
     )]
     output: Option<PathBuf>,
+
+    /// Don't show error messages - helpful if there's a large amount of errors and you just want to see the report
+    #[arg(short, long, default_value_t = false, global = true)]
+    mute_errors: bool,
 }
 
 impl Cfg {
@@ -223,6 +227,9 @@ impl UtilOpt for Cfg {
     }
     fn any_errors_exit_code(&self) -> Option<u8> {
         self.any_errors_exit_code
+    }
+    fn mute_errors(&self) -> bool {
+        self.mute_errors
     }
 }
 

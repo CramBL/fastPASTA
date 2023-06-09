@@ -142,7 +142,7 @@ impl<C: Config + 'static> StatsController<C> {
                 }
 
                 // If any of filter link is set, errors in the data are reported sequentially so just print them as they are reived
-                if self.config.filter_link().is_some() {
+                if self.config.filter_link().is_some() && !self.config.mute_errors() {
                     log::error!("{msg}");
                 } else {
                     self.reported_errors.push(msg);
@@ -216,19 +216,20 @@ impl<C: Config + 'static> StatsController<C> {
     fn process_error_messages(&mut self) {
         self.sort_errors_by_memory_address();
         self.check_error_for_stave_id();
-
-        // Print the errors, limited if there's a max error limit set
-        if self.max_tolerate_errors > 0 {
-            self.reported_errors
-                .drain(..)
-                .take(self.max_tolerate_errors as usize)
-                .for_each(|e| {
+        if !self.config.mute_errors() {
+            // Print the errors, limited if there's a max error limit set
+            if self.max_tolerate_errors > 0 {
+                self.reported_errors
+                    .drain(..)
+                    .take(self.max_tolerate_errors as usize)
+                    .for_each(|e| {
+                        log::error!("{e}");
+                    });
+            } else {
+                self.reported_errors.drain(..).for_each(|e| {
                     log::error!("{e}");
                 });
-        } else {
-            self.reported_errors.drain(..).for_each(|e| {
-                log::error!("{e}");
-            });
+            }
         }
     }
 
