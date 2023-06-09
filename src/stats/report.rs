@@ -7,7 +7,7 @@ use tabled::{
         object::{Columns, Rows},
         Alignment, Format, Modify, Panel,
     },
-    *,
+    Table, Tabled,
 };
 /// Describes the columns of the report table
 #[derive(Tabled)]
@@ -104,12 +104,12 @@ impl Report {
                 global_stats_table,
                 tabled::row![detected_attributes_table, filter_stats_table]
             ];
-            multi_table.with(settings::Style::rounded());
+            multi_table.with(tabled::settings::Style::rounded());
             self.report_table = Some(format_super_table(&multi_table, self.processing_time));
         } else {
             let mut multi_table =
                 tabled::col![global_stats_table, tabled::row![detected_attributes_table]];
-            multi_table.with(settings::Style::rounded());
+            multi_table.with(tabled::settings::Style::rounded());
             self.report_table = Some(format_super_table(&multi_table, self.processing_time));
         }
 
