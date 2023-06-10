@@ -94,50 +94,29 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             initial_rdh0: Some(rdh0),
         }
     }
-    fn report_rdh_seen(&self) {
+
+    fn report(&self, stat: StatType) {
         self.stats_controller_sender_ch
-            .send(StatType::RDHsSeen(1))
-            .expect("Failed to send stats, receiver was dropped")
-    }
-    fn report_link_seen(&self, link_id: u8) {
-        self.stats_controller_sender_ch
-            .send(StatType::LinksObserved(link_id))
-            .expect("Failed to send stats, receiver was dropped")
-    }
-    fn report_payload_size(&self, payload_size: u32) {
-        self.stats_controller_sender_ch
-            .send(StatType::PayloadSize(payload_size))
-            .expect("Failed to send stats, receiver was dropped")
-    }
-    fn report_rdh_filtered(&self) {
-        self.stats_controller_sender_ch
-            .send(StatType::RDHsFiltered(1))
+            .send(stat)
             .expect("Failed to send stats, receiver was dropped")
     }
     fn report_run_trigger_type<T: RDH>(&self, rdh: &T) {
         let raw_trigger_type = rdh.trigger_type();
         let run_trigger_type_str = crate::analyze::view::lib::rdh_trigger_type_as_string(rdh);
-        self.stats_controller_sender_ch
-            .send(StatType::RunTriggerType((
-                raw_trigger_type,
-                run_trigger_type_str,
-            )))
-            .expect("Failed to send stats, receiver was dropped")
-    }
-    fn report_data_format<T: RDH>(&self, rdh: &T) {
-        self.stats_controller_sender_ch
-            .send(StatType::DataFormat(rdh.data_format()))
-            .expect("Failed to send stats, receiver was dropped")
+        self.report(StatType::RunTriggerType((
+            raw_trigger_type,
+            run_trigger_type_str,
+        )));
     }
     fn collect_rdh_seen_stats(&mut self, rdh: &impl RDH) {
         // Set the link ID and report another RDH seen
         let current_link_id = rdh.link_id();
-        self.report_rdh_seen();
+        self.report(StatType::RDHsSeen(1));
 
         // If we haven't seen this link before, report it and add it to the list of unique links
         if !self.unique_links_observed.contains(&current_link_id) {
             self.unique_links_observed.push(current_link_id);
-            self.report_link_seen(current_link_id);
+            self.report(StatType::LinksObserved(current_link_id));
         }
     }
 }
@@ -156,11 +135,11 @@ where
         //  from the input. If so, we use it to create the first RDH, and record some stats
         //  that should only be recorded once.
         let rdh: T = if self.initial_rdh0.is_some() {
-            let rdh =
+            let rdh: T =
                 SerdeRdh::load_from_rdh0(&mut self.reader, self.initial_rdh0.take().unwrap())?;
             // Report the trigger type as the RunTriggerType describing the type of run the data is from
             self.report_run_trigger_type(&rdh);
-            self.report_data_format(&rdh);
+            self.report(StatType::DataFormat(rdh.data_format()));
             rdh
         } else {
             SerdeRdh::load(&mut self.reader)?
@@ -181,7 +160,7 @@ where
         // If a filter is set, check if the RDH matches the filter
         let rdh = if let Some(target) = self.filter_target {
             if is_rdh_filter_target(&rdh, target) {
-                self.report_rdh_filtered();
+                self.report(StatType::RDHsFiltered(1));
 
                 Ok(rdh)
             } else {
@@ -195,7 +174,7 @@ where
         };
 
         if let Ok(rdh) = &rdh {
-            self.report_payload_size(rdh.payload_size() as u32);
+            self.report(StatType::PayloadSize(rdh.payload_size() as u32));
         }
         rdh
     }
@@ -252,7 +231,7 @@ where
             self.collect_rdh_seen_stats(&rdh);
 
             if is_rdh_filter_target(&rdh, filter_target) {
-                self.report_rdh_filtered();
+                self.report(StatType::RDHsFiltered(1));
                 return Ok(rdh);
             }
             self.reader
