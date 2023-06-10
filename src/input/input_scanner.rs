@@ -124,6 +124,11 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             )))
             .expect("Failed to send stats, receiver was dropped")
     }
+    fn report_data_format<T: RDH>(&self, rdh: &T) {
+        self.stats_controller_sender_ch
+            .send(StatType::DataFormat(rdh.data_format()))
+            .expect("Failed to send stats, receiver was dropped")
+    }
     fn collect_rdh_seen_stats(&mut self, rdh: &impl RDH) {
         // Set the link ID and report another RDH seen
         let current_link_id = rdh.link_id();
@@ -148,16 +153,17 @@ where
     #[inline]
     fn load_rdh_cru<T: RDH>(&mut self) -> Result<T, std::io::Error> {
         // If it is the first time we get an RDH, we would already have loaded the initial RDH0
-        //  from the input. If so, we use it to create the first RDH.
-        let rdh: T = match self.initial_rdh0.is_some() {
-            true => {
-                let rdh =
-                    SerdeRdh::load_from_rdh0(&mut self.reader, self.initial_rdh0.take().unwrap())?;
-                // Report the trigger type as the RunTriggerType describing the type of run the data is from
-                self.report_run_trigger_type(&rdh);
-                rdh
-            }
-            false => SerdeRdh::load(&mut self.reader)?,
+        //  from the input. If so, we use it to create the first RDH, and record some stats
+        //  that should only be recorded once.
+        let rdh: T = if self.initial_rdh0.is_some() {
+            let rdh =
+                SerdeRdh::load_from_rdh0(&mut self.reader, self.initial_rdh0.take().unwrap())?;
+            // Report the trigger type as the RunTriggerType describing the type of run the data is from
+            self.report_run_trigger_type(&rdh);
+            self.report_data_format(&rdh);
+            rdh
+        } else {
+            SerdeRdh::load(&mut self.reader)?
         };
         log::debug!(
             "Loaded RDH at [{:#X}]: \n       {rdh}",

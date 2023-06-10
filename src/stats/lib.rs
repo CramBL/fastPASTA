@@ -233,9 +233,6 @@ fn collect_its_stats<T: words::lib::RDH>(rdh: &T, stats_sender_channel: &flume::
     stats_sender_channel
         .send(StatType::LayerStaveSeen { layer, stave })
         .unwrap();
-    stats_sender_channel
-        .send(StatType::DataFormat(rdh.data_format()))
-        .unwrap();
 }
 
 #[cfg(test)]
