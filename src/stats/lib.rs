@@ -233,9 +233,6 @@ fn collect_its_stats<T: words::lib::RDH>(rdh: &T, stats_sender_channel: &flume::
     stats_sender_channel
         .send(StatType::LayerStaveSeen { layer, stave })
         .unwrap();
-    stats_sender_channel
-        .send(StatType::DataFormat(rdh.data_format()))
-        .unwrap();
 }
 
 #[cfg(test)]
@@ -302,6 +299,17 @@ mod tests {
 
         // Stop flag should be false
         assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));
+
+        // Send RDH version seen
+        send_ch.send(StatType::RdhVersion(7)).unwrap();
+
+        // Send Data format seen
+        send_ch.send(StatType::DataFormat(99)).unwrap();
+
+        // Send Run Trigger Type
+        send_ch
+            .send(StatType::RunTriggerType((0xBEEF, "BEEF".to_owned())))
+            .unwrap();
 
         // Send rdh seen stat
         send_ch.send(StatType::RDHsSeen(1)).unwrap();
