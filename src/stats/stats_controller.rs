@@ -2,7 +2,10 @@
 //! It also controls the stop flag, which can be used to stop the program if a fatal error occurs, or if the config contains a max number of errors to tolerate.
 //! Finally when the event loop breaks (at the end of execution), it will print a summary of the stats collected, using the Report struct.
 
-use super::lib::{StatType, SystemId};
+use super::{
+    lib::{StatType, SystemId},
+    rdh_stats::RdhStats,
+};
 use crate::{
     stats::report::{Report, StatSummary},
     util::lib::{Config, DataOutputMode, FilterTarget},
@@ -17,10 +20,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 
 /// The StatsController receives stats and builds a summary report that is printed at the end of execution.
 pub struct StatsController<C: Config + 'static> {
-    /// Total RDHs seen.
-    pub rdhs_seen: u64,
-    /// Total RDHs filtered.
-    pub rdhs_filtered: u64,
+    rdh_stats: RdhStats,
     /// Total payload size.
     pub payload_size: u64,
     /// Links observed.
@@ -39,7 +39,7 @@ pub struct StatsController<C: Config + 'static> {
     // This is because the event loop breaks when all sender channels are dropped, and if the StatsController keeps a reference to the channel, it will cause a deadlock.
     send_stats_channel: Option<flume::Sender<StatType>>,
     end_processing_flag: Arc<AtomicBool>,
-    rdh_version: u8,
+
     data_formats_observed: Vec<u8>,
     hbfs_seen: u32,
     fatal_error: Option<String>,
@@ -58,8 +58,7 @@ impl<C: Config + 'static> StatsController<C> {
             flume::Receiver<StatType>,
         ) = flume::unbounded();
         StatsController {
-            rdhs_seen: 0,
-            rdhs_filtered: 0,
+            rdh_stats: RdhStats::default(),
             payload_size: 0,
             config: global_config,
             links_observed: Vec::new(),
@@ -70,7 +69,6 @@ impl<C: Config + 'static> StatsController<C> {
             recv_stats_channel,
             send_stats_channel: Some(send_stats_channel),
             end_processing_flag: Arc::new(AtomicBool::new(false)),
-            rdh_version: 0,
             data_formats_observed: Vec::new(),
             hbfs_seen: 0,
             fatal_error: None,
@@ -122,7 +120,7 @@ impl<C: Config + 'static> StatsController<C> {
             self.process_error_messages();
 
             // Print the summary report if any RDHs were seen. If not, it's likely that an early error occurred and no data was processed.
-            if self.rdhs_seen > 0 {
+            if self.rdh_stats.rdhs_seen > 0 {
                 self.print();
             }
         }
@@ -159,11 +157,11 @@ impl<C: Config + 'static> StatsController<C> {
                     }
                 }
             }
-            StatType::RDHsSeen(val) => self.rdhs_seen += val as u64,
-            StatType::RDHsFiltered(val) => self.rdhs_filtered += val as u64,
+            StatType::RDHsSeen(val) => self.rdh_stats.rdhs_seen += val as u64,
+            StatType::RDHsFiltered(val) => self.rdh_stats.rdhs_filtered += val as u64,
             StatType::PayloadSize(size) => self.payload_size += size as u64,
             StatType::LinksObserved(val) => self.links_observed.push(val),
-            StatType::RdhVersion(version) => self.rdh_version = version,
+            StatType::RdhVersion(version) => self.rdh_stats.record_rdh_version(version),
             StatType::DataFormat(version) => {
                 if !self.data_formats_observed.contains(&version) {
                     self.data_formats_observed.push(version);
@@ -323,7 +321,10 @@ impl<C: Config + 'static> StatsController<C> {
         }
 
         // Add detected attributes
-        report.add_detected_attribute("RDH Version".to_string(), self.rdh_version.to_string());
+        report.add_detected_attribute(
+            "RDH Version".to_string(),
+            self.rdh_stats.rdh_version().to_string(),
+        );
         let observed_data_formats_string =
             self.check_and_format_observed_data_formats(self.data_formats_observed.clone());
         report.add_detected_attribute("Data Format".to_string(), observed_data_formats_string);
@@ -358,7 +359,7 @@ impl<C: Config + 'static> StatsController<C> {
         });
         report.add_stat(StatSummary::new(
             "Total RDHs".to_string(),
-            self.rdhs_seen.to_string(),
+            self.rdh_stats.rdhs_seen.to_string(),
             None,
         ));
         report.add_stat(StatSummary::new(
@@ -389,7 +390,7 @@ impl<C: Config + 'static> StatsController<C> {
         let mut filtered_stats: Vec<StatSummary> = Vec::new();
         filtered_stats.push(StatSummary::new(
             "RDHs".to_string(),
-            self.rdhs_filtered.to_string(),
+            self.rdh_stats.rdhs_filtered.to_string(),
             None,
         ));
         // If filtering, the HBFs seen is from the filtered RDHs

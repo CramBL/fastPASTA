@@ -303,6 +303,9 @@ mod tests {
         // Stop flag should be false
         assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));
 
+        // Send RDH version seen
+        send_ch.send(StatType::RdhVersion(7)).unwrap();
+
         // Send rdh seen stat
         send_ch.send(StatType::RDHsSeen(1)).unwrap();
 
