@@ -177,7 +177,9 @@ impl<C: Config + 'static> StatsController<C> {
 
     fn process_error_messages(&mut self) {
         self.sort_errors_by_memory_address();
-        self.check_error_for_stave_id();
+        if matches!(self.rdh_stats.system_id(), Some(SystemId::ITS)) {
+            self.check_error_for_stave_id();
+        }
         if !self.config.mute_errors() {
             // Print the errors, limited if there's a max error limit set
             if self.max_tolerate_errors > 0 {
