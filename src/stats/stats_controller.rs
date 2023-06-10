@@ -38,8 +38,6 @@ pub struct StatsController<C: Config + 'static> {
     send_stats_channel: Option<flume::Sender<StatType>>,
     end_processing_flag: Arc<AtomicBool>,
 
-    data_formats_observed: Vec<u8>,
-
     fatal_error: Option<String>,
     layers_staves_seen: Vec<(u8, u8)>,
     staves_with_errors: Vec<(u8, u8)>,
@@ -66,7 +64,6 @@ impl<C: Config + 'static> StatsController<C> {
             recv_stats_channel,
             send_stats_channel: Some(send_stats_channel),
             end_processing_flag: Arc::new(AtomicBool::new(false)),
-            data_formats_observed: Vec::new(),
             fatal_error: None,
             layers_staves_seen: Vec::new(),
             staves_with_errors: Vec::new(),
@@ -159,9 +156,7 @@ impl<C: Config + 'static> StatsController<C> {
             StatType::LinksObserved(val) => self.links_observed.push(val),
             StatType::RdhVersion(version) => self.rdh_stats.record_rdh_version(version),
             StatType::DataFormat(version) => {
-                if !self.data_formats_observed.contains(&version) {
-                    self.data_formats_observed.push(version);
-                }
+                self.rdh_stats.record_data_format(version);
             }
             StatType::HBFsSeen(val) => self.rdh_stats.hbfs_seen += val,
             StatType::Fatal(err) => {
@@ -321,9 +316,11 @@ impl<C: Config + 'static> StatsController<C> {
             "RDH Version".to_string(),
             self.rdh_stats.rdh_version().to_string(),
         );
-        let observed_data_formats_string =
-            self.check_and_format_observed_data_formats(self.data_formats_observed.clone());
-        report.add_detected_attribute("Data Format".to_string(), observed_data_formats_string);
+
+        report.add_detected_attribute(
+            "Data Format".to_string(),
+            self.rdh_stats.data_format().to_string(),
+        );
         report.add_detected_attribute(
             "System ID".to_string(),
             self.system_id_observed.unwrap_or(SystemId::TST).to_string(), // Default to TST for unit tests where no RDHs are seen
@@ -363,22 +360,6 @@ impl<C: Config + 'static> StatsController<C> {
             format_links_observed(self.links_observed.clone()),
             None,
         ));
-    }
-
-    fn check_and_format_observed_data_formats(&self, observed_data_formats: Vec<u8>) -> String {
-        let mut observed_data_formats = observed_data_formats;
-        if observed_data_formats.len() > 1 {
-            observed_data_formats.sort();
-            log::error!(
-                "Multiple data formats observed: {:?}",
-                observed_data_formats
-            );
-        }
-        observed_data_formats
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>()
-            .join(", ")
     }
 
     /// Helper function that builds a vector of the stats associated with the filtered data

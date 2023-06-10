@@ -12,6 +12,7 @@ pub struct RdhStats {
     pub hbfs_seen: u32,
     /// Total payload size.
     pub payload_size: u64,
+    data_format: Option<u8>,
 }
 
 impl RdhStats {
@@ -32,5 +33,23 @@ impl RdhStats {
     pub fn rdh_version(&self) -> u8 {
         self.rdh_version
             .expect("RDH version has not been recorded!")
+    }
+
+    /// Stores the Data format for the raw data.
+    ///
+    /// Can only bet set once. Setting it more than once will panic.
+    pub fn record_data_format(&mut self, data_format: u8) {
+        if self.data_format.is_some() {
+            panic!("Cannot set Data format more than once!")
+        } else {
+            self.data_format = Some(data_format);
+        }
+    }
+
+    /// Retrieves the recorded Data format.
+    ///
+    /// Panics if the Data format was not yet set.
+    pub fn data_format(&self) -> u8 {
+        self.data_format.expect("Data format has not been recoded!")
     }
 }

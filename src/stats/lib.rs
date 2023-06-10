@@ -303,6 +303,9 @@ mod tests {
         // Send RDH version seen
         send_ch.send(StatType::RdhVersion(7)).unwrap();
 
+        // Send Data format seen
+        send_ch.send(StatType::DataFormat(99)).unwrap();
+
         // Send rdh seen stat
         send_ch.send(StatType::RDHsSeen(1)).unwrap();
 
