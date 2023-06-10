@@ -2,6 +2,8 @@
 
 use itertools::Itertools;
 
+use super::lib::SystemId;
+
 /// Stores stats extracted from the RDHs of the raw data.
 #[derive(Default)]
 pub struct RdhStats {
@@ -20,6 +22,8 @@ pub struct RdhStats {
     links: Vec<u8>,
     /// FEE IDs seen
     fee_id: Vec<u16>,
+    /// System ID observed in the data
+    system_id: Option<SystemId>,
 }
 
 impl RdhStats {
@@ -93,5 +97,21 @@ impl RdhStats {
     /// Drains the vector containing the observed FEE IDs
     pub fn consume_fee_ids_observed(&mut self) -> Vec<u16> {
         self.fee_id.drain(..).collect_vec()
+    }
+
+    /// Stores a System ID as observed.
+    ///
+    /// Attempting to set it more than once will panic.
+    pub fn record_system_id(&mut self, system_id: SystemId) {
+        if self.system_id.is_none() {
+            self.system_id = Some(system_id);
+        } else {
+            panic!("Cannot set system ID more than once!")
+        }
+    }
+
+    /// Retrieves the recorded System ID if it was set.
+    pub fn system_id(&self) -> Option<SystemId> {
+        self.system_id
     }
 }

@@ -39,7 +39,6 @@ pub struct StatsController<C: Config + 'static> {
     layers_staves_seen: Vec<(u8, u8)>,
     staves_with_errors: Vec<(u8, u8)>,
     run_trigger_type: (u32, String),
-    system_id_observed: Option<SystemId>,
     any_errors_flag: Arc<AtomicBool>,
 }
 impl<C: Config + 'static> StatsController<C> {
@@ -63,7 +62,6 @@ impl<C: Config + 'static> StatsController<C> {
             layers_staves_seen: Vec::new(),
             staves_with_errors: Vec::new(),
             run_trigger_type: (0, String::from("")),
-            system_id_observed: None,
             any_errors_flag: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -186,7 +184,7 @@ impl<C: Config + 'static> StatsController<C> {
                     self.fatal_error = Some(error);
                 }
             }
-            StatType::SystemId(sys_id) => self.system_id_observed = Some(sys_id),
+            StatType::SystemId(sys_id) => self.rdh_stats.record_system_id(sys_id),
             StatType::FeeId(id) => {
                 self.rdh_stats.record_fee_observed(id);
             }
@@ -272,7 +270,7 @@ impl<C: Config + 'static> StatsController<C> {
             ));
 
             // Check if the observed system ID is ITS
-            if matches!(self.system_id_observed, Some(SystemId::ITS)) {
+            if matches!(self.rdh_stats.system_id(), Some(SystemId::ITS)) {
                 // If no filtering, the layers and staves seen is from the total RDHs
                 report.add_stat(StatSummary::new(
                     "Layers and Staves seen".to_string(),
@@ -314,7 +312,11 @@ impl<C: Config + 'static> StatsController<C> {
         );
         report.add_detected_attribute(
             "System ID".to_string(),
-            self.system_id_observed.unwrap_or(SystemId::TST).to_string(), // Default to TST for unit tests where no RDHs are seen
+            // If no system ID is found, something is wrong, set it to "none" in red.
+            match self.rdh_stats.system_id() {
+                Some(sys_id) => sys_id.to_string(),
+                None => String::from("none").red().to_string(),
+            }, // Default to TST for unit tests where no RDHs are seen
         );
 
         report.print();
