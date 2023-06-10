@@ -83,7 +83,7 @@ impl RdhStats {
     }
 
     /// Returns a borrowed slice of the vector with the observed links
-    pub fn links_observed(&self) -> &[u8] {
+    pub fn links_as_slice(&self) -> &[u8] {
         self.links.as_slice()
     }
 
@@ -96,7 +96,7 @@ impl RdhStats {
     }
 
     /// Returns a borrowed slice of the vector with the observed FEE IDs
-    pub fn fee_ids_observed(&self) -> &[u16] {
+    pub fn fee_ids_as_slice(&self) -> &[u16] {
         self.fee_id.as_slice()
     }
 

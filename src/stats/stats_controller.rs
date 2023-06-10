@@ -336,7 +336,7 @@ impl<C: Config + 'static> StatsController<C> {
         self.rdh_stats.sort_links_observed();
         report.add_stat(StatSummary::new(
             "Links observed during scan".to_string(),
-            format_links_observed(self.rdh_stats.links_observed()),
+            format_links_observed(self.rdh_stats.links_as_slice()),
             None,
         ));
     }
@@ -364,10 +364,10 @@ impl<C: Config + 'static> StatsController<C> {
         if let Some(filter_target) = self.config.filter_target() {
             let filtered_target = match filter_target {
                 FilterTarget::Link(link_id) => {
-                    summerize_filtered_links(link_id, self.rdh_stats.links_observed())
+                    summerize_filtered_links(link_id, self.rdh_stats.links_as_slice())
                 }
                 FilterTarget::Fee(fee_id) => {
-                    summerize_filtered_fee_ids(fee_id, self.rdh_stats.fee_ids_observed())
+                    summerize_filtered_fee_ids(fee_id, self.rdh_stats.fee_ids_as_slice())
                 }
                 FilterTarget::ItsLayerStave(fee_id_no_link) => summerize_filtered_its_layer_staves(
                     fee_id_no_link,
