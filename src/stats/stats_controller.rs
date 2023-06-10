@@ -36,7 +36,6 @@ pub struct StatsController<C: Config + 'static> {
     send_stats_channel: Option<flume::Sender<StatType>>,
     end_processing_flag: Arc<AtomicBool>,
     fatal_error: Option<String>,
-    layers_staves_seen: Vec<(u8, u8)>,
     staves_with_errors: Vec<(u8, u8)>,
     any_errors_flag: Arc<AtomicBool>,
 }
@@ -58,7 +57,6 @@ impl<C: Config + 'static> StatsController<C> {
             send_stats_channel: Some(send_stats_channel),
             end_processing_flag: Arc::new(AtomicBool::new(false)),
             fatal_error: None,
-            layers_staves_seen: Vec::new(),
             staves_with_errors: Vec::new(),
             any_errors_flag: Arc::new(AtomicBool::new(false)),
         }
@@ -161,10 +159,7 @@ impl<C: Config + 'static> StatsController<C> {
                 self.fatal_error = Some(err);
             }
             StatType::LayerStaveSeen { layer, stave } => {
-                // Only add if not already seen
-                if !self.layers_staves_seen.contains(&(layer, stave)) {
-                    self.layers_staves_seen.push((layer, stave));
-                }
+                self.rdh_stats.record_layer_stave_seen((layer, stave));
             }
             StatType::RunTriggerType((raw_trigger_type, trigger_type_str)) => {
                 log::debug!(
@@ -226,7 +221,8 @@ impl<C: Config + 'static> StatsController<C> {
                 let stave = stave_number_from_feeid(fee_id);
 
                 let stave_with_error = self
-                    .layers_staves_seen
+                    .rdh_stats
+                    .layer_staves_as_slice()
                     .iter()
                     .find(|(l, s)| *l == layer && *s == stave)
                     .expect(
@@ -264,7 +260,7 @@ impl<C: Config + 'static> StatsController<C> {
                 report.add_stat(StatSummary::new(
                     "Layers and Staves seen".to_string(),
                     format_layers_and_staves(
-                        self.layers_staves_seen.drain(..).collect_vec(),
+                        self.rdh_stats.layer_staves_as_slice().to_owned(),
                         self.staves_with_errors.drain(..).collect_vec(),
                     ),
                     None,
@@ -373,9 +369,10 @@ impl<C: Config + 'static> StatsController<C> {
                 FilterTarget::Fee(fee_id) => {
                     summerize_filtered_fee_ids(fee_id, self.rdh_stats.fee_ids_observed())
                 }
-                FilterTarget::ItsLayerStave(fee_id_no_link) => {
-                    summerize_filtered_its_layer_staves(fee_id_no_link, &self.layers_staves_seen)
-                }
+                FilterTarget::ItsLayerStave(fee_id_no_link) => summerize_filtered_its_layer_staves(
+                    fee_id_no_link,
+                    self.rdh_stats.layer_staves_as_slice(),
+                ),
             };
             filtered_stats.push(filtered_target);
         }

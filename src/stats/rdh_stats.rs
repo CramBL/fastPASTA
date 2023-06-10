@@ -2,7 +2,7 @@
 
 use itertools::Itertools;
 
-use super::lib::SystemId;
+use super::{its_stats::ItsStats, lib::SystemId};
 
 /// Stores stats extracted from the RDHs of the raw data.
 #[derive(Default)]
@@ -28,6 +28,8 @@ pub struct RdhStats {
     /// Indicates the type of run the data is from.
     /// If the data is from the middle of the run, it won't be as informative.
     run_trigger_type: Option<(u32, String)>,
+    /// ITS specific stats retrieved from the RDHs
+    its_stats: ItsStats,
 }
 
 impl RdhStats {
@@ -137,5 +139,17 @@ impl RdhStats {
         self.run_trigger_type
             .take()
             .expect("Run Trigger Type has not been recorded!")
+    }
+
+    /// Stores a layer/stave seen in the raw data.
+    ///
+    /// This is only applicable if the payload is from ITS.
+    pub fn record_layer_stave_seen(&mut self, layer_stave: (u8, u8)) {
+        self.its_stats.record_layer_stave_seen(layer_stave);
+    }
+
+    /// Returns a borrowed slice of a vector containing the layer/staves seen.
+    pub fn layer_staves_as_slice(&self) -> &[(u8, u8)] {
+        self.its_stats.layer_staves_as_slice()
     }
 }
