@@ -306,6 +306,11 @@ mod tests {
         // Send Data format seen
         send_ch.send(StatType::DataFormat(99)).unwrap();
 
+        // Send Run Trigger Type
+        send_ch
+            .send(StatType::RunTriggerType((0xBEEF, "BEEF".to_owned())))
+            .unwrap();
+
         // Send rdh seen stat
         send_ch.send(StatType::RDHsSeen(1)).unwrap();
 

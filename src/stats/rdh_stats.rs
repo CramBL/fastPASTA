@@ -24,6 +24,10 @@ pub struct RdhStats {
     fee_id: Vec<u16>,
     /// System ID observed in the data
     system_id: Option<SystemId>,
+    /// First Trigger Type observed in the data.
+    /// Indicates the type of run the data is from.
+    /// If the data is from the middle of the run, it won't be as informative.
+    run_trigger_type: Option<(u32, String)>,
 }
 
 impl RdhStats {
@@ -113,5 +117,25 @@ impl RdhStats {
     /// Retrieves the recorded System ID if it was set.
     pub fn system_id(&self) -> Option<SystemId> {
         self.system_id
+    }
+
+    /// Stores the trigger type in the begging of a run as observed.
+    ///
+    /// Attempting to set it more than once will panic.
+    pub fn record_run_trigger_type(&mut self, run_trigger_type: (u32, String)) {
+        if self.run_trigger_type.is_none() {
+            self.run_trigger_type = Some(run_trigger_type);
+        } else {
+            panic!("Cannot set Run Trigger Type more than once!")
+        }
+    }
+
+    /// Returns the Trigger Type from the start of the run
+    ///
+    /// Panics if it isn't set.
+    pub fn run_trigger_type(&mut self) -> (u32, String) {
+        self.run_trigger_type
+            .take()
+            .expect("Run Trigger Type has not been recorded!")
     }
 }

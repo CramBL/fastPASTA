@@ -38,7 +38,6 @@ pub struct StatsController<C: Config + 'static> {
     fatal_error: Option<String>,
     layers_staves_seen: Vec<(u8, u8)>,
     staves_with_errors: Vec<(u8, u8)>,
-    run_trigger_type: (u32, String),
     any_errors_flag: Arc<AtomicBool>,
 }
 impl<C: Config + 'static> StatsController<C> {
@@ -61,7 +60,6 @@ impl<C: Config + 'static> StatsController<C> {
             fatal_error: None,
             layers_staves_seen: Vec::new(),
             staves_with_errors: Vec::new(),
-            run_trigger_type: (0, String::from("")),
             any_errors_flag: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -169,20 +167,11 @@ impl<C: Config + 'static> StatsController<C> {
                 }
             }
             StatType::RunTriggerType((raw_trigger_type, trigger_type_str)) => {
-                let (raw_val, string_descr) = self.run_trigger_type.to_owned();
-                if raw_val == 0 && string_descr.is_empty() {
-                    log::debug!(
-                        "Run trigger type determined to be {raw_trigger_type:#0x}: {trigger_type_str}"
-                    );
-                    self.run_trigger_type = (raw_trigger_type, trigger_type_str);
-                } else {
-                    // Error happened, the run trigger type should only be reported once
-                    let error = String::from("Run trigger type reported more than once!");
-                    self.end_processing_flag
-                        .store(true, std::sync::atomic::Ordering::SeqCst);
-                    log::error!("FATAL: {error}\nShutting down...");
-                    self.fatal_error = Some(error);
-                }
+                log::debug!(
+                    "Run trigger type determined to be {raw_trigger_type:#0x}: {trigger_type_str}"
+                );
+                self.rdh_stats
+                    .record_run_trigger_type((raw_trigger_type, trigger_type_str));
             }
             StatType::SystemId(sys_id) => self.rdh_stats.record_system_id(sys_id),
             StatType::FeeId(id) => {
@@ -337,11 +326,11 @@ impl<C: Config + 'static> StatsController<C> {
             ));
         }
 
-        let trigger_type_raw = self.run_trigger_type.0.to_owned();
+        let (trigger_type_raw, trigger_type_str) = self.rdh_stats.run_trigger_type();
         report.add_stat(StatSummary {
             statistic: "Run Trigger Type".to_string(),
             value: format!("{trigger_type_raw:#02X}"),
-            notes: self.run_trigger_type.1.to_owned(),
+            notes: trigger_type_str,
         });
         report.add_stat(StatSummary::new(
             "Total RDHs".to_string(),
