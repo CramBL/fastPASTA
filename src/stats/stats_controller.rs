@@ -21,8 +21,6 @@ use std::sync::{atomic::AtomicBool, Arc};
 /// The StatsController receives stats and builds a summary report that is printed at the end of execution.
 pub struct StatsController<C: Config + 'static> {
     rdh_stats: RdhStats,
-    /// Total payload size.
-    pub payload_size: u64,
     /// Links observed.
     pub links_observed: Vec<u8>,
     /// Time from [StatsController] is instantiated, to all data processing threads disconnected their [StatType] producer channel.
@@ -41,7 +39,7 @@ pub struct StatsController<C: Config + 'static> {
     end_processing_flag: Arc<AtomicBool>,
 
     data_formats_observed: Vec<u8>,
-    hbfs_seen: u32,
+
     fatal_error: Option<String>,
     layers_staves_seen: Vec<(u8, u8)>,
     staves_with_errors: Vec<(u8, u8)>,
@@ -59,7 +57,6 @@ impl<C: Config + 'static> StatsController<C> {
         ) = flume::unbounded();
         StatsController {
             rdh_stats: RdhStats::default(),
-            payload_size: 0,
             config: global_config,
             links_observed: Vec::new(),
             processing_time: std::time::Instant::now(),
@@ -70,7 +67,6 @@ impl<C: Config + 'static> StatsController<C> {
             send_stats_channel: Some(send_stats_channel),
             end_processing_flag: Arc::new(AtomicBool::new(false)),
             data_formats_observed: Vec::new(),
-            hbfs_seen: 0,
             fatal_error: None,
             layers_staves_seen: Vec::new(),
             staves_with_errors: Vec::new(),
@@ -159,7 +155,7 @@ impl<C: Config + 'static> StatsController<C> {
             }
             StatType::RDHsSeen(val) => self.rdh_stats.rdhs_seen += val as u64,
             StatType::RDHsFiltered(val) => self.rdh_stats.rdhs_filtered += val as u64,
-            StatType::PayloadSize(size) => self.payload_size += size as u64,
+            StatType::PayloadSize(size) => self.rdh_stats.payload_size += size as u64,
             StatType::LinksObserved(val) => self.links_observed.push(val),
             StatType::RdhVersion(version) => self.rdh_stats.record_rdh_version(version),
             StatType::DataFormat(version) => {
@@ -167,7 +163,7 @@ impl<C: Config + 'static> StatsController<C> {
                     self.data_formats_observed.push(version);
                 }
             }
-            StatType::HBFsSeen(val) => self.hbfs_seen += val,
+            StatType::HBFsSeen(val) => self.rdh_stats.hbfs_seen += val,
             StatType::Fatal(err) => {
                 if self.fatal_error.is_some() {
                     // Stop processing any error messages
@@ -285,7 +281,7 @@ impl<C: Config + 'static> StatsController<C> {
             // If no filtering, the HBFs seen is from the total RDHs
             report.add_stat(StatSummary::new(
                 "Total HBFs".to_string(),
-                self.hbfs_seen.to_string(),
+                self.rdh_stats.hbfs_seen.to_string(),
                 None,
             ));
 
@@ -312,7 +308,7 @@ impl<C: Config + 'static> StatsController<C> {
             // If no filtering, the payload size seen is from the total RDHs
             report.add_stat(StatSummary::new(
                 "Total Payload Size".to_string(),
-                format_payload(self.payload_size),
+                format_payload(self.rdh_stats.payload_size),
                 None,
             ));
         } else {
@@ -396,12 +392,12 @@ impl<C: Config + 'static> StatsController<C> {
         // If filtering, the HBFs seen is from the filtered RDHs
         filtered_stats.push(StatSummary::new(
             "HBFs".to_string(),
-            self.hbfs_seen.to_string(),
+            self.rdh_stats.hbfs_seen.to_string(),
             None,
         ));
         filtered_stats.push(StatSummary::new(
             "Total Payload Size".to_string(),
-            format_payload(self.payload_size),
+            format_payload(self.rdh_stats.payload_size),
             None,
         ));
 

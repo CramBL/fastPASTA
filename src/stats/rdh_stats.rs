@@ -1,8 +1,6 @@
-//! Holds stats directly related to the RDH, not the data it holds about the payload or source of the data.
+//! Contains the [RdhStats] struct, that holds stats extracted from the RDHs of the raw data
 
-/// Stores stats directly related to the RDH.
-///
-/// Metadata from the RDH that describes the payload or the source of the raw data is not stored here.
+/// Stores stats extracted from the RDHs of the raw data.
 #[derive(Default)]
 pub struct RdhStats {
     /// Total RDHs seen.
@@ -10,6 +8,10 @@ pub struct RdhStats {
     /// Total RDHs filtered.
     pub rdhs_filtered: u64,
     rdh_version: Option<u8>,
+    /// Total HBFs seen
+    pub hbfs_seen: u32,
+    /// Total payload size.
+    pub payload_size: u64,
 }
 
 impl RdhStats {
