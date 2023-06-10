@@ -21,8 +21,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 /// The StatsController receives stats and builds a summary report that is printed at the end of execution.
 pub struct StatsController<C: Config + 'static> {
     rdh_stats: RdhStats,
-    /// Links observed.
-    pub links_observed: Vec<u8>,
+
     /// Time from [StatsController] is instantiated, to all data processing threads disconnected their [StatType] producer channel.
     pub processing_time: std::time::Instant,
     config: &'static C,
@@ -56,7 +55,6 @@ impl<C: Config + 'static> StatsController<C> {
         StatsController {
             rdh_stats: RdhStats::default(),
             config: global_config,
-            links_observed: Vec::new(),
             processing_time: std::time::Instant::now(),
             total_errors: 0,
             reported_errors: Vec::new(),
@@ -153,7 +151,7 @@ impl<C: Config + 'static> StatsController<C> {
             StatType::RDHsSeen(val) => self.rdh_stats.rdhs_seen += val as u64,
             StatType::RDHsFiltered(val) => self.rdh_stats.rdhs_filtered += val as u64,
             StatType::PayloadSize(size) => self.rdh_stats.payload_size += size as u64,
-            StatType::LinksObserved(val) => self.links_observed.push(val),
+            StatType::LinksObserved(val) => self.rdh_stats.record_link(val),
             StatType::RdhVersion(version) => self.rdh_stats.record_rdh_version(version),
             StatType::DataFormat(version) => {
                 self.rdh_stats.record_data_format(version);
@@ -355,9 +353,10 @@ impl<C: Config + 'static> StatsController<C> {
             self.rdh_stats.rdhs_seen.to_string(),
             None,
         ));
+        self.rdh_stats.sort_links_observed();
         report.add_stat(StatSummary::new(
             "Links observed during scan".to_string(),
-            format_links_observed(self.links_observed.clone()),
+            format_links_observed(self.rdh_stats.links_observed()),
             None,
         ));
     }
@@ -385,7 +384,7 @@ impl<C: Config + 'static> StatsController<C> {
         if let Some(filter_target) = self.config.filter_target() {
             let filtered_target = match filter_target {
                 FilterTarget::Link(link_id) => {
-                    summerize_filtered_links(link_id, &self.links_observed)
+                    summerize_filtered_links(link_id, self.rdh_stats.links_observed())
                 }
                 FilterTarget::Fee(fee_id) => summerize_filtered_fee_ids(fee_id, &self.fee_id_seen),
                 FilterTarget::ItsLayerStave(fee_id_no_link) => {
@@ -414,10 +413,8 @@ fn format_payload(payload_size: u64) -> String {
 }
 
 /// Sort and format links observed
-fn format_links_observed(links_observed: Vec<u8>) -> String {
-    let mut observed_links = links_observed;
-    observed_links.sort();
-    observed_links
+fn format_links_observed(links_observed: &[u8]) -> String {
+    links_observed
         .iter()
         .map(|x| x.to_string())
         .collect::<Vec<String>>()

@@ -12,7 +12,10 @@ pub struct RdhStats {
     pub hbfs_seen: u32,
     /// Total payload size.
     pub payload_size: u64,
+    // Data format observed
     data_format: Option<u8>,
+    /// Links observed.
+    links: Vec<u8>,
 }
 
 impl RdhStats {
@@ -51,5 +54,22 @@ impl RdhStats {
     /// Panics if the Data format was not yet set.
     pub fn data_format(&self) -> u8 {
         self.data_format.expect("Data format has not been recoded!")
+    }
+
+    /// Stores a link id as observed
+    ///
+    /// Does not check for duplicates.
+    pub fn record_link(&mut self, link_id: u8) {
+        self.links.push(link_id);
+    }
+
+    /// Sorts the vector containing the observed links
+    pub fn sort_links_observed(&mut self) {
+        self.links.sort();
+    }
+
+    /// Returns a borrowed slice of the vector with the observed links
+    pub fn links_observed(&self) -> &[u8] {
+        self.links.as_slice()
     }
 }
