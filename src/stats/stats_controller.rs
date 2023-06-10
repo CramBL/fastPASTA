@@ -21,7 +21,6 @@ use std::sync::{atomic::AtomicBool, Arc};
 /// The StatsController receives stats and builds a summary report that is printed at the end of execution.
 pub struct StatsController<C: Config + 'static> {
     rdh_stats: RdhStats,
-
     /// Time from [StatsController] is instantiated, to all data processing threads disconnected their [StatType] producer channel.
     pub processing_time: std::time::Instant,
     config: &'static C,
@@ -36,11 +35,9 @@ pub struct StatsController<C: Config + 'static> {
     // This is because the event loop breaks when all sender channels are dropped, and if the StatsController keeps a reference to the channel, it will cause a deadlock.
     send_stats_channel: Option<flume::Sender<StatType>>,
     end_processing_flag: Arc<AtomicBool>,
-
     fatal_error: Option<String>,
     layers_staves_seen: Vec<(u8, u8)>,
     staves_with_errors: Vec<(u8, u8)>,
-    fee_id_seen: Vec<u16>,
     run_trigger_type: (u32, String),
     system_id_observed: Option<SystemId>,
     any_errors_flag: Arc<AtomicBool>,
@@ -65,7 +62,6 @@ impl<C: Config + 'static> StatsController<C> {
             fatal_error: None,
             layers_staves_seen: Vec::new(),
             staves_with_errors: Vec::new(),
-            fee_id_seen: Vec::new(),
             run_trigger_type: (0, String::from("")),
             system_id_observed: None,
             any_errors_flag: Arc::new(AtomicBool::new(false)),
@@ -192,10 +188,7 @@ impl<C: Config + 'static> StatsController<C> {
             }
             StatType::SystemId(sys_id) => self.system_id_observed = Some(sys_id),
             StatType::FeeId(id) => {
-                // Only add if not already seen
-                if !self.fee_id_seen.contains(&id) {
-                    self.fee_id_seen.push(id);
-                }
+                self.rdh_stats.record_fee_observed(id);
             }
         }
     }
@@ -293,7 +286,7 @@ impl<C: Config + 'static> StatsController<C> {
                 // If the target system is not ITS then just list the FEEIDs raw
                 report.add_stat(StatSummary::new(
                     "FEE IDs seen".to_string(),
-                    format_fee_ids(&mut self.fee_id_seen),
+                    format_fee_ids(self.rdh_stats.consume_fee_ids_observed()),
                     None,
                 ))
             }
@@ -386,7 +379,9 @@ impl<C: Config + 'static> StatsController<C> {
                 FilterTarget::Link(link_id) => {
                     summerize_filtered_links(link_id, self.rdh_stats.links_observed())
                 }
-                FilterTarget::Fee(fee_id) => summerize_filtered_fee_ids(fee_id, &self.fee_id_seen),
+                FilterTarget::Fee(fee_id) => {
+                    summerize_filtered_fee_ids(fee_id, self.rdh_stats.fee_ids_observed())
+                }
                 FilterTarget::ItsLayerStave(fee_id_no_link) => {
                     summerize_filtered_its_layer_staves(fee_id_no_link, &self.layers_staves_seen)
                 }
@@ -449,7 +444,7 @@ fn format_layers_and_staves(
         .join("")
 }
 
-fn format_fee_ids(fee_ids_seen: &mut [u16]) -> String {
+fn format_fee_ids(mut fee_ids_seen: Vec<u16>) -> String {
     fee_ids_seen.sort();
     fee_ids_seen
         .iter()

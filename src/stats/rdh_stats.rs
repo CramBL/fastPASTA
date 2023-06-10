@@ -1,5 +1,7 @@
 //! Contains the [RdhStats] struct, that holds stats extracted from the RDHs of the raw data
 
+use itertools::Itertools;
+
 /// Stores stats extracted from the RDHs of the raw data.
 #[derive(Default)]
 pub struct RdhStats {
@@ -16,6 +18,8 @@ pub struct RdhStats {
     data_format: Option<u8>,
     /// Links observed.
     links: Vec<u8>,
+    /// FEE IDs seen
+    fee_id: Vec<u16>,
 }
 
 impl RdhStats {
@@ -71,5 +75,23 @@ impl RdhStats {
     /// Returns a borrowed slice of the vector with the observed links
     pub fn links_observed(&self) -> &[u8] {
         self.links.as_slice()
+    }
+
+    /// Stores an observed FEE ID if not already seen.
+    pub fn record_fee_observed(&mut self, fee_id: u16) {
+        // Only add if not already seen
+        if !self.fee_id.contains(&fee_id) {
+            self.fee_id.push(fee_id);
+        }
+    }
+
+    /// Returns a borrowed slice of the vector with the observed FEE IDs
+    pub fn fee_ids_observed(&self) -> &[u16] {
+        self.fee_id.as_slice()
+    }
+
+    /// Drains the vector containing the observed FEE IDs
+    pub fn consume_fee_ids_observed(&mut self) -> Vec<u16> {
+        self.fee_id.drain(..).collect_vec()
     }
 }
