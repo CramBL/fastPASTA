@@ -23,7 +23,7 @@ use crate::{
         rdh_cru::{RdhCRU, V7},
     },
 };
-use ringbuffer::{AllocRingBuffer, RingBufferExt, RingBufferWrite};
+use ringbuffer::{ConstGenericRingBuffer, RingBufferExt, RingBufferWrite};
 
 /// Main validator that handles all checks on a specific link.
 ///
@@ -38,7 +38,7 @@ pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
     its_cdp_validator: its::cdp_running::CdpRunningValidator<T, C>,
     rdh_running_validator: RdhCruRunningChecker<T>,
     rdh_sanity_validator: RdhCruSanityValidator<T>,
-    prev_rdhs: AllocRingBuffer<T>,
+    prev_rdhs: ConstGenericRingBuffer<T, 2>,
 }
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
@@ -82,7 +82,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + 'static> LinkValidator<T, C> {
                 ),
                 rdh_running_validator: RdhCruRunningChecker::default(),
                 rdh_sanity_validator,
-                prev_rdhs: AllocRingBuffer::with_capacity(2),
+                prev_rdhs: ConstGenericRingBuffer::<_, 2>::new(),
             },
             send_channel,
         )
