@@ -4,7 +4,7 @@
 use super::data_words::{ib_data_word_id_to_lane, ob_data_word_id_to_lane};
 
 /// Enum for marking if the data is from the inner or outer barrel
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Barrel {
     /// Data is from the inner barrel
     Inner,

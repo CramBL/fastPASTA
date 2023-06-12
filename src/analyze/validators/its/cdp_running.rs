@@ -556,9 +556,9 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 // Process data for each lane
                 // New decoder for each lane
                 let mut decoder =
-                    AlpideFrameDecoder::new(alpide_readout_frame.from_barrel.clone().unwrap());
+                    AlpideFrameDecoder::new(alpide_readout_frame.from_barrel.unwrap());
                 let lane_number =
-                    lane_data_frame.lane_number(alpide_readout_frame.from_barrel.clone().unwrap());
+                    lane_data_frame.lane_number(alpide_readout_frame.from_barrel.unwrap());
                 log::trace!("Processing lane #{lane_number}");
                 decoder.validate_alpide_frame(lane_data_frame);
 
