@@ -10,23 +10,17 @@ pub(crate) fn its_readout_frame_view<T: RDH>(
     cdp_chunk: input::data_wrapper::CdpChunk<T>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut stdio_lock = std::io::stdout().lock();
-    print_start_of_its_readout_frame_header_text(&mut stdio_lock)?;
+    super::print_start_of_its_readout_frame_header_text(&mut stdio_lock)?;
     for (rdh, payload, rdh_mem_pos) in cdp_chunk.into_iter() {
-        print_rdh_its_readout_frame_view(&rdh, &rdh_mem_pos, &mut stdio_lock)?;
+        super::print_rdh_its_readout_frame_view(&rdh, &rdh_mem_pos, &mut stdio_lock)?;
         let gbt_word_chunks = preprocess_payload(&payload)?;
         for (idx, gbt_word) in gbt_word_chunks.enumerate() {
             let word = &gbt_word[..10];
-            let mem_pos_str = mem_pos_calc_to_string(idx, rdh.data_format(), rdh_mem_pos);
+            let mem_pos_str = super::mem_pos_calc_to_string(idx, rdh.data_format(), rdh_mem_pos);
             generate_status_word_view(word, mem_pos_str, &mut stdio_lock)?;
         }
     }
     Ok(())
-}
-
-fn mem_pos_calc_to_string(idx: usize, data_format: u8, rdh_mem_pos: u64) -> String {
-    let current_mem_pos =
-        super::super::lib::calc_current_word_mem_pos(idx, data_format, rdh_mem_pos);
-    format!("{current_mem_pos:>8X}:")
 }
 
 fn generate_status_word_view(
@@ -48,41 +42,6 @@ fn generate_status_word_view(
         }
     }
 
-    Ok(())
-}
-
-fn print_start_of_its_readout_frame_header_text(
-    stdio_lock: &mut std::io::StdoutLock,
-) -> Result<(), std::io::Error> {
-    writeln!(
-        stdio_lock,
-        "\nMemory    Word{:>37}{:>12}{:>12}{:>12}{:>12}{:>19}",
-        "Trig.", "Packet", "Expect", "Link", "Lane  ", "Trigger  "
-    )?;
-    writeln!(
-        stdio_lock,
-        "Position  type{:>36} {:>12}{:>12}{:>12}{:>12}{:>19}\n",
-        "type", "status", "Data? ", "ID  ", "faults", "Orbit_BC "
-    )?;
-    Ok(())
-}
-
-fn print_rdh_its_readout_frame_view<T: RDH>(
-    rdh: &T,
-    rdh_mem_pos: &u64,
-    stdio_lock: &mut std::io::StdoutLock,
-) -> Result<(), std::io::Error> {
-    let trig_str = super::super::lib::rdh_trigger_type_as_string(rdh);
-    let orbit = rdh.rdh1().orbit;
-    let orbit_bc_str = format!("{orbit}_{bc:>4}", bc = rdh.rdh1().bc());
-
-    writeln!(
-        stdio_lock,
-        "{rdh_mem_pos:>8X}: RDH v{} stop={}{trig_str:>28}                                #{}   {orbit_bc_str:>31}",
-        rdh.version(),
-        rdh.stop_bit(),
-        rdh.link_id()
-    )?;
     Ok(())
 }
 
