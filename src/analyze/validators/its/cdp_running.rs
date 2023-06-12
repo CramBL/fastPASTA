@@ -559,7 +559,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                     AlpideFrameDecoder::new(alpide_readout_frame.from_barrel.clone().unwrap());
                 let lane_id = lane_data_frame.lane_id;
                 log::trace!("Processing lane ID: {lane_id:02X}");
-                decoder.process_alpide_frame(lane_data_frame);
+                decoder.validate_alpide_frame(lane_data_frame);
 
                 if decoder.has_errors() {
                     let mut lane_error_string = format!("\n\tLane {lane_id} errors:");

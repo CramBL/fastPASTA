@@ -35,7 +35,7 @@ impl AlpideFrameDecoder {
         }
     }
 
-    pub fn process_alpide_frame(&mut self, lane_data_frame: LaneDataFrame) {
+    pub fn validate_alpide_frame(&mut self, lane_data_frame: LaneDataFrame) {
         self.lane_id = lane_data_frame.lane_id;
         log::debug!(
             "Processing ALPIDE frame for lane {}",
