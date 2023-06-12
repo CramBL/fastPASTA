@@ -19,7 +19,12 @@ pub fn generate_view<T: RDH>(
             super::hbf_view::hbf_view(cdp_chunk, send_stats_ch, its_payload_fsm_cont)?
         }
         ViewCommands::ItsReadoutFrames => {
-            super::its_readout_frame_view::its_readout_frame_view(cdp_chunk)?
+            super::its_readout_frame::its_readout_frame_view::its_readout_frame_view(cdp_chunk)?
+        }
+        ViewCommands::ItsReadoutFramesData => {
+            super::its_readout_frame::its_readout_frame_data_view::its_readout_frame_data_view(
+                cdp_chunk,
+            )?
         }
     }
     Ok(())
