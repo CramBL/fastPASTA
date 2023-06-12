@@ -1,8 +1,7 @@
 #![allow(dead_code)]
-use crate::words::its::alpide_words::{AlpideFrameChipData, LaneDataFrame};
+use crate::words::its::alpide_words::{AlpideFrameChipData, Barrel, LaneDataFrame};
 use itertools::Itertools;
 
-#[derive(Default)]
 pub struct AlpideFrameDecoder {
     // Works on a single lane at a time
     lane_id: u8,
@@ -14,9 +13,28 @@ pub struct AlpideFrameDecoder {
     // Indicate that the next byte should be saved as bunch counter for frame
     next_is_bc: bool,
     errors: Vec<String>,
+    barrel: Option<Barrel>,
 }
 
 impl AlpideFrameDecoder {
+    pub fn new(data_origin: Barrel) -> Self {
+        Self {
+            lane_id: 0,
+            is_header_seen: false,
+            last_chip_id: 0,
+            last_region_id: 0,
+            skip_n_bytes: 0,
+            chip_data: match data_origin {
+                // ALPIDE data from IB should have 9 chips per frame, OB should have 7
+                Barrel::Inner => Vec::with_capacity(9),
+                Barrel::Outer => Vec::with_capacity(7),
+            },
+            next_is_bc: false,
+            errors: Vec::new(),
+            barrel: Some(data_origin),
+        }
+    }
+
     pub fn process_alpide_frame(&mut self, lane_data_frame: LaneDataFrame) {
         self.lane_id = lane_data_frame.lane_id;
         log::debug!(
@@ -176,6 +194,13 @@ impl AlpideFrameDecoder {
             Ok(())
         }
     }
+
+    // fn check_chip_id_order(&self) -> Result<(), String> {
+    //     // Get the chip IDs from the chip data vector
+    //     let chip_ids: Vec<u8> = self.chip_data.iter().map(|cd| cd.chip_id).collect();
+    //     // Check if the chip IDs are in expected order
+    //     match self.
+    // }
 
     pub fn has_errors(&self) -> bool {
         !self.errors.is_empty()
