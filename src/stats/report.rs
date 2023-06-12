@@ -141,7 +141,9 @@ fn format_super_table(super_table: &Table, processing_time: std::time::Duration)
 
     let row_count = modded_table.count_rows();
     modded_table
-        .with(Panel::footer(format!("Processed in {processing_time:?}")))
+        .with(Panel::footer(format!(
+            "Processed in {processing_time:.02?}"
+        )))
         .with(
             Modify::new(Rows::single(row_count))
                 .with(Alignment::center())
