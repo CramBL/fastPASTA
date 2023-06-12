@@ -14,7 +14,6 @@ use crate::{
         its::{layer_from_feeid, stave_number_from_feeid},
     },
 };
-use itertools::Itertools;
 use owo_colors::OwoColorize;
 use std::sync::{atomic::AtomicBool, Arc};
 
@@ -259,13 +258,9 @@ impl<C: Config + 'static> StatsController<C> {
             // Check if the observed system ID is ITS
             if matches!(self.rdh_stats.system_id(), Some(SystemId::ITS)) {
                 // If no filtering, the layers and staves seen is from the total RDHs
-                report.add_stat(StatSummary::new(
-                    "Layers and Staves seen".to_string(),
-                    format_layers_and_staves(
-                        self.rdh_stats.layer_staves_as_slice().to_owned(),
-                        self.staves_with_errors.drain(..).collect_vec(),
-                    ),
-                    None,
+                report.add_stat(summerize_layers_staves_seen(
+                    self.rdh_stats.layer_staves_as_slice(),
+                    &self.staves_with_errors,
                 ));
             } else {
                 // If the target system is not ITS then just list the FEEIDs raw
@@ -344,7 +339,7 @@ impl<C: Config + 'static> StatsController<C> {
     }
 
     /// Helper function that builds a vector of the stats associated with the filtered data
-    fn add_filtered_stats(&self) -> Vec<StatSummary> {
+    fn add_filtered_stats(&mut self) -> Vec<StatSummary> {
         let mut filtered_stats: Vec<StatSummary> = Vec::new();
         filtered_stats.push(StatSummary::new(
             "RDHs".to_string(),
@@ -379,8 +374,41 @@ impl<C: Config + 'static> StatsController<C> {
             filtered_stats.push(filtered_target);
         }
 
+        if self
+            .config
+            .filter_target()
+            .is_some_and(|target| !matches!(target, FilterTarget::ItsLayerStave(_)))
+        {
+            // Check if the observed system ID is ITS
+            if matches!(self.rdh_stats.system_id(), Some(SystemId::ITS)) {
+                // If no filtering, the layers and staves seen is from the total RDHs
+                filtered_stats.push(summerize_layers_staves_seen(
+                    self.rdh_stats.layer_staves_as_slice(),
+                    self.staves_with_errors.as_slice(),
+                ));
+            } else {
+                // If the target system is not ITS then just list the FEEIDs raw
+                filtered_stats.push(StatSummary::new(
+                    "FEE IDs seen".to_string(),
+                    format_fee_ids(self.rdh_stats.consume_fee_ids_observed()),
+                    None,
+                ))
+            }
+        }
+
         filtered_stats
     }
+}
+
+fn summerize_layers_staves_seen(
+    layers_staves_seen: &[(u8, u8)],
+    staves_with_errors: &[(u8, u8)],
+) -> StatSummary {
+    StatSummary::new(
+        "Layers and Staves seen".to_string(),
+        format_layers_and_staves(layers_staves_seen.to_owned(), staves_with_errors.to_owned()),
+        None,
+    )
 }
 
 /// Format and add payload size seen/loaded
