@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 pub struct AlpideFrameDecoder {
     // Works on a single lane at a time
-    lane_id: u8,
+    lane_number: u8,
     is_header_seen: bool, // Set when a Chip Header is seen, reset when a Chip Trailer is seen
     last_chip_id: u8,     // 4 bits
     last_region_id: u8,   // 5 bits
@@ -19,14 +19,14 @@ pub struct AlpideFrameDecoder {
 impl AlpideFrameDecoder {
     pub fn new(data_origin: Barrel) -> Self {
         Self {
-            lane_id: 0,
+            lane_number: 0,
             is_header_seen: false,
             last_chip_id: 0,
             last_region_id: 0,
             skip_n_bytes: 0,
             chip_data: match data_origin {
                 // ALPIDE data from IB should have 9 chips per frame, OB should have 7
-                Barrel::Inner => Vec::with_capacity(9),
+                Barrel::Inner => Vec::with_capacity(1),
                 Barrel::Outer => Vec::with_capacity(7),
             },
             next_is_bc: false,
@@ -36,7 +36,7 @@ impl AlpideFrameDecoder {
     }
 
     pub fn validate_alpide_frame(&mut self, lane_data_frame: LaneDataFrame) {
-        self.lane_id = lane_data_frame.lane_id;
+        self.lane_number = lane_data_frame.lane_number(self.barrel.unwrap());
         log::debug!(
             "Processing ALPIDE frame for lane {}",
             lane_data_frame.lane_id
@@ -50,6 +50,10 @@ impl AlpideFrameDecoder {
         // Check all bunch counters match
         if let Err(msg) = self.check_bunch_counters() {
             // if it is already in the errors_per_lane, add it to the list
+            self.errors.push(msg);
+        }
+        // Check chip ID order
+        if let Err(msg) = self.check_chip_id_order() {
             self.errors.push(msg);
         }
     }
@@ -195,12 +199,33 @@ impl AlpideFrameDecoder {
         }
     }
 
-    // fn check_chip_id_order(&self) -> Result<(), String> {
-    //     // Get the chip IDs from the chip data vector
-    //     let chip_ids: Vec<u8> = self.chip_data.iter().map(|cd| cd.chip_id).collect();
-    //     // Check if the chip IDs are in expected order
-    //     match self.
-    // }
+    fn check_chip_id_order(&self) -> Result<(), String> {
+        // Get the chip IDs from the chip data vector
+        let chip_ids: Vec<u8> = self.chip_data.iter().map(|cd| cd.chip_id).collect();
+        // Check if the chip IDs are in expected order
+        if let Some(data_from) = &self.barrel {
+            match data_from {
+                Barrel::Inner => {
+                    if chip_ids.len() != 1 {
+                        return Err(format!(
+                            "Expected 1 Chip ID in IB but found {id_cnt}: {chip_ids:?}",
+                            id_cnt = chip_ids.len(),
+                        ));
+                    }
+                    // Check that the chip ID matches the lane number
+                    if chip_ids[0] != self.lane_number {
+                        return Err(format!(
+                            "Expected Chip ID {lane} in IB but found {chip_id}",
+                            lane = self.lane_number,
+                            chip_id = chip_ids[0]
+                        ));
+                    }
+                }
+                Barrel::Outer => todo!(),
+            }
+        }
+        Ok(())
+    }
 
     pub fn has_errors(&self) -> bool {
         !self.errors.is_empty()
