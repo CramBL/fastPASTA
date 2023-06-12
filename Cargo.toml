@@ -1,6 +1,6 @@
 [package]
 name = "fastpasta"
-version = "1.7.5" # the current version, obeying semver
+version = "1.8.0" # the current version, obeying semver
 edition = "2021"
 readme = "README.md"
 repository = "https://gitlab.cern.ch/mkonig/fastpasta"
