@@ -17,7 +17,7 @@ use crate::{
     },
     words::{
         its::{
-            alpide_words::AlpideReadoutFrame,
+            alpide_words::{AlpideReadoutFrame, Barrel},
             data_words::{ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane},
             status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
         },
@@ -344,7 +344,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
         // Matches if there is an alpide_readout_frame. If not we are not collecting data ie. ALPIDE checks are not enabled.
         if let Some(alpide_readout_frame) = &mut self.alpide_readout_frame {
-            alpide_readout_frame.store_lane_data(ib_slice);
+            alpide_readout_frame.store_lane_data(ib_slice, Barrel::Inner);
         }
     }
 
@@ -373,7 +373,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
         // If there is no readout frame, we are not collecting data.
         if let Some(alpide_readout_frame) = &mut self.alpide_readout_frame {
-            alpide_readout_frame.store_lane_data(ob_slice);
+            alpide_readout_frame.store_lane_data(ob_slice, Barrel::Outer);
         }
     }
 

@@ -1,12 +1,21 @@
 #![allow(dead_code)]
 //! Word definitions and utility functions for working with ALPIDE data words
 
+/// Enum for marking if the data is from the inner or outer barrel
+pub enum Barrel {
+    /// Data is from the inner barrel
+    Inner,
+    /// Data is from the outer barrel
+    Outer,
+}
+
 /// Struct for storing the contents of a single ALPIDE readout frame
 #[derive(Default)]
 pub struct AlpideReadoutFrame {
     pub(crate) frame_start_mem_pos: u64,
     pub(crate) frame_end_mem_pos: u64,
     pub(crate) lane_data_frames: Vec<LaneDataFrame>,
+    from_barrel: Option<Barrel>,
 }
 
 impl AlpideReadoutFrame {
@@ -19,21 +28,25 @@ impl AlpideReadoutFrame {
     }
 
     /// Stores the 9 data bytes from an ITS data word byte data slice (does not store the ID byte more than once) by appending it to the lane data.
-    pub fn store_lane_data(&mut self, data_slice: &[u8]) {
+    pub fn store_lane_data(&mut self, data_word: &[u8], from_barrel: Barrel) {
         match self
             .lane_data_frames
             .iter_mut()
-            .find(|lane_data_frame| lane_data_frame.lane_id == data_slice[9])
+            .find(|lane_data_frame| lane_data_frame.lane_id == data_word[9])
         {
             Some(lane_data_frame) => {
                 lane_data_frame
                     .lane_data
-                    .extend_from_slice(&data_slice[0..=8]);
+                    .extend_from_slice(&data_word[0..=8]);
             }
-            None => self.lane_data_frames.push(LaneDataFrame {
-                lane_id: data_slice[9],
-                lane_data: data_slice[0..=8].to_vec(),
-            }),
+            None => {
+                debug_assert!(self.from_barrel.is_none());
+                self.from_barrel = Some(from_barrel);
+                self.lane_data_frames.push(LaneDataFrame {
+                    lane_id: data_word[9],
+                    lane_data: data_word[0..=8].to_vec(),
+                })
+            }
         }
     }
 }
