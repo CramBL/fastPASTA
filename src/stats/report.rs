@@ -167,7 +167,9 @@ fn format_global_stats_sub_table(global_stats_table: &mut Table) {
     global_stats_table
         .with(style.clone())
         .with(Modify::new(Rows::single(0)).with(Format::content(|x| x.to_uppercase())))
-        .with(Modify::new(Columns::single(0)).with(Format::content(|s| s.blue().to_string())))
+        .with(
+            Modify::new(Columns::single(0)).with(Format::content(|s| s.bright_blue().to_string())),
+        )
         .with(
             Modify::new(Columns::single(1)).with(Format::content(|s| s.bright_cyan().to_string())),
         )
@@ -192,6 +194,7 @@ enum SubtableColor {
     Purple,
     Green,
     Blue,
+    BrightBlue,
     Yellow,
     Red,
 }
@@ -221,6 +224,7 @@ fn format_sub_table(subtable: Table, header: String, color: SubtableColor) -> Ta
                     SubtableColor::Purple => x.bright_purple().to_string(),
                     SubtableColor::Green => x.green().to_string(),
                     SubtableColor::Blue => x.blue().to_string(),
+                    SubtableColor::BrightBlue => x.bright_blue().to_string(),
                     SubtableColor::Yellow => x.yellow().to_string(),
                     SubtableColor::Red => x.red().to_string(),
                 }
@@ -231,6 +235,7 @@ fn format_sub_table(subtable: Table, header: String, color: SubtableColor) -> Ta
             SubtableColor::Purple => x.bright_purple().to_string(),
             SubtableColor::Green => x.green().to_string(),
             SubtableColor::Blue => x.blue().to_string(),
+            SubtableColor::BrightBlue => x.bright_blue().to_string(),
             SubtableColor::Yellow => x.yellow().to_string(),
             SubtableColor::Red => x.red().to_string(),
         })),
