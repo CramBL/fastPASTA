@@ -42,4 +42,6 @@ pub enum ViewCommands {
     Hbf,
     /// Print formatted ITS readout frames to stdout
     ItsReadoutFrames,
+    /// Print formatted ITS readout frames with Data Words to stdout
+    ItsReadoutFramesData,
 }
