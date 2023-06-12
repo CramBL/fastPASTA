@@ -30,19 +30,19 @@ fancy-regex = "0.11.0"
 
 [dependencies]
 byteorder = "1.4.3"
-clap = { version = "4.3.1", features = ["derive"] }
+clap = { version = "4.3.3", features = ["derive"] }
 crossbeam-channel = "0.5.8"
 ctrlc = { version = "3.4.0", features = ["termination"] }
 flume = "0.10.14"
 fmt = "0.1.0"
 itertools = "0.10.5"
-log = "0.4.18"
+log = "0.4.19"
 owo-colors = "3.5.0"
 regex = "1.8.4"
-ringbuffer = "0.13.0"
+ringbuffer = "0.14.0"
 sm = "0.9.0"
 stderrlog = "0.5.4"
-tabled = { version = "0.12.1", features = ["color"]}
+tabled = { version = "0.12.2", features = ["color"]}
 
 [[bench]]
 name = "benchmarks"
