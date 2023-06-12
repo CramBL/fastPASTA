@@ -25,6 +25,13 @@ pub fn ob_data_word_id_to_connector(data_word_id: u8) -> u8 {
     (data_word_id >> 3) & 0b11
 }
 
+/// Takes an OB data word ID and returns the lane number
+#[inline]
+pub fn ib_data_word_id_to_lane(data_word_id: u8) -> u8 {
+    // let lane_id = data_word_id & 0x1F;
+    data_word_id & 0x1F
+}
+
 // Helper function to get the lane number from an ob lane ID
 #[inline]
 fn ob_lane(ob_id: ObLane) -> u8 {

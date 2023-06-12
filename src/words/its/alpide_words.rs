@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 //! Word definitions and utility functions for working with ALPIDE data words
 
+use super::data_words::{ib_data_word_id_to_lane, ob_data_word_id_to_lane};
+
 /// Enum for marking if the data is from the inner or outer barrel
 #[derive(Debug, PartialEq, Clone)]
 pub enum Barrel {
@@ -58,6 +60,18 @@ pub struct LaneDataFrame {
     pub(crate) lane_id: u8,
     /// The data contents of data words (the 9 bytes of data excluding the ID)
     pub(crate) lane_data: Vec<u8>,
+}
+
+impl LaneDataFrame {
+    /// Returns the lane number for the [LaneDataFrame] based on the [Barrel] it is from
+    ///
+    /// The [LaneDataFrame] does not store the barrel it is from, so this must be provided.
+    pub fn lane_number(&self, from_barrel: Barrel) -> u8 {
+        match from_barrel {
+            Barrel::Inner => ib_data_word_id_to_lane(self.lane_id),
+            Barrel::Outer => ob_data_word_id_to_lane(self.lane_id),
+        }
+    }
 }
 
 /// All the possible words that can be found in the ALPIDE data stream

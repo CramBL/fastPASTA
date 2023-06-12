@@ -557,17 +557,18 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 // New decoder for each lane
                 let mut decoder =
                     AlpideFrameDecoder::new(alpide_readout_frame.from_barrel.clone().unwrap());
-                let lane_id = lane_data_frame.lane_id;
-                log::trace!("Processing lane ID: {lane_id:02X}");
+                let lane_number =
+                    lane_data_frame.lane_number(alpide_readout_frame.from_barrel.clone().unwrap());
+                log::trace!("Processing lane #{lane_number}");
                 decoder.validate_alpide_frame(lane_data_frame);
 
                 if decoder.has_errors() {
-                    let mut lane_error_string = format!("\n\tLane {lane_id} errors:");
+                    let mut lane_error_string = format!("\n\tLane {lane_number} errors:");
 
                     decoder.consume_errors().for_each(|err| {
                         lane_error_string.push_str(&err);
                     });
-                    lane_error_msgs.push((lane_id, lane_error_string));
+                    lane_error_msgs.push((lane_number, lane_error_string));
                 }
             });
 
@@ -575,7 +576,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         if !lane_error_msgs.is_empty() {
             let lane_error_ids_str = lane_error_msgs
                 .iter()
-                .map(|(lane_id, _)| format!("{lane_id}"))
+                .map(|(lane_number, _)| format!("{lane_number}"))
                 .collect::<Vec<String>>()
                 .join(", ");
             let mut error_string = format!(
