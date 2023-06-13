@@ -67,7 +67,7 @@ impl AlpideReadoutFrame {
         // Check number of lanes is correct, then if IB, also check lane grouping is correct
         if self.lane_data_frames.len() != expect_lane_count {
             Err(format!(
-                "Invalid number of lanes: {num_lanes}, expected 3",
+                "Invalid number of lanes: {num_lanes}, expected {expect_lane_count}",
                 num_lanes = self.lane_data_frames.len()
             ))
         } else if self.from_barrel() == Barrel::Inner {
