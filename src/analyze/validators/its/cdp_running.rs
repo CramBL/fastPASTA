@@ -3,7 +3,7 @@
 //! [CdpRunningValidator] delegates sanity checks to word specific sanity checkers.
 
 use super::{
-    alpide_words::AlpideFrameDecoder,
+    alpide_words::AlpideLaneFrameDecoder,
     data_words::DATA_WORD_SANITY_CHECKER,
     its_payload_fsm_cont::{self, ItsPayloadFsmContinuous},
     lib::ItsPayloadWord,
@@ -18,7 +18,10 @@ use crate::{
     words::{
         its::{
             alpide_words::{AlpideReadoutFrame, Barrel},
-            data_words::{ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane},
+            data_words::{
+                ib_data_word_id_to_lane, ob_data_word_id_to_input_number_connector,
+                ob_data_word_id_to_lane,
+            },
             status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
         },
         lib::{ByteSlice, RDH},
@@ -548,6 +551,44 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         let mem_pos_end = alpide_readout_frame.frame_end_mem_pos;
         let mut lane_error_msgs: Vec<(u8, String)> = Vec::new();
 
+        // Check if the frame is valid in terms of number of lanes in the data.
+        if (if matches!(alpide_readout_frame.from_barrel, Some(Barrel::Inner)) {
+            match alpide_readout_frame.lane_data_frames.len() {
+                // Valid to have 3 lanes
+                3 => Ok(()),
+                // Invalid number of lanes
+                _ => Err(()),
+            }
+            // Outer barrel
+        } else {
+            match alpide_readout_frame.lane_data_frames.len() {
+                14 => Ok(()),
+                // Invalid number of lanes
+                _ => Err(()),
+            }
+        })
+        .is_err()
+        {
+            let is_ib = matches!(alpide_readout_frame.from_barrel, Some(Barrel::Inner));
+            let err_code = if is_ib { "E72" } else { "E73" };
+            let err_msg = format!(
+                "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} Invalid number of lanes in frame: {num_lanes}. Lanes: {lanes:?}
+                ",
+                num_lanes = alpide_readout_frame.lane_data_frames.len(),
+                feeid=self.current_rdh.as_ref().unwrap().fee_id(),
+                lanes = alpide_readout_frame.lane_data_frames.iter().map(|lane|
+                    if is_ib {
+                        ib_data_word_id_to_lane(lane.lane_id)
+                    } else {
+                        ob_data_word_id_to_lane(lane.lane_id)
+                    }
+                    ).collect::<Vec<u8>>(),
+            );
+            self.stats_send_ch
+                .send(StatType::Error(err_msg))
+                .expect("Failed to send error to stats channel");
+        }
+
         // Process the data frame
         alpide_readout_frame
             .lane_data_frames
@@ -556,14 +597,14 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 // Process data for each lane
                 // New decoder for each lane
                 let mut decoder =
-                    AlpideFrameDecoder::new(alpide_readout_frame.from_barrel.unwrap());
+                    AlpideLaneFrameDecoder::new(alpide_readout_frame.from_barrel.unwrap());
                 let lane_number =
                     lane_data_frame.lane_number(alpide_readout_frame.from_barrel.unwrap());
                 log::trace!("Processing lane #{lane_number}");
                 decoder.validate_alpide_frame(lane_data_frame);
 
                 if decoder.has_errors() {
-                    let mut lane_error_string = format!("\n\tLane {lane_number} errors:");
+                    let mut lane_error_string = format!("\n\tLane {lane_number} errors: ");
 
                     decoder.consume_errors().for_each(|err| {
                         lane_error_string.push_str(&err);
@@ -574,13 +615,15 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
 
         // Format and send all errors
         if !lane_error_msgs.is_empty() {
+            let is_ib = matches!(alpide_readout_frame.from_barrel, Some(Barrel::Inner));
+            let err_code = if is_ib { "E74" } else { "E75" };
             let lane_error_ids_str = lane_error_msgs
                 .iter()
                 .map(|(lane_number, _)| format!("{lane_number}"))
                 .collect::<Vec<String>>()
                 .join(", ");
             let mut error_string = format!(
-                "{mem_pos_start:#X}: FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has errors in lane [{lane_error_ids_str}]:", feeid=self.current_rdh.as_ref().unwrap().fee_id()
+                "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has errors in lane [{lane_error_ids_str}]:", feeid=self.current_rdh.as_ref().unwrap().fee_id()
             );
             for (_lane_id, lane_error_msg) in lane_error_msgs {
                 error_string.push_str(&lane_error_msg);
