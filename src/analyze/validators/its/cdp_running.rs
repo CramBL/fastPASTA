@@ -553,12 +553,11 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
 
         // Check if the frame is valid in terms of lanes in the data.
         if let Err(err_msg) = alpide_readout_frame.check_frame_lanes_valid() {
+            // Format and send error message
             let is_ib = alpide_readout_frame.from_barrel() == Barrel::Inner;
             let err_code = if is_ib { "E72" } else { "E73" };
             let err_msg = format!(
-                "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} {err_msg}: {num_lanes}. Lanes: {lanes:?}
-                ",
-                num_lanes = alpide_readout_frame.lane_data_frames.len(),
+                "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} {err_msg}. Lanes: {lanes:?}",
                 feeid=self.current_rdh.as_ref().unwrap().fee_id(),
                 lanes = alpide_readout_frame.lane_data_frames.iter().map(|lane|
                     if is_ib {
