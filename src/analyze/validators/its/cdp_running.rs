@@ -23,7 +23,7 @@ use crate::{
                 ol_data_word_id_to_lane,
             },
             status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
-            Layer,
+            Layer, Stave,
         },
         lib::{ByteSlice, RDH},
     },
@@ -61,6 +61,8 @@ pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
     // Set to true when a TDH with internal trigger bit set is found.
     // Set to false when it's true and a TDT is found.
     is_readout_frame: bool,
+    // If the config is set to check ALPIDE data, the data is collected for a stave.
+    from_stave: Option<Stave>,
 }
 
 impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
@@ -94,6 +96,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
             // If the config is set to check ALPIDE data, and a filter for a stave is set, then allocate space for ALPIDE data.
             alpide_readout_frame: None,
             is_readout_frame: false,
+            from_stave: None,
         }
     }
 
@@ -146,6 +149,12 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
         self.is_new_data = true;
         self.gbt_word_counter = 0;
+        // If the config is set to check ALPIDE data and the stave the data is from is not known yet, then set the stave.
+        if self.from_stave.is_none() && self.alpide_checks_enabled {
+            self.from_stave = Some(Stave::from_feeid(
+                self.current_rdh.as_ref().unwrap().fee_id(),
+            ));
+        }
     }
 
     /// This function has to be called for every GBT word
