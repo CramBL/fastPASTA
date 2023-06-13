@@ -387,7 +387,12 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
         // If there is no readout frame, we are not collecting data.
         if let Some(alpide_readout_frame) = &mut self.alpide_readout_frame {
-            alpide_readout_frame.store_lane_data(ob_slice, Layer::Outer);
+            let from_layer = match self.from_stave.unwrap() {
+                Stave::MiddleLayer { .. } => Layer::Middle,
+                Stave::OuterLayer { .. } => Layer::Outer,
+                _ => unreachable!(),
+            };
+            alpide_readout_frame.store_lane_data(ob_slice, from_layer);
         }
     }
 
