@@ -20,7 +20,7 @@ use crate::{
             alpide_words::AlpideReadoutFrame,
             data_words::{
                 ib_data_word_id_to_lane, ob_data_word_id_to_input_number_connector,
-                ol_data_word_id_to_lane,
+                ob_data_word_id_to_lane,
             },
             status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
             Layer, Stave,
@@ -367,7 +367,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
             return;
         }
 
-        let lane_id = ol_data_word_id_to_lane(ob_slice[9]);
+        let lane_id = ob_data_word_id_to_lane(ob_slice[9]);
         // lane in active_lanes
         let active_lanes = self.current_ihw.as_ref().unwrap().active_lanes();
         if !is_lane_active(lane_id, active_lanes) {
@@ -570,7 +570,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         // Check if the frame is valid in terms of lanes in the data.
         if let Err(err_msg) = alpide_readout_frame.check_frame_lanes_valid() {
             // Format and send error message
-            let is_ib = alpide_readout_frame.from_barrel() == Layer::Inner;
+            let is_ib = alpide_readout_frame.from_layer() == Layer::Inner;
             let err_code = if is_ib { "E72" } else { "E73" };
             let err_msg = format!(
                 "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} {err_msg}. Lanes: {lanes:?}",
@@ -579,7 +579,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                     if is_ib {
                         ib_data_word_id_to_lane(lane.lane_id)
                     } else {
-                        ol_data_word_id_to_lane(lane.lane_id)
+                        ob_data_word_id_to_lane(lane.lane_id)
                     }
                     ).collect::<Vec<u8>>(),
             );
@@ -589,15 +589,15 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
 
         // Process the data frame
-        let from_barrel = alpide_readout_frame.from_barrel();
+        let from_layer = alpide_readout_frame.from_layer();
         alpide_readout_frame
             .lane_data_frames
             .drain(..)
             .for_each(|lane_data_frame| {
                 // Process data for each lane
                 // New decoder for each lane
-                let mut decoder = AlpideLaneFrameDecoder::new(from_barrel);
-                let lane_number = lane_data_frame.lane_number(from_barrel);
+                let mut decoder = AlpideLaneFrameDecoder::new(from_layer);
+                let lane_number = lane_data_frame.lane_number(from_layer);
                 log::trace!("Processing lane #{lane_number}");
 
                 if let Err(error_msgs) = decoder.validate_alpide_frame(lane_data_frame) {
@@ -611,7 +611,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
 
         // Format and send all errors
         if !lane_error_msgs.is_empty() {
-            let is_ib = alpide_readout_frame.from_barrel() == Layer::Inner;
+            let is_ib = alpide_readout_frame.from_layer() == Layer::Inner;
             let err_code = if is_ib { "E74" } else { "E75" };
             let lane_error_ids_str = lane_error_msgs
                 .iter()

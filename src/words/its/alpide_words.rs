@@ -2,7 +2,7 @@
 //! Word definitions and utility functions for working with ALPIDE data words
 
 use super::{
-    data_words::{ib_data_word_id_to_lane, ol_data_word_id_to_lane},
+    data_words::{ib_data_word_id_to_lane, ob_data_word_id_to_lane},
     Layer,
 };
 
@@ -50,13 +50,13 @@ impl AlpideReadoutFrame {
     }
 
     /// Returns the barrel that the readout frame is from
-    pub fn from_barrel(&self) -> Layer {
+    pub fn from_layer(&self) -> Layer {
         self.from_layer.expect("No barrel set for readout frame")
     }
 
     /// Check if the frame is valid in terms of number of lanes in the data and for IB, the lane grouping.
     pub fn check_frame_lanes_valid(&self) -> Result<(), String> {
-        let expect_lane_count = match self.from_barrel() {
+        let expect_lane_count = match self.from_layer() {
             Layer::Inner => Self::IL_FRAME_LANE_COUNT,
             Layer::Middle => Self::ML_FRAME_LANE_COUNT,
             Layer::Outer => Self::OL_FRAME_LANE_COUNT,
@@ -68,7 +68,7 @@ impl AlpideReadoutFrame {
                 "Invalid number of lanes: {num_lanes}, expected {expect_lane_count}",
                 num_lanes = self.lane_data_frames.len()
             ))
-        } else if self.from_barrel() == Layer::Inner {
+        } else if self.from_layer() == Layer::Inner {
             // Check frame lane grouping is correct (these groupings are hardcoded in the firmware)
             let mut lane_ids = self
                 .lane_data_frames
@@ -103,7 +103,7 @@ impl LaneDataFrame {
     pub fn lane_number(&self, from_barrel: Layer) -> u8 {
         match from_barrel {
             Layer::Inner => ib_data_word_id_to_lane(self.lane_id),
-            Layer::Middle | Layer::Outer => ol_data_word_id_to_lane(self.lane_id),
+            Layer::Middle | Layer::Outer => ob_data_word_id_to_lane(self.lane_id),
         }
     }
 }
