@@ -37,7 +37,10 @@ impl AlpideLaneFrameDecoder {
     }
 
     /// Decodes the readout frame byte by byte, then performs checks on the data and stores error messages
-    pub fn validate_alpide_frame(&mut self, lane_data_frame: LaneDataFrame) {
+    pub fn validate_alpide_frame(
+        &mut self,
+        lane_data_frame: LaneDataFrame,
+    ) -> Result<(), std::vec::Drain<String>> {
         self.lane_number = lane_data_frame.lane_number(self.barrel.unwrap());
         log::debug!(
             "Processing ALPIDE frame for lane {}",
@@ -64,6 +67,12 @@ impl AlpideLaneFrameDecoder {
         if let Err(msg) = self.check_chip_id_order() {
             let error_str = format!("\n\t\tChip ID order mismatch:{msg}");
             self.errors.push(error_str);
+        }
+
+        if self.has_errors() {
+            Err(self.errors.drain(..))
+        } else {
+            Ok(())
         }
     }
 
@@ -264,11 +273,7 @@ impl AlpideLaneFrameDecoder {
         Ok(())
     }
 
-    pub fn has_errors(&self) -> bool {
+    fn has_errors(&self) -> bool {
         !self.errors.is_empty()
-    }
-
-    pub fn consume_errors(&mut self) -> std::vec::Drain<String> {
-        self.errors.drain(..)
     }
 }

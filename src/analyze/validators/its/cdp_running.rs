@@ -601,16 +601,14 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 let lane_number =
                     lane_data_frame.lane_number(alpide_readout_frame.from_barrel.unwrap());
                 log::trace!("Processing lane #{lane_number}");
-                decoder.validate_alpide_frame(lane_data_frame);
 
-                if decoder.has_errors() {
+                if let Err(error_msgs) = decoder.validate_alpide_frame(lane_data_frame) {
                     let mut lane_error_string = format!("\n\tLane {lane_number} errors: ");
-
-                    decoder.consume_errors().for_each(|err| {
+                    error_msgs.for_each(|err| {
                         lane_error_string.push_str(&err);
                     });
                     lane_error_msgs.push((lane_number, lane_error_string));
-                }
+                };
             });
 
         // Format and send all errors
