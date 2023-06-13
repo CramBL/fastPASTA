@@ -62,11 +62,13 @@ impl AlpideLaneFrameDecoder {
         if let Err(msg) = self.check_chip_count() {
             let error_str = format!("\n\t\tChip ID count mismatch:{msg}");
             self.errors.push(error_str);
-        }
-        // Check chip ID order
-        if let Err(msg) = self.check_chip_id_order() {
-            let error_str = format!("\n\t\tChip ID order mismatch:{msg}");
-            self.errors.push(error_str);
+        } else {
+            // Only check if the chip count is valid.
+            // Check chip ID order
+            if let Err(msg) = self.check_chip_id_order() {
+                let error_str = format!("\n\t\tChip ID order mismatch:{msg}");
+                self.errors.push(error_str);
+            }
         }
 
         if self.has_errors() {
