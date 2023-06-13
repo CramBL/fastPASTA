@@ -17,6 +17,7 @@ pub struct AlpideLaneFrameDecoder {
 }
 
 impl AlpideLaneFrameDecoder {
+    const ERR_MSG_PREFIX: &'static str = "\n\t\t\t"; // Newline + indentation for error messages
     pub fn new(data_origin: Barrel) -> Self {
         Self {
             lane_number: 0,
@@ -35,6 +36,7 @@ impl AlpideLaneFrameDecoder {
         }
     }
 
+    /// Decodes the readout frame byte by byte, then performs checks on the data and stores error messages
     pub fn validate_alpide_frame(&mut self, lane_data_frame: LaneDataFrame) {
         self.lane_number = lane_data_frame.lane_number(self.barrel.unwrap());
         log::debug!(
@@ -50,11 +52,18 @@ impl AlpideLaneFrameDecoder {
         // Check all bunch counters match
         if let Err(msg) = self.check_bunch_counters() {
             // if it is already in the errors_per_lane, add it to the list
-            self.errors.push(msg);
+            let error_str = format!("\n\t\tBunch counters mismatch:{msg}");
+            self.errors.push(error_str);
+        }
+
+        if let Err(msg) = self.check_chip_count() {
+            let error_str = format!("\n\t\tChip ID count mismatch:{msg}");
+            self.errors.push(error_str);
         }
         // Check chip ID order
         if let Err(msg) = self.check_chip_id_order() {
-            self.errors.push(msg);
+            let error_str = format!("\n\t\tChip ID order mismatch:{msg}");
+            self.errors.push(error_str);
         }
     }
 
@@ -191,7 +200,10 @@ impl AlpideLaneFrameDecoder {
             let error_str = bc_to_chip_ids
                 .iter()
                 .fold(String::from(""), |acc, (bc, chip_ids)| {
-                    format!("{acc}\n\t\tBunch counter: {bc:>3?} | Chip IDs: {chip_ids:?}")
+                    format!(
+                        "{acc}{newline_indent}Bunch counter: {bc:>3?} | Chip IDs: {chip_ids:?}",
+                        newline_indent = Self::ERR_MSG_PREFIX
+                    )
                 });
             Err(error_str)
         } else {
@@ -199,40 +211,50 @@ impl AlpideLaneFrameDecoder {
         }
     }
 
+    fn check_chip_count(&self) -> Result<(), String> {
+        // Check if the number of chip data matches the expected number of chips
+        if matches!(self.barrel, Some(Barrel::Inner)) {
+            if self.chip_data.len() != 1 {
+                return Err(format!(
+                    "{newline_indent}Expected 1 Chip ID in IB but found {id_cnt}: {chip_ids:?}",
+                    newline_indent = Self::ERR_MSG_PREFIX,
+                    id_cnt = self.chip_data.len(),
+                    chip_ids = self.chip_data.iter().map(|cd| cd.chip_id).collect_vec()
+                ));
+            }
+        } else if self.chip_data.len() != 7 {
+            return Err(format!(
+                "{newline_indent}Expected 7 Chip IDs in OB but found {id_cnt}: {chip_ids:?}",
+                newline_indent = Self::ERR_MSG_PREFIX,
+                id_cnt = self.chip_data.len(),
+                chip_ids = self.chip_data.iter().map(|cd| cd.chip_id).collect_vec()
+            ));
+        }
+        Ok(())
+    }
+
     fn check_chip_id_order(&self) -> Result<(), String> {
         // Get the chip IDs from the chip data vector
         let chip_ids: Vec<u8> = self.chip_data.iter().map(|cd| cd.chip_id).collect();
-        // Check if the chip IDs are in expected order
         if let Some(data_from) = &self.barrel {
             match data_from {
                 Barrel::Inner => {
-                    if chip_ids.len() != 1 {
-                        return Err(format!(
-                            "Expected 1 Chip ID in IB but found {id_cnt}: {chip_ids:?}",
-                            id_cnt = chip_ids.len(),
-                        ));
-                    }
-                    // Check that the chip ID matches the lane number
+                    // IB only has one chip but it should match the lane number
                     if chip_ids[0] != self.lane_number {
                         return Err(format!(
-                            "Expected Chip ID {lane} in IB but found {chip_id}",
+                            "{newline_indent}Expected Chip ID {lane} in IB but found {chip_id}",
+                            newline_indent = Self::ERR_MSG_PREFIX,
                             lane = self.lane_number,
                             chip_id = chip_ids[0]
                         ));
                     }
                 }
                 Barrel::Outer => {
-                    if chip_ids.len() != 7 {
-                        return Err(format!(
-                            "Expected 7 Chip IDs in OB but found {id_cnt}: {chip_ids:?}",
-                            id_cnt = chip_ids.len(),
-                            chip_ids = chip_ids
-                        ));
-                    }
                     // Check that the chip IDs are in the correct order
                     if chip_ids != [0, 1, 2, 3, 4, 5, 6] && chip_ids != [8, 9, 10, 11, 12, 13, 14] {
                         return Err(format!(
-                            "Expected Chip IDs [0-6] or [8-14] in OB but found {chip_ids:?}",
+                            "{newline_indent}Expected [0-6] or [8-14] in OB but found {chip_ids:?}",
+                            newline_indent = Self::ERR_MSG_PREFIX,
                             chip_ids = chip_ids
                         ));
                     }
