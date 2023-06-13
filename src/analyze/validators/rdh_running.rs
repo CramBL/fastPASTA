@@ -45,7 +45,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                 self.second_rdh_cru.as_ref().unwrap().rdh2().pages_counter;
         }
 
-        let mut err_str = String::new();
+        let mut err_str = String::from("[E11] RDH running check failed: ");
         let mut rdh_errors: Vec<String> = vec![];
         let mut err_cnt: u8 = 0;
 

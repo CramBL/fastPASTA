@@ -81,7 +81,7 @@ impl<T: RDH> RdhCruSanityValidator<T> {
     /// Returns [Ok] or an error type containing a [String] describing the error, if the sanity check failed.
     #[inline]
     pub fn sanity_check(&mut self, rdh: &T) -> Result<(), String> {
-        let mut err_str = String::from("RDH sanity check failed: ");
+        let mut err_str = String::from("[E10] RDH sanity check failed: ");
         let mut err_cnt: u8 = 0;
         let mut rdh_errors: Vec<String> = vec![];
         match self.rdh0_validator.sanity_check(rdh.rdh0()) {
