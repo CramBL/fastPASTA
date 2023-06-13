@@ -1,16 +1,10 @@
 #![allow(dead_code)]
 //! Word definitions and utility functions for working with ALPIDE data words
 
-use super::data_words::{ib_data_word_id_to_lane, ob_data_word_id_to_lane};
-
-/// Enum for marking if the data is from the inner or outer barrel
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Barrel {
-    /// Data is from the inner barrel
-    Inner,
-    /// Data is from the outer barrel
-    Outer,
-}
+use super::{
+    data_words::{ib_data_word_id_to_lane, ol_data_word_id_to_lane},
+    Layer,
+};
 
 /// Struct for storing the contents of a single ALPIDE readout frame
 #[derive(Default)]
@@ -18,10 +12,13 @@ pub struct AlpideReadoutFrame {
     pub(crate) frame_start_mem_pos: u64,
     pub(crate) frame_end_mem_pos: u64,
     pub(crate) lane_data_frames: Vec<LaneDataFrame>,
-    from_barrel: Option<Barrel>,
+    from_layer: Option<Layer>,
 }
 
 impl AlpideReadoutFrame {
+    const IL_FRAME_LANE_COUNT: usize = 3;
+    const ML_FRAME_LANE_COUNT: usize = 8;
+    const OL_FRAME_LANE_COUNT: usize = 14;
     /// Create a new ALPIDE readout frame from the given memory position.
     pub fn new(start_mem_pos: u64) -> Self {
         Self {
@@ -31,9 +28,9 @@ impl AlpideReadoutFrame {
     }
 
     /// Stores the 9 data bytes from an ITS data word byte data slice (does not store the ID byte more than once) by appending it to the lane data.
-    pub fn store_lane_data(&mut self, data_word: &[u8], from_barrel: Barrel) {
-        if self.from_barrel.is_none() {
-            self.from_barrel = Some(from_barrel);
+    pub fn store_lane_data(&mut self, data_word: &[u8], from_layer: Layer) {
+        if self.from_layer.is_none() {
+            self.from_layer = Some(from_layer);
         }
         match self
             .lane_data_frames
@@ -53,24 +50,25 @@ impl AlpideReadoutFrame {
     }
 
     /// Returns the barrel that the readout frame is from
-    pub fn from_barrel(&self) -> Barrel {
-        self.from_barrel.expect("No barrel set for readout frame")
+    pub fn from_barrel(&self) -> Layer {
+        self.from_layer.expect("No barrel set for readout frame")
     }
 
     /// Check if the frame is valid in terms of number of lanes in the data and for IB, the lane grouping.
     pub fn check_frame_lanes_valid(&self) -> Result<(), String> {
-        let expect_lane_count = if self.from_barrel() == Barrel::Inner {
-            3
-        } else {
-            14
+        let expect_lane_count = match self.from_barrel() {
+            Layer::Inner => Self::IL_FRAME_LANE_COUNT,
+            Layer::Middle => Self::ML_FRAME_LANE_COUNT,
+            Layer::Outer => Self::OL_FRAME_LANE_COUNT,
         };
+
         // Check number of lanes is correct, then if IB, also check lane grouping is correct
         if self.lane_data_frames.len() != expect_lane_count {
             Err(format!(
                 "Invalid number of lanes: {num_lanes}, expected {expect_lane_count}",
                 num_lanes = self.lane_data_frames.len()
             ))
-        } else if self.from_barrel() == Barrel::Inner {
+        } else if self.from_barrel() == Layer::Inner {
             // Check frame lane grouping is correct (these groupings are hardcoded in the firmware)
             let mut lane_ids = self
                 .lane_data_frames
@@ -102,10 +100,10 @@ impl LaneDataFrame {
     /// Returns the lane number for the [LaneDataFrame] based on the [Barrel] it is from
     ///
     /// The [LaneDataFrame] does not store the barrel it is from, so this must be provided.
-    pub fn lane_number(&self, from_barrel: Barrel) -> u8 {
+    pub fn lane_number(&self, from_barrel: Layer) -> u8 {
         match from_barrel {
-            Barrel::Inner => ib_data_word_id_to_lane(self.lane_id),
-            Barrel::Outer => ob_data_word_id_to_lane(self.lane_id),
+            Layer::Inner => ib_data_word_id_to_lane(self.lane_id),
+            Layer::Middle | Layer::Outer => ol_data_word_id_to_lane(self.lane_id),
         }
     }
 }

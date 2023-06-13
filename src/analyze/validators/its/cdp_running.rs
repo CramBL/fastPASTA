@@ -17,12 +17,13 @@ use crate::{
     },
     words::{
         its::{
-            alpide_words::{AlpideReadoutFrame, Barrel},
+            alpide_words::AlpideReadoutFrame,
             data_words::{
                 ib_data_word_id_to_lane, ob_data_word_id_to_input_number_connector,
-                ob_data_word_id_to_lane,
+                ol_data_word_id_to_lane,
             },
             status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
+            Layer,
         },
         lib::{ByteSlice, RDH},
     },
@@ -347,7 +348,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
         // Matches if there is an alpide_readout_frame. If not we are not collecting data ie. ALPIDE checks are not enabled.
         if let Some(alpide_readout_frame) = &mut self.alpide_readout_frame {
-            alpide_readout_frame.store_lane_data(ib_slice, Barrel::Inner);
+            alpide_readout_frame.store_lane_data(ib_slice, Layer::Inner);
         }
     }
 
@@ -356,7 +357,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         if !self.running_checks_enabled {
             return;
         }
-        let lane_id = ob_data_word_id_to_lane(ob_slice[9]);
+
+        let lane_id = ol_data_word_id_to_lane(ob_slice[9]);
         // lane in active_lanes
         let active_lanes = self.current_ihw.as_ref().unwrap().active_lanes();
         if !is_lane_active(lane_id, active_lanes) {
@@ -376,7 +378,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
         // If there is no readout frame, we are not collecting data.
         if let Some(alpide_readout_frame) = &mut self.alpide_readout_frame {
-            alpide_readout_frame.store_lane_data(ob_slice, Barrel::Outer);
+            alpide_readout_frame.store_lane_data(ob_slice, Layer::Outer);
         }
     }
 
@@ -554,7 +556,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         // Check if the frame is valid in terms of lanes in the data.
         if let Err(err_msg) = alpide_readout_frame.check_frame_lanes_valid() {
             // Format and send error message
-            let is_ib = alpide_readout_frame.from_barrel() == Barrel::Inner;
+            let is_ib = alpide_readout_frame.from_barrel() == Layer::Inner;
             let err_code = if is_ib { "E72" } else { "E73" };
             let err_msg = format!(
                 "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} {err_msg}. Lanes: {lanes:?}",
@@ -563,7 +565,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                     if is_ib {
                         ib_data_word_id_to_lane(lane.lane_id)
                     } else {
-                        ob_data_word_id_to_lane(lane.lane_id)
+                        ol_data_word_id_to_lane(lane.lane_id)
                     }
                     ).collect::<Vec<u8>>(),
             );
@@ -595,7 +597,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
 
         // Format and send all errors
         if !lane_error_msgs.is_empty() {
-            let is_ib = alpide_readout_frame.from_barrel() == Barrel::Inner;
+            let is_ib = alpide_readout_frame.from_barrel() == Layer::Inner;
             let err_code = if is_ib { "E74" } else { "E75" };
             let lane_error_ids_str = lane_error_msgs
                 .iter()

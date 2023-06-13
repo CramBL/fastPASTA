@@ -3,6 +3,24 @@ pub mod alpide_words;
 pub mod data_words;
 pub mod status_words;
 
+/// Enum for marking if the data is from the inner/middle/outer layer
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum Layer {
+    /// Data is from the inner layer
+    Inner,
+    /// Data is from the middle layer
+    Middle,
+    /// Data is from the outer layer
+    Outer,
+}
+
+/// Enum for marking if the data is from the inner/middle/outer layer along with the stave number
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum LayerStave {
+    /// Layer and stave number
+    Layer(u8),
+}
+
 // Utility functions to extract information from the FeeId
 /// Extracts stave_number from 6 LSB \[5:0\]
 ///

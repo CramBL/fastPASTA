@@ -2,9 +2,28 @@
 
 use std::ops::RangeInclusive;
 
-/// Takes an ob data word ID and returns the lane number
+/// Takes an OL (Outer Layer) data word ID and returns the lane number
 #[inline]
-pub fn ob_data_word_id_to_lane(data_word_id: u8) -> u8 {
+pub fn ol_data_word_id_to_lane(data_word_id: u8) -> u8 {
+    // let lane_id = data_word_id & 0x1F;
+    if data_word_id <= *VALID_OL_CONNECT0_ID.end() {
+        // 0-6
+        data_word_id % VALID_OL_CONNECT0_ID.start()
+    } else if data_word_id <= *VALID_OL_CONNECT1_ID.end() {
+        // 7-13
+        7 + (data_word_id % VALID_OL_CONNECT1_ID.start())
+    } else if data_word_id <= *VALID_OL_CONNECT2_ID.end() {
+        // 14-20
+        14 + (data_word_id % VALID_OL_CONNECT2_ID.start())
+    } else {
+        // 21-27
+        21 + (data_word_id % VALID_OL_CONNECT3_ID.start())
+    }
+}
+
+/// Takes ML (Middle Layer) data word ID and returns the lane number
+#[inline]
+pub fn ml_data_word_id_to_lane(data_word_id: u8) -> u8 {
     // let lane_id = data_word_id & 0x1F;
     if data_word_id <= *VALID_OL_CONNECT0_ID.end() {
         // 0-6
@@ -37,7 +56,7 @@ pub fn ob_data_word_id_to_connector(data_word_id: u8) -> u8 {
     (data_word_id >> 3) & 0b11
 }
 
-/// Takes an OB data word ID and returns the lane number
+/// Takes an IL/IB data word ID and returns the lane number
 #[inline]
 pub fn ib_data_word_id_to_lane(data_word_id: u8) -> u8 {
     // let lane_id = data_word_id & 0x1F;
@@ -116,7 +135,7 @@ mod tests {
             .enumerate()
             .for_each(|(idx, data_word)| {
                 let id = data_word[9];
-                let lane = ob_data_word_id_to_lane(id);
+                let lane = ol_data_word_id_to_lane(id);
                 assert_eq!(lane, (idx + 6) as u8);
             });
     }

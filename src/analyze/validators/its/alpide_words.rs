@@ -1,5 +1,8 @@
 #![allow(dead_code)]
-use crate::words::its::alpide_words::{AlpideFrameChipData, Barrel, LaneDataFrame};
+use crate::words::its::{
+    alpide_words::{AlpideFrameChipData, LaneDataFrame},
+    Layer,
+};
 use itertools::Itertools;
 
 pub struct AlpideLaneFrameDecoder {
@@ -13,12 +16,14 @@ pub struct AlpideLaneFrameDecoder {
     // Indicate that the next byte should be saved as bunch counter for frame
     next_is_bc: bool,
     errors: Vec<String>,
-    barrel: Option<Barrel>,
+    from_layer: Option<Layer>,
 }
 
 impl AlpideLaneFrameDecoder {
     const ERR_MSG_PREFIX: &'static str = "\n\t\t\t"; // Newline + indentation for error messages
-    pub fn new(data_origin: Barrel) -> Self {
+    const IL_CHIP_COUNT: usize = 1; // Number of chips in an inner layer readout frame
+    const ML_OL_CHIP_COUNT: usize = 7; // Number of chips in a middle/outer layer readout frame
+    pub fn new(data_origin: Layer) -> Self {
         Self {
             lane_number: 0,
             is_header_seen: false,
@@ -27,12 +32,12 @@ impl AlpideLaneFrameDecoder {
             skip_n_bytes: 0,
             chip_data: match data_origin {
                 // ALPIDE data from IB should have 9 chips per frame, OB should have 7
-                Barrel::Inner => Vec::with_capacity(1),
-                Barrel::Outer => Vec::with_capacity(7),
+                Layer::Inner => Vec::with_capacity(Self::IL_CHIP_COUNT),
+                Layer::Middle | Layer::Outer => Vec::with_capacity(Self::ML_OL_CHIP_COUNT),
             },
             next_is_bc: false,
             errors: Vec::new(),
-            barrel: Some(data_origin),
+            from_layer: Some(data_origin),
         }
     }
 
@@ -41,10 +46,10 @@ impl AlpideLaneFrameDecoder {
         &mut self,
         lane_data_frame: LaneDataFrame,
     ) -> Result<(), std::vec::Drain<String>> {
-        self.lane_number = lane_data_frame.lane_number(self.barrel.unwrap());
+        self.lane_number = lane_data_frame.lane_number(self.from_layer.unwrap());
         log::debug!(
-            "Processing ALPIDE frame for lane {}",
-            lane_data_frame.lane_id
+            "Processing ALPIDE frame for lane {lane_id}",
+            lane_id = lane_data_frame.lane_id
         );
         lane_data_frame
             .lane_data
@@ -224,18 +229,22 @@ impl AlpideLaneFrameDecoder {
 
     fn check_chip_count(&self) -> Result<(), String> {
         // Check if the number of chip data matches the expected number of chips
-        if matches!(self.barrel, Some(Barrel::Inner)) {
-            if self.chip_data.len() != 1 {
+        if matches!(self.from_layer, Some(Layer::Inner)) {
+            if self.chip_data.len() != Self::IL_CHIP_COUNT {
                 return Err(format!(
-                    "{newline_indent}Expected 1 Chip ID in IB but found {id_cnt}: {chip_ids:?}",
+                    "{newline_indent}Expected {expected_chip_count} Chip ID in IB but found {id_cnt}: {chip_ids:?}",
+                    expected_chip_count = Self::IL_CHIP_COUNT,
                     newline_indent = Self::ERR_MSG_PREFIX,
                     id_cnt = self.chip_data.len(),
                     chip_ids = self.chip_data.iter().map(|cd| cd.chip_id).collect_vec()
                 ));
             }
-        } else if self.chip_data.len() != 7 {
+        }
+        // Middle or Outer layer
+        else if self.chip_data.len() != Self::ML_OL_CHIP_COUNT {
             return Err(format!(
-                "{newline_indent}Expected 7 Chip IDs in OB but found {id_cnt}: {chip_ids:?}",
+                "{newline_indent}Expected {expected_chip_count} Chip IDs in OB but found {id_cnt}: {chip_ids:?}",
+                expected_chip_count = Self::ML_OL_CHIP_COUNT,
                 newline_indent = Self::ERR_MSG_PREFIX,
                 id_cnt = self.chip_data.len(),
                 chip_ids = self.chip_data.iter().map(|cd| cd.chip_id).collect_vec()
@@ -247,9 +256,9 @@ impl AlpideLaneFrameDecoder {
     fn check_chip_id_order(&self) -> Result<(), String> {
         // Get the chip IDs from the chip data vector
         let chip_ids: Vec<u8> = self.chip_data.iter().map(|cd| cd.chip_id).collect();
-        if let Some(data_from) = &self.barrel {
+        if let Some(data_from) = &self.from_layer {
             match data_from {
-                Barrel::Inner => {
+                Layer::Inner => {
                     // IB only has one chip but it should match the lane number
                     if chip_ids[0] != self.lane_number {
                         return Err(format!(
@@ -260,7 +269,7 @@ impl AlpideLaneFrameDecoder {
                         ));
                     }
                 }
-                Barrel::Outer => {
+                Layer::Middle | Layer::Outer => {
                     // Check that the chip IDs are in the correct order
                     if chip_ids != [0, 1, 2, 3, 4, 5, 6] && chip_ids != [8, 9, 10, 11, 12, 13, 14] {
                         return Err(format!(
