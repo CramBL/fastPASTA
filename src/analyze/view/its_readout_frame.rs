@@ -6,7 +6,7 @@ pub mod its_readout_frame_view;
 
 fn mem_pos_calc_to_string(idx: usize, data_format: u8, rdh_mem_pos: u64) -> String {
     let current_mem_pos = super::lib::calc_current_word_mem_pos(idx, data_format, rdh_mem_pos);
-    format!("{current_mem_pos:>8X}:")
+    format!("{current_mem_pos:>9X}:")
 }
 
 fn print_start_of_its_readout_frame_header_text(
