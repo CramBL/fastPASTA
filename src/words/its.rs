@@ -1,4 +1,6 @@
 //! Data definitions for ITS payload words
+
+use std::fmt::Display;
 pub mod alpide_words;
 pub mod data_words;
 pub mod status_words;
@@ -12,6 +14,16 @@ pub enum Layer {
     Middle,
     /// Data is from the outer layer
     Outer,
+}
+
+impl Display for Layer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Layer::Inner => write!(f, "IL"),
+            Layer::Middle => write!(f, "ML"),
+            Layer::Outer => write!(f, "OL"),
+        }
+    }
 }
 
 /// Enum for marking if the data is from the inner/middle/outer layer along with the stave number
@@ -38,6 +50,16 @@ pub enum Stave {
         /// Stave number
         stave: u8,
     },
+}
+
+impl Display for Stave {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Stave::InnerLayer { layer, stave } => write!(f, "L{layer}_{stave}"),
+            Stave::MiddleLayer { layer, stave } => write!(f, "L{layer}_{stave}"),
+            Stave::OuterLayer { layer, stave } => write!(f, "L{layer}_{stave}"),
+        }
+    }
 }
 
 impl Stave {
