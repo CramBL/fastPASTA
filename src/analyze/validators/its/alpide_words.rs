@@ -242,9 +242,10 @@ impl AlpideLaneFrameDecoder {
         // Middle or Outer layer
         else if self.chip_data.len() != Self::ML_OL_CHIP_COUNT {
             return Err(format!(
-                "{newline_indent}Expected {expected_chip_count} Chip IDs in OB but found {id_cnt}: {chip_ids:?}",
-                expected_chip_count = Self::ML_OL_CHIP_COUNT,
+                "{newline_indent}Expected {expected_chip_count} Chip IDs in {layer} but found {id_cnt}: {chip_ids:?}",
                 newline_indent = Self::ERR_MSG_PREFIX,
+                layer = self.from_layer.unwrap(),
+                expected_chip_count = Self::ML_OL_CHIP_COUNT,
                 id_cnt = self.chip_data.len(),
                 chip_ids = self.chip_data.iter().map(|cd| cd.chip_id).collect_vec()
             ));
@@ -272,8 +273,9 @@ impl AlpideLaneFrameDecoder {
                     // Check that the chip IDs are in the correct order
                     if chip_ids != [0, 1, 2, 3, 4, 5, 6] && chip_ids != [8, 9, 10, 11, 12, 13, 14] {
                         return Err(format!(
-                            "{newline_indent}Expected [0-6] or [8-14] in OB but found {chip_ids:?}",
+                            "{newline_indent}Expected [0-6] or [8-14] in {layer} but found {chip_ids:?}",
                             newline_indent = Self::ERR_MSG_PREFIX,
+                            layer = data_from,
                             chip_ids = chip_ids
                         ));
                     }
