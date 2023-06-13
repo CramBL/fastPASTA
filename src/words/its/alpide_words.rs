@@ -75,11 +75,11 @@ impl AlpideReadoutFrame {
             let mut lane_ids = self
                 .lane_data_frames
                 .iter()
-                .map(|lane_data_frame| lane_data_frame.lane_id)
+                .map(|lane_data_frame| ib_data_word_id_to_lane(lane_data_frame.lane_id))
                 .collect::<Vec<u8>>();
             lane_ids.sort();
             match lane_ids.as_slice() {
-                &[20, 21, 22] | &[23, 24, 25] | &[26, 27, 28] => return Ok(()),
+                &[0, 1, 2] | &[3, 4, 5] | &[6, 7, 8] => return Ok(()),
                 _ => return Err("Invalid lane grouping".to_string()),
             }
         } else {
