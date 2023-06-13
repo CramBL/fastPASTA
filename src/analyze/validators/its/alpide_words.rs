@@ -211,7 +211,6 @@ impl AlpideLaneFrameDecoder {
                     bc_to_chip_ids.push(bc_to_chip_id);
                 }
             });
-            log::warn!("Multiple different bunch counters found in ALPIDE Data Frame!");
             // Print the bunch counters and the chip IDs that have the same bunch counter
             let error_str = bc_to_chip_ids
                 .iter()
