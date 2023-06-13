@@ -2,7 +2,7 @@
 use crate::words::its::alpide_words::{AlpideFrameChipData, Barrel, LaneDataFrame};
 use itertools::Itertools;
 
-pub struct AlpideFrameDecoder {
+pub struct AlpideLaneFrameDecoder {
     // Works on a single lane at a time
     lane_number: u8,
     is_header_seen: bool, // Set when a Chip Header is seen, reset when a Chip Trailer is seen
@@ -16,7 +16,7 @@ pub struct AlpideFrameDecoder {
     barrel: Option<Barrel>,
 }
 
-impl AlpideFrameDecoder {
+impl AlpideLaneFrameDecoder {
     pub fn new(data_origin: Barrel) -> Self {
         Self {
             lane_number: 0,
@@ -221,7 +221,22 @@ impl AlpideFrameDecoder {
                         ));
                     }
                 }
-                Barrel::Outer => todo!(),
+                Barrel::Outer => {
+                    if chip_ids.len() != 7 {
+                        return Err(format!(
+                            "Expected 7 Chip IDs in OB but found {id_cnt}: {chip_ids:?}",
+                            id_cnt = chip_ids.len(),
+                            chip_ids = chip_ids
+                        ));
+                    }
+                    // Check that the chip IDs are in the correct order
+                    if chip_ids != [0, 1, 2, 3, 4, 5, 6] && chip_ids != [8, 9, 10, 11, 12, 13, 14] {
+                        return Err(format!(
+                            "Expected Chip IDs [0-6] or [8-14] in OB but found {chip_ids:?}",
+                            chip_ids = chip_ids
+                        ));
+                    }
+                }
             }
         }
         Ok(())
