@@ -18,7 +18,7 @@ pub struct AlpideReadoutFrame {
     pub(crate) frame_start_mem_pos: u64,
     pub(crate) frame_end_mem_pos: u64,
     pub(crate) lane_data_frames: Vec<LaneDataFrame>,
-    pub(crate) from_barrel: Option<Barrel>,
+    from_barrel: Option<Barrel>,
 }
 
 impl AlpideReadoutFrame {
@@ -49,6 +49,42 @@ impl AlpideReadoutFrame {
                 lane_id: data_word[9],
                 lane_data: data_word[0..=8].to_vec(),
             }),
+        }
+    }
+
+    /// Returns the barrel that the readout frame is from
+    pub fn from_barrel(&self) -> Barrel {
+        self.from_barrel.expect("No barrel set for readout frame")
+    }
+
+    /// Check if the frame is valid in terms of number of lanes in the data and for IB, the lane grouping.
+    pub fn check_frame_lanes_valid(&self) -> Result<(), String> {
+        let expect_lane_count = if self.from_barrel() == Barrel::Inner {
+            3
+        } else {
+            14
+        };
+        // Check number of lanes is correct, then if IB, also check lane grouping is correct
+        if self.lane_data_frames.len() != expect_lane_count {
+            Err(format!(
+                "Invalid number of lanes: {num_lanes}, expected 3",
+                num_lanes = self.lane_data_frames.len()
+            ))
+        } else if self.from_barrel() == Barrel::Inner {
+            // Check frame lane grouping is correct (these groupings are hardcoded in the firmware)
+            let mut lane_ids = self
+                .lane_data_frames
+                .iter()
+                .map(|lane_data_frame| lane_data_frame.lane_id)
+                .collect::<Vec<u8>>();
+            lane_ids.sort();
+            match lane_ids.as_slice() {
+                &[20, 21, 22] | &[23, 24, 25] | &[26, 27, 28] => return Ok(()),
+                _ => return Err("Invalid lane grouping".to_string()),
+            }
+        } else {
+            // No grouping to check for outer barrel
+            return Ok(());
         }
     }
 }

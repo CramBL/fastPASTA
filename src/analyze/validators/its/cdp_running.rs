@@ -551,28 +551,12 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         let mem_pos_end = alpide_readout_frame.frame_end_mem_pos;
         let mut lane_error_msgs: Vec<(u8, String)> = Vec::new();
 
-        // Check if the frame is valid in terms of number of lanes in the data.
-        if (if matches!(alpide_readout_frame.from_barrel, Some(Barrel::Inner)) {
-            match alpide_readout_frame.lane_data_frames.len() {
-                // Valid to have 3 lanes
-                3 => Ok(()),
-                // Invalid number of lanes
-                _ => Err(()),
-            }
-            // Outer barrel
-        } else {
-            match alpide_readout_frame.lane_data_frames.len() {
-                14 => Ok(()),
-                // Invalid number of lanes
-                _ => Err(()),
-            }
-        })
-        .is_err()
-        {
-            let is_ib = matches!(alpide_readout_frame.from_barrel, Some(Barrel::Inner));
+        // Check if the frame is valid in terms of lanes in the data.
+        if let Err(err_msg) = alpide_readout_frame.check_frame_lanes_valid() {
+            let is_ib = alpide_readout_frame.from_barrel() == Barrel::Inner;
             let err_code = if is_ib { "E72" } else { "E73" };
             let err_msg = format!(
-                "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} Invalid number of lanes in frame: {num_lanes}. Lanes: {lanes:?}
+                "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} {err_msg}: {num_lanes}. Lanes: {lanes:?}
                 ",
                 num_lanes = alpide_readout_frame.lane_data_frames.len(),
                 feeid=self.current_rdh.as_ref().unwrap().fee_id(),
@@ -590,16 +574,15 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
 
         // Process the data frame
+        let from_barrel = alpide_readout_frame.from_barrel();
         alpide_readout_frame
             .lane_data_frames
             .drain(..)
             .for_each(|lane_data_frame| {
                 // Process data for each lane
                 // New decoder for each lane
-                let mut decoder =
-                    AlpideLaneFrameDecoder::new(alpide_readout_frame.from_barrel.unwrap());
-                let lane_number =
-                    lane_data_frame.lane_number(alpide_readout_frame.from_barrel.unwrap());
+                let mut decoder = AlpideLaneFrameDecoder::new(from_barrel);
+                let lane_number = lane_data_frame.lane_number(from_barrel);
                 log::trace!("Processing lane #{lane_number}");
 
                 if let Err(error_msgs) = decoder.validate_alpide_frame(lane_data_frame) {
@@ -613,7 +596,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
 
         // Format and send all errors
         if !lane_error_msgs.is_empty() {
-            let is_ib = matches!(alpide_readout_frame.from_barrel, Some(Barrel::Inner));
+            let is_ib = alpide_readout_frame.from_barrel() == Barrel::Inner;
             let err_code = if is_ib { "E74" } else { "E75" };
             let lane_error_ids_str = lane_error_msgs
                 .iter()
