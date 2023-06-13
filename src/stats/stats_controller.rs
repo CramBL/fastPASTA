@@ -37,6 +37,7 @@ pub struct StatsController<C: Config + 'static> {
     fatal_error: Option<String>,
     staves_with_errors: Vec<(u8, u8)>,
     any_errors_flag: Arc<AtomicBool>,
+    error_codes: Vec<u8>,
 }
 impl<C: Config + 'static> StatsController<C> {
     /// Creates a new [StatsController] from a [Config], a [flume::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
@@ -58,6 +59,7 @@ impl<C: Config + 'static> StatsController<C> {
             fatal_error: None,
             staves_with_errors: Vec::new(),
             any_errors_flag: Arc::new(AtomicBool::new(false)),
+            error_codes: Vec::new(),
         }
     }
 
@@ -176,6 +178,7 @@ impl<C: Config + 'static> StatsController<C> {
 
     fn process_error_messages(&mut self) {
         self.sort_errors_by_memory_address();
+        self.extract_unique_error_codes();
         if matches!(self.rdh_stats.system_id(), Some(SystemId::ITS)) {
             self.check_error_for_stave_id();
         }
@@ -208,6 +211,20 @@ impl<C: Config + 'static> StatsController<C> {
                 u64::from_str_radix(&addr["mem_pos"], 16).expect("Error parsing memory address")
             });
         }
+    }
+
+    fn extract_unique_error_codes(&mut self) {
+        let re = regex::Regex::new(r"0x.*: \[E(?P<err_code>[0-9]{2})\]").unwrap();
+        self.reported_errors.iter().for_each(|err_msg| {
+            let err_code_match: regex::Captures = re
+                .captures(err_msg)
+                .unwrap_or_else(|| panic!("Error parsing error code from error msg: {err_msg}"));
+
+            let err_code = err_code_match["err_code"].parse::<u8>().unwrap();
+            if !self.error_codes.contains(&err_code) {
+                self.error_codes.push(err_code);
+            }
+        });
     }
 
     fn check_error_for_stave_id(&mut self) {
@@ -315,7 +332,19 @@ impl<C: Config + 'static> StatsController<C> {
             report.add_stat(StatSummary::new(
                 "Total Errors".red().to_string(),
                 self.total_errors.red().to_string(),
-                None,
+                Some(
+                    self.error_codes
+                        .iter()
+                        .enumerate()
+                        .map(|(i, code)| {
+                            if i > 0 && i % 5 == 0 {
+                                format!("E{code}\n")
+                            } else {
+                                format!("E{code} ")
+                            }
+                        })
+                        .collect(),
+                ),
             ));
         }
 
