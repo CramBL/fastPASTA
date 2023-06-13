@@ -1,12 +1,12 @@
-use crate::words::lib::RDH;
-use std::io::Write;
+use crate::words::{its::Stave, lib::RDH};
+use std::{fmt::format, io::Write};
 
 pub mod its_readout_frame_data_view;
 pub mod its_readout_frame_view;
 
 fn mem_pos_calc_to_string(idx: usize, data_format: u8, rdh_mem_pos: u64) -> String {
     let current_mem_pos = super::lib::calc_current_word_mem_pos(idx, data_format, rdh_mem_pos);
-    format!("{current_mem_pos:>9X}:")
+    format!("{current_mem_pos:>8X}:")
 }
 
 fn print_start_of_its_readout_frame_header_text(
@@ -34,12 +34,13 @@ fn print_rdh_its_readout_frame_view<T: RDH>(
     let orbit = rdh.rdh1().orbit;
     let orbit_bc_str = format!("{orbit}_{bc:>4}", bc = rdh.rdh1().bc());
 
-    writeln!(
-        stdio_lock,
-        "{rdh_mem_pos:>8X}: RDH v{} stop={}{trig_str:>28}                                #{}   {orbit_bc_str:>31}",
-        rdh.version(),
-        rdh.stop_bit(),
-        rdh.link_id()
-    )?;
+    let stave = Stave::from_feeid(rdh.fee_id()).to_string();
+
+    let out_string = format!("{rdh_mem_pos:>8X}: RDH v{version} stop={stop} stave: {stave:<15}{trig_str:<35} #{link:>2}{orbit_bc_str:>34}",
+    version = rdh.version(),
+    stop = rdh.stop_bit(),
+    link = rdh.link_id().to_string());
+
+    writeln!(stdio_lock, "{out_string}")?;
     Ok(())
 }
