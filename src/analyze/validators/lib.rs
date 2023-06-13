@@ -51,10 +51,8 @@ impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C>
                     false
                 }
             }) {
-                // Mask the layer and stave bits effectively dispatching by layer and stave
-                let layer_stave_mask = 0b0111_0000_0011_1111;
-                let fee_with_only_layer_stave_bits = rdh.fee_id() & layer_stave_mask;
-                DispatchId(fee_with_only_layer_stave_bits)
+                // Dispatch by FEE ID which will effectively dispatch by link AND stave
+                DispatchId(rdh.fee_id())
             } else {
                 // Dispatch by link ID
                 DispatchId(rdh.link_id() as u16)
