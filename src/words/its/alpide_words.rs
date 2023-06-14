@@ -16,7 +16,7 @@ pub struct LaneDataFrame {
 }
 
 impl LaneDataFrame {
-    /// Returns the lane number for the [LaneDataFrame] based on the [Barrel] it is from
+    /// Returns the lane number for the [LaneDataFrame] based on the [Layer] it is from
     ///
     /// The [LaneDataFrame] does not store the barrel it is from, so this must be provided.
     pub fn lane_number(&self, from_barrel: Layer) -> u8 {

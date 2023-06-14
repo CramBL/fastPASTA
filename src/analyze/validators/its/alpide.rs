@@ -1,3 +1,7 @@
+//! This module is the parent module for all ALPIDE data validation.
+//!
+//! It contains some utility functions, and then it publishes modules with more specific ALPIDE related functionality.
+
 pub mod alpide_readout_frame;
 pub mod lane_alpide_frame_analyzer;
 

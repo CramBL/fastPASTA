@@ -1,3 +1,7 @@
+//! Contains the [LaneAlpideFrameAnalyzer] struct that analyzes the data from a single lane in a readout frame from the ALPIDE chips.
+//!
+//! Analysis consists of decoding the ALPIDE data and then performing checks on the decoded data.
+
 use crate::words::its::{
     alpide_words::{AlpideFrameChipData, LaneDataFrame},
     Layer,
