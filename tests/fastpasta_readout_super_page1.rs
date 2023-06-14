@@ -96,8 +96,14 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
         .arg(FILE_READOUT_SUPERPAGE_1);
     cmd.assert().success();
 
-    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
-
+    // The lanes have mismatching bunch counters between datalanes, which should be reported as an error
+    match_on_out_no_case(&cmd.output()?.stderr, "ERROR - 0x.*lane", 3)?;
+    match_on_out_no_case(
+        &cmd.output()?.stderr,
+        "lane.*error.*mismatch.*between.*lanes",
+        3,
+    )?;
+    match_on_out_no_case(&cmd.output()?.stdout, "total errors.*3", 1)?;
     match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l1_6", 1)?;
 
     Ok(())

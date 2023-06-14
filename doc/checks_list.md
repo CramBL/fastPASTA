@@ -153,6 +153,7 @@ When using the `check all its-stave` command the following checks are done in ad
 
 ### Staves & lanes
 **In a readout frame**
+All lanes with no ALPIDE errors have the same bunch counter.
 * `IB`
   * Data from 3 lanes
     * Grouped by lane ID in any of the combinations: [0, 1, 2], [3, 4, 5], or [6, 7, 8]
