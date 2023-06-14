@@ -35,6 +35,7 @@ pub fn ob_data_word_id_to_input_number_connector(data_word_id: u8) -> u8 {
 /// * IL: 0-8
 /// * ML: 3-10, 17-24
 /// * OL: 0-27
+///
 /// Super convenience function for when you otherwise are working with both IB and OB data words
 #[inline]
 pub fn lane_id_to_lane_number(lane_id: u8, is_inner_barrel_lane: bool) -> u8 {

@@ -2,6 +2,8 @@
 //!
 //! [CdpRunningValidator] delegates sanity checks to word specific sanity checkers.
 
+use itertools::Itertools;
+
 use super::{
     data_words::DATA_WORD_SANITY_CHECKER,
     its_payload_fsm_cont::{self, ItsPayloadFsmContinuous},
@@ -18,7 +20,7 @@ use crate::{
     words::{
         its::{
             data_words::{
-                ib_data_word_id_to_lane, ob_data_word_id_to_input_number_connector,
+                lane_id_to_lane_number, ob_data_word_id_to_input_number_connector,
                 ob_data_word_id_to_lane,
             },
             status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
@@ -575,12 +577,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
                 "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} {err_msg}. Lanes: {lanes:?}",
                 feeid=self.current_rdh.as_ref().unwrap().fee_id(),
                 lanes = alpide_readout_frame.lane_data_frames.iter().map(|lane|
-                    if is_ib {
-                        ib_data_word_id_to_lane(lane.lane_id)
-                    } else {
-                        ob_data_word_id_to_lane(lane.lane_id)
-                    }
-                    ).collect::<Vec<u8>>(),
+                    lane_id_to_lane_number(lane.lane_id, is_ib)).collect::<Vec<u8>>(),
             );
             self.stats_send_ch
                 .send(StatType::Error(err_msg))
@@ -594,13 +591,12 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         // Format and send all errors
         if !lane_error_msgs.is_empty() {
             let err_code = if is_ib { "E74" } else { "E75" };
-            let lane_error_ids_str = lanes_in_error_ids
+            let lane_error_numbers = lanes_in_error_ids
                 .iter()
-                .map(|lane_number| format!("{lane_number}"))
-                .collect::<Vec<String>>()
-                .join(", ");
+                .map(|lane_id| lane_id_to_lane_number(*lane_id, is_ib))
+                .collect_vec();
             let mut error_string = format!(
-                "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has errors in lane [{lane_error_ids_str}]:", feeid=self.current_rdh.as_ref().unwrap().fee_id()
+                "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has errors in lane {lane_error_numbers:?}:", feeid=self.current_rdh.as_ref().unwrap().fee_id()
             );
             for lane_error_msg in lane_error_msgs {
                 error_string.push_str(&lane_error_msg);
