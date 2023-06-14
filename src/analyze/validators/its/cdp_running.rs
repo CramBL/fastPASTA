@@ -588,20 +588,21 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
 
         // Process the data frame
-        let lane_error_msgs = super::alpide::check_alpide_data_frame(alpide_readout_frame);
+        let (lanes_in_error_ids, lane_error_msgs) =
+            super::alpide::check_alpide_data_frame(alpide_readout_frame);
 
         // Format and send all errors
         if !lane_error_msgs.is_empty() {
             let err_code = if is_ib { "E74" } else { "E75" };
-            let lane_error_ids_str = lane_error_msgs
+            let lane_error_ids_str = lanes_in_error_ids
                 .iter()
-                .map(|(lane_number, _)| format!("{lane_number}"))
+                .map(|lane_number| format!("{lane_number}"))
                 .collect::<Vec<String>>()
                 .join(", ");
             let mut error_string = format!(
                 "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has errors in lane [{lane_error_ids_str}]:", feeid=self.current_rdh.as_ref().unwrap().fee_id()
             );
-            for (_lane_id, lane_error_msg) in lane_error_msgs {
+            for lane_error_msg in lane_error_msgs {
                 error_string.push_str(&lane_error_msg);
             }
             self.stats_send_ch
