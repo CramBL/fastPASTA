@@ -145,10 +145,15 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
         .arg("L6_11");
     cmd.assert().success();
 
-    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
-
-    match_on_out_no_case(&cmd.output()?.stdout, "errors.*0", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "errors.*90", 1)?;
     match_on_out_no_case(&cmd.output()?.stdout, ".*stave.*l6_11", 1)?;
+
+    // Expect 90 errors that says the lanes in a frame were invalid. There should be 14 lanes in an OL (as it is L6_11) readout frame, but the data is missing a lane.
+    match_on_out_no_case(
+        &cmd.output()?.stderr,
+        "Invalid.*lanes.*13.*expected.*14",
+        90,
+    )?;
 
     Ok(())
 }
@@ -187,10 +192,15 @@ fn check_all_its_stave_trigger_period() -> Result<(), Box<dyn std::error::Error>
         .arg("-v4");
     cmd.assert().success();
 
-    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
-
-    match_on_out_no_case(&cmd.output()?.stdout, "errors.*0", 1)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "errors.*90", 1)?;
     match_on_out_no_case(&cmd.output()?.stdout, ".*stave.*l6_11", 1)?;
+
+    // Expect 90 errors that says the lanes in a frame were invalid. There should be 14 lanes in an OL (as it is L6_11) readout frame, but the data is missing a lane.
+    match_on_out_no_case(
+        &cmd.output()?.stderr,
+        "Invalid.*lanes.*13.*expected.*14",
+        90,
+    )?;
 
     Ok(())
 }

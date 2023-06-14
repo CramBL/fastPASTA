@@ -3,7 +3,7 @@
 //! [CdpRunningValidator] delegates sanity checks to word specific sanity checkers.
 
 use super::{
-    alpide_words::AlpideFrameDecoder,
+    alpide_words::AlpideLaneFrameDecoder,
     data_words::DATA_WORD_SANITY_CHECKER,
     its_payload_fsm_cont::{self, ItsPayloadFsmContinuous},
     lib::ItsPayloadWord,
@@ -18,13 +18,18 @@ use crate::{
     words::{
         its::{
             alpide_words::AlpideReadoutFrame,
-            data_words::{ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane},
+            data_words::{
+                ib_data_word_id_to_lane, ob_data_word_id_to_input_number_connector,
+                ob_data_word_id_to_lane,
+            },
             status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
+            Layer, Stave,
         },
         lib::{ByteSlice, RDH},
     },
 };
 
+#[derive(Debug, Clone, Copy)]
 enum StatusWordKind<'a> {
     Ihw(&'a [u8]),
     Tdh(&'a [u8]),
@@ -57,6 +62,8 @@ pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
     // Set to true when a TDH with internal trigger bit set is found.
     // Set to false when it's true and a TDT is found.
     is_readout_frame: bool,
+    // If the config is set to check ALPIDE data, the data is collected for a stave.
+    from_stave: Option<Stave>,
 }
 
 impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
@@ -90,6 +97,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
             // If the config is set to check ALPIDE data, and a filter for a stave is set, then allocate space for ALPIDE data.
             alpide_readout_frame: None,
             is_readout_frame: false,
+            from_stave: None,
         }
     }
 
@@ -142,6 +150,12 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
         self.is_new_data = true;
         self.gbt_word_counter = 0;
+        // If the config is set to check ALPIDE data and the stave the data is from is not known yet, then set the stave.
+        if self.from_stave.is_none() && self.alpide_checks_enabled {
+            self.from_stave = Some(Stave::from_feeid(
+                self.current_rdh.as_ref().unwrap().fee_id(),
+            ));
+        }
     }
 
     /// This function has to be called for every GBT word
@@ -344,7 +358,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
         // Matches if there is an alpide_readout_frame. If not we are not collecting data ie. ALPIDE checks are not enabled.
         if let Some(alpide_readout_frame) = &mut self.alpide_readout_frame {
-            alpide_readout_frame.store_lane_data(ib_slice);
+            alpide_readout_frame.store_lane_data(ib_slice, Layer::Inner);
         }
     }
 
@@ -353,6 +367,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         if !self.running_checks_enabled {
             return;
         }
+
         let lane_id = ob_data_word_id_to_lane(ob_slice[9]);
         // lane in active_lanes
         let active_lanes = self.current_ihw.as_ref().unwrap().active_lanes();
@@ -373,7 +388,12 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
         // If there is no readout frame, we are not collecting data.
         if let Some(alpide_readout_frame) = &mut self.alpide_readout_frame {
-            alpide_readout_frame.store_lane_data(ob_slice);
+            let from_layer = match self.from_stave.unwrap() {
+                Stave::MiddleLayer { .. } => Layer::Middle,
+                Stave::OuterLayer { .. } => Layer::Outer,
+                _ => unreachable!(),
+            };
+            alpide_readout_frame.store_lane_data(ob_slice, from_layer);
         }
     }
 
@@ -548,37 +568,59 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         let mem_pos_end = alpide_readout_frame.frame_end_mem_pos;
         let mut lane_error_msgs: Vec<(u8, String)> = Vec::new();
 
+        // Check if the frame is valid in terms of lanes in the data.
+        if let Err(err_msg) = alpide_readout_frame.check_frame_lanes_valid() {
+            // Format and send error message
+            let is_ib = alpide_readout_frame.from_layer() == Layer::Inner;
+            let err_code = if is_ib { "E72" } else { "E73" };
+            let err_msg = format!(
+                "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} {err_msg}. Lanes: {lanes:?}",
+                feeid=self.current_rdh.as_ref().unwrap().fee_id(),
+                lanes = alpide_readout_frame.lane_data_frames.iter().map(|lane|
+                    if is_ib {
+                        ib_data_word_id_to_lane(lane.lane_id)
+                    } else {
+                        ob_data_word_id_to_lane(lane.lane_id)
+                    }
+                    ).collect::<Vec<u8>>(),
+            );
+            self.stats_send_ch
+                .send(StatType::Error(err_msg))
+                .expect("Failed to send error to stats channel");
+        }
+
         // Process the data frame
+        let from_layer = alpide_readout_frame.from_layer();
         alpide_readout_frame
             .lane_data_frames
             .drain(..)
             .for_each(|lane_data_frame| {
                 // Process data for each lane
                 // New decoder for each lane
-                let mut decoder = AlpideFrameDecoder::default();
-                let lane_id = lane_data_frame.lane_id;
-                log::trace!("Processing lane ID: {lane_id:02X}");
-                decoder.process_alpide_frame(lane_data_frame);
+                let mut decoder = AlpideLaneFrameDecoder::new(from_layer);
+                let lane_number = lane_data_frame.lane_number(from_layer);
+                log::trace!("Processing lane #{lane_number}");
 
-                if decoder.has_errors() {
-                    let mut lane_error_string = format!("\n\tLane {lane_id} errors:");
-
-                    decoder.consume_errors().for_each(|err| {
+                if let Err(error_msgs) = decoder.validate_alpide_frame(lane_data_frame) {
+                    let mut lane_error_string = format!("\n\tLane {lane_number} errors: ");
+                    error_msgs.for_each(|err| {
                         lane_error_string.push_str(&err);
                     });
-                    lane_error_msgs.push((lane_id, lane_error_string));
-                }
+                    lane_error_msgs.push((lane_number, lane_error_string));
+                };
             });
 
         // Format and send all errors
         if !lane_error_msgs.is_empty() {
+            let is_ib = alpide_readout_frame.from_layer() == Layer::Inner;
+            let err_code = if is_ib { "E74" } else { "E75" };
             let lane_error_ids_str = lane_error_msgs
                 .iter()
-                .map(|(lane_id, _)| format!("{lane_id}"))
+                .map(|(lane_number, _)| format!("{lane_number}"))
                 .collect::<Vec<String>>()
                 .join(", ");
             let mut error_string = format!(
-                "{mem_pos_start:#X}: FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has errors in lane [{lane_error_ids_str}]:", feeid=self.current_rdh.as_ref().unwrap().fee_id()
+                "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has errors in lane [{lane_error_ids_str}]:", feeid=self.current_rdh.as_ref().unwrap().fee_id()
             );
             for (_lane_id, lane_error_msg) in lane_error_msgs {
                 error_string.push_str(&lane_error_msg);

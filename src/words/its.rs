@@ -1,7 +1,105 @@
 //! Data definitions for ITS payload words
+
+use std::fmt::Display;
 pub mod alpide_words;
 pub mod data_words;
 pub mod status_words;
+
+/// Enum for marking if the data is from the inner/middle/outer layer
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum Layer {
+    /// Data is from the inner layer
+    Inner,
+    /// Data is from the middle layer
+    Middle,
+    /// Data is from the outer layer
+    Outer,
+}
+
+impl Display for Layer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Layer::Inner => write!(f, "IL"),
+            Layer::Middle => write!(f, "ML"),
+            Layer::Outer => write!(f, "OL"),
+        }
+    }
+}
+
+/// Enum for marking if the data is from the inner/middle/outer layer along with the stave number
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum Stave {
+    /// Stave from the inner layer
+    InnerLayer {
+        /// Layer number
+        layer: u8,
+        /// Stave number
+        stave: u8,
+    },
+    /// Stave from the middle layer
+    MiddleLayer {
+        /// Layer number
+        layer: u8,
+        /// Stave number
+        stave: u8,
+    },
+    /// Stave from the outer layer
+    OuterLayer {
+        /// Layer number
+        layer: u8,
+        /// Stave number
+        stave: u8,
+    },
+}
+
+impl Display for Stave {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Stave::InnerLayer { layer, stave } => write!(f, "L{layer}_{stave}"),
+            Stave::MiddleLayer { layer, stave } => write!(f, "L{layer}_{stave}"),
+            Stave::OuterLayer { layer, stave } => write!(f, "L{layer}_{stave}"),
+        }
+    }
+}
+
+impl Stave {
+    /// Create a Stave from a FEE ID
+    ///
+    /// # Example
+    /// ```
+    /// # use fastpasta::words::its::Stave;
+    /// let fee_id: u16 = 524;
+    /// let stave = Stave::from_feeid(fee_id);
+    /// assert_eq!(stave, Stave::InnerLayer { layer: 0, stave: 12 });
+    /// ```
+    pub fn from_feeid(fee_id: u16) -> Self {
+        let layer = layer_from_feeid(fee_id);
+        let stave = stave_number_from_feeid(fee_id);
+        match layer {
+            0 | 1 | 2 => Stave::InnerLayer { layer, stave },
+            3 | 4 => Stave::MiddleLayer { layer, stave },
+            5 | 6 => Stave::OuterLayer { layer, stave },
+            _ => panic!("Invalid layer number"),
+        }
+    }
+    /// Get the layer number
+    pub fn layer(&self) -> u8 {
+        match self {
+            Stave::InnerLayer { layer, .. } => *layer,
+            Stave::MiddleLayer { layer, .. } => *layer,
+            Stave::OuterLayer { layer, .. } => *layer,
+        }
+    }
+
+    /// Get the stave number
+    pub fn stave(&self) -> u8 {
+        match self {
+            Stave::InnerLayer { stave, .. } => *stave,
+            Stave::MiddleLayer { stave, .. } => *stave,
+            Stave::OuterLayer { stave, .. } => *stave,
+        }
+    }
+}
 
 // Utility functions to extract information from the FeeId
 /// Extracts stave_number from 6 LSB \[5:0\]

@@ -186,7 +186,7 @@ pub mod test_util {
     impl Config for MockConfig {}
     impl ChecksOpt for MockConfig {
         fn check(&self) -> Option<CheckCommands> {
-            self.check.clone()
+            self.check
         }
         fn check_its_trigger_period(&self) -> Option<u16> {
             self.its_trigger_period

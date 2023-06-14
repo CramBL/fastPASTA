@@ -51,9 +51,10 @@ impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C>
                     false
                 }
             }) {
+                // Dispatch by FEE ID which will effectively dispatch by link AND stave
                 DispatchId(rdh.fee_id())
             } else {
-                // Dispatch by link ID as
+                // Dispatch by link ID
                 DispatchId(rdh.link_id() as u16)
             };
 

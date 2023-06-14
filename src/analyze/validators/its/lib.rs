@@ -34,6 +34,7 @@ pub fn do_payload_checks<T: RDH, C: ChecksOpt + FilterOpt>(
 
 #[allow(non_camel_case_types)] // An exception to the Rust naming convention, for these words that are already acronyms
 /// ITS Payload word types
+#[derive(Debug, Clone, Copy)]
 pub enum ItsPayloadWord {
     /// ITS Header Word
     IHW,

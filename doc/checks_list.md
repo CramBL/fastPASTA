@@ -50,22 +50,22 @@ If any of the following conditions are not met, the RDH fails the sanity check a
 ## RDH sanity check
 * RDH0
   * Header ID equal to first Header ID seen during processing
-  * header_size = 0x40
+  * header_size == 0x40
   * FeeID
     * 0 <= layer <= 6
     * 0 <= stave <= 47
-    * reserved = 0
-  * priority_bit = 0
-  * reserved = 0
+    * reserved == 0
+  * priority_bit == 0
+  * reserved == 0
 * RDH1
   * bc < 0xdeb
-  * reserved = 0
+  * reserved == 0
 * RDH2
   * stop_bit <= 1
-  * trigger_type >= 1 AND all spare bits = 0
-  * reserved = 0
+  * trigger_type >= 1 AND all spare bits == 0
+  * reserved == 0
 * RDH3
-  * reserved = 0 `includes reserved 23:4 in detector field`
+  * reserved == 0 `includes reserved 23:4 in detector field`
 * dw <= 1
 * data_format <= 2
 
@@ -73,27 +73,27 @@ If any of the following conditions are not met, the RDH fails the sanity check a
 # ITS specific checks
 ## RDH sanity check
 * RDH0
-  * system_id = 0x20 `ITS system ID`
+  * system_id == 0x20 `ITS system ID`
 
 ## ITS Payload sanity checks
 All ID checks are made based on the FSM illustrated in the section [Payload running checks](#its-payload-running-checks).
 ### Status Words
 #### IHW
-* id = 0xE0
-* reserved = 0
+* id == 0xE0
+* reserved == 0
 
 #### TDH
-* id = 0xE8
-* reserved = 0
+* id == 0xE8
+* reserved == 0
 * trigger_type != 0 `OR` internal_trigger != 0
 
 #### TDT
-* id = 0xF0
-* reserved = 0
+* id == 0xF0
+* reserved == 0
 
 #### DDW0
-* id = 0xE4
-* reserved = 0
+* id == 0xE4
+* reserved == 0
 * index >= 1
 
 ### Data Words
@@ -142,10 +142,33 @@ Additional checks related to state:
 
 
 Certain transitions are ambigious, these are resolved based on the ID of the next received GBT word.
+
 ![ITS payload FSM for validation](ITS_payload_fsm_continuous_mode.png)
 
 ## User defined ITS payload checks
 - The user can specify a trigger period (orbit/bunch counter) for the TDHs, and the trigger period for all TDH's with internal trigger set is then compared to the specified value.
 
-## ALPIDE checks
-When all ITS checks are enabled and the option to filter data for a specific ITS Stave is set, ALPIDE data is decoded for each lane ID in the data stream. The time stamps for each chip in a readout frame is checked for consistency. All time stamps should match, and if they don't, an error message is displayed showing each observed time stamp and which chip ID it was observed in.
+## Stave & ALPIDE checks
+When using the `check all its-stave` command the following checks are done in addition to checks associated with `all` and `its`.
+
+### Staves & lanes
+**In a readout frame**
+* `IB`
+  * Data from 3 lanes
+    * Grouped by lane ID in any of the combinations: [0, 1, 2], [3, 4, 5], or [6, 7, 8]
+* `ML`
+  * Data from 8 lanes
+* `OL`
+  * Data from 14 lanes
+
+
+
+### ALPIDE chips
+
+**In a readout frame**:
+  * All Chip BC are identical
+  * `IB`
+    * Chip ID == Lane ID
+  * `OB`
+    * 7 Chip IDs per lane
+      * Chip IDs appear in order [0-6] or [9-14]

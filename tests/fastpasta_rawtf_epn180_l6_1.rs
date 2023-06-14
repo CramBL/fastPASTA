@@ -1,6 +1,8 @@
 use crate::util::*;
 mod util;
 
+const LANE_WITH_ERRORS: u8 = 2;
+
 // Asserts that the end of processing report summary contains correct information
 fn validate_report_summary(byte_output: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     let match_patterns = vec![
@@ -74,7 +76,7 @@ fn check_all_its_stave_filter() -> Result<(), Box<dyn std::error::Error>> {
     match_on_out_no_case(
         &cmd.output()?.stderr,
         // Errors that have ALPIDE and lane 66 in them
-        "error - 0x.*alpide.*lane.*66",
+        &format!("error - 0x.*alpide.*lane.*{LANE_WITH_ERRORS}"),
         EXPECTED_ALPIDE_ERRORS.into(),
     )?;
     match_on_out_no_case(&cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
@@ -180,7 +182,7 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
     match_on_out_no_case(
         &cmd.output()?.stderr,
         // Errors that have ALPIDE and lane 66 in them
-        "error - 0x.*alpide.*lane.*66",
+        &format!("error - 0x.*alpide.*lane.*{LANE_WITH_ERRORS}"),
         EXPECTED_ALPIDE_ERRORS.into(),
     )?;
     match_on_out_no_case(&cmd.output()?.stdout, ".*stave.*l6_1", 1)?;

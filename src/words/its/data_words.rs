@@ -2,11 +2,23 @@
 
 use std::ops::RangeInclusive;
 
-/// Takes an ob data word ID and returns the lane number
+/// Takes an OL/ML (OB) data word ID and returns the lane number
 #[inline]
 pub fn ob_data_word_id_to_lane(data_word_id: u8) -> u8 {
     // let lane_id = data_word_id & 0x1F;
-    ob_lane(ObLane(data_word_id))
+    if data_word_id <= *VALID_OL_CONNECT0_ID.end() {
+        // 0-6
+        data_word_id % VALID_OL_CONNECT0_ID.start()
+    } else if data_word_id <= *VALID_OL_CONNECT1_ID.end() {
+        // 7-13
+        7 + (data_word_id % VALID_OL_CONNECT1_ID.start())
+    } else if data_word_id <= *VALID_OL_CONNECT2_ID.end() {
+        // 14-20
+        14 + (data_word_id % VALID_OL_CONNECT2_ID.start())
+    } else {
+        // 21-27
+        21 + (data_word_id % VALID_OL_CONNECT3_ID.start())
+    }
 }
 
 /// Takes an ob data word ID and returns the input connector number
@@ -25,23 +37,11 @@ pub fn ob_data_word_id_to_connector(data_word_id: u8) -> u8 {
     (data_word_id >> 3) & 0b11
 }
 
-// Helper function to get the lane number from an ob lane ID
+/// Takes an IL/IB data word ID and returns the lane number
 #[inline]
-fn ob_lane(ob_id: ObLane) -> u8 {
-    let lane_id = ob_id.0;
-    if lane_id <= *VALID_OL_CONNECT0_ID.end() {
-        // 0-6
-        lane_id % VALID_OL_CONNECT0_ID.start()
-    } else if lane_id <= *VALID_OL_CONNECT1_ID.end() {
-        // 7-13
-        7 + (lane_id % VALID_OL_CONNECT1_ID.start())
-    } else if lane_id <= *VALID_OL_CONNECT2_ID.end() {
-        // 14-20
-        14 + (lane_id % VALID_OL_CONNECT2_ID.start())
-    } else {
-        // 21-27
-        21 + (lane_id % VALID_OL_CONNECT3_ID.start())
-    }
+pub fn ib_data_word_id_to_lane(data_word_id: u8) -> u8 {
+    // let lane_id = data_word_id & 0x1F;
+    data_word_id & 0x1F
 }
 
 // IDs are defined as follows:

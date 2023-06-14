@@ -44,18 +44,18 @@ pub fn match_on_output(
 pub fn match_on_out_no_case(
     byte_output: &[u8],
     re_str: &str,
-    match_count: usize,
+    expect_match: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Build regex pattern
-    let re = fancy_regex::Regex::new(&("(?i)".to_owned() + re_str)).unwrap();
-    // Make the predicate function
-    let pred_regex = predicate::function(|&x| re.find_iter(x).count() == match_count);
     // Convert the output to string as utf-8
     let str_res = std::str::from_utf8(byte_output).expect("invalid utf-8 sequence");
-    // Evaluate the output with the predicate
-    assert!(
-        pred_regex.eval(&str_res),
-        "regex: {re_str} - expected match count: {match_count}\nFailed to match on:\n{str_res}"
+    // Build regex pattern
+    let re = fancy_regex::Regex::new(&("(?i)".to_owned() + re_str)).unwrap();
+    // Count the number of matches
+    let match_count = re.find_iter(str_res).count();
+    // Assert that the number of matches is equal to the expected number of matches
+    assert_eq!(
+        match_count, expect_match,
+        "regex: {re_str} - expected match count: {expect_match}, got {match_count}\nFailed to match on:\n{str_res}"
     );
     Ok(())
 }

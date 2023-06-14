@@ -1,15 +1,24 @@
 #![allow(dead_code)]
 //! Word definitions and utility functions for working with ALPIDE data words
 
+use super::{
+    data_words::{ib_data_word_id_to_lane, ob_data_word_id_to_lane},
+    Layer,
+};
+
 /// Struct for storing the contents of a single ALPIDE readout frame
 #[derive(Default)]
 pub struct AlpideReadoutFrame {
     pub(crate) frame_start_mem_pos: u64,
     pub(crate) frame_end_mem_pos: u64,
     pub(crate) lane_data_frames: Vec<LaneDataFrame>,
+    from_layer: Option<Layer>,
 }
 
 impl AlpideReadoutFrame {
+    const IL_FRAME_LANE_COUNT: usize = 3;
+    const ML_FRAME_LANE_COUNT: usize = 8;
+    const OL_FRAME_LANE_COUNT: usize = 14;
     /// Create a new ALPIDE readout frame from the given memory position.
     pub fn new(start_mem_pos: u64) -> Self {
         Self {
@@ -19,21 +28,61 @@ impl AlpideReadoutFrame {
     }
 
     /// Stores the 9 data bytes from an ITS data word byte data slice (does not store the ID byte more than once) by appending it to the lane data.
-    pub fn store_lane_data(&mut self, data_slice: &[u8]) {
+    pub fn store_lane_data(&mut self, data_word: &[u8], from_layer: Layer) {
+        if self.from_layer.is_none() {
+            self.from_layer = Some(from_layer);
+        }
         match self
             .lane_data_frames
             .iter_mut()
-            .find(|lane_data_frame| lane_data_frame.lane_id == data_slice[9])
+            .find(|lane_data_frame| lane_data_frame.lane_id == data_word[9])
         {
             Some(lane_data_frame) => {
                 lane_data_frame
                     .lane_data
-                    .extend_from_slice(&data_slice[0..=8]);
+                    .extend_from_slice(&data_word[0..=8]);
             }
             None => self.lane_data_frames.push(LaneDataFrame {
-                lane_id: data_slice[9],
-                lane_data: data_slice[0..=8].to_vec(),
+                lane_id: data_word[9],
+                lane_data: data_word[0..=8].to_vec(),
             }),
+        }
+    }
+
+    /// Returns the barrel that the readout frame is from
+    pub fn from_layer(&self) -> Layer {
+        self.from_layer.expect("No barrel set for readout frame")
+    }
+
+    /// Check if the frame is valid in terms of number of lanes in the data and for IB, the lane grouping.
+    pub fn check_frame_lanes_valid(&self) -> Result<(), String> {
+        let expect_lane_count = match self.from_layer() {
+            Layer::Inner => Self::IL_FRAME_LANE_COUNT,
+            Layer::Middle => Self::ML_FRAME_LANE_COUNT,
+            Layer::Outer => Self::OL_FRAME_LANE_COUNT,
+        };
+
+        // Check number of lanes is correct, then if IB, also check lane grouping is correct
+        if self.lane_data_frames.len() != expect_lane_count {
+            Err(format!(
+                "Invalid number of lanes: {num_lanes}, expected {expect_lane_count}",
+                num_lanes = self.lane_data_frames.len()
+            ))
+        } else if self.from_layer() == Layer::Inner {
+            // Check frame lane grouping is correct (these groupings are hardcoded in the firmware)
+            let mut lane_ids = self
+                .lane_data_frames
+                .iter()
+                .map(|lane_data_frame| ib_data_word_id_to_lane(lane_data_frame.lane_id))
+                .collect::<Vec<u8>>();
+            lane_ids.sort();
+            match lane_ids.as_slice() {
+                &[0, 1, 2] | &[3, 4, 5] | &[6, 7, 8] => return Ok(()),
+                _ => return Err("Invalid lane grouping".to_string()),
+            }
+        } else {
+            // No grouping to check for outer barrel
+            return Ok(());
         }
     }
 }
@@ -47,7 +96,20 @@ pub struct LaneDataFrame {
     pub(crate) lane_data: Vec<u8>,
 }
 
+impl LaneDataFrame {
+    /// Returns the lane number for the [LaneDataFrame] based on the [Barrel] it is from
+    ///
+    /// The [LaneDataFrame] does not store the barrel it is from, so this must be provided.
+    pub fn lane_number(&self, from_barrel: Layer) -> u8 {
+        match from_barrel {
+            Layer::Inner => ib_data_word_id_to_lane(self.lane_id),
+            Layer::Middle | Layer::Outer => ob_data_word_id_to_lane(self.lane_id),
+        }
+    }
+}
+
 /// All the possible words that can be found in the ALPIDE data stream
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum AlpideWord {
     ChipHeader,
     ChipEmptyFrame,

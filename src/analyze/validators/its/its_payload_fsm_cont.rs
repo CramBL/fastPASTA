@@ -10,6 +10,7 @@ use super::lib::ItsPayloadWord;
 /// The best guess is made based on heurestics.
 /// Such as the perceived most likely candidate that could have an ID error,
 /// or a word that would be easier to get the FSM back on track based on.
+#[derive(Debug, Clone, Copy)]
 pub enum AmbigiousError {
     /// ID error when both DDW0 or TDH would be a valid word.
     TDH_or_DDW0,
