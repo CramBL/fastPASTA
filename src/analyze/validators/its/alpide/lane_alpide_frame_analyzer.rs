@@ -18,7 +18,7 @@ pub struct LaneAlpideFrameAnalyzer {
     chip_data: Vec<AlpideFrameChipData>,
     // Indicate that the next byte should be saved as bunch counter for frame
     next_is_bc: bool,
-    errors: Vec<String>,
+    errors: Option<Vec<String>>,
     from_layer: Option<Layer>,
     validated_bc: Option<u8>, // Bunch counter for the frame if the bunch counters match
 }
@@ -41,7 +41,7 @@ impl LaneAlpideFrameAnalyzer {
                 Layer::Middle | Layer::Outer => Vec::with_capacity(Self::ML_OL_CHIP_COUNT),
             },
             next_is_bc: false,
-            errors: Vec::new(),
+            errors: Some(Vec::new()),
             from_layer: Some(data_origin),
             validated_bc: None,
         }
@@ -54,7 +54,7 @@ impl LaneAlpideFrameAnalyzer {
     pub fn analyze_alpide_frame(
         &mut self,
         lane_data_frame: LaneDataFrame,
-    ) -> Result<(), std::vec::Drain<String>> {
+    ) -> Result<(), std::vec::Vec<String>> {
         self.lane_number = lane_data_frame.lane_number(self.from_layer.unwrap());
         log::debug!(
             "Processing ALPIDE frame for lane {lane_id}",
@@ -71,23 +71,23 @@ impl LaneAlpideFrameAnalyzer {
         if let Err(msg) = self.check_bunch_counters() {
             // if it is already in the errors_per_lane, add it to the list
             let error_str = format!("\n\t\tBunch counters mismatch:{msg}");
-            self.errors.push(error_str);
+            self.errors.as_mut().unwrap().push(error_str);
         }
 
         if let Err(msg) = self.check_chip_count() {
             let error_str = format!("\n\t\tChip ID count mismatch:{msg}");
-            self.errors.push(error_str);
+            self.errors.as_mut().unwrap().push(error_str);
         } else {
             // Only check if the chip count is valid.
             // Check chip ID order
             if let Err(msg) = self.check_chip_id_order() {
                 let error_str = format!("\n\t\tChip ID order mismatch:{msg}");
-                self.errors.push(error_str);
+                self.errors.as_mut().unwrap().push(error_str);
             }
         }
 
         if self.has_errors() {
-            Err(self.errors.drain(..))
+            Err(self.errors.take().unwrap())
         } else {
             Ok(())
         }
@@ -104,7 +104,7 @@ impl LaneAlpideFrameAnalyzer {
         }
         if self.next_is_bc {
             if let Err(msg) = self.store_bunch_counter(alpide_byte) {
-                self.errors.push(msg);
+                self.errors.as_mut().unwrap().push(msg);
             }
 
             // Done with the byte containing the bunch counter
@@ -199,7 +199,7 @@ impl LaneAlpideFrameAnalyzer {
     /// If the check passes, the bunch counter value is stored as the validated bunch counter (bc).
     fn check_bunch_counters(&mut self) -> Result<(), String> {
         // Return all unique bunch counters
-        let unique_bcs = self
+        let unique_bcs: Vec<&AlpideFrameChipData> = self
             .chip_data
             .iter()
             .unique_by(|cd| cd.bunch_counter)
@@ -300,6 +300,15 @@ impl LaneAlpideFrameAnalyzer {
     }
 
     fn has_errors(&self) -> bool {
-        !self.errors.is_empty()
+        if let Some(error_vec) = self.errors.as_ref() {
+            !error_vec.is_empty()
+        } else {
+            false
+        }
+    }
+
+    /// Get the validated bunch counter. Is `None` if the bunch counters are not identical.
+    pub fn validated_bc(&self) -> Option<u8> {
+        self.validated_bc
     }
 }
