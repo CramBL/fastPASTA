@@ -29,6 +29,7 @@ use crate::{
     },
 };
 
+#[derive(Debug, Clone, Copy)]
 enum StatusWordKind<'a> {
     Ihw(&'a [u8]),
     Tdh(&'a [u8]),

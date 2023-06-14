@@ -109,6 +109,7 @@ impl LaneDataFrame {
 }
 
 /// All the possible words that can be found in the ALPIDE data stream
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum AlpideWord {
     ChipHeader,
     ChipEmptyFrame,

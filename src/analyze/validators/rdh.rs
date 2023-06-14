@@ -6,6 +6,7 @@ use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3};
 use std::fmt::Write as _;
 
 /// Enum to specialize the checks performed by the [RdhCruSanityValidator] for a specific system.
+#[derive(Debug, Clone, Copy)]
 pub enum SpecializeChecks {
     /// Specialize the checks for the Inner Tracking System.
     ITS,

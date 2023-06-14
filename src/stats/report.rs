@@ -192,6 +192,7 @@ fn format_global_stats_sub_table(global_stats_table: &mut Table) {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, Clone, Copy)]
 enum SubtableColor {
     Purple,
     Green,

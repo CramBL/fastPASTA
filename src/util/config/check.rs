@@ -45,7 +45,7 @@ where
 }
 
 /// Check subcommand to enable checks, needs to be followed by a check type subcommand and a target system
-#[derive(Subcommand, Debug, Clone, PartialEq)]
+#[derive(Subcommand, Debug, Clone, Copy, PartialEq)]
 pub enum CheckCommands {
     /// Perform sanity & running checks on RDH. If a target system is specified (e.g. 'ITS') checks implemented for the target is also performed. If no target system is specified, only the most generic checks are done.
     All {
