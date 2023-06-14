@@ -42,7 +42,7 @@ Project home page: https://gitlab.cern.ch/mkonig/fastpasta"
 #[command(propagate_version = true)]
 pub struct Cfg {
     /// Input file (default: stdin)
-    #[arg(name = "Raw Data File", global = true)]
+    #[arg(name = "Raw Data", global = true)]
     file: Option<PathBuf>,
 
     /// Commands such as `Check` or `View` that accepts further subcommands
@@ -54,33 +54,57 @@ pub struct Cfg {
     verbosity: u8,
 
     /// Max tolerate errors before exiting, if set to 0 -> no limit to errors
-    #[arg(short = 'e', long = "max-errors", default_value_t = 0, global = true)]
+    #[arg(
+        short = 'e',
+        long = "max-tolerate-errors",
+        visible_aliases = ["max-errors", "tolerate-errors", "stop-at-error-count"],
+        default_value_t = 0,
+        global = true
+    )]
     max_tolerate_errors: u32,
 
     /// Set the exit code for if any errors are detected in the input data (cannot be 0)
-    #[arg(short = 'E', long = "any-errors-exit-code", global = true)]
+    #[arg(
+        short = 'E',
+        long = "any-errors-exit-code",
+        visible_alias = "exit-code",
+        global = true
+    )]
     any_errors_exit_code: Option<u8>,
 
     /// Set CRU link ID to filter by (e.g. 5)
-    #[arg(short = 'f', long, global = true, group = "filter")]
+    #[arg(
+        short = 'f',
+        long,
+        visible_alias = "link",
+        global = true,
+        group = "filter"
+    )]
     filter_link: Option<u8>,
 
     /// Set FEE ID to filter by (e.g. 20522)
-    #[arg(short = 'F', long, global = true, group = "filter")]
+    #[arg(
+        short = 'F',
+        long,
+        visible_alias = "fee",
+        global = true,
+        group = "filter"
+    )]
     filter_fee: Option<u16>,
 
     /// Set ITS layer & stave to filter by (e.g. L5_42)
     #[arg(
         short = 's',
         long,
-        name = "filter-its-stave",
+        name = "FILTER-ITS-STAVE",
+        visible_aliases = ["its-stave", "stave"],
         global = true,
         group = "filter"
     )]
     filter_its_stave: Option<String>,
 
     /// Enables checks on the ITS trigger period with the specified value, usable with the `check all its-stave` command
-    #[arg(short = 'p', long, global = true, requires = "filter-its-stave")]
+    #[arg(short = 'p', long, global = true, requires = "FILTER-ITS-STAVE")]
     its_trigger_period: Option<u16>,
 
     /// Output raw data (default: stdout), requires setting a filter option. If Checks or Views are enabled, the output is supressed.
@@ -88,6 +112,7 @@ pub struct Cfg {
         name = "OUTPUT DATA",
         short = 'o',
         long = "output",
+        visible_alias = "out",
         global = true,
         requires("filter")
     )]
