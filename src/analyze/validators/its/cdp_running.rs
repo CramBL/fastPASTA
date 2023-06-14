@@ -3,13 +3,13 @@
 //! [CdpRunningValidator] delegates sanity checks to word specific sanity checkers.
 
 use super::{
-    alpide_words::AlpideLaneFrameDecoder,
     data_words::DATA_WORD_SANITY_CHECKER,
     its_payload_fsm_cont::{self, ItsPayloadFsmContinuous},
     lib::ItsPayloadWord,
     status_words::STATUS_WORD_SANITY_CHECKER,
 };
 use crate::{
+    analyze::validators::its::alpide_words::AlpideReadoutFrame,
     stats::lib::StatType,
     util::config::{
         check::{CheckCommands, ChecksOpt, System},
@@ -17,7 +17,6 @@ use crate::{
     },
     words::{
         its::{
-            alpide_words::AlpideReadoutFrame,
             data_words::{
                 ib_data_word_id_to_lane, ob_data_word_id_to_input_number_connector,
                 ob_data_word_id_to_lane,
@@ -556,8 +555,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
     }
 
-    /// Process ALPIDE data for a readout frame, per lane.
-    fn process_alpide_data(&mut self, mut alpide_readout_frame: AlpideReadoutFrame) {
+    /// Process ALPIDE data for a readout frame. Includes checks across lanes and within a lane.
+    fn process_alpide_data(&mut self, alpide_readout_frame: AlpideReadoutFrame) {
         debug_assert!(!self.is_readout_frame);
         debug_assert!(
             alpide_readout_frame.frame_start_mem_pos != 0,
@@ -566,12 +565,11 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
 
         let mem_pos_start = alpide_readout_frame.frame_start_mem_pos;
         let mem_pos_end = alpide_readout_frame.frame_end_mem_pos;
-        let mut lane_error_msgs: Vec<(u8, String)> = Vec::new();
+        let is_ib = alpide_readout_frame.is_from_layer() == Layer::Inner;
 
         // Check if the frame is valid in terms of lanes in the data.
         if let Err(err_msg) = alpide_readout_frame.check_frame_lanes_valid() {
             // Format and send error message
-            let is_ib = alpide_readout_frame.from_layer() == Layer::Inner;
             let err_code = if is_ib { "E72" } else { "E73" };
             let err_msg = format!(
                 "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} {err_msg}. Lanes: {lanes:?}",
@@ -590,29 +588,10 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
 
         // Process the data frame
-        let from_layer = alpide_readout_frame.from_layer();
-        alpide_readout_frame
-            .lane_data_frames
-            .drain(..)
-            .for_each(|lane_data_frame| {
-                // Process data for each lane
-                // New decoder for each lane
-                let mut decoder = AlpideLaneFrameDecoder::new(from_layer);
-                let lane_number = lane_data_frame.lane_number(from_layer);
-                log::trace!("Processing lane #{lane_number}");
-
-                if let Err(error_msgs) = decoder.validate_alpide_frame(lane_data_frame) {
-                    let mut lane_error_string = format!("\n\tLane {lane_number} errors: ");
-                    error_msgs.for_each(|err| {
-                        lane_error_string.push_str(&err);
-                    });
-                    lane_error_msgs.push((lane_number, lane_error_string));
-                };
-            });
+        let lane_error_msgs = super::alpide_words::check_alpide_data_frame(alpide_readout_frame);
 
         // Format and send all errors
         if !lane_error_msgs.is_empty() {
-            let is_ib = alpide_readout_frame.from_layer() == Layer::Inner;
             let err_code = if is_ib { "E74" } else { "E75" };
             let lane_error_ids_str = lane_error_msgs
                 .iter()
