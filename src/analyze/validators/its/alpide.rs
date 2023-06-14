@@ -76,7 +76,7 @@ fn validate_lane_bcs(
         .collect();
     if unique_bunch_counters.len() > 1 {
         let mut error_string = format!(
-            "Mismatching bunch counters between lanes in same readout frame, lanes: {:?}",
+            "\n\tLane {:?} error: Mismatching bunch counters between lanes in same readout frame",
             validated_lanes
                 .iter()
                 .map(|lane| lane.lane_id)
@@ -101,12 +101,12 @@ fn validate_lane_bcs(
             .iter()
             .for_each(|(bunch_counter, lanes)| {
                 error_string.push_str(&format!(
-                    "\n\tBunch counter: {bunch_counter} | Lanes: {lanes:?}",
+                    "\n\t\tBunch counter: {bunch_counter:>3?} | Lanes: {lanes:?}",
                     bunch_counter = bunch_counter,
                     lanes = lanes
                 ));
             });
         lane_error_msgs.push(error_string);
-        lane_error_ids.extend(lanes_to_bunch_counter.iter().map(|(lane_id, _)| *lane_id));
+        lane_error_ids.extend(lanes_to_bunch_counter.iter().flat_map(|(_, lanes)| lanes));
     }
 }
