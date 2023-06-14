@@ -144,7 +144,6 @@ Additional checks related to state:
 Certain transitions are ambigious, these are resolved based on the ID of the next received GBT word.
 
 ![ITS payload FSM for validation](ITS_payload_fsm_continuous_mode.png)
-<img src="ITS_payload_fsm_continuous_mode.png"  width="100" height="100">
 
 ## User defined ITS payload checks
 - The user can specify a trigger period (orbit/bunch counter) for the TDHs, and the trigger period for all TDH's with internal trigger set is then compared to the specified value.
