@@ -5,7 +5,7 @@ use crate::words::its::{alpide_words::LaneDataFrame, data_words::ib_data_word_id
 pub struct AlpideReadoutFrame {
     pub(crate) frame_start_mem_pos: u64,
     pub(crate) frame_end_mem_pos: u64,
-    pub(crate) lane_data_frames: Vec<LaneDataFrame>,
+    pub(crate) lane_data_frames: Vec<LaneDataFrame>, // Vector of data frames for each lane
     from_layer: Option<Layer>,
 }
 

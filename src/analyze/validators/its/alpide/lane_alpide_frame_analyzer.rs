@@ -5,7 +5,7 @@ use crate::words::its::{
 use itertools::Itertools;
 
 /// Decodes the ALPIDE data from a readout frame for a single lane
-pub struct AlpideLaneFrameDecoder {
+pub struct LaneAlpideFrameAnalyzer {
     // Works on a single lane at a time
     lane_number: u8,
     is_header_seen: bool, // Set when a Chip Header is seen, reset when a Chip Trailer is seen
@@ -19,7 +19,7 @@ pub struct AlpideLaneFrameDecoder {
     validated_bc: Option<u8>, // Bunch counter for the frame if the bunch counters match
 }
 
-impl AlpideLaneFrameDecoder {
+impl LaneAlpideFrameAnalyzer {
     const ERR_MSG_PREFIX: &'static str = "\n\t\t\t"; // Newline + indentation for error messages
     const IL_CHIP_COUNT: usize = 1; // Number of chips in an inner layer readout frame
     const ML_OL_CHIP_COUNT: usize = 7; // Number of chips in a middle/outer layer readout frame

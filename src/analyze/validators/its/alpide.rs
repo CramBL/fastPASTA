@@ -1,9 +1,8 @@
-pub mod alpide_lane_frame_decoder;
 pub mod alpide_readout_frame;
+pub mod lane_alpide_frame_analyzer;
 
-use super::alpide::{
-    alpide_lane_frame_decoder::AlpideLaneFrameDecoder, alpide_readout_frame::AlpideReadoutFrame,
-};
+use alpide_readout_frame::AlpideReadoutFrame;
+use lane_alpide_frame_analyzer::LaneAlpideFrameAnalyzer;
 
 /// Process ALPIDE data for a readout frame, per lane.
 pub fn check_alpide_data_frame(mut alpide_readout_frame: AlpideReadoutFrame) -> Vec<(u8, String)> {
@@ -15,7 +14,7 @@ pub fn check_alpide_data_frame(mut alpide_readout_frame: AlpideReadoutFrame) -> 
         .for_each(|lane_data_frame| {
             // Process data for each lane
             // New decoder for each lane
-            let mut decoder = AlpideLaneFrameDecoder::new(from_layer);
+            let mut decoder = LaneAlpideFrameAnalyzer::new(from_layer);
             let lane_number = lane_data_frame.lane_number(from_layer);
             log::trace!("Processing lane #{lane_number}");
 
