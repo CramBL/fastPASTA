@@ -9,7 +9,7 @@ use super::{
     status_words::STATUS_WORD_SANITY_CHECKER,
 };
 use crate::{
-    analyze::validators::its::alpide_words::AlpideReadoutFrame,
+    analyze::validators::its::alpide::alpide_readout_frame::AlpideReadoutFrame,
     stats::lib::StatType,
     util::config::{
         check::{CheckCommands, ChecksOpt, System},
@@ -588,7 +588,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
         }
 
         // Process the data frame
-        let lane_error_msgs = super::alpide_words::check_alpide_data_frame(alpide_readout_frame);
+        let lane_error_msgs = super::alpide::check_alpide_data_frame(alpide_readout_frame);
 
         // Format and send all errors
         if !lane_error_msgs.is_empty() {

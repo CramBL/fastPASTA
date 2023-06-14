@@ -6,7 +6,7 @@
 //!
 //! The [CdpRunningValidator](crate::analyze::validators::its::cdp_running::CdpRunningValidator) is used to validate the payload, and contains all the subvalidators as well.
 
-mod alpide_words;
+pub mod alpide;
 pub mod cdp_running;
 pub mod data_words;
 pub mod its_payload_fsm_cont;

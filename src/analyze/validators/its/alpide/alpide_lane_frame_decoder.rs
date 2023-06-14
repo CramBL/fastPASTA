@@ -1,123 +1,14 @@
-#![allow(dead_code)]
 use crate::words::its::{
     alpide_words::{AlpideFrameChipData, LaneDataFrame},
-    data_words::ib_data_word_id_to_lane,
     Layer,
 };
 use itertools::Itertools;
-
-/// Struct for storing the contents of a single ALPIDE readout frame
-#[derive(Default)]
-pub struct AlpideReadoutFrame {
-    pub(crate) frame_start_mem_pos: u64,
-    pub(crate) frame_end_mem_pos: u64,
-    pub(crate) lane_data_frames: Vec<LaneDataFrame>,
-    from_layer: Option<Layer>,
-}
-
-impl AlpideReadoutFrame {
-    const IL_FRAME_LANE_COUNT: usize = 3;
-    const ML_FRAME_LANE_COUNT: usize = 8;
-    const OL_FRAME_LANE_COUNT: usize = 14;
-    /// Create a new ALPIDE readout frame from the given memory position.
-    pub fn new(start_mem_pos: u64) -> Self {
-        Self {
-            frame_start_mem_pos: start_mem_pos,
-            ..Default::default()
-        }
-    }
-
-    /// Stores the 9 data bytes from an ITS data word byte data slice (does not store the ID byte more than once) by appending it to the lane data.
-    pub fn store_lane_data(&mut self, data_word: &[u8], from_layer: Layer) {
-        if self.from_layer.is_none() {
-            self.from_layer = Some(from_layer);
-        }
-        match self
-            .lane_data_frames
-            .iter_mut()
-            .find(|lane_data_frame| lane_data_frame.lane_id == data_word[9])
-        {
-            Some(lane_data_frame) => {
-                lane_data_frame
-                    .lane_data
-                    .extend_from_slice(&data_word[0..=8]);
-            }
-            None => self.lane_data_frames.push(LaneDataFrame {
-                lane_id: data_word[9],
-                lane_data: data_word[0..=8].to_vec(),
-            }),
-        }
-    }
-
-    /// Returns the barrel that the readout frame is from
-    pub fn is_from_layer(&self) -> Layer {
-        self.from_layer.expect("No barrel set for readout frame")
-    }
-
-    /// Check if the frame is valid in terms of number of lanes in the data and for IB, the lane grouping.
-    pub fn check_frame_lanes_valid(&self) -> Result<(), String> {
-        let expect_lane_count = match self.is_from_layer() {
-            Layer::Inner => Self::IL_FRAME_LANE_COUNT,
-            Layer::Middle => Self::ML_FRAME_LANE_COUNT,
-            Layer::Outer => Self::OL_FRAME_LANE_COUNT,
-        };
-
-        // Check number of lanes is correct, then if IB, also check lane grouping is correct
-        if self.lane_data_frames.len() != expect_lane_count {
-            Err(format!(
-                "Invalid number of lanes: {num_lanes}, expected {expect_lane_count}",
-                num_lanes = self.lane_data_frames.len()
-            ))
-        } else if self.is_from_layer() == Layer::Inner {
-            // Check frame lane grouping is correct (these groupings are hardcoded in the firmware)
-            let mut lane_ids = self
-                .lane_data_frames
-                .iter()
-                .map(|lane_data_frame| ib_data_word_id_to_lane(lane_data_frame.lane_id))
-                .collect::<Vec<u8>>();
-            lane_ids.sort();
-            match lane_ids.as_slice() {
-                &[0, 1, 2] | &[3, 4, 5] | &[6, 7, 8] => return Ok(()),
-                _ => return Err("Invalid lane grouping".to_string()),
-            }
-        } else {
-            // No grouping to check for outer barrel
-            return Ok(());
-        }
-    }
-}
-
-/// Process ALPIDE data for a readout frame, per lane.
-pub fn check_alpide_data_frame(mut alpide_readout_frame: AlpideReadoutFrame) -> Vec<(u8, String)> {
-    let mut lane_error_msgs: Vec<(u8, String)> = Vec::new();
-    let from_layer = alpide_readout_frame.is_from_layer();
-    alpide_readout_frame
-        .lane_data_frames
-        .drain(..)
-        .for_each(|lane_data_frame| {
-            // Process data for each lane
-            // New decoder for each lane
-            let mut decoder = AlpideLaneFrameDecoder::new(from_layer);
-            let lane_number = lane_data_frame.lane_number(from_layer);
-            log::trace!("Processing lane #{lane_number}");
-
-            if let Err(error_msgs) = decoder.validate_alpide_frame(lane_data_frame) {
-                let mut lane_error_string = format!("\n\tLane {lane_number} errors: ");
-                error_msgs.for_each(|err| {
-                    lane_error_string.push_str(&err);
-                });
-                lane_error_msgs.push((lane_number, lane_error_string));
-            };
-        });
-    lane_error_msgs
-}
 
 pub struct AlpideLaneFrameDecoder {
     // Works on a single lane at a time
     lane_number: u8,
     is_header_seen: bool, // Set when a Chip Header is seen, reset when a Chip Trailer is seen
     last_chip_id: u8,     // 4 bits
-    last_region_id: u8,   // 5 bits
     skip_n_bytes: u8, // Used when an irrelevant word larger than 1 byte is seen, to skip the next n bytes
     chip_data: Vec<AlpideFrameChipData>,
     // Indicate that the next byte should be saved as bunch counter for frame
@@ -136,7 +27,6 @@ impl AlpideLaneFrameDecoder {
             lane_number: 0,
             is_header_seen: false,
             last_chip_id: 0,
-            last_region_id: 0,
             skip_n_bytes: 0,
             chip_data: match data_origin {
                 // ALPIDE data from IB should have 9 chips per frame, OB should have 7
