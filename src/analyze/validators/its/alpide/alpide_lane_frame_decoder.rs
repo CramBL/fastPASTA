@@ -4,6 +4,7 @@ use crate::words::its::{
 };
 use itertools::Itertools;
 
+/// Decodes the ALPIDE data from a readout frame for a single lane
 pub struct AlpideLaneFrameDecoder {
     // Works on a single lane at a time
     lane_number: u8,
@@ -22,6 +23,8 @@ impl AlpideLaneFrameDecoder {
     const ERR_MSG_PREFIX: &'static str = "\n\t\t\t"; // Newline + indentation for error messages
     const IL_CHIP_COUNT: usize = 1; // Number of chips in an inner layer readout frame
     const ML_OL_CHIP_COUNT: usize = 7; // Number of chips in a middle/outer layer readout frame
+
+    /// Creates a new decoder by specifying the layer the data is from
     pub fn new(data_origin: Layer) -> Self {
         Self {
             lane_number: 0,
@@ -40,8 +43,11 @@ impl AlpideLaneFrameDecoder {
         }
     }
 
-    /// Decodes the readout frame byte by byte, then performs checks on the data and stores error messages
-    pub fn validate_alpide_frame(
+    /// Decodes the readout frame for a lane byte by byte, then performs checks on the data and stores error messages
+    ///
+    /// First data is decoded, then it is validated.
+    /// If the validation fails, the error messages are stored in the errors vector that is returned.
+    pub fn analyze_alpide_frame(
         &mut self,
         lane_data_frame: LaneDataFrame,
     ) -> Result<(), std::vec::Drain<String>> {
@@ -54,8 +60,9 @@ impl AlpideLaneFrameDecoder {
             .lane_data
             .into_iter()
             .for_each(|alpide_byte| {
-                self.process(alpide_byte);
+                self.decode(alpide_byte);
             });
+
         // Check all bunch counters match
         if let Err(msg) = self.check_bunch_counters() {
             // if it is already in the errors_per_lane, add it to the list
@@ -82,7 +89,8 @@ impl AlpideLaneFrameDecoder {
         }
     }
 
-    pub fn process(&mut self, alpide_byte: u8) {
+    /// Takes one ALPIDE byte at a time and decodes information from it.
+    pub fn decode(&mut self, alpide_byte: u8) {
         use crate::words::its::alpide_words::AlpideWord;
         log::trace!("Processing {:02X?} bytes", alpide_byte);
 
@@ -110,15 +118,13 @@ impl AlpideLaneFrameDecoder {
             Ok(word) => match word {
                 AlpideWord::ChipHeader => {
                     self.is_header_seen = true;
-                    let chip_id = alpide_byte & 0b1111;
-                    self.last_chip_id = chip_id;
+                    self.last_chip_id = alpide_byte & 0b1111;
                     self.next_is_bc = true;
                     log::trace!("{alpide_byte}: ChipHeader");
                 }
                 AlpideWord::ChipEmptyFrame => {
                     self.is_header_seen = false;
-                    let chip_id = alpide_byte & 0b1111;
-                    self.last_chip_id = chip_id;
+                    self.last_chip_id = alpide_byte & 0b1111;
                     self.next_is_bc = true;
                     log::trace!("{alpide_byte}: ChipEmptyFrame");
                 }
@@ -170,6 +176,7 @@ impl AlpideLaneFrameDecoder {
         Ok(())
     }
 
+    /// Print the bunch counter for each chip
     pub fn print_chip_bunch_counters(&self) {
         self.chip_data
             .iter()

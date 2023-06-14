@@ -19,7 +19,7 @@ pub fn check_alpide_data_frame(mut alpide_readout_frame: AlpideReadoutFrame) -> 
             let lane_number = lane_data_frame.lane_number(from_layer);
             log::trace!("Processing lane #{lane_number}");
 
-            if let Err(error_msgs) = decoder.validate_alpide_frame(lane_data_frame) {
+            if let Err(error_msgs) = decoder.analyze_alpide_frame(lane_data_frame) {
                 let mut lane_error_string = format!("\n\tLane {lane_number} errors: ");
                 error_msgs.for_each(|err| {
                     lane_error_string.push_str(&err);
