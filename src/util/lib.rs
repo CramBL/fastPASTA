@@ -25,6 +25,10 @@ where
     fn validate_args(&self) -> Result<(), String> {
         if let Some(check) = self.check() {
             if let Some(target) = check.target() {
+                if matches!(check, CheckCommands::Sanity { system } if matches!(system, Some(System::ITS_Stave)))
+                {
+                    return Err("Invalid config: Cannot check ITS stave with `check sanity`, instead use `check all its-stave`".to_string());
+                }
                 if !matches!(target, System::ITS_Stave) && self.check_its_trigger_period().is_some()
                 {
                     return Err("Invalid config: Specifying trigger period has to be done with the `check all its-stave` command".to_string());
