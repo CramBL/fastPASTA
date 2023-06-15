@@ -276,7 +276,7 @@ impl<C: Config + 'static> StatsController<C> {
             // If no filtering, the payload size seen is from the total RDHs
             report.add_stat(StatSummary::new(
                 "Total Payload Size".to_string(),
-                format_payload(self.rdh_stats.payload_size),
+                format_data_size(self.rdh_stats.payload_size),
                 None,
             ));
         } else {
@@ -373,7 +373,7 @@ impl<C: Config + 'static> StatsController<C> {
         ));
         filtered_stats.push(StatSummary::new(
             "Total Payload Size".to_string(),
-            format_payload(self.rdh_stats.payload_size),
+            format_data_size(self.rdh_stats.payload_size),
             None,
         ));
 
@@ -430,17 +430,17 @@ fn summerize_layers_staves_seen(
     )
 }
 
-/// Format and add payload size seen/loaded
-fn format_payload(payload_size: u64) -> String {
-    match payload_size {
-        0..=1024 => format!("{} B", payload_size),
+/// Format a size in bytes to human readable.
+fn format_data_size(size_bytes: u64) -> String {
+    match size_bytes {
+        0..=1024 => format!("{} B", size_bytes),
         1025..=1048576 => {
-            format!("{:.2} KiB", payload_size as f64 / 1024_f64)
+            format!("{:.2} KiB", size_bytes as f64 / 1024_f64)
         }
         1048577..=1073741824 => {
-            format!("{:.2} MiB", payload_size as f64 / 1048576_f64)
+            format!("{:.2} MiB", size_bytes as f64 / 1048576_f64)
         }
-        _ => format!("{:.2} GiB", payload_size as f64 / 1073741824_f64),
+        _ => format!("{:.2} GiB", size_bytes as f64 / 1073741824_f64),
     }
 }
 
