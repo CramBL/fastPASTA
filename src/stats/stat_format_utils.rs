@@ -42,12 +42,12 @@ pub(crate) fn format_layers_and_staves(
                 if layers_stave_with_errors.contains(&(*layer, *stave)) {
                     format!("L{layer}_{stave}\n").red().to_string()
                 } else {
-                    format!("L{layer}_{stave}\n")
+                    format!("L{layer}_{stave}\n").white().to_string()
                 }
             } else if layers_stave_with_errors.contains(&(*layer, *stave)) {
                 format!("L{layer}_{stave} ").red().to_string()
             } else {
-                format!("L{layer}_{stave} ")
+                format!("L{layer}_{stave} ").white().to_string()
             }
         })
         .collect::<Vec<String>>()
