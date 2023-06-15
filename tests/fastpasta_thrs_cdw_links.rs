@@ -99,3 +99,21 @@ fn view_its_readout_frames() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn view_its_readout_frame_data() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_THRS_CDW_LINKS)
+        .arg("view")
+        .arg("its-readout-frames-data")
+        .arg("-v4");
+
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+
+    cmd.assert().stdout(contains("RDH").count(6));
+
+    Ok(())
+}
