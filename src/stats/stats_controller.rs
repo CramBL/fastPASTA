@@ -140,7 +140,7 @@ impl<C: Config + 'static> StatsController<C> {
             StatType::DataFormat(version) => {
                 self.rdh_stats.record_data_format(version);
             }
-            StatType::HBFsSeen(val) => self.rdh_stats.add_hbf_seen(val),
+            StatType::HBFSeen => self.rdh_stats.incr_hbf_seen(),
             StatType::Fatal(err) => {
                 if self.error_stats.is_fatal_error() {
                     // Stop processing any error messages

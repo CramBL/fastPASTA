@@ -97,7 +97,7 @@ pub fn spawn_reader<T: RDH + 'static>(
                     // Send HBF seen if stop bit is 1
                     for rdh in cdps.rdh_slice().iter() {
                         if rdh.stop_bit() == 1 {
-                            stats_sender_channel.send(StatType::HBFsSeen(1)).unwrap();
+                            stats_sender_channel.send(StatType::HBFSeen).unwrap();
                         }
                         if let Err(e) = stats::collect_system_specific_stats(
                             rdh,

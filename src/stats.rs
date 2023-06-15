@@ -39,7 +39,7 @@ pub enum StatType {
     /// Record the data format detected.
     DataFormat(u8),
     /// Increment the total HBFs seen.
-    HBFsSeen(u32),
+    HBFSeen,
     /// Record a layer/stave combination seen.
     LayerStaveSeen {
         /// The layer number.
@@ -66,7 +66,7 @@ impl std::fmt::Display for StatType {
             StatType::LinksObserved(id) => write!(f, "Link observed: {id}"),
             StatType::RdhVersion(v) => write!(f, "RDH version: {v}"),
             StatType::DataFormat(format) => write!(f, "Data format: {format}"),
-            StatType::HBFsSeen(cnt) => write!(f, "HBFs seen: {cnt}"),
+            StatType::HBFSeen => write!(f, "HBFs seen increment"),
             StatType::LayerStaveSeen {
                 layer: layer_id,
                 stave: stave_id,
