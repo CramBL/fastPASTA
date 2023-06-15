@@ -127,6 +127,25 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             self.report(StatType::FeeId(rdh.fee_id()));
         }
     }
+    fn initial_collect_stats(&mut self, rdh: &impl RDH) -> Result<(), std::io::Error> {
+        // Report the trigger type as the RunTriggerType describing the type of run the data is from
+        self.report_run_trigger_type(rdh);
+        self.report(StatType::DataFormat(rdh.data_format()));
+        let observed_sys_id =
+            match crate::stats::lib::SystemId::from_system_id(rdh.rdh0().system_id) {
+                Ok(id) => id,
+                Err(e) => {
+                    log::error!("Failed to parse system ID: {e}");
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "Failed to parse system ID",
+                    ));
+                }
+            };
+        log::info!("{observed_sys_id} detected");
+        self.report(StatType::SystemId(observed_sys_id));
+        Ok(())
+    }
 }
 
 impl<R> ScanCDP for InputScanner<R>
@@ -145,9 +164,8 @@ where
         let rdh: T = if self.initial_rdh0.is_some() {
             let rdh: T =
                 SerdeRdh::load_from_rdh0(&mut self.reader, self.initial_rdh0.take().unwrap())?;
-            // Report the trigger type as the RunTriggerType describing the type of run the data is from
-            self.report_run_trigger_type(&rdh);
-            self.report(StatType::DataFormat(rdh.data_format()));
+            // Report general initial stats assumed to be the same for the rest of the data
+            self.initial_collect_stats(&rdh)?;
             rdh
         } else {
             SerdeRdh::load(&mut self.reader)?
