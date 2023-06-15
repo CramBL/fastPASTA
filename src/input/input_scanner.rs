@@ -54,6 +54,7 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     filter_target: Option<FilterTarget>,
     skip_payload: bool,
     unique_links_observed: Vec<u8>,
+    unique_feeids_observed: Vec<u16>,
     initial_rdh0: Option<Rdh0>,
 }
 
@@ -72,6 +73,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             filter_target: config.filter_target(),
             skip_payload: config.skip_payload(),
             unique_links_observed: vec![],
+            unique_feeids_observed: vec![],
             initial_rdh0: None,
         }
     }
@@ -91,6 +93,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             stats_controller_sender_ch,
             skip_payload: config.skip_payload(),
             unique_links_observed: vec![],
+            unique_feeids_observed: vec![],
             initial_rdh0: Some(rdh0),
         }
     }
@@ -117,6 +120,11 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         if !self.unique_links_observed.contains(&current_link_id) {
             self.unique_links_observed.push(current_link_id);
             self.report(StatType::LinksObserved(current_link_id));
+        }
+        // If the FEE ID has not been seen before, report it and add it to the list of unique FEE IDs
+        if !self.unique_feeids_observed.contains(&rdh.fee_id()) {
+            self.unique_feeids_observed.push(rdh.fee_id());
+            self.report(StatType::FeeId(rdh.fee_id()));
         }
     }
 }

@@ -405,13 +405,6 @@ impl<C: Config + 'static> StatsController<C> {
                     self.rdh_stats.layer_staves_as_slice(),
                     self.staves_with_errors.as_slice(),
                 ));
-            } else {
-                // If the target system is not ITS then just list the FEEIDs raw
-                filtered_stats.push(StatSummary::new(
-                    "FEE IDs seen".to_string(),
-                    format_fee_ids(self.rdh_stats.fee_ids_as_slice()),
-                    None,
-                ))
             }
         }
 
