@@ -1,8 +1,11 @@
 use owo_colors::OwoColorize;
 
+use super::stat_format_utils::format_data_size;
+use super::stat_format_utils::format_layers_and_staves;
 use super::stats_report::report::StatSummary;
 use crate::words::its::layer_from_feeid;
 use crate::words::its::stave_number_from_feeid;
+use crate::words::lib::RDH_CRU_SIZE_BYTES;
 
 /// Helper functions to format the summary of filtered link ID
 pub(crate) fn summerize_filtered_links(link_to_filter: u8, links_observed: &[u8]) -> StatSummary {
@@ -45,4 +48,32 @@ pub(crate) fn summerize_filtered_its_layer_staves(
         filtered_feeid_stat.notes = format!("not found: L{layer}_{stave}").red().to_string();
     }
     filtered_feeid_stat
+}
+
+pub(crate) fn summerize_layers_staves_seen(
+    layers_staves_seen: &[(u8, u8)],
+    staves_with_errors: &[(u8, u8)],
+) -> StatSummary {
+    StatSummary::new(
+        "Layers/Staves".to_string(),
+        format_layers_and_staves(layers_staves_seen.to_owned(), staves_with_errors.to_owned()),
+        None,
+    )
+}
+
+pub(crate) fn summerize_data_size(rdh_count: u64, payload_size: u64) -> StatSummary {
+    let rdh_data_size = rdh_count * RDH_CRU_SIZE_BYTES as u64;
+    if rdh_data_size == 0 {
+        StatSummary::new("Data size".to_string(), format_data_size(0), None)
+    } else {
+        StatSummary::new(
+            "Data size".to_string(),
+            format_data_size(rdh_data_size + payload_size),
+            Some(format!(
+                "RDHs:     {rdhs_size}\nPayloads: {payloads_size}",
+                rdhs_size = format_data_size(rdh_data_size),
+                payloads_size = format_data_size(payload_size)
+            )),
+        )
+    }
 }
