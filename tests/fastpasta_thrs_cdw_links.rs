@@ -62,6 +62,50 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn check_all_its_stave_filter_link() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_THRS_CDW_LINKS)
+        .arg("check")
+        .arg("all")
+        .arg("its-stave")
+        .arg("-v4")
+        .arg("--link")
+        .arg("8");
+
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "total errors.*0", 1)?;
+    // No occurences of 'none', meaning that the filter worked
+    match_on_out_no_case(&cmd.output()?.stdout, "none", 0)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_stave_filter_fee_id() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_THRS_CDW_LINKS)
+        .arg("check")
+        .arg("all")
+        .arg("its-stave")
+        .arg("-v4")
+        .arg("--fee")
+        .arg("12");
+
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "total errors.*0", 1)?;
+    // No occurences of 'none', meaning that the filter worked
+    match_on_out_no_case(&cmd.output()?.stdout, "none", 0)?;
+
+    Ok(())
+}
+
+#[test]
 fn check_all_its_stave_trigger_period() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
