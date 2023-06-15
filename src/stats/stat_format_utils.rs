@@ -1,5 +1,8 @@
 use owo_colors::OwoColorize;
 
+/// Used for formatting fields that potentially produces many values.
+const MAX_LINE_WIDTH: usize = 60;
+
 /// Format a size in bytes to human readable.
 pub(crate) fn format_data_size(size_bytes: u64) -> String {
     match size_bytes {
@@ -34,24 +37,31 @@ pub(crate) fn format_layers_and_staves(
     layers_staves_seen.sort();
     layers_stave_with_errors.sort();
 
+    let mut line_width = 0;
     layers_staves_seen
         .iter()
-        .enumerate()
-        .map(|(i, (layer, stave))| {
-            if i > 0 && i % 7 == 0 {
-                if layers_stave_with_errors.contains(&(*layer, *stave)) {
-                    format!("L{layer}_{stave}\n").red().to_string()
-                } else {
-                    format!("L{layer}_{stave}\n").white().to_string()
-                }
-            } else if layers_stave_with_errors.contains(&(*layer, *stave)) {
+        .map(|(layer, stave)| {
+            if layers_stave_with_errors.contains(&(*layer, *stave)) {
                 format!("L{layer}_{stave} ").red().to_string()
             } else {
                 format!("L{layer}_{stave} ").white().to_string()
             }
         })
-        .collect::<Vec<String>>()
-        .join("")
+        .fold(String::new(), |mut acc_str, stave_str| {
+            // This is weird cause it's colored strings.
+            // We need to map the length of the string to the string when it is displayed.
+            // The length of the strings of form 'Lx_y ' is 15
+            // The length of the strings of form 'Lx_yz ' is 16
+            // So now we map 15 to 5 and 16 to 6 (+1 for whitespace)
+            let current_str_len = stave_str.len() - 10;
+            if line_width + current_str_len > MAX_LINE_WIDTH {
+                acc_str.push('\n');
+                line_width = 0;
+            }
+            line_width += current_str_len;
+            acc_str.push_str(&stave_str);
+            acc_str
+        })
 }
 
 pub(crate) fn format_fee_ids(fee_ids_seen: &[u16]) -> String {
@@ -60,7 +70,7 @@ pub(crate) fn format_fee_ids(fee_ids_seen: &[u16]) -> String {
     }
     let mut fee_ids_seen = fee_ids_seen.to_owned();
     fee_ids_seen.sort();
-    format_nums_max_lines_width(40, Some(5), &fee_ids_seen)
+    format_nums_max_lines_width(MAX_LINE_WIDTH as u16, Some(5), &fee_ids_seen)
 }
 
 pub(crate) fn format_error_codes(error_codes: &[u8]) -> String {
@@ -91,7 +101,6 @@ pub fn format_nums_max_lines_width(max_width: u16, max_lines: Option<u16>, nums:
         let tmp_num_chars: u16 = id.checked_ilog10().unwrap_or(0) as u16 + 2; // +1 for whitespace and +1 for the first character
         if num_chars + tmp_num_chars > max_width {
             result.push_str(&format!("\n{id} ", id = id).white().to_string());
-            log::warn!("Width {}, line count {line_count}", num_chars);
             num_chars = tmp_num_chars;
             line_count += 1;
         } else {
