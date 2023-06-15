@@ -4,6 +4,9 @@ use super::{
     rdh_cru::RdhCRU,
 };
 
+/// The size of a RDH-CRU word in bytes
+pub const RDH_CRU_SIZE_BYTES: u8 = 64;
+
 /// That all [RDH] `subwords` words must implement
 ///
 /// used for:

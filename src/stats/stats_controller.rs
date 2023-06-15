@@ -12,6 +12,7 @@ use crate::{
     words::{
         self,
         its::{layer_from_feeid, stave_number_from_feeid},
+        lib::RDH_CRU_SIZE_BYTES,
     },
 };
 use owo_colors::OwoColorize;
@@ -273,11 +274,11 @@ impl<C: Config + 'static> StatsController<C> {
                 self.rdh_stats.hbfs_seen.to_string(),
                 None,
             ));
+
             // If no filtering, the payload size seen is from the total RDHs
-            report.add_stat(StatSummary::new(
-                "Total Payload Size".to_string(),
-                format_data_size(self.rdh_stats.payload_size),
-                None,
+            report.add_stat(summerize_data_size(
+                self.rdh_stats.rdhs_seen,
+                self.rdh_stats.payload_size,
             ));
         } else {
             let filtered_stats: Vec<StatSummary> = self.add_filtered_stats();
@@ -371,10 +372,10 @@ impl<C: Config + 'static> StatsController<C> {
             self.rdh_stats.hbfs_seen.to_string(),
             None,
         ));
-        filtered_stats.push(StatSummary::new(
-            "Total Payload Size".to_string(),
-            format_data_size(self.rdh_stats.payload_size),
-            None,
+
+        filtered_stats.push(summerize_data_size(
+            self.rdh_stats.rdhs_filtered,
+            self.rdh_stats.payload_size,
         ));
 
         if let Some(filter_target) = self.config.filter_target() {
@@ -423,6 +424,23 @@ fn summerize_layers_staves_seen(
     )
 }
 
+fn summerize_data_size(rdh_count: u64, payload_size: u64) -> StatSummary {
+    let rdh_data_size = rdh_count * RDH_CRU_SIZE_BYTES as u64;
+    if rdh_data_size == 0 {
+        StatSummary::new("Data size".to_string(), format_data_size(0), None)
+    } else {
+        StatSummary::new(
+            "Data size".to_string(),
+            format_data_size(rdh_data_size + payload_size),
+            Some(format!(
+                "RDHs:     {rdhs_size}\nPayloads: {payloads_size}",
+                rdhs_size = format_data_size(rdh_data_size),
+                payloads_size = format_data_size(payload_size)
+            )),
+        )
+    }
+}
+
 /// Format a size in bytes to human readable.
 fn format_data_size(size_bytes: u64) -> String {
     match size_bytes {
@@ -451,6 +469,9 @@ fn format_layers_and_staves(
     mut layers_staves_seen: Vec<(u8, u8)>,
     mut layers_stave_with_errors: Vec<(u8, u8)>,
 ) -> String {
+    if layers_staves_seen.is_empty() {
+        return "none".red().to_string();
+    }
     layers_staves_seen.sort();
     layers_stave_with_errors.sort();
 
