@@ -259,13 +259,6 @@ impl<C: Config + 'static> StatsController<C> {
         self.add_global_stats_to_report(&mut report);
 
         if !self.config.filter_enabled() {
-            // If no filtering, the HBFs seen is from the total RDHs
-            report.add_stat(StatSummary::new(
-                "Total HBFs".to_string(),
-                self.rdh_stats.hbfs_seen.to_string(),
-                None,
-            ));
-
             // Check if the observed system ID is ITS
             if matches!(self.rdh_stats.system_id(), Some(SystemId::ITS)) {
                 // If no filtering, the layers and staves seen is from the total RDHs
@@ -273,15 +266,13 @@ impl<C: Config + 'static> StatsController<C> {
                     self.rdh_stats.layer_staves_as_slice(),
                     &self.staves_with_errors,
                 ));
-            } else {
-                // If the target system is not ITS then just list the FEEIDs raw
-                report.add_stat(StatSummary::new(
-                    "FEE IDs seen".to_string(),
-                    format_fee_ids(self.rdh_stats.consume_fee_ids_observed()),
-                    None,
-                ))
             }
-
+            // If no filtering, the HBFs seen is from the total RDHs
+            report.add_stat(StatSummary::new(
+                "Total HBFs".to_string(),
+                self.rdh_stats.hbfs_seen.to_string(),
+                None,
+            ));
             // If no filtering, the payload size seen is from the total RDHs
             report.add_stat(StatSummary::new(
                 "Total Payload Size".to_string(),
@@ -359,6 +350,11 @@ impl<C: Config + 'static> StatsController<C> {
             format_links_observed(self.rdh_stats.links_as_slice()),
             None,
         ));
+        report.add_stat(StatSummary::new(
+            "FEE IDs seen".to_string(),
+            format_fee_ids(self.rdh_stats.fee_ids_as_slice()),
+            None,
+        ));
     }
 
     /// Helper function that builds a vector of the stats associated with the filtered data
@@ -413,7 +409,7 @@ impl<C: Config + 'static> StatsController<C> {
                 // If the target system is not ITS then just list the FEEIDs raw
                 filtered_stats.push(StatSummary::new(
                     "FEE IDs seen".to_string(),
-                    format_fee_ids(self.rdh_stats.consume_fee_ids_observed()),
+                    format_fee_ids(self.rdh_stats.fee_ids_as_slice()),
                     None,
                 ))
             }
@@ -485,7 +481,11 @@ fn format_layers_and_staves(
         .join("")
 }
 
-fn format_fee_ids(mut fee_ids_seen: Vec<u16>) -> String {
+fn format_fee_ids(fee_ids_seen: &[u16]) -> String {
+    if fee_ids_seen.is_empty() {
+        return "none".red().to_string();
+    }
+    let mut fee_ids_seen = fee_ids_seen.to_owned();
     fee_ids_seen.sort();
     fee_ids_seen
         .iter()

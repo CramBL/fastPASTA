@@ -98,7 +98,7 @@ pub fn spawn_reader<T: RDH + 'static>(
                         if rdh.stop_bit() == 1 {
                             stats_sender_channel.send(StatType::HBFsSeen(1)).unwrap();
                         }
-                        // Always send fee id
+                        // Always send FEE ID
                         stats_sender_channel
                             .send(StatType::FeeId(rdh.fee_id()))
                             .unwrap();
