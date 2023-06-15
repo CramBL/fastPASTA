@@ -60,18 +60,7 @@ pub(crate) fn format_fee_ids(fee_ids_seen: &[u16]) -> String {
     }
     let mut fee_ids_seen = fee_ids_seen.to_owned();
     fee_ids_seen.sort();
-    fee_ids_seen
-        .iter()
-        .enumerate()
-        .map(|(i, id)| {
-            if i > 0 && i % 5 == 0 {
-                format!("{id}\n")
-            } else {
-                format!("{id} ")
-            }
-        })
-        .collect::<Vec<String>>()
-        .join(", ")
+    format_nums_max_lines_width(40, Some(5), &fee_ids_seen)
 }
 
 pub(crate) fn format_error_codes(error_codes: &[u8]) -> String {
@@ -86,4 +75,29 @@ pub(crate) fn format_error_codes(error_codes: &[u8]) -> String {
             }
         })
         .collect()
+}
+
+/// Generic function to format a list of numbers into a string with a max width and optional max lines.
+pub fn format_nums_max_lines_width(max_width: u16, max_lines: Option<u16>, nums: &[u16]) -> String {
+    let mut result = String::new();
+    let mut num_chars = 0;
+    let mut line_count = 0;
+    for (i, id) in nums.iter().enumerate() {
+        if max_lines.is_some_and(|max_lines| line_count >= max_lines) {
+            result.push_str(&format!("... {} more", nums.len() - i).yellow().to_string());
+            break;
+        }
+        // How many characters will this id take up?
+        let tmp_num_chars: u16 = id.checked_ilog10().unwrap_or(0) as u16 + 2; // +1 for whitespace and +1 for the first character
+        if num_chars + tmp_num_chars > max_width {
+            result.push_str(&format!("\n{id} ", id = id).white().to_string());
+            log::warn!("Width {}, line count {line_count}", num_chars);
+            num_chars = tmp_num_chars;
+            line_count += 1;
+        } else {
+            result.push_str(&format!("{id} ", id = id).white().to_string());
+            num_chars += tmp_num_chars;
+        }
+    }
+    result
 }
