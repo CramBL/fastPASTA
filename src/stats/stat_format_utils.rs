@@ -73,3 +73,17 @@ pub(crate) fn format_fee_ids(fee_ids_seen: &[u16]) -> String {
         .collect::<Vec<String>>()
         .join(", ")
 }
+
+pub(crate) fn format_error_codes(error_codes: &[u8]) -> String {
+    error_codes
+        .iter()
+        .enumerate()
+        .map(|(i, code)| {
+            if i > 0 && i % 5 == 0 {
+                format!("E{code}\n")
+            } else {
+                format!("E{code} ")
+            }
+        })
+        .collect()
+}

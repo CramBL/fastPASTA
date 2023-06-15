@@ -4,8 +4,10 @@
 
 use super::super::StatType;
 
+use super::error_stats::ErrorStats;
 use super::lib;
 use super::rdh_stats::RdhStats;
+use super::stat_format_utils::format_error_codes;
 use super::stat_format_utils::format_fee_ids;
 use super::stat_format_utils::format_links_observed;
 use super::stat_summerize_utils::summerize_data_size;
@@ -19,8 +21,6 @@ use crate::stats::stats_report::report::StatSummary;
 use crate::util::lib::Config;
 use crate::util::lib::DataOutputMode;
 use crate::util::lib::FilterTarget;
-use crate::words::its::layer_from_feeid;
-use crate::words::its::stave_number_from_feeid;
 use owo_colors::OwoColorize;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -28,11 +28,10 @@ use std::sync::Arc;
 /// The StatsController receives stats and builds a summary report that is printed at the end of execution.
 pub struct StatsController<C: Config + 'static> {
     rdh_stats: RdhStats,
+    error_stats: ErrorStats,
     /// Time from [StatsController] is instantiated, to all data processing threads disconnected their [StatType] producer channel.
     pub processing_time: std::time::Instant,
     config: &'static C,
-    total_errors: u64,
-    reported_errors: Vec<String>,
     max_tolerate_errors: u32,
     // The channel where stats are received from other threads.
     recv_stats_channel: flume::Receiver<StatType>,
@@ -42,10 +41,7 @@ pub struct StatsController<C: Config + 'static> {
     // This is because the event loop breaks when all sender channels are dropped, and if the StatsController keeps a reference to the channel, it will cause a deadlock.
     send_stats_channel: Option<flume::Sender<StatType>>,
     end_processing_flag: Arc<AtomicBool>,
-    fatal_error: Option<String>,
-    staves_with_errors: Vec<(u8, u8)>,
     any_errors_flag: Arc<AtomicBool>,
-    error_codes: Vec<u8>,
 }
 impl<C: Config + 'static> StatsController<C> {
     /// Creates a new [StatsController] from a [Config], a [flume::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
@@ -56,18 +52,14 @@ impl<C: Config + 'static> StatsController<C> {
         ) = flume::unbounded();
         StatsController {
             rdh_stats: RdhStats::default(),
+            error_stats: ErrorStats::default(),
             config: global_config,
             processing_time: std::time::Instant::now(),
-            total_errors: 0,
-            reported_errors: Vec::new(),
             max_tolerate_errors: global_config.max_tolerate_errors(),
             recv_stats_channel,
             send_stats_channel: Some(send_stats_channel),
             end_processing_flag: Arc::new(AtomicBool::new(false)),
-            fatal_error: None,
-            staves_with_errors: Vec::new(),
             any_errors_flag: Arc::new(AtomicBool::new(false)),
-            error_codes: Vec::new(),
         }
     }
 
@@ -114,7 +106,7 @@ impl<C: Config + 'static> StatsController<C> {
                 self.print();
             }
         }
-        if self.total_errors > 0 {
+        if self.error_stats.total_errors() > 0 {
             self.any_errors_flag
                 .store(true, std::sync::atomic::Ordering::SeqCst);
         }
@@ -123,18 +115,17 @@ impl<C: Config + 'static> StatsController<C> {
     fn update(&mut self, stat: StatType) {
         match stat {
             StatType::Error(msg) => {
-                if self.fatal_error.is_some() {
+                if self.error_stats.is_fatal_error() {
                     // Stop processing any error messages
                     log::trace!("Fatal error already seen, ignoring error: {msg}");
                     return;
                 }
 
-                self.reported_errors.push(msg);
-                self.total_errors += 1;
+                self.error_stats.add_error(msg);
 
                 if self.max_tolerate_errors > 0 {
-                    log::trace!("Error count: {}", self.total_errors);
-                    if self.total_errors == self.max_tolerate_errors as u64 {
+                    log::trace!("Error count: {}", self.error_stats.total_errors());
+                    if self.error_stats.total_errors() == self.max_tolerate_errors as u64 {
                         log::trace!("Errors reached maximum tolerated errors, exiting...");
                         self.end_processing_flag
                             .store(true, std::sync::atomic::Ordering::SeqCst);
@@ -151,7 +142,7 @@ impl<C: Config + 'static> StatsController<C> {
             }
             StatType::HBFsSeen(val) => self.rdh_stats.hbfs_seen += val,
             StatType::Fatal(err) => {
-                if self.fatal_error.is_some() {
+                if self.error_stats.is_fatal_error() {
                     // Stop processing any error messages
                     log::trace!("Fatal error already seen, ignoring error: {err}");
                     return;
@@ -159,7 +150,7 @@ impl<C: Config + 'static> StatsController<C> {
                 self.end_processing_flag
                     .store(true, std::sync::atomic::Ordering::SeqCst);
                 log::error!("FATAL: {err}\nShutting down...");
-                self.fatal_error = Some(err);
+                self.error_stats.add_fatal_error(err);
             }
             StatType::LayerStaveSeen { layer, stave } => {
                 self.rdh_stats.record_layer_stave_seen((layer, stave));
@@ -179,89 +170,38 @@ impl<C: Config + 'static> StatsController<C> {
     }
 
     fn process_error_messages(&mut self) {
-        self.sort_errors_by_memory_address();
-        self.extract_unique_error_codes();
+        self.error_stats.finalize_stats();
         if matches!(self.rdh_stats.system_id(), Some(SystemId::ITS)) {
-            self.check_error_for_stave_id();
+            self.error_stats
+                .check_errors_for_stave_id(self.rdh_stats.layer_staves_as_slice());
         }
         if !self.config.mute_errors() {
             // Print the errors, limited if there's a max error limit set
             if self.max_tolerate_errors > 0 {
-                self.reported_errors
+                self.error_stats
+                    .consume_reported_errors()
                     .drain(..)
                     .take(self.max_tolerate_errors as usize)
                     .for_each(|e| {
                         lib::display_error(&e);
                     });
             } else {
-                self.reported_errors.drain(..).for_each(|e| {
-                    lib::display_error(&e);
-                });
+                self.error_stats
+                    .consume_reported_errors()
+                    .drain(..)
+                    .for_each(|e| {
+                        lib::display_error(&e);
+                    });
             }
         }
-    }
-
-    fn sort_errors_by_memory_address(&mut self) {
-        // Regex to extract the memory address from the error message
-        let re = regex::Regex::new(r"0x(?P<mem_pos>[0-9a-fA-F]+):").unwrap();
-        // Sort the errors by memory address
-        if !self.reported_errors.is_empty() {
-            self.reported_errors.sort_by_key(|e| {
-                let addr = re
-                    .captures(e)
-                    .unwrap_or_else(|| panic!("Error parsing memory address from error msg: {e}"));
-                u64::from_str_radix(&addr["mem_pos"], 16).expect("Error parsing memory address")
-            });
-        }
-    }
-
-    fn extract_unique_error_codes(&mut self) {
-        let re = regex::Regex::new(r"0x.*: \[E(?P<err_code>[0-9]{2})\]").unwrap();
-        self.reported_errors.iter().for_each(|err_msg| {
-            let err_code_match: regex::Captures = re
-                .captures(err_msg)
-                .unwrap_or_else(|| panic!("Error parsing error code from error msg: {err_msg}"));
-
-            let err_code = err_code_match["err_code"].parse::<u8>().unwrap();
-            if !self.error_codes.contains(&err_code) {
-                self.error_codes.push(err_code);
-            }
-        });
-    }
-
-    fn check_error_for_stave_id(&mut self) {
-        let re: regex::Regex =
-            regex::Regex::new("FEE(?:.|)ID:(?P<fee_id>[1-9][0-9]{0,4})").unwrap();
-
-        self.reported_errors.iter().for_each(|err_msg| {
-            let fee_id_match: Option<regex::Captures> = re.captures(err_msg);
-            if let Some(id_capture) = fee_id_match {
-                let fee_id = id_capture["fee_id"].parse::<u16>().unwrap();
-                let layer = layer_from_feeid(fee_id);
-                let stave = stave_number_from_feeid(fee_id);
-
-                let stave_with_error = self
-                    .rdh_stats
-                    .layer_staves_as_slice()
-                    .iter()
-                    .find(|(l, s)| *l == layer && *s == stave)
-                    .expect(
-                        "FEE ID found in error message that does not match any layer/stave seen",
-                    );
-
-                if !self.staves_with_errors.contains(stave_with_error) {
-                    self.staves_with_errors.push(*stave_with_error);
-                }
-            }
-        });
     }
 
     /// Builds and prints the report
     fn print(&mut self) {
         let mut report = Report::new(self.processing_time.elapsed());
         // Add fatal error if any
-        if let Some(err) = &self.fatal_error {
-            report.add_fatal_error(err.clone());
+        if self.error_stats.is_fatal_error() {
+            report.add_fatal_error(self.error_stats.take_fatal_error());
         }
         // Add global stats
         self.add_global_stats_to_report(&mut report);
@@ -272,7 +212,7 @@ impl<C: Config + 'static> StatsController<C> {
                 // If no filtering, the layers and staves seen is from the total RDHs
                 report.add_stat(summerize_layers_staves_seen(
                     self.rdh_stats.layer_staves_as_slice(),
-                    &self.staves_with_errors,
+                    self.error_stats.staves_with_errors_as_slice(),
                 ));
             }
             // If no filtering, the HBFs seen is from the total RDHs
@@ -299,29 +239,19 @@ impl<C: Config + 'static> StatsController<C> {
     }
 
     fn add_global_stats_to_report(&mut self, report: &mut Report) {
-        if self.total_errors == 0 {
+        if self.error_stats.total_errors() == 0 {
             report.add_stat(StatSummary::new(
                 "Total Errors".green().to_string(),
-                self.total_errors.green().to_string(),
+                self.error_stats.total_errors().green().to_string(),
                 None,
             ));
         } else {
             report.add_stat(StatSummary::new(
                 "Total Errors".red().to_string(),
-                self.total_errors.red().to_string(),
-                Some(
-                    self.error_codes
-                        .iter()
-                        .enumerate()
-                        .map(|(i, code)| {
-                            if i > 0 && i % 5 == 0 {
-                                format!("E{code}\n")
-                            } else {
-                                format!("E{code} ")
-                            }
-                        })
-                        .collect(),
-                ),
+                self.error_stats.total_errors().red().to_string(),
+                Some(format_error_codes(
+                    self.error_stats.unique_error_codes_as_slice(),
+                )),
             ));
         }
 
@@ -395,7 +325,7 @@ impl<C: Config + 'static> StatsController<C> {
                 // If no filtering, the layers and staves seen is from the total RDHs
                 filtered_stats.push(summerize_layers_staves_seen(
                     self.rdh_stats.layer_staves_as_slice(),
-                    self.staves_with_errors.as_slice(),
+                    self.error_stats.staves_with_errors_as_slice(),
                 ));
             }
         }
