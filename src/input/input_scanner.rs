@@ -115,7 +115,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     fn collect_rdh_seen_stats(&mut self, rdh: &impl RDH) {
         // Set the link ID and report another RDH seen
         let current_link_id = rdh.link_id();
-        self.report(StatType::RDHsSeen(1));
+        self.report(StatType::RDHSeen);
 
         // If we haven't seen this link before, report it and add it to the list of unique links
         if !self.unique_links_observed.contains(&current_link_id) {

@@ -7,7 +7,7 @@ use crate::stats::SystemId;
 #[derive(Default)]
 pub struct RdhStats {
     /// Total RDHs seen.
-    pub rdhs_seen: u64,
+    rdhs_seen: u64,
     /// Total RDHs filtered.
     pub rdhs_filtered: u64,
     rdh_version: Option<u8>,
@@ -155,15 +155,19 @@ impl RdhStats {
         self.payload_size
     }
 
-    pub(super) fn add_hbf_seen(&mut self, hbfs_seen: u32) {
-        self.hbfs_seen += hbfs_seen;
-    }
-
     pub(super) fn hbfs_seen(&self) -> u32 {
         self.hbfs_seen
     }
 
     pub(super) fn incr_hbf_seen(&mut self) {
         self.hbfs_seen += 1;
+    }
+
+    pub(super) fn incr_rdhs_seen(&mut self) {
+        self.rdhs_seen += 1;
+    }
+
+    pub(super) fn rdhs_seen(&self) -> u64 {
+        self.rdhs_seen
     }
 }

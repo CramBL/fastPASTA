@@ -102,7 +102,7 @@ impl<C: Config + 'static> StatsController<C> {
             self.process_error_messages();
 
             // Print the summary report if any RDHs were seen. If not, it's likely that an early error occurred and no data was processed.
-            if self.rdh_stats.rdhs_seen > 0 {
+            if self.rdh_stats.rdhs_seen() > 0 {
                 self.print();
             }
         }
@@ -132,7 +132,7 @@ impl<C: Config + 'static> StatsController<C> {
                     }
                 }
             }
-            StatType::RDHsSeen(val) => self.rdh_stats.rdhs_seen += val as u64,
+            StatType::RDHSeen => self.rdh_stats.incr_rdhs_seen(),
             StatType::RDHsFiltered(val) => self.rdh_stats.rdhs_filtered += val as u64,
             StatType::PayloadSize(size) => self.rdh_stats.add_payload_size(size as u64),
             StatType::LinksObserved(val) => self.rdh_stats.record_link(val),
@@ -224,7 +224,7 @@ impl<C: Config + 'static> StatsController<C> {
 
             // If no filtering, the payload size seen is from the total RDHs
             report.add_stat(summerize_data_size(
-                self.rdh_stats.rdhs_seen,
+                self.rdh_stats.rdhs_seen(),
                 self.rdh_stats.payload_size(),
             ));
         } else {
@@ -263,7 +263,7 @@ impl<C: Config + 'static> StatsController<C> {
         });
         report.add_stat(StatSummary::new(
             "Total RDHs".to_string(),
-            self.rdh_stats.rdhs_seen.to_string(),
+            self.rdh_stats.rdhs_seen().to_string(),
             None,
         ));
         self.rdh_stats.sort_links_observed();

@@ -236,7 +236,7 @@ mod tests {
         for stat in stats {
             match stat {
                 StatType::RdhVersion(7) => is_rdh_version_detected_7 = true,
-                StatType::RDHsSeen(count) => how_many_rdh_seen += count,
+                StatType::RDHSeen => how_many_rdh_seen += 1,
                 StatType::Error(e) | StatType::Fatal(e) => {
                     panic!("Error or Fatal: {}", e)
                 }
