@@ -367,6 +367,32 @@ fn view_its_readout_frame() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn view_its_readout_frame_data() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_10_RDH)
+        .arg("view")
+        .arg("its-readout-frames-data");
+    use predicate::str::contains;
+    cmd.assert().success().stdout(
+        contains("RDH").count(10).and(
+            contains("IHW").count(5).and(
+                contains("TDH")
+                    .count(5)
+                    .and(contains("TDT").count(5).and(contains("DDW").count(5))),
+            ),
+        ),
+    );
+
+    // 3 data lanes, expect to see data from all of them 5 times.
+    match_on_out_no_case(&cmd.output()?.stdout, "data.*26]", 5)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "data.*27]", 5)?;
+    match_on_out_no_case(&cmd.output()?.stdout, "data.*28]", 5)?;
+
+    Ok(())
+}
+
+#[test]
 fn check_sanity_stdin() -> Result<(), Box<dyn std::error::Error>> {
     use assert_cmd::cmd::*;
     let mut cmd = Command::cargo_bin("fastpasta")?;
