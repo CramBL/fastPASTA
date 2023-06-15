@@ -7,7 +7,7 @@ use super::{
     rdh_stats::RdhStats,
 };
 use crate::{
-    stats::report::{Report, StatSummary},
+    stats::stats_report::report::{Report, StatSummary},
     util::lib::{Config, DataOutputMode, FilterTarget},
     words::{
         self,

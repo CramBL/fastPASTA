@@ -5,8 +5,8 @@
 pub mod its_stats;
 pub mod lib;
 pub mod rdh_stats;
-mod report;
 pub mod stats_controller;
+mod stats_report;
 
 /// Spawns a thread with the StatsController running, and returns the thread handle, the channel to send stats to, and the stop flag.
 pub fn init_stats_controller<C: crate::util::lib::Config + 'static>(
