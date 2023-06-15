@@ -5,6 +5,7 @@
 pub mod its_stats;
 pub mod lib;
 pub mod rdh_stats;
+mod stat_summerize_utils;
 pub mod stats_controller;
 mod stats_report;
 
