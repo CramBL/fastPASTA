@@ -133,7 +133,7 @@ impl<C: Config + 'static> StatsController<C> {
                 }
             }
             StatType::RDHSeen => self.rdh_stats.incr_rdhs_seen(),
-            StatType::RDHsFiltered(val) => self.rdh_stats.rdhs_filtered += val as u64,
+            StatType::RDHFiltered => self.rdh_stats.incr_rdhs_filtered(),
             StatType::PayloadSize(size) => self.rdh_stats.add_payload_size(size as u64),
             StatType::LinksObserved(val) => self.rdh_stats.record_link(val),
             StatType::RdhVersion(version) => self.rdh_stats.record_rdh_version(version),
@@ -284,7 +284,7 @@ impl<C: Config + 'static> StatsController<C> {
         let mut filtered_stats: Vec<StatSummary> = Vec::new();
         filtered_stats.push(StatSummary::new(
             "RDHs".to_string(),
-            self.rdh_stats.rdhs_filtered.to_string(),
+            self.rdh_stats.rdhs_filtered().to_string(),
             None,
         ));
         // If filtering, the HBFs seen is from the filtered RDHs
@@ -295,7 +295,7 @@ impl<C: Config + 'static> StatsController<C> {
         ));
 
         filtered_stats.push(summerize_data_size(
-            self.rdh_stats.rdhs_filtered,
+            self.rdh_stats.rdhs_filtered(),
             self.rdh_stats.payload_size(),
         ));
 

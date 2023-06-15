@@ -136,7 +136,7 @@ mod tests {
         let run_trig_type = StatType::RunTriggerType((1, "Test run trigger type".to_string()));
         let sys_id = StatType::SystemId(SystemId::ITS);
         let rdh_seen = StatType::RDHSeen;
-        let rdh_filtered = StatType::RDHsFiltered(1);
+        let rdh_filtered = StatType::RDHFiltered;
         let layer_stave_seen = StatType::LayerStaveSeen { layer: 1, stave: 1 };
         let mut stat_type_vec = vec![
             fatal,

@@ -186,7 +186,7 @@ where
         // If a filter is set, check if the RDH matches the filter
         let rdh = if let Some(target) = self.filter_target {
             if is_rdh_filter_target(&rdh, target) {
-                self.report(StatType::RDHsFiltered(1));
+                self.report(StatType::RDHFiltered);
 
                 Ok(rdh)
             } else {
@@ -257,7 +257,7 @@ where
             self.collect_rdh_seen_stats(&rdh);
 
             if is_rdh_filter_target(&rdh, filter_target) {
-                self.report(StatType::RDHsFiltered(1));
+                self.report(StatType::RDHFiltered);
                 return Ok(rdh);
             }
             self.reader

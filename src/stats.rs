@@ -29,7 +29,7 @@ pub enum StatType {
     /// Increment the total RDHs seen.
     RDHSeen,
     /// Increment the total RDHs filtered.
-    RDHsFiltered(u8),
+    RDHFiltered,
     /// Increment the total payload size.
     PayloadSize(u32),
     /// Add a link to the list of links observed.
@@ -61,7 +61,7 @@ impl std::fmt::Display for StatType {
             }
             StatType::SystemId(s_id) => write!(f, "System ID: {s_id}"),
             StatType::RDHSeen => write!(f, "RDHs seen increment"),
-            StatType::RDHsFiltered(cnt) => write!(f, "RDHs filtered: {cnt}"),
+            StatType::RDHFiltered => write!(f, "RDHs filtered increment"),
             StatType::PayloadSize(bytes) => write!(f, "Payload size: {bytes}"),
             StatType::LinksObserved(id) => write!(f, "Link observed: {id}"),
             StatType::RdhVersion(v) => write!(f, "RDH version: {v}"),

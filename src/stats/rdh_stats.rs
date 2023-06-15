@@ -9,7 +9,7 @@ pub struct RdhStats {
     /// Total RDHs seen.
     rdhs_seen: u64,
     /// Total RDHs filtered.
-    pub rdhs_filtered: u64,
+    rdhs_filtered: u64,
     rdh_version: Option<u8>,
     /// Total HBFs seen
     hbfs_seen: u32,
@@ -169,5 +169,13 @@ impl RdhStats {
 
     pub(super) fn rdhs_seen(&self) -> u64 {
         self.rdhs_seen
+    }
+
+    pub(super) fn incr_rdhs_filtered(&mut self) {
+        self.rdhs_filtered += 1;
+    }
+
+    pub(super) fn rdhs_filtered(&self) -> u64 {
+        self.rdhs_filtered
     }
 }
