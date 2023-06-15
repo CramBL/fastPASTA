@@ -121,13 +121,7 @@ impl<C: Config + 'static> StatsController<C> {
                     return;
                 }
 
-                // If any of filter link is set, errors in the data are reported sequentially so just print them as they are reived
-                if self.config.filter_link().is_some() {
-                    super::display_error(&msg);
-                } else {
-                    self.reported_errors.push(msg);
-                }
-
+                self.reported_errors.push(msg);
                 self.total_errors += 1;
 
                 if self.max_tolerate_errors > 0 {
@@ -361,7 +355,7 @@ impl<C: Config + 'static> StatsController<C> {
         ));
         self.rdh_stats.sort_links_observed();
         report.add_stat(StatSummary::new(
-            "Links observed during scan".to_string(),
+            "Links observed".to_string(),
             format_links_observed(self.rdh_stats.links_as_slice()),
             None,
         ));
@@ -434,7 +428,7 @@ fn summerize_layers_staves_seen(
     staves_with_errors: &[(u8, u8)],
 ) -> StatSummary {
     StatSummary::new(
-        "Layers and Staves seen".to_string(),
+        "Layers/Staves".to_string(),
         format_layers_and_staves(layers_staves_seen.to_owned(), staves_with_errors.to_owned()),
         None,
     )
@@ -479,12 +473,12 @@ fn format_layers_and_staves(
                 if layers_stave_with_errors.contains(&(*layer, *stave)) {
                     format!("L{layer}_{stave}\n").red().to_string()
                 } else {
-                    format!("L{layer}_{stave}\n").white().to_string()
+                    format!("L{layer}_{stave}\n")
                 }
             } else if layers_stave_with_errors.contains(&(*layer, *stave)) {
                 format!("L{layer}_{stave} ").red().to_string()
             } else {
-                format!("L{layer}_{stave} ").white().to_string()
+                format!("L{layer}_{stave} ")
             }
         })
         .collect::<Vec<String>>()
