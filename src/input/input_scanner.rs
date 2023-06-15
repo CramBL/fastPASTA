@@ -171,15 +171,15 @@ where
             SerdeRdh::load(&mut self.reader)?
         };
         log::debug!(
-            "Loaded RDH at [{:#X}]: \n       {rdh}",
-            self.tracker.memory_address_bytes
+            "Loaded RDH at [{mem_pos:#X}]: \n       {rdh}",
+            mem_pos = self.tracker.current_mem_address()
         );
 
         // Collect stats
         self.collect_rdh_seen_stats(&rdh);
         sanity_check_offset_next(
             &rdh,
-            self.tracker.memory_address_bytes,
+            self.tracker.current_mem_address(),
             &self.stats_controller_sender_ch,
         )?;
 
@@ -216,7 +216,7 @@ where
     #[inline]
     fn load_cdp<T: RDH>(&mut self) -> Result<CdpTuple<T>, std::io::Error> {
         log::trace!("Attempting to load CDP - 1. loading RDH");
-        let loading_at_memory_offset = self.tracker.memory_address_bytes;
+        let loading_at_memory_offset = self.tracker.current_mem_address();
         let rdh: T = self.load_rdh_cru()?;
 
         if self.skip_payload {
@@ -224,12 +224,11 @@ where
             self.reader
                 .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
         } else {
-            self.tracker.memory_address_bytes += rdh.offset_to_next() as u64;
+            self.tracker.update_mem_address(rdh.offset_to_next() as u64);
         }
 
         // If we want the payload, read it, otherwise return a vector that cannot allocate
         let payload = if !self.skip_payload {
-            log::trace!("Attempting to load CDP - 2. loading Payload");
             self.load_payload_raw(rdh.payload_size() as usize)?
         } else {
             Vec::with_capacity(0)
@@ -247,11 +246,9 @@ where
             .seek_relative(self.tracker.next(offset_to_next as u64))?;
         loop {
             let rdh: T = SerdeRdh::load(&mut self.reader)?;
-            log::debug!("Loaded RDH: \n      {rdh}");
-            log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
             sanity_check_offset_next(
                 &rdh,
-                self.tracker.memory_address_bytes,
+                self.tracker.current_mem_address(),
                 &self.stats_controller_sender_ch,
             )?;
             self.collect_rdh_seen_stats(&rdh);
@@ -266,7 +263,7 @@ where
     }
 
     fn current_mem_pos(&self) -> u64 {
-        self.tracker.memory_address_bytes
+        self.tracker.current_mem_address()
     }
 }
 
