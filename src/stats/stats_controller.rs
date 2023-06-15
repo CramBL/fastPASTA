@@ -286,23 +286,7 @@ impl<C: Config + 'static> StatsController<C> {
         }
 
         // Add detected attributes
-        report.add_detected_attribute(
-            "RDH Version".to_string(),
-            self.rdh_stats.rdh_version().to_string(),
-        );
-
-        report.add_detected_attribute(
-            "Data Format".to_string(),
-            self.rdh_stats.data_format().to_string(),
-        );
-        report.add_detected_attribute(
-            "System ID".to_string(),
-            // If no system ID is found, something is wrong, set it to "none" in red.
-            match self.rdh_stats.system_id() {
-                Some(sys_id) => sys_id.to_string(),
-                None => String::from("none").red().to_string(),
-            }, // Default to TST for unit tests where no RDHs are seen
-        );
+        add_detected_attributes_to_report(&mut report, &self.rdh_stats);
 
         report.print();
     }
@@ -411,6 +395,26 @@ impl<C: Config + 'static> StatsController<C> {
 
         filtered_stats
     }
+}
+
+fn add_detected_attributes_to_report(report: &mut Report, rdh_stats: &RdhStats) {
+    report.add_detected_attribute(
+        "RDH Version".to_string(),
+        rdh_stats.rdh_version().to_string(),
+    );
+
+    report.add_detected_attribute(
+        "Data Format".to_string(),
+        rdh_stats.data_format().to_string(),
+    );
+    report.add_detected_attribute(
+        "System ID".to_string(),
+        // If no system ID is found, something is wrong, set it to "none" in red.
+        match rdh_stats.system_id() {
+            Some(sys_id) => sys_id.to_string(),
+            None => String::from("none").red().to_string(),
+        }, // Default to TST for unit tests where no RDHs are seen
+    );
 }
 
 fn summerize_layers_staves_seen(
