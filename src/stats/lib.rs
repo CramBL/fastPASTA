@@ -1,38 +1,7 @@
-//! Contains the [init_stats_controller] function, which spawns a thread with the [StatsController] running, and returns the thread handle, the channel to send stats to, and the stop flag.
-use super::stats_controller::StatsController;
-use crate::{util::lib::Config, words};
-use std::{fmt::Display, sync::atomic::AtomicBool};
+//! Contains utility related to collecting stats about the input data.
 
-/// Spawns a thread with the StatsController running, and returns the thread handle, the channel to send stats to, and the stop flag.
-pub fn init_stats_controller<C: Config + 'static>(
-    config: &'static C,
-) -> (
-    std::thread::JoinHandle<()>,
-    flume::Sender<StatType>,
-    std::sync::Arc<AtomicBool>,
-    std::sync::Arc<AtomicBool>,
-) {
-    log::trace!("Initializing stats controller");
-    let mut stats = StatsController::new(config);
-    let send_stats_channel = stats.send_channel();
-    let thread_stop_flag = stats.end_processing_flag();
-    let any_errors_flag = stats.any_errors_flag();
-
-    let stats_thread = std::thread::Builder::new()
-        .name("stats_thread".to_string())
-        .spawn(move || {
-            stats.run();
-        })
-        .expect("Failed to spawn stats thread");
-    (
-        stats_thread,
-        send_stats_channel,
-        thread_stop_flag,
-        any_errors_flag,
-    )
-}
-
-// Stat collection functionality
+use crate::words;
+use std::fmt::Display;
 
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -182,12 +151,12 @@ impl Display for StatType {
 
 /// Takes an [RDH](words::lib::RDH) and determines the [SystemId] and collects system specific stats.
 /// Uses the received [`Option<SystemId>`] to check if the system ID has already been determined,
-/// otherwise it will determine the [SystemId] and send it to the [StatsController](StatsController) via the channel [`flume::Sender<StatType>`].
+/// otherwise it will determine the [SystemId] and send it to the [StatsController](super::stats_controller::StatsController) via the channel [`flume::Sender<StatType>`].
 ///
 /// # Arguments
 /// * `rdh` - The [RDH](words::lib::RDH) to collect stats from.
 /// * `system_id` - The [`Option<SystemId>`] to check if the system ID has already been determined.
-/// * `stats_sender_channel` - The [`flume::Sender<StatType>`] to send the stats to the [StatsController](StatsController).
+/// * `stats_sender_channel` - The [`flume::Sender<StatType>`] to send the stats to the [StatsController](super::stats_controller::StatsController).
 /// # Returns
 /// * `Ok(())` - If the stats were collected successfully.
 /// * `Err(())` - If its the first time the [SystemId] is determined and the [SystemId] is not recognized.
@@ -300,7 +269,7 @@ mod tests {
         CONFIG_TEST_INIT_STATS_CONTROLLER.set(mock_config).unwrap();
 
         let (handle, send_ch, stop_flag, _errors_flag) =
-            init_stats_controller(CONFIG_TEST_INIT_STATS_CONTROLLER.get().unwrap());
+            crate::stats::init_stats_controller(CONFIG_TEST_INIT_STATS_CONTROLLER.get().unwrap());
 
         // Stop flag should be false
         assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));

@@ -1,8 +1,7 @@
-use fastpasta::{
-    input::lib::init_reader,
-    stats::lib::{init_stats_controller, StatType},
-    util::config::Cfg,
-};
+use fastpasta::input::lib::init_reader;
+use fastpasta::stats::init_stats_controller;
+use fastpasta::stats::lib::StatType;
+use fastpasta::util::config::Cfg;
 
 pub fn main() -> std::process::ExitCode {
     if let Err(e) = fastpasta::util::lib::init_config() {
