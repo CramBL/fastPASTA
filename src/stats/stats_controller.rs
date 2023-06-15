@@ -2,8 +2,9 @@
 //! It also controls the stop flag, which can be used to stop the program if a fatal error occurs, or if the config contains a max number of errors to tolerate.
 //! Finally when the event loop breaks (at the end of execution), it will print a summary of the stats collected, using the Report struct.
 
-use super::lib::StatType;
-use super::lib::SystemId;
+use super::super::StatType;
+
+use super::lib;
 use super::rdh_stats::RdhStats;
 use super::stat_format_utils::format_fee_ids;
 use super::stat_format_utils::format_links_observed;
@@ -12,6 +13,7 @@ use super::stat_summerize_utils::summerize_filtered_fee_ids;
 use super::stat_summerize_utils::summerize_filtered_its_layer_staves;
 use super::stat_summerize_utils::summerize_filtered_links;
 use super::stat_summerize_utils::summerize_layers_staves_seen;
+use super::SystemId;
 use crate::stats::stats_report::report::Report;
 use crate::stats::stats_report::report::StatSummary;
 use crate::util::lib::Config;
@@ -189,11 +191,11 @@ impl<C: Config + 'static> StatsController<C> {
                     .drain(..)
                     .take(self.max_tolerate_errors as usize)
                     .for_each(|e| {
-                        super::display_error(&e);
+                        lib::display_error(&e);
                     });
             } else {
                 self.reported_errors.drain(..).for_each(|e| {
-                    super::display_error(&e);
+                    lib::display_error(&e);
                 });
             }
         }

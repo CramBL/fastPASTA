@@ -12,17 +12,11 @@
 //! The new system should be added to the match statement, along with how to delegate the payload to the new validator.
 
 pub(crate) use super::{its, rdh, rdh::RdhCruSanityValidator, rdh_running::RdhCruRunningChecker};
-use crate::{
-    stats::lib::StatType,
-    util::config::{
-        check::{CheckCommands, ChecksOpt, System},
-        filter::FilterOpt,
-    },
-    words::{
-        lib::RDH,
-        rdh_cru::{RdhCRU, V7},
-    },
-};
+use crate::stats::StatType;
+use crate::util::config::check::{CheckCommands, ChecksOpt, System};
+use crate::util::config::filter::FilterOpt;
+use crate::words::lib::RDH;
+use crate::words::rdh_cru::{RdhCRU, V7};
 use ringbuffer::{ConstGenericRingBuffer, RingBufferExt, RingBufferWrite};
 
 /// Main validator that handles all checks on a specific link.

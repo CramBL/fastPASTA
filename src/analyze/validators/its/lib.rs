@@ -1,10 +1,8 @@
 //! Contains the [do_payload_checks] which is the entry point for the ITS specific CDP validator
 use super::cdp_running::CdpRunningValidator;
-use crate::{
-    stats::lib::StatType,
-    util::config::{check::ChecksOpt, filter::FilterOpt},
-    words::lib::RDH,
-};
+use crate::stats::StatType;
+use crate::util::config::{check::ChecksOpt, filter::FilterOpt};
+use crate::words::lib::RDH;
 
 /// # Arguments
 /// * `cdp_chunk_slice` - A tuple containing the RDH, the payload and the RDH memory position

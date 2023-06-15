@@ -14,11 +14,12 @@ use super::{
     stdin_reader::StdInReaderSeeker,
     util::buf_reader_with_capacity,
 };
-use crate::{
-    stats::lib::{self, StatType, SystemId},
-    util::config::inputoutput::InputOutputOpt,
-    words::{self, lib::RDH},
-};
+use crate::stats;
+use crate::stats::StatType;
+use crate::stats::SystemId;
+use crate::util::config::inputoutput::InputOutputOpt;
+use crate::words;
+use crate::words::lib::RDH;
 use crossbeam_channel::Receiver;
 use std::io::IsTerminal;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -98,7 +99,7 @@ pub fn spawn_reader<T: RDH + 'static>(
                         if rdh.stop_bit() == 1 {
                             stats_sender_channel.send(StatType::HBFsSeen(1)).unwrap();
                         }
-                        if let Err(e) = lib::collect_system_specific_stats(
+                        if let Err(e) = stats::collect_system_specific_stats(
                             rdh,
                             &mut system_id,
                             &stats_sender_channel,

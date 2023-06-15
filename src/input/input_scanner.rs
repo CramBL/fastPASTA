@@ -4,11 +4,12 @@
 
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
+use crate::stats::{StatType, SystemId};
 use crate::util::config::filter::{FilterOpt, FilterTarget};
 use crate::util::lib::InputOutputOpt;
 use crate::words::its::is_match_feeid_layer_stave;
 use crate::words::lib::{SerdeRdh, RDH};
-use crate::{stats::lib::StatType, words::rdh::Rdh0};
+use crate::words::rdh::Rdh0;
 use std::io::Read;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
@@ -131,17 +132,16 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         // Report the trigger type as the RunTriggerType describing the type of run the data is from
         self.report_run_trigger_type(rdh);
         self.report(StatType::DataFormat(rdh.data_format()));
-        let observed_sys_id =
-            match crate::stats::lib::SystemId::from_system_id(rdh.rdh0().system_id) {
-                Ok(id) => id,
-                Err(e) => {
-                    log::error!("Failed to parse system ID: {e}");
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "Failed to parse system ID",
-                    ));
-                }
-            };
+        let observed_sys_id = match SystemId::from_system_id(rdh.rdh0().system_id) {
+            Ok(id) => id,
+            Err(e) => {
+                log::error!("Failed to parse system ID: {e}");
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "Failed to parse system ID",
+                ));
+            }
+        };
         log::info!("{observed_sys_id} detected");
         self.report(StatType::SystemId(observed_sys_id));
         Ok(())

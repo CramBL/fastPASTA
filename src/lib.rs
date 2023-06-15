@@ -46,7 +46,7 @@
 //! ```
 
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
-use stats::lib::StatType;
+use stats::StatType;
 use util::lib::{Config, DataOutputMode};
 use words::{
     lib::RdhSubWord,

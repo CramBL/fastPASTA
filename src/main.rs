@@ -1,6 +1,6 @@
 use fastpasta::input::lib::init_reader;
 use fastpasta::stats::init_stats_controller;
-use fastpasta::stats::lib::StatType;
+use fastpasta::stats::StatType;
 use fastpasta::util::config::Cfg;
 
 pub fn main() -> std::process::ExitCode {

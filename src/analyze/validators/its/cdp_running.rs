@@ -10,25 +10,19 @@ use super::{
     lib::ItsPayloadWord,
     status_words::STATUS_WORD_SANITY_CHECKER,
 };
-use crate::{
-    analyze::validators::its::alpide::alpide_readout_frame::AlpideReadoutFrame,
-    stats::lib::StatType,
-    util::config::{
-        check::{CheckCommands, ChecksOpt, System},
-        filter::FilterOpt,
-    },
-    words::{
-        its::{
-            data_words::{
-                lane_id_to_lane_number, ob_data_word_id_to_input_number_connector,
-                ob_data_word_id_to_lane,
-            },
-            status_words::{is_lane_active, Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt},
-            Layer, Stave,
-        },
-        lib::{ByteSlice, RDH},
-    },
+use crate::analyze::validators::its::alpide::alpide_readout_frame::AlpideReadoutFrame;
+use crate::stats::StatType;
+use crate::util::config::{
+    check::{CheckCommands, ChecksOpt, System},
+    filter::FilterOpt,
 };
+use crate::words::its::data_words::lane_id_to_lane_number;
+use crate::words::its::data_words::ob_data_word_id_to_input_number_connector;
+use crate::words::its::data_words::ob_data_word_id_to_lane;
+use crate::words::its::status_words::is_lane_active;
+use crate::words::its::status_words::{Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt};
+use crate::words::its::{Layer, Stave};
+use crate::words::lib::{ByteSlice, RDH};
 
 #[derive(Debug, Clone, Copy)]
 enum StatusWordKind<'a> {

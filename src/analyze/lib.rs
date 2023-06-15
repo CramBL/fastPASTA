@@ -1,7 +1,9 @@
 //! Contains the [spawn_analysis] function that spawns the analysis thread for either data validation or view generation.
 use super::validators::its::its_payload_fsm_cont::ItsPayloadFsmContinuous;
 use super::validators::lib::ValidatorDispatcher;
-use crate::{input, stats::lib::StatType, util::lib::Config};
+use crate::input;
+use crate::stats::StatType;
+use crate::util::lib::Config;
 use crossbeam_channel::Receiver;
 
 /// Analysis thread that performs checks with the [super::validators] module or generate views with the [super::view::lib::generate_view] function.

@@ -1,8 +1,8 @@
 //! Contains the [RdhStats] struct, that holds stats extracted from the RDHs of the raw data
 
+use super::its_stats::ItsStats;
+use crate::stats::SystemId;
 use itertools::Itertools;
-
-use super::{its_stats::ItsStats, lib::SystemId};
 
 /// Stores stats extracted from the RDHs of the raw data.
 #[derive(Default)]
