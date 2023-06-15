@@ -2,7 +2,6 @@
 
 use super::its_stats::ItsStats;
 use crate::stats::SystemId;
-use itertools::Itertools;
 
 /// Stores stats extracted from the RDHs of the raw data.
 #[derive(Default)]
@@ -98,11 +97,6 @@ impl RdhStats {
     /// Returns a borrowed slice of the vector with the observed FEE IDs
     pub fn fee_ids_as_slice(&self) -> &[u16] {
         self.fee_id.as_slice()
-    }
-
-    /// Drains the vector containing the observed FEE IDs
-    pub fn consume_fee_ids_observed(&mut self) -> Vec<u16> {
-        self.fee_id.drain(..).collect_vec()
     }
 
     /// Stores a System ID as observed.
