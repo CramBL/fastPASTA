@@ -134,13 +134,13 @@ impl<C: Config + 'static> StatsController<C> {
             }
             StatType::RDHsSeen(val) => self.rdh_stats.rdhs_seen += val as u64,
             StatType::RDHsFiltered(val) => self.rdh_stats.rdhs_filtered += val as u64,
-            StatType::PayloadSize(size) => self.rdh_stats.payload_size += size as u64,
+            StatType::PayloadSize(size) => self.rdh_stats.add_payload_size(size as u64),
             StatType::LinksObserved(val) => self.rdh_stats.record_link(val),
             StatType::RdhVersion(version) => self.rdh_stats.record_rdh_version(version),
             StatType::DataFormat(version) => {
                 self.rdh_stats.record_data_format(version);
             }
-            StatType::HBFsSeen(val) => self.rdh_stats.hbfs_seen += val,
+            StatType::HBFsSeen(val) => self.rdh_stats.add_hbf_seen(val),
             StatType::Fatal(err) => {
                 if self.error_stats.is_fatal_error() {
                     // Stop processing any error messages
@@ -218,14 +218,14 @@ impl<C: Config + 'static> StatsController<C> {
             // If no filtering, the HBFs seen is from the total RDHs
             report.add_stat(StatSummary::new(
                 "Total HBFs".to_string(),
-                self.rdh_stats.hbfs_seen.to_string(),
+                self.rdh_stats.hbfs_seen().to_string(),
                 None,
             ));
 
             // If no filtering, the payload size seen is from the total RDHs
             report.add_stat(summerize_data_size(
                 self.rdh_stats.rdhs_seen,
-                self.rdh_stats.payload_size,
+                self.rdh_stats.payload_size(),
             ));
         } else {
             let filtered_stats: Vec<StatSummary> = self.add_filtered_stats();
@@ -290,13 +290,13 @@ impl<C: Config + 'static> StatsController<C> {
         // If filtering, the HBFs seen is from the filtered RDHs
         filtered_stats.push(StatSummary::new(
             "HBFs".to_string(),
-            self.rdh_stats.hbfs_seen.to_string(),
+            self.rdh_stats.hbfs_seen().to_string(),
             None,
         ));
 
         filtered_stats.push(summerize_data_size(
             self.rdh_stats.rdhs_filtered,
-            self.rdh_stats.payload_size,
+            self.rdh_stats.payload_size(),
         ));
 
         if let Some(filter_target) = self.config.filter_target() {

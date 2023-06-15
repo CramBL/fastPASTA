@@ -12,9 +12,9 @@ pub struct RdhStats {
     pub rdhs_filtered: u64,
     rdh_version: Option<u8>,
     /// Total HBFs seen
-    pub hbfs_seen: u32,
+    hbfs_seen: u32,
     /// Total payload size.
-    pub payload_size: u64,
+    payload_size: u64,
     // Data format observed
     data_format: Option<u8>,
     /// Links observed.
@@ -145,5 +145,25 @@ impl RdhStats {
     /// Returns a borrowed slice of a vector containing the layer/staves seen.
     pub fn layer_staves_as_slice(&self) -> &[(u8, u8)] {
         self.its_stats.layer_staves_as_slice()
+    }
+
+    pub(super) fn add_payload_size(&mut self, payload_size: u64) {
+        self.payload_size += payload_size;
+    }
+
+    pub(super) fn payload_size(&self) -> u64 {
+        self.payload_size
+    }
+
+    pub(super) fn add_hbf_seen(&mut self, hbfs_seen: u32) {
+        self.hbfs_seen += hbfs_seen;
+    }
+
+    pub(super) fn hbfs_seen(&self) -> u32 {
+        self.hbfs_seen
+    }
+
+    pub(super) fn incr_hbf_seen(&mut self) {
+        self.hbfs_seen += 1;
     }
 }
