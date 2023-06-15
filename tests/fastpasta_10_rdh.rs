@@ -303,8 +303,9 @@ fn filter_fee() -> Result<(), Box<dyn std::error::Error>> {
     match_on_out_no_case(&cmd.output()?.stdout, r".*filter.*stats", 1)?;
     match_on_out_no_case(
         &cmd.output()?.stdout,
-        &(r"FEE.*".to_string() + fee_id_to_filter),
-        1,
+        &(r"FEE ID.*".to_string() + fee_id_to_filter),
+        // Expect 2 occurences, one in the global stats and one in the filtered stats
+        2,
     )?;
 
     match_on_out_no_case(&cmd.output()?.stdout, r"\|.* RDHs.*10", 1)?;
