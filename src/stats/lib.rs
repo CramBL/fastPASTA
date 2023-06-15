@@ -196,6 +196,15 @@ pub fn collect_system_specific_stats<T: words::lib::RDH + 'static>(
     system_id: &mut Option<SystemId>,
     stats_sender_channel: &flume::Sender<StatType>,
 ) -> Result<(), String> {
+    if system_id.is_none() {
+        // First time seeing a system ID
+        let observed_sys_id = match SystemId::from_system_id(rdh.rdh0().system_id) {
+            Ok(id) => id,
+            Err(e) => return Err(e),
+        };
+        *system_id = Some(observed_sys_id);
+    }
+
     if let Some(system_id) = system_id {
         // Determine the system ID and collect system specific stats
         match system_id {
@@ -212,16 +221,7 @@ pub fn collect_system_specific_stats<T: words::lib::RDH + 'static>(
             _ => (), // Do nothing for other systems
         }
     } else {
-        // First time seeing a system ID
-        let observed_sys_id = match SystemId::from_system_id(rdh.rdh0().system_id) {
-            Ok(id) => id,
-            Err(e) => return Err(e),
-        };
-        log::info!("{observed_sys_id} detected");
-        stats_sender_channel
-            .send(StatType::SystemId(observed_sys_id))
-            .unwrap();
-        *system_id = Some(observed_sys_id);
+        unreachable!("System ID should have been determined by now")
     }
     Ok(())
 }
@@ -268,13 +268,18 @@ mod tests {
         let mut system_id = None;
 
         let rdh = crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
+        let expect_layer = crate::words::its::layer_from_feeid(rdh.fee_id());
+        let expect_stave = crate::words::its::stave_number_from_feeid(rdh.fee_id());
 
         collect_system_specific_stats(&rdh, &mut system_id, &stats_sender).unwrap();
 
         let stats = stats_receiver.recv().unwrap();
 
         match stats {
-            StatType::SystemId(id) => assert_eq!(id, SystemId::ITS),
+            StatType::LayerStaveSeen { layer, stave } => {
+                assert_eq!(layer, expect_layer);
+                assert_eq!(stave, expect_stave);
+            }
             _ => panic!("Wrong stat type received"),
         }
     }
