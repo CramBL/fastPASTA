@@ -52,11 +52,17 @@ pub(crate) fn summerize_filtered_its_layer_staves(
 
 pub(crate) fn summerize_layers_staves_seen(
     layers_staves_seen: &[(u8, u8)],
-    staves_with_errors: &[(u8, u8)],
+    staves_with_errors: Option<&[(u8, u8)]>,
 ) -> StatSummary {
+    let with_errors = if let Some(staves_with_errors) = staves_with_errors {
+        staves_with_errors.to_owned()
+    } else {
+        // If it's none, make a new empty vector
+        std::vec::Vec::new()
+    };
     StatSummary::new(
         "Layers/Staves".to_string(),
-        format_layers_and_staves(layers_staves_seen.to_owned(), staves_with_errors.to_owned()),
+        format_layers_and_staves(layers_staves_seen.to_owned(), with_errors),
         None,
     )
 }

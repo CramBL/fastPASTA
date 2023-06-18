@@ -15,8 +15,6 @@ pub struct ErrorStats {
 impl ErrorStats {
     /// If data processing is done, sort error messages, extract unique error codes etc.
     pub(super) fn finalize_stats(&mut self) {
-        // Sort stats by memory position where they were found
-        self.sort_error_msgs_by_mem_pos();
         // Extract unique error codes from reported errors
         self.process_unique_error_codes();
     }
@@ -102,13 +100,24 @@ impl ErrorStats {
             .expect("Unique error codes were never set")
     }
 
-    pub(super) fn staves_with_errors_as_slice(&self) -> &[LayerStave] {
-        self.staves_with_errors
-            .as_ref()
-            .expect("Staves with errors were never set")
+    /// Returns a slice of Layer/Staves seen in error messages
+    ///
+    /// Returns ´None´ if no staves were seen in any error messages
+    /// Panics if staves with errors is None when there's errors.
+    pub(super) fn staves_with_errors_as_slice(&self) -> Option<&[LayerStave]> {
+        if self.staves_with_errors.is_none() {
+            if self.total_errors == 0 {
+                return None;
+            } else {
+                panic!("Staves with errors were never set")
+            }
+        }
+        Some(self.staves_with_errors.as_ref().unwrap())
     }
 
     pub(super) fn consume_reported_errors(&mut self) -> Vec<String> {
+        // Sort stats by memory position where they were found before consuming them
+        self.sort_error_msgs_by_mem_pos();
         std::mem::take(&mut self.reported_errors)
     }
 }
