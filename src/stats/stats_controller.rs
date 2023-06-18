@@ -200,7 +200,7 @@ impl<C: Config + 'static> StatsController<C> {
                 "Processing {err_count} error messages",
                 err_count = self.error_stats.total_errors()
             )
-            .bright_yellow()
+            .yellow()
             .to_string(),
         );
         self.error_stats.finalize_stats();
@@ -411,18 +411,18 @@ fn add_detected_attributes_to_report(report: &mut Report, rdh_stats: &RdhStats) 
 }
 
 fn new_styled_spinner() -> ProgressBar {
-    let spinner_style = ProgressStyle::with_template("{spinner} {prefix:.bold.dim} {wide_msg}")
-        .unwrap()
-        .tick_strings(&[
-            "▹▹▹▹▹",
-            "▸▹▹▹▹",
-            "▹▸▹▹▹",
-            "▹▹▸▹▹",
-            "▹▹▹▸▹",
-            "▹▹▹▹▸",
-            "▪▪▪▪▪",
-        ]);
-    //.tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ");
+    let spinner_style =
+        ProgressStyle::with_template("{spinner} [ {prefix:.bold.blue} ] {wide_msg}")
+            .unwrap()
+            .tick_strings(&[
+                "▹▹▹▹▹",
+                "▸▹▹▹▹",
+                "▹▸▹▹▹",
+                "▹▹▸▹▹",
+                "▹▹▹▸▹",
+                "▹▹▹▹▸",
+                "▪▪▪▪▪",
+            ]);
     let pb = ProgressBar::new_spinner();
     pb.set_style(spinner_style);
     pb.enable_steady_tick(std::time::Duration::from_millis(120));
