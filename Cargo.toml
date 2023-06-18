@@ -35,6 +35,7 @@ crossbeam-channel = "0.5.8"
 ctrlc = { version = "3.4.0", features = ["termination"] }
 flume = "0.10.14"
 fmt = "0.1.0"
+indicatif = "0.17.5"
 itertools = "0.10.5"
 log = "0.4.19"
 owo-colors = "3.5.0"
