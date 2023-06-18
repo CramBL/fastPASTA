@@ -21,6 +21,7 @@ use crate::stats::stats_report::report::StatSummary;
 use crate::util::lib::Config;
 use crate::util::lib::DataOutputMode;
 use crate::util::lib::FilterTarget;
+use indicatif::{ProgressBar, ProgressStyle};
 use owo_colors::OwoColorize;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -42,6 +43,8 @@ pub struct StatsController<C: Config + 'static> {
     send_stats_channel: Option<flume::Sender<StatType>>,
     end_processing_flag: Arc<AtomicBool>,
     any_errors_flag: Arc<AtomicBool>,
+    spinner: ProgressBar,
+    spinner_message: String,
 }
 impl<C: Config + 'static> StatsController<C> {
     /// Creates a new [StatsController] from a [Config], a [flume::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
@@ -60,6 +63,8 @@ impl<C: Config + 'static> StatsController<C> {
             send_stats_channel: Some(send_stats_channel),
             end_processing_flag: Arc::new(AtomicBool::new(false)),
             any_errors_flag: Arc::new(AtomicBool::new(false)),
+            spinner: new_styled_spinner(),
+            spinner_message: String::new(),
         }
     }
 
@@ -94,15 +99,20 @@ impl<C: Config + 'static> StatsController<C> {
         while let Ok(stats_update) = self.recv_stats_channel.recv() {
             self.update(stats_update);
         }
+
         // After processing all stats, print the summary report or don't if in view mode
         if self.config.view().is_some() || self.config.output_mode() == DataOutputMode::Stdout {
             // Avoid printing the report in the middle of a view, or if output is being redirected
             log::info!("View active or output is being piped, skipping report summary printout.")
         } else {
-            self.process_error_messages();
+            if self.error_stats.total_errors() > 0 {
+                self.process_error_messages();
+            }
 
             // Print the summary report if any RDHs were seen. If not, it's likely that an early error occurred and no data was processed.
             if self.rdh_stats.rdhs_seen() > 0 {
+                // New spinner/progress bar
+                self.new_spinner_with_prefix("Generating report".to_string());
                 self.print();
             }
         }
@@ -122,6 +132,14 @@ impl<C: Config + 'static> StatsController<C> {
                 }
 
                 self.error_stats.add_error(msg);
+                self.set_spinner_msg(
+                    format!(
+                        "{err_cnt} Errors in data!",
+                        err_cnt = self.error_stats.total_errors()
+                    )
+                    .red()
+                    .to_string(),
+                );
 
                 if self.max_tolerate_errors > 0 {
                     log::trace!("Error count: {}", self.error_stats.total_errors());
@@ -140,7 +158,13 @@ impl<C: Config + 'static> StatsController<C> {
             StatType::DataFormat(version) => {
                 self.rdh_stats.record_data_format(version);
             }
-            StatType::HBFSeen => self.rdh_stats.incr_hbf_seen(),
+            StatType::HBFSeen => {
+                self.rdh_stats.incr_hbf_seen();
+                self.spinner.set_prefix(format!(
+                    "Analyzing {hbfs} HBFs",
+                    hbfs = self.rdh_stats.hbfs_seen()
+                ));
+            }
             StatType::Fatal(err) => {
                 if self.error_stats.is_fatal_error() {
                     // Stop processing any error messages
@@ -170,6 +194,15 @@ impl<C: Config + 'static> StatsController<C> {
     }
 
     fn process_error_messages(&mut self) {
+        // New spinner/progress bar
+        self.new_spinner_with_prefix(
+            format!(
+                "Processing {err_count} error messages",
+                err_count = self.error_stats.total_errors()
+            )
+            .bright_yellow()
+            .to_string(),
+        );
         self.error_stats.finalize_stats();
         if matches!(self.rdh_stats.system_id(), Some(SystemId::ITS)) {
             self.error_stats
@@ -235,6 +268,8 @@ impl<C: Config + 'static> StatsController<C> {
         // Add detected attributes
         add_detected_attributes_to_report(&mut report, &self.rdh_stats);
 
+        self.append_spinner_msg("... completed");
+        self.spinner.abandon();
         report.print();
     }
 
@@ -332,6 +367,27 @@ impl<C: Config + 'static> StatsController<C> {
 
         filtered_stats
     }
+
+    /// Add completed message to current spinner and abandon it
+    /// Replace it with new spinner with an empty message
+    /// Set the new spinners prefix message
+    fn new_spinner_with_prefix(&mut self, prefix: String) {
+        self.append_spinner_msg("... completed");
+        self.spinner.abandon();
+        self.spinner = new_styled_spinner();
+        self.spinner_message = "".to_string();
+        self.spinner.set_prefix(prefix);
+    }
+
+    fn set_spinner_msg(&mut self, new_msg: String) {
+        self.spinner_message = new_msg;
+        self.spinner.set_message(self.spinner_message.clone());
+    }
+
+    fn append_spinner_msg(&mut self, to_append: &str) {
+        self.spinner_message = self.spinner_message.clone() + to_append + " ";
+        self.spinner.set_message(self.spinner_message.clone());
+    }
 }
 
 fn add_detected_attributes_to_report(report: &mut Report, rdh_stats: &RdhStats) {
@@ -352,4 +408,23 @@ fn add_detected_attributes_to_report(report: &mut Report, rdh_stats: &RdhStats) 
             None => String::from("none").red().to_string(),
         }, // Default to TST for unit tests where no RDHs are seen
     );
+}
+
+fn new_styled_spinner() -> ProgressBar {
+    let spinner_style = ProgressStyle::with_template("{spinner} {prefix:.bold.dim} {wide_msg}")
+        .unwrap()
+        .tick_strings(&[
+            "▹▹▹▹▹",
+            "▸▹▹▹▹",
+            "▹▸▹▹▹",
+            "▹▹▸▹▹",
+            "▹▹▹▸▹",
+            "▹▹▹▹▸",
+            "▪▪▪▪▪",
+        ]);
+    //.tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ");
+    let pb = ProgressBar::new_spinner();
+    pb.set_style(spinner_style);
+    pb.enable_steady_tick(std::time::Duration::from_millis(120));
+    pb
 }
