@@ -15,8 +15,6 @@ pub struct ErrorStats {
 impl ErrorStats {
     /// If data processing is done, sort error messages, extract unique error codes etc.
     pub(super) fn finalize_stats(&mut self) {
-        // Sort stats by memory position where they were found
-        self.sort_error_msgs_by_mem_pos();
         // Extract unique error codes from reported errors
         self.process_unique_error_codes();
     }
@@ -109,6 +107,8 @@ impl ErrorStats {
     }
 
     pub(super) fn consume_reported_errors(&mut self) -> Vec<String> {
+        // Sort stats by memory position where they were found before consuming them
+        self.sort_error_msgs_by_mem_pos();
         std::mem::take(&mut self.reported_errors)
     }
 }
