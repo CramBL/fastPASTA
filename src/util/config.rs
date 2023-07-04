@@ -7,6 +7,7 @@
 #![allow(non_camel_case_types)]
 use self::{
     check::{CheckCommands, ChecksOpt},
+    custom_checks::{CustomChecks, CustomChecksOpt},
     filter::FilterOpt,
     inputoutput::{DataOutputMode, InputOutputOpt},
     util::UtilOpt,
@@ -26,6 +27,8 @@ pub mod util;
 pub mod view;
 /// The [CONFIG] static variable is used to store the [Cfg] created from the parsed command line arguments
 pub static CONFIG: OnceLock<Cfg> = OnceLock::new();
+/// The [CUSTOM_CHECKS] static variable is used to store the [CustomChecks] created from the a JSON file specified through the parsed command line arguments
+static CUSTOM_CHECKS: OnceLock<CustomChecks> = OnceLock::new();
 
 /// The [Cfg] struct uses procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
 #[derive(Parser, Debug)]
@@ -141,6 +144,10 @@ impl Cfg {
     /// Get a reference to the global config
     pub fn global() -> &'static Cfg {
         CONFIG.get().expect("Config is not initialized")
+    }
+
+    fn custom_checks() -> Option<&'static CustomChecks> {
+        CUSTOM_CHECKS.get()
     }
 }
 
@@ -269,6 +276,28 @@ impl UtilOpt for Cfg {
     }
     fn mute_errors(&self) -> bool {
         self.mute_errors
+    }
+}
+
+impl CustomChecksOpt for Cfg {
+    fn cdps(&self) -> Option<u32> {
+        if self.checks_json.is_some() {
+            Cfg::custom_checks()
+                .expect("Custom checks are not initialized")
+                .cdps()
+        } else {
+            None
+        }
+    }
+
+    fn triggers_sent(&self) -> Option<u32> {
+        if self.checks_json.is_some() {
+            Cfg::custom_checks()
+                .expect("Custom checks are not initialized")
+                .triggers_sent()
+        } else {
+            None
+        }
     }
 }
 
