@@ -92,6 +92,7 @@ pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
 pub fn init_config() -> Result<(), String> {
     let cfg = <super::config::Cfg as clap::Parser>::parse();
     cfg.validate_args()?;
+    cfg.handle_custom_checks();
     crate::util::config::CONFIG.set(cfg).unwrap();
     Ok(())
 }
@@ -160,6 +161,7 @@ pub mod test_util {
         pub its_trigger_period: Option<u16>,
         pub exit_code_any_errors: Option<u8>,
         pub mute_errors: bool,
+        pub generate_checks_json: bool,
         pub custom_checks: Option<CustomChecks>,
     }
 
@@ -186,6 +188,7 @@ pub mod test_util {
                 its_trigger_period: None,
                 exit_code_any_errors: None,
                 mute_errors: false,
+                generate_checks_json: false,
                 custom_checks: None,
             }
         }
@@ -268,6 +271,10 @@ pub mod test_util {
     }
 
     impl CustomChecksOpt for MockConfig {
+        fn generate_custom_checks_json_enabled(&self) -> bool {
+            self.generate_checks_json
+        }
+
         fn cdps(&self) -> Option<u32> {
             if self.custom_checks.is_some() {
                 self.custom_checks.as_ref().unwrap().cdps()

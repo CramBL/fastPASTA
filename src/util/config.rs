@@ -149,6 +149,19 @@ impl Cfg {
     fn custom_checks() -> Option<&'static CustomChecks> {
         CUSTOM_CHECKS.get()
     }
+
+    /// If a checks JSON file is specified, parse it and set the custom checks static variable.
+    /// If the checks JSON file is not specified, but the `--gen-checks-json` flag is set, generate a checks JSON file in the current directory.
+    pub fn handle_custom_checks(&self) {
+        if let Some(checks_json) = &self.checks_json {
+            let custom_checks = self.custom_checks_from_path(checks_json);
+            CUSTOM_CHECKS
+                .set(custom_checks)
+                .expect("Custom checks already initialized");
+        } else if self.generate_custom_checks_json_enabled() {
+            self.generate_custom_checks_json();
+        }
+    }
 }
 
 /// Implementing the config super trait requires implementing all the sub traits
@@ -280,6 +293,10 @@ impl UtilOpt for Cfg {
 }
 
 impl CustomChecksOpt for Cfg {
+    fn generate_custom_checks_json_enabled(&self) -> bool {
+        self.generate_checks_json
+    }
+
     fn cdps(&self) -> Option<u32> {
         if self.checks_json.is_some() {
             Cfg::custom_checks()
