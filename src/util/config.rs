@@ -122,6 +122,10 @@ pub struct Cfg {
     /// Don't show error messages - helpful if there's a large amount of errors and you just want to see the report
     #[arg(short, long, default_value_t = false, global = true)]
     mute_errors: bool,
+
+    /// Generate a counters JSON file in the current directory that can be used as a template to specify counters to check against the data.
+    #[arg(short, long, default_value_t = false, global = true, visible_aliases = ["gen-json", "gen-counters"],)]
+    generate_counters_json: bool,
 }
 
 impl Cfg {
