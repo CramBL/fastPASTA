@@ -7,7 +7,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 /// Re-export all the sub traits and enums
 pub use super::config::{
     check::{CheckCommands, ChecksOpt, System, Target},
-    counters::CountersOpt,
+    custom_checks::CustomChecksOpt,
     filter::{FilterOpt, FilterTarget},
     inputoutput::{DataOutputMode, InputOutputOpt},
     util::UtilOpt,

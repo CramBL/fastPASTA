@@ -3,7 +3,7 @@
 use serde_derive::{Deserialize, Serialize};
 
 /// Trait for the configuration of various expected counters in the data.
-pub trait CountersOpt {
+pub trait CustomChecksOpt {
     /// Get the number of CDPS expected in the data, if it is set.
     fn cdps(&self) -> Option<u32>;
 
@@ -11,9 +11,9 @@ pub trait CountersOpt {
     fn triggers_sent(&self) -> Option<u32>;
 }
 
-impl<T> CountersOpt for &T
+impl<T> CustomChecksOpt for &T
 where
-    T: CountersOpt,
+    T: CustomChecksOpt,
 {
     fn cdps(&self) -> Option<u32> {
         (*self).cdps()
@@ -24,9 +24,9 @@ where
     }
 }
 
-impl<T> CountersOpt for Box<T>
+impl<T> CustomChecksOpt for Box<T>
 where
-    T: CountersOpt,
+    T: CustomChecksOpt,
 {
     fn cdps(&self) -> Option<u32> {
         (**self).cdps()
@@ -37,9 +37,9 @@ where
     }
 }
 
-impl<T> CountersOpt for std::sync::Arc<T>
+impl<T> CustomChecksOpt for std::sync::Arc<T>
 where
-    T: CountersOpt,
+    T: CustomChecksOpt,
 {
     fn cdps(&self) -> Option<u32> {
         (**self).cdps()
@@ -52,13 +52,13 @@ where
 
 /// Struct for the configuration of various expected counters in the data.
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Counters {
+pub struct CustomChecks {
     cdps: Option<u32>,
 
     triggers_sent: Option<u32>,
 }
 
-impl Counters {
+impl CustomChecks {
     /// Generate a JSON string from a [Counters] instance.
     pub fn generate_json(&self) -> String {
         serde_json::to_string_pretty(&self).unwrap()

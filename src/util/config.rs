@@ -19,7 +19,7 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 pub mod check;
-pub mod counters;
+pub mod custom_checks;
 pub mod filter;
 pub mod inputoutput;
 pub mod util;
