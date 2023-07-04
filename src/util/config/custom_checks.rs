@@ -11,10 +11,19 @@ pub trait CustomChecksOpt {
         self.cdps().is_some() || self.triggers_sent().is_some()
     }
 
+    /// Returns if the option to generate a JSON file with default custom checks is enabled.
+    fn generate_custom_checks_json_enabled(&self) -> bool;
+
     /// Get the custom checks from a JSON file returning a [CustomChecks] instance.
-    fn custom_checks_from_path(&self, json_path: PathBuf) -> CustomChecks {
+    fn custom_checks_from_path(&self, json_path: &PathBuf) -> CustomChecks {
         let json = std::fs::read_to_string(json_path).expect("Failed to read JSON file");
         serde_json::from_str(&json).expect("Failed to parse JSON")
+    }
+
+    /// Write a [CustomChecks] instance to a JSON file in the current directory.
+    fn generate_custom_checks_json(&self) {
+        let json = serde_json::to_string_pretty(&CustomChecks::default()).unwrap();
+        std::fs::write("custom_checks.json", json).expect("Failed to write JSON file");
     }
 
     /// Get the number of CDPS expected in the data, if it is set.
@@ -30,6 +39,10 @@ where
 {
     fn custom_checks_enabled(&self) -> bool {
         (*self).custom_checks_enabled()
+    }
+
+    fn generate_custom_checks_json_enabled(&self) -> bool {
+        (*self).generate_custom_checks_json_enabled()
     }
 
     fn cdps(&self) -> Option<u32> {
@@ -49,6 +62,10 @@ where
         (**self).custom_checks_enabled()
     }
 
+    fn generate_custom_checks_json_enabled(&self) -> bool {
+        (**self).generate_custom_checks_json_enabled()
+    }
+
     fn cdps(&self) -> Option<u32> {
         (**self).cdps()
     }
@@ -64,6 +81,10 @@ where
 {
     fn custom_checks_enabled(&self) -> bool {
         (**self).custom_checks_enabled()
+    }
+
+    fn generate_custom_checks_json_enabled(&self) -> bool {
+        (**self).generate_custom_checks_json_enabled()
     }
 
     fn cdps(&self) -> Option<u32> {
@@ -156,5 +177,13 @@ mod tests {
         std::fs::write(&json_file, &json).unwrap();
 
         assert_eq!(std::fs::read_to_string(json_file).unwrap(), json);
+    }
+
+    #[test]
+    fn test_write_json_to_file_trait() {
+        let mock_config = crate::util::lib::test_util::MockConfig::default();
+        mock_config.generate_custom_checks_json();
+        // Cleanup
+        std::fs::remove_file("custom_checks.json").unwrap();
     }
 }
