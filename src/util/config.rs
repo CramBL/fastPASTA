@@ -123,9 +123,18 @@ pub struct Cfg {
     #[arg(short, long, default_value_t = false, global = true)]
     mute_errors: bool,
 
-    /// Generate a counters JSON file in the current directory that can be used as a template to specify counters to check against the data.
-    #[arg(short, long, default_value_t = false, global = true, visible_aliases = ["gen-json", "gen-counters"],)]
-    generate_counters_json: bool,
+    /// Generate a checks JSON file in the current directory that can be used as a template to configure checks against the raw data.
+    #[arg(short, long, default_value_t = false, global = true, visible_aliases = ["gen-json", "gen-checks"],)]
+    generate_checks_json: bool,
+
+    /// Path to a checks JSON file that can be used to specify and customize certain checks against the raw data.
+    #[arg(
+        short = 'c',
+        long,
+        global = true,
+        visible_aliases = ["checks-json"],
+      )]
+    checks_json: Option<PathBuf>,
 }
 
 impl Cfg {
