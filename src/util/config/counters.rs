@@ -50,16 +50,36 @@ where
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-struct Counters {
+/// Struct for the configuration of various expected counters in the data.
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Counters {
     cdps: Option<u32>,
 
     triggers_sent: Option<u32>,
 }
 
+impl Counters {
+    /// Generate a JSON string from a [Counters] instance.
+    pub fn generate_json(&self) -> String {
+        serde_json::to_string_pretty(&self).unwrap()
+    }
+
+    /// Get the number of CDPS expected in the data, if it is set.
+    pub fn cdps(&self) -> Option<u32> {
+        self.cdps
+    }
+
+    /// Get the number of sent Triggers expected in the data, if it is set.
+    pub fn triggers_sent(&self) -> Option<u32> {
+        self.triggers_sent
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
+    use temp_dir::TempDir;
 
     #[test]
     fn test_serialize() {
@@ -87,5 +107,29 @@ mod tests {
         let json = r#"{ "cdps": null, "triggers_sent": null }"#;
         let counters: Counters = serde_json::from_str(json).unwrap();
         assert_eq!(counters.cdps, None);
+    }
+
+    #[test]
+    fn test_generate_json() {
+        let counters_json = Counters::default().generate_json();
+        assert_eq!(
+            counters_json,
+            r#"{
+  "cdps": null,
+  "triggers_sent": null
+}"#
+        );
+    }
+
+    #[test]
+    fn test_write_json_to_file() {
+        let counters = Counters::default();
+        let json = counters.generate_json();
+
+        let tmp_dir = TempDir::new().unwrap();
+        let json_file = tmp_dir.child("counters.json");
+        std::fs::write(&json_file, &json).unwrap();
+
+        assert_eq!(std::fs::read_to_string(json_file).unwrap(), json);
     }
 }
