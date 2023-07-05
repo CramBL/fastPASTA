@@ -38,7 +38,7 @@ failed_results=()
 ## Matches the EOF and Exit Successful messages
 ## Needs -v2 to show "INFO -" prints
 re_eof="(INFO -).*EOF"
-re_exit_success="(INFO -).*Exit success"
+re_exit_success="(DEBUG -).*Exit success"
 ## Matches the RDHs in the `view rdh` command, by going from the `:` in the memory offset to the version, header size, and data format.
 re_rdhs_in_rdh_view=": .* (7|6) .* 64 .* (0|2)"
 
@@ -64,7 +64,7 @@ tests_array=(
 ### Tests on the `readout.superpage.1.raw` file
 ## Test 1_0: `check sanity` - Check that the program reached EOF and exits successfully
 test_1_0=(
-    "readout.superpage.1.raw check sanity -v2"
+    "readout.superpage.1.raw check sanity -v3"
     "${re_eof}"
     1
     "${re_exit_success}"
@@ -137,7 +137,7 @@ test_1_multi_1=(
 # Tests on the `10_rdh.raw` file
 ## Test 2_0: sanity check that the program reached EOF and exits successfully
 test_2_0=(
-    "10_rdh.raw check sanity -v2"
+    "10_rdh.raw check sanity -v3"
     "${re_eof}"
     1
     "${re_exit_success}"
@@ -201,7 +201,7 @@ test_2_multi_1=(
 # Tests on the `err_not_hbf.raw` file
 ## Test 3_0: sanity check that the file is parsed successfully
 test_3_0=(
-    "err_not_hbf.raw check sanity -v2"
+    "err_not_hbf.raw check sanity -v3"
     "${re_eof}"
     1
     "${re_exit_success}"
@@ -290,7 +290,7 @@ test_bad_tdt_detect_invalid_id=(
 ###
 ### This file contains a single HBF with a CDP with invalid structure because the RDH preceding a DDW0 does not have stop bit set
 test_bad_cdp_structure=(
-    "1_hbf_bad_cdp_structure.raw check sanity its -v2"
+    "1_hbf_bad_cdp_structure.raw check sanity its -v3"
     # Check the file is parsed successfully
     "${re_eof}"
     1
@@ -329,7 +329,7 @@ test_bad_cdp_structure_detected=(
 ###     - an IHW ID comes instead of the TDH that should come after the first IHW.
 ###     - The IHW does not have lane 8 set in the active_lanes field, so data from lane 8 should generate an error
 test_bad_its_payload=(
-    "1_hbf_bad_its_payload.raw check sanity its -v2"
+    "1_hbf_bad_its_payload.raw check sanity its -v3"
     # Check the file is parsed successfully
     "${re_eof}"
     1
@@ -359,7 +359,7 @@ test_bad_its_payload_errors_detected=(
 ###
 ### This file contains raw data from an IBS threshold scan, from link 8, 9, and 11.
 test_thrs_cdw_3_links=(
-    "thrs_cdw_links.raw check sanity its -v2"
+    "thrs_cdw_links.raw check sanity its -v3"
     # Check the file is parsed successfully
     "${re_eof}"
     1
