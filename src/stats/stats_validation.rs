@@ -19,9 +19,10 @@ pub fn validate_custom_stats(
     if let Some(expect_triggers_pht) = custom_checks.triggers_pht() {
         if rdh_stats.trigger_stats().pht() != expect_triggers_pht {
             errors.push(format!(
-                "[E99] Expected {expected_triggers_pht} PhT triggers, but found {observed_triggers_pht}",
+                "[E99] Expected {expected_triggers_pht} PhT triggers, but found {observed_triggers_pht}.\n{triggers_stats}",
                 expected_triggers_pht = expect_triggers_pht,
-                observed_triggers_pht = rdh_stats.trigger_stats().pht()
+                observed_triggers_pht = rdh_stats.trigger_stats().pht(),
+                triggers_stats = rdh_stats.trigger_stats()
             ));
         }
     }

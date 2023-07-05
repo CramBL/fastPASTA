@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+
+use std::fmt::Display;
 #[derive(Debug, Clone, Default)]
 pub struct TriggerStats {
     orbit: u32,
@@ -186,5 +188,32 @@ impl TriggerStats {
 
     pub fn tof(&self) -> u32 {
         self.tof
+    }
+}
+
+impl Display for TriggerStats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Trigger statistics:")?;
+        writeln!(f, "  Orbit:    {:>6}", self.orbit)?;
+        writeln!(f, "  HB:       {:>6}", self.hb)?;
+        writeln!(f, "  HBr:      {:>6}", self.hbr)?;
+        writeln!(f, "  HC:       {:>6}", self.hc)?;
+        writeln!(f, "  PhT:      {:>6}", self.pht)?;
+        writeln!(f, "  PP:       {:>6}", self.pp)?;
+        writeln!(f, "  CAL:      {:>6}", self.cal)?;
+        writeln!(f, "  SOT:      {:>6}", self.sot)?;
+        writeln!(f, "  EOT:      {:>6}", self.eot)?;
+        writeln!(f, "  SOC:      {:>6}", self.soc)?;
+        writeln!(f, "  EOC:      {:>6}", self.eoc)?;
+        writeln!(f, "  TF:       {:>6}", self.tf)?;
+        writeln!(f, "  FE_rst:   {:>6}", self.fe_rst)?;
+        writeln!(f, "  RT:       {:>6}", self.rt)?;
+        writeln!(f, "  RS:       {:>6}", self.rs)?;
+        writeln!(f, "  LHC_gap1: {:>6}", self.lhc_gap1)?;
+        writeln!(f, "  LHC_gap2: {:>6}", self.lhc_gap2)?;
+        writeln!(f, "  TPC_sync: {:>6}", self.tpc_sync)?;
+        writeln!(f, "  TPC_rst:  {:>6}", self.tpc_rst)?;
+        writeln!(f, "  TOF:      {:>6}", self.tof)?;
+        Ok(())
     }
 }
