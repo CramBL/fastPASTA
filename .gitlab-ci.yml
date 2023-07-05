@@ -59,7 +59,7 @@ format:
     - cat Cargo.toml | grep -Po "(?<=^version = \").*(?=\")"
     - git describe --tags --abbrev=0 --always | grep -Po "(?<=v).*" | tail -1
     - echo "if this steps fails, update the Cargo.toml version number with the one from the newest git tag"
-    - tagdiff=$(diff <(git describe --tags --abbrev=0 | grep -Po "(?<=v).*" | tail -1) <(cat Cargo.toml | grep -Po "(?<=^version = \").*(?=\")") | wc -l | grep "[0-9]")
+    - tagdiff=$(diff <(git describe --tags --abbrev=0 --always | grep -Po "(?<=v).*" | tail -1) <(cat Cargo.toml | grep -Po "(?<=^version = \").*(?=\")") | wc -l | grep "[0-9]")
     - if [ "$tagdiff" -eq 0 ]; then echo "version numbers match";
     - fi
     - printf "Git tag and project version match, now doing basic syntax check to confirm that code compiles\n"
