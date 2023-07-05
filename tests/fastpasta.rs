@@ -47,7 +47,7 @@ fn fastpasta_help() -> Result<(), Box<dyn std::error::Error>> {
 fn file_exists_exit_successful_10_rdh() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
-    cmd.arg(FILE_10_RDH).arg("check").arg("sanity").arg("-v2");
+    cmd.arg(FILE_10_RDH).arg("check").arg("sanity").arg("-v4");
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
@@ -63,7 +63,7 @@ fn file_exists_exit_successful_err_not_hbf() -> Result<(), Box<dyn std::error::E
     cmd.arg(FILE_ERR_NOT_HBF)
         .arg("check")
         .arg("sanity")
-        .arg("-v2");
+        .arg("-v4");
     cmd.assert().success();
 
     match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
@@ -78,7 +78,7 @@ fn file_exists_exit_successful_thrs_cdw_links() -> Result<(), Box<dyn std::error
     cmd.arg(FILE_THRS_CDW_LINKS)
         .arg("check")
         .arg("sanity")
-        .arg("-v2");
+        .arg("-v4");
     cmd.assert().success();
 
     match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
@@ -93,7 +93,7 @@ fn file_exists_exit_successful_readout_superpage_1() -> Result<(), Box<dyn std::
     cmd.arg(FILE_READOUT_SUPERPAGE_1)
         .arg("check")
         .arg("sanity")
-        .arg("-v2");
+        .arg("-v4");
     cmd.assert().success();
 
     match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
@@ -108,7 +108,7 @@ fn file_exists_exit_successful_1_hbf_bad_cdp_structure() -> Result<(), Box<dyn s
     cmd.arg(FILE_1_HBF_BAD_CDP_STRUCTURE)
         .arg("check")
         .arg("sanity")
-        .arg("-v2");
+        .arg("-v4");
     cmd.assert().success();
 
     match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
@@ -123,7 +123,7 @@ fn file_exists_exit_successful_1_hbf_bad_dw_ddw0() -> Result<(), Box<dyn std::er
     cmd.arg(FILE_1_HBF_BAD_DW_DDW0)
         .arg("check")
         .arg("sanity")
-        .arg("-v2");
+        .arg("-v4");
     cmd.assert().success();
 
     match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
@@ -138,7 +138,7 @@ fn file_exists_exit_successful_1_hbf_bad_ihw_tdh() -> Result<(), Box<dyn std::er
     cmd.arg(FILE_1_HBF_BAD_IHW_TDH)
         .arg("check")
         .arg("sanity")
-        .arg("-v2");
+        .arg("-v4");
     cmd.assert().success();
 
     match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
@@ -153,7 +153,7 @@ fn file_exists_exit_successful_1_hbf_bad_its_payload() -> Result<(), Box<dyn std
     cmd.arg(FILE_1_HBF_BAD_ITS_PAYLOAD)
         .arg("check")
         .arg("sanity")
-        .arg("-v2");
+        .arg("-v4");
     cmd.assert().success();
 
     match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
@@ -168,7 +168,7 @@ fn file_exists_exit_successful_1_hbf_bad_tdt() -> Result<(), Box<dyn std::error:
     cmd.arg(FILE_1_HBF_BAD_TDT)
         .arg("check")
         .arg("sanity")
-        .arg("-v2");
+        .arg("-v4");
     cmd.assert().success();
 
     match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
@@ -183,7 +183,7 @@ fn file_exists_exit_successful_tdh_no_data() -> Result<(), Box<dyn std::error::E
     cmd.arg(FILE_TDH_NO_DATA)
         .arg("check")
         .arg("sanity")
-        .arg("-v2");
+        .arg("-v4");
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
@@ -199,7 +199,7 @@ fn file_exists_exit_successful_tdh_no_data_ihw() -> Result<(), Box<dyn std::erro
     cmd.arg(FILE_TDH_NO_DATA_IHW)
         .arg("check")
         .arg("sanity")
-        .arg("-v2");
+        .arg("-v4");
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once

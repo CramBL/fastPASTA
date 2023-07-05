@@ -54,7 +54,7 @@ pub struct Cfg {
     cmd: Option<Command>,
 
     /// Verbosity level 0-4 (Errors, Warnings, Info, Debug, Trace)
-    #[arg(short = 'v', long = "verbosity", default_value_t = 1, global = true)]
+    #[arg(short = 'v', long = "verbosity", default_value_t = 2, global = true)]
     verbosity: u8,
 
     /// Max tolerate errors before exiting, if set to 0 -> no limit to errors
