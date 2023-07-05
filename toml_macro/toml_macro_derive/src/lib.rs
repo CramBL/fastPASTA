@@ -42,24 +42,32 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         impl TomlConfig for #name {
             fn to_string_pretty_toml(&self) -> String {
+                let name = stringify!(#name);
+                let mut toml_string = String::from(&format!("[{}]\n", name));
 
                 #(
-                    //println!("{}: {} [{}]", #field_id, self.#field_value, #types);
-                    if let Some(val) = &self.#field_value {
-                        println!("{}: {}", #field_id, val);
+                    if let Some(field_val) = &self.#field_value {
+                        println!("{}: {}", #field_id, field_val);
+                        toml_string.push_str(&format!("{field_name} = {field_value}\n",
+                        field_name = #field_id,
+                        field_value = field_val
+                        ));
                     } else {
                         let type_name = stringify!(#types);
                         let mut type_as_char = type_name.chars();
                         for _ in 0..=7 {type_as_char.next();}
                         type_as_char.next_back();
-                        // type_without_option_part.back();
-
-                        println!("{}: None [{type_name}]", #field_id, type_name = type_as_char.as_str());
+                        println!("#{}: None [{type_name}] # (Uncomment and set to enable this check)",
+                        #field_id,
+                        type_name = type_as_char.as_str());
+                        toml_string.push_str(&format!("#{field_name} = None [{type_name}] # (Uncomment and set to enable this check)\n",
+                        field_name = #field_id,
+                        type_name = type_as_char.as_str()
+                        ));
                     }
                 )*
-                let name = stringify!(#name);
-                let mut toml_string = String::new();
-                toml_string.push_str(&format!("[{}]\n", name));
+
+
                 toml_string
             }
         }
