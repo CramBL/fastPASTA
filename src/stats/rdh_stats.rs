@@ -142,6 +142,11 @@ impl RdhStats {
         self.trigger_stats.collect_stats(trigger_type);
     }
 
+    /// Returns a borrowed reference to [TriggerStats]
+    pub fn trigger_stats(&self) -> &TriggerStats {
+        &self.trigger_stats
+    }
+
     /// Stores a layer/stave seen in the raw data.
     ///
     /// This is only applicable if the payload is from ITS.
