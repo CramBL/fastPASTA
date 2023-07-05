@@ -183,6 +183,12 @@ pub fn process<T: words::lib::RDH + 'static>(
     Ok(())
 }
 
+use toml_macro::TomlConfig;
+
+#[derive(Debug, Default, toml_macro_derive::TomlConfig)]
+struct TestToml {
+    cdps: Option<u32>,
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -192,6 +198,12 @@ mod tests {
     use pretty_assertions::assert_eq;
     use std::path::PathBuf;
     use std::sync::OnceLock;
+
+    #[test]
+    fn test_toml_macro() {
+        let toml_string = TestToml::default().to_string_pretty_toml();
+        println!("{}", toml_string);
+    }
 
     static CFG_TEST_INIT_PROCESSING: OnceLock<MockConfig> = OnceLock::new();
 
