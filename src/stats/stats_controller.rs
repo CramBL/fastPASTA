@@ -15,6 +15,7 @@ use super::stat_summerize_utils::summerize_filtered_fee_ids;
 use super::stat_summerize_utils::summerize_filtered_its_layer_staves;
 use super::stat_summerize_utils::summerize_filtered_links;
 use super::stat_summerize_utils::summerize_layers_staves_seen;
+use super::stats_validation::validate_custom_stats;
 use super::SystemId;
 use crate::stats::stats_report::report::Report;
 use crate::stats::stats_report::report::StatSummary;
@@ -100,6 +101,14 @@ impl<C: Config + 'static> StatsController<C> {
             self.update(stats_update);
         }
 
+        if self.config.custom_checks_enabled() {
+            if let Err(e) = validate_custom_stats(self.config, &self.rdh_stats) {
+                e.into_iter().for_each(|e| {
+                    self.error_stats.add_custom_check_error(e);
+                });
+            }
+        }
+
         // After processing all stats, print the summary report or don't if in view mode
         if self.config.view().is_some() || self.config.output_mode() == DataOutputMode::Stdout {
             // Avoid printing the report in the middle of a view, or if output is being redirected
@@ -131,7 +140,7 @@ impl<C: Config + 'static> StatsController<C> {
                     return;
                 }
 
-                self.error_stats.add_error(msg);
+                self.error_stats.add_reported_error(msg);
                 self.set_spinner_msg(
                     format!(
                         "{err_cnt} Errors in data!",
@@ -190,6 +199,7 @@ impl<C: Config + 'static> StatsController<C> {
             StatType::FeeId(id) => {
                 self.rdh_stats.record_fee_observed(id);
             }
+            StatType::TriggerType(val) => self.rdh_stats.record_trigger_type(val),
         }
     }
 

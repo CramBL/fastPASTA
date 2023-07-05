@@ -1,3 +1,4 @@
+use assert_fs::TempDir;
 use predicates::str::contains;
 
 use crate::util::*;
@@ -438,6 +439,109 @@ fn check_sanity_custom_exit_code() -> Result<(), Box<dyn std::error::Error>> {
         .arg("sanity")
         .arg("-E")
         .arg("1");
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_sanity_custom_checks_cdp_count() -> Result<(), Box<dyn std::error::Error>> {
+    let custom_checks_str = r#"[counter_checks]
+# Number of CRU Data Packets expected in the data
+# Example value: 20 [type: u32]
+cdps = 10
+# Number of Physics (PhT) Triggers expected in the data
+# Example value: 20 [type: u32]
+#triggers_pht = (uncomment and set to enable)
+"#;
+    let custom_checks_file_name = "tmp_custom_checks.toml";
+    let tmp_dir = TempDir::new()?;
+    let tmp_custom_checks_path = tmp_dir.path().join(custom_checks_file_name);
+
+    let mut custom_checks_file = std::fs::File::create(tmp_custom_checks_path.clone())?;
+    std::io::Write::write_all(&mut custom_checks_file, custom_checks_str.as_bytes())?;
+
+    custom_checks_file.sync_all()?;
+
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("sanity")
+        .arg("--checks-toml")
+        .arg(tmp_custom_checks_path);
+
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_sanity_custom_checks_bad_cdp_count() -> Result<(), Box<dyn std::error::Error>> {
+    let custom_checks_str = r#"[counter_checks]
+# Number of CRU Data Packets expected in the data
+# Example value: 20 [type: u32]
+cdps = 0
+# Number of Physics (PhT) Triggers expected in the data
+# Example value: 20 [type: u32]
+#triggers_pht = (uncomment and set to enable)
+"#;
+    let custom_checks_file_name = "tmp_custom_checks.toml";
+    let tmp_dir = TempDir::new()?;
+    let tmp_custom_checks_path = tmp_dir.path().join(custom_checks_file_name);
+
+    let mut custom_checks_file = std::fs::File::create(tmp_custom_checks_path.clone())?;
+    std::io::Write::write_all(&mut custom_checks_file, custom_checks_str.as_bytes())?;
+
+    custom_checks_file.sync_all()?;
+
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("sanity")
+        .arg("--checks-toml")
+        .arg(tmp_custom_checks_path);
+
+    cmd.assert().success();
+
+    // There's 10 CDPs in the file, but the custom checks file expects 0
+    match_on_out_no_case(&cmd.output()?.stderr, "ERROR.*expect.*0.*found.*10", 1)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_sanity_custom_checks_trigger_pht_count() -> Result<(), Box<dyn std::error::Error>> {
+    let custom_checks_str = r#"[counter_checks]
+# Number of CRU Data Packets expected in the data
+# Example value: 20 [type: u32]
+# cdps = 10
+# Number of Physics (PhT) Triggers expected in the data
+# Example value: 20 [type: u32]
+triggers_pht = 0 # PhT triggers are only expected in triggered mode
+"#;
+    let custom_checks_file_name = "tmp_custom_checks.toml";
+    let tmp_dir = TempDir::new()?;
+    let tmp_custom_checks_path = tmp_dir.path().join(custom_checks_file_name);
+
+    let mut custom_checks_file = std::fs::File::create(tmp_custom_checks_path.clone())?;
+    std::io::Write::write_all(&mut custom_checks_file, custom_checks_str.as_bytes())?;
+
+    custom_checks_file.sync_all()?;
+
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("sanity")
+        .arg("--checks-toml")
+        .arg(tmp_custom_checks_path);
+
     cmd.assert().success();
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;

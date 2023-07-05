@@ -7,6 +7,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 /// Re-export all the sub traits and enums
 pub use super::config::{
     check::{CheckCommands, ChecksOpt, System, Target},
+    custom_checks::CustomChecksOpt,
     filter::{FilterOpt, FilterTarget},
     inputoutput::{DataOutputMode, InputOutputOpt},
     util::UtilOpt,
@@ -19,7 +20,7 @@ pub use super::config::{
 pub trait Config: Send + Sync + std::marker::Sized
 where
     // Subtraits that group together related configuration options
-    Self: UtilOpt + FilterOpt + InputOutputOpt + ChecksOpt + ViewOpt,
+    Self: UtilOpt + FilterOpt + InputOutputOpt + ChecksOpt + ViewOpt + CustomChecksOpt,
 {
     /// Validate the arguments of the config
     fn validate_args(&self) -> Result<(), String> {
@@ -91,6 +92,7 @@ pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
 pub fn init_config() -> Result<(), String> {
     let cfg = <super::config::Cfg as clap::Parser>::parse();
     cfg.validate_args()?;
+    cfg.handle_custom_checks();
     crate::util::config::CONFIG.set(cfg).unwrap();
     Ok(())
 }
@@ -120,8 +122,7 @@ pub fn init_ctrlc_handler(stop_flag: Arc<AtomicBool>) {
 /// Exits the program with the appropriate exit code
 pub fn exit(exit_code: u8, any_errors_flag: Arc<AtomicBool>) -> std::process::ExitCode {
     if exit_code == 0 {
-        log::info!("Exit successful from data processing");
-
+        log::debug!("Exit successful from data processing");
         if Cfg::global().any_errors_exit_code().is_some()
             && any_errors_flag.load(std::sync::atomic::Ordering::Relaxed)
         {
@@ -138,6 +139,7 @@ pub fn exit(exit_code: u8, any_errors_flag: Arc<AtomicBool>) -> std::process::Ex
 pub mod test_util {
     use super::*;
     use crate::util::config::{
+        custom_checks::CustomChecks,
         filter::FilterOpt,
         inputoutput::{DataOutputMode, InputOutputOpt},
     };
@@ -158,6 +160,8 @@ pub mod test_util {
         pub its_trigger_period: Option<u16>,
         pub exit_code_any_errors: Option<u8>,
         pub mute_errors: bool,
+        pub generate_checks_toml: bool,
+        pub custom_checks: Option<CustomChecks>,
     }
 
     impl Default for MockConfig {
@@ -183,11 +187,14 @@ pub mod test_util {
                 its_trigger_period: None,
                 exit_code_any_errors: None,
                 mute_errors: false,
+                generate_checks_toml: false,
+                custom_checks: None,
             }
         }
     }
 
     impl Config for MockConfig {}
+
     impl ChecksOpt for MockConfig {
         fn check(&self) -> Option<CheckCommands> {
             self.check
@@ -259,6 +266,28 @@ pub mod test_util {
 
         fn output_mode(&self) -> DataOutputMode {
             self.output_mode
+        }
+    }
+
+    impl CustomChecksOpt for MockConfig {
+        fn generate_custom_checks_toml_enabled(&self) -> bool {
+            self.generate_checks_toml
+        }
+
+        fn cdps(&self) -> Option<u32> {
+            if self.custom_checks.is_some() {
+                self.custom_checks.as_ref().unwrap().cdps()
+            } else {
+                None
+            }
+        }
+
+        fn triggers_pht(&self) -> Option<u32> {
+            if self.custom_checks.is_some() {
+                self.custom_checks.as_ref().unwrap().triggers_pht()
+            } else {
+                None
+            }
         }
     }
 }

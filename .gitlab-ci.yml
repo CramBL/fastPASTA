@@ -49,6 +49,8 @@ lint:
 
 format:
   stage: code-quality
+  variables:
+    GIT_DEPTH: 0
   script:
     - ls
     - echo "checking if Cargo.toml version matches lates git tag"

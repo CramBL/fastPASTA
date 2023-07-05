@@ -1,6 +1,6 @@
 //! Contains the [RdhStats] struct, that holds stats extracted from the RDHs of the raw data
 
-use super::its_stats::ItsStats;
+use super::{its_stats::ItsStats, trigger_stats::TriggerStats};
 use crate::stats::SystemId;
 
 /// Stores stats extracted from the RDHs of the raw data.
@@ -29,6 +29,8 @@ pub struct RdhStats {
     run_trigger_type: Option<(u32, String)>,
     /// ITS specific stats retrieved from the RDHs
     its_stats: ItsStats,
+    /// Stats for the trigger types observed in the data
+    trigger_stats: TriggerStats,
 }
 
 impl RdhStats {
@@ -133,6 +135,16 @@ impl RdhStats {
         self.run_trigger_type
             .take()
             .expect("Run Trigger Type has not been recorded!")
+    }
+
+    /// Records trigger type stats
+    pub fn record_trigger_type(&mut self, trigger_type: u32) {
+        self.trigger_stats.collect_stats(trigger_type);
+    }
+
+    /// Returns a borrowed reference to [TriggerStats]
+    pub fn trigger_stats(&self) -> &TriggerStats {
+        &self.trigger_stats
     }
 
     /// Stores a layer/stave seen in the raw data.

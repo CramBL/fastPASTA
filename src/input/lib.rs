@@ -99,6 +99,9 @@ pub fn spawn_reader<T: RDH + 'static>(
                         if rdh.stop_bit() == 1 {
                             stats_sender_channel.send(StatType::HBFSeen).unwrap();
                         }
+                        stats_sender_channel
+                            .send(StatType::TriggerType(rdh.trigger_type()))
+                            .unwrap();
                         if let Err(e) = stats::collect_system_specific_stats(
                             rdh,
                             &mut system_id,

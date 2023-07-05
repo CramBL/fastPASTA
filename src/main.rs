@@ -2,6 +2,7 @@ use fastpasta::input::lib::init_reader;
 use fastpasta::stats::init_stats_controller;
 use fastpasta::stats::StatType;
 use fastpasta::util::config::Cfg;
+use fastpasta::util::lib::CustomChecksOpt;
 
 pub fn main() -> std::process::ExitCode {
     if let Err(e) = fastpasta::util::lib::init_config() {
@@ -10,6 +11,11 @@ pub fn main() -> std::process::ExitCode {
     };
 
     fastpasta::util::lib::init_error_logger(Cfg::global());
+
+    if Cfg::global().generate_custom_checks_toml_enabled() {
+        log::info!("'custom_checks.toml' file generated in current directory. Use it to customize checks. Exiting...");
+        return std::process::ExitCode::from(0);
+    }
 
     // Launch statistics thread
     // If max allowed errors is reached, stop the processing from the stats thread

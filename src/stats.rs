@@ -12,6 +12,8 @@ mod stat_format_utils;
 mod stat_summerize_utils;
 pub mod stats_controller;
 mod stats_report;
+mod stats_validation;
+mod trigger_stats;
 
 #[derive(Debug, Clone, PartialEq)]
 /// Possible stats that can be sent to the StatsController.
@@ -24,6 +26,8 @@ pub enum StatType {
     ///
     /// Contains the raw value and the string description summarizing the trigger type
     RunTriggerType((u32, String)),
+    /// The trigger_type field observed in the `RDH`
+    TriggerType(u32),
     /// The first system ID observed is the basis for the rest of processing
     SystemId(SystemId),
     /// Increment the total RDHs seen.
@@ -72,6 +76,7 @@ impl std::fmt::Display for StatType {
                 stave: stave_id,
             } => write!(f, "Layer/stave seen: {layer_id}/{stave_id}"),
             StatType::FeeId(id) => write!(f, "FEE ID: {id}"),
+            StatType::TriggerType(trig_val) => write!(f, "Trigger type: {trig_val:#X}"),
         }
     }
 }

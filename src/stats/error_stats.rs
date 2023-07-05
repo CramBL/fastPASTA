@@ -6,6 +6,7 @@ type LayerStave = (u8, u8);
 pub struct ErrorStats {
     fatal_error: Option<String>,
     reported_errors: Vec<String>,
+    custom_checks_stats_errors: Vec<String>,
     total_errors: u64,
     unique_error_codes: Option<Vec<u8>>,
     // Only applicable if the data is from ITS
@@ -38,6 +39,19 @@ impl ErrorStats {
         if !self.reported_errors.is_empty() {
             let unique_error_codes = extract_unique_error_codes(&self.reported_errors);
             self.unique_error_codes = Some(unique_error_codes);
+        }
+
+        // If there's any errors from the custom checks on stats, and the error codes doesn't already contain `E99` then add it.
+        if !self.custom_checks_stats_errors.is_empty() {
+            if self.unique_error_codes.is_none() {
+                self.unique_error_codes = Some(vec![99]);
+            } else if self
+                .unique_error_codes
+                .as_deref()
+                .is_some_and(|err_codes| !err_codes.contains(&99))
+            {
+                self.unique_error_codes.as_mut().unwrap().push(99);
+            }
         }
     }
 
@@ -72,9 +86,14 @@ impl ErrorStats {
         self.total_errors
     }
 
-    pub(super) fn add_error(&mut self, error_msg: String) {
+    pub(super) fn add_reported_error(&mut self, error_msg: String) {
         self.total_errors += 1;
         self.reported_errors.push(error_msg);
+    }
+
+    pub(super) fn add_custom_check_error(&mut self, error_msg: String) {
+        self.total_errors += 1;
+        self.custom_checks_stats_errors.push(error_msg);
     }
 
     pub(super) fn add_fatal_error(&mut self, error_msg: String) {
@@ -92,12 +111,13 @@ impl ErrorStats {
     pub(super) fn unique_error_codes_as_slice(&mut self) -> &[u8] {
         if self.unique_error_codes.is_some() {
             return self.unique_error_codes.as_ref().unwrap();
-        } else if !self.reported_errors.is_empty() {
+        } else {
             self.process_unique_error_codes();
+
+            self.unique_error_codes
+                .as_ref()
+                .expect("Unique error codes were never set")
         }
-        self.unique_error_codes
-            .as_ref()
-            .expect("Unique error codes were never set")
     }
 
     /// Returns a slice of Layer/Staves seen in error messages
@@ -118,7 +138,10 @@ impl ErrorStats {
     pub(super) fn consume_reported_errors(&mut self) -> Vec<String> {
         // Sort stats by memory position where they were found before consuming them
         self.sort_error_msgs_by_mem_pos();
-        std::mem::take(&mut self.reported_errors)
+        let mut errors = std::mem::take(&mut self.reported_errors);
+        let mut custom_checks_stats_errors = std::mem::take(&mut self.custom_checks_stats_errors);
+        errors.append(&mut custom_checks_stats_errors);
+        errors
     }
 }
 

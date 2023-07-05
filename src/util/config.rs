@@ -7,6 +7,7 @@
 #![allow(non_camel_case_types)]
 use self::{
     check::{CheckCommands, ChecksOpt},
+    custom_checks::{CustomChecks, CustomChecksOpt},
     filter::FilterOpt,
     inputoutput::{DataOutputMode, InputOutputOpt},
     util::UtilOpt,
@@ -19,12 +20,15 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 pub mod check;
+pub mod custom_checks;
 pub mod filter;
 pub mod inputoutput;
 pub mod util;
 pub mod view;
 /// The [CONFIG] static variable is used to store the [Cfg] created from the parsed command line arguments
 pub static CONFIG: OnceLock<Cfg> = OnceLock::new();
+/// The [CUSTOM_CHECKS] static variable is used to store the [CustomChecks] created from the a TOML file specified through the parsed command line arguments
+static CUSTOM_CHECKS: OnceLock<CustomChecks> = OnceLock::new();
 
 /// The [Cfg] struct uses procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
 #[derive(Parser, Debug)]
@@ -50,7 +54,7 @@ pub struct Cfg {
     cmd: Option<Command>,
 
     /// Verbosity level 0-4 (Errors, Warnings, Info, Debug, Trace)
-    #[arg(short = 'v', long = "verbosity", default_value_t = 1, global = true)]
+    #[arg(short = 'v', long = "verbosity", default_value_t = 2, global = true)]
     verbosity: u8,
 
     /// Max tolerate errors before exiting, if set to 0 -> no limit to errors
@@ -121,12 +125,42 @@ pub struct Cfg {
     /// Don't show error messages - helpful if there's a large amount of errors and you just want to see the report
     #[arg(short, long, default_value_t = false, global = true)]
     mute_errors: bool,
+
+    /// Generate a check TOML file in the current directory that can be used as a template to configure checks against the raw data.
+    #[arg(short, long, default_value_t = false, global = true, visible_aliases = ["gen-toml", "gen-checks"],)]
+    generate_checks_toml: bool,
+
+    /// Path to a checks TOML file that can be used to specify and customize certain checks against the raw data.
+    #[arg(
+        short = 'c',
+        long,
+        global = true,
+        visible_aliases = ["custom-checks", "checks-file"],
+      )]
+    checks_toml: Option<PathBuf>,
 }
 
 impl Cfg {
     /// Get a reference to the global config
     pub fn global() -> &'static Cfg {
         CONFIG.get().expect("Config is not initialized")
+    }
+
+    fn custom_checks() -> Option<&'static CustomChecks> {
+        CUSTOM_CHECKS.get()
+    }
+
+    /// If a checks TOML file is specified, parse it and set the custom checks static variable.
+    /// If the checks TOML file is not specified, but the `--gen-checks-toml` flag is set, generate a checks TOML file in the current directory.
+    pub fn handle_custom_checks(&self) {
+        if let Some(checks_toml) = &self.checks_toml {
+            let custom_checks = self.custom_checks_from_path(checks_toml);
+            CUSTOM_CHECKS
+                .set(custom_checks)
+                .expect("Custom checks already initialized");
+        } else if self.generate_custom_checks_toml_enabled() {
+            self.generate_custom_checks_toml();
+        }
     }
 }
 
@@ -255,6 +289,32 @@ impl UtilOpt for Cfg {
     }
     fn mute_errors(&self) -> bool {
         self.mute_errors
+    }
+}
+
+impl CustomChecksOpt for Cfg {
+    fn generate_custom_checks_toml_enabled(&self) -> bool {
+        self.generate_checks_toml
+    }
+
+    fn cdps(&self) -> Option<u32> {
+        if self.checks_toml.is_some() {
+            Cfg::custom_checks()
+                .expect("Custom checks are not initialized")
+                .cdps()
+        } else {
+            None
+        }
+    }
+
+    fn triggers_pht(&self) -> Option<u32> {
+        if self.checks_toml.is_some() {
+            Cfg::custom_checks()
+                .expect("Custom checks are not initialized")
+                .triggers_pht()
+        } else {
+            None
+        }
     }
 }
 
