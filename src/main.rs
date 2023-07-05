@@ -13,7 +13,7 @@ pub fn main() -> std::process::ExitCode {
     fastpasta::util::lib::init_error_logger(Cfg::global());
 
     if Cfg::global().generate_custom_checks_toml_enabled() {
-        log::info!("Generating custom checks TOML 'custom_checks.toml' in current directory");
+        log::info!("'custom_checks.toml' file generated in current directory. Use it to customize checks. Exiting...");
         return std::process::ExitCode::from(0);
     }
 
