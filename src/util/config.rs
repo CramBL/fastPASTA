@@ -27,7 +27,7 @@ pub mod util;
 pub mod view;
 /// The [CONFIG] static variable is used to store the [Cfg] created from the parsed command line arguments
 pub static CONFIG: OnceLock<Cfg> = OnceLock::new();
-/// The [CUSTOM_CHECKS] static variable is used to store the [CustomChecks] created from the a JSON file specified through the parsed command line arguments
+/// The [CUSTOM_CHECKS] static variable is used to store the [CustomChecks] created from the a TOML file specified through the parsed command line arguments
 static CUSTOM_CHECKS: OnceLock<CustomChecks> = OnceLock::new();
 
 /// The [Cfg] struct uses procedural macros and implements the [Config] trait, to provide convenient access to the command line arguments.
@@ -126,18 +126,18 @@ pub struct Cfg {
     #[arg(short, long, default_value_t = false, global = true)]
     mute_errors: bool,
 
-    /// Generate a checks JSON file in the current directory that can be used as a template to configure checks against the raw data.
-    #[arg(short, long, default_value_t = false, global = true, visible_aliases = ["gen-json", "gen-checks"],)]
-    generate_checks_json: bool,
+    /// Generate a check TOML file in the current directory that can be used as a template to configure checks against the raw data.
+    #[arg(short, long, default_value_t = false, global = true, visible_aliases = ["gen-toml", "gen-checks"],)]
+    generate_checks_toml: bool,
 
-    /// Path to a checks JSON file that can be used to specify and customize certain checks against the raw data.
+    /// Path to a checks TOML file that can be used to specify and customize certain checks against the raw data.
     #[arg(
         short = 'c',
         long,
         global = true,
-        visible_aliases = ["checks-json"],
+        visible_aliases = ["custom-checks", "checks-file"],
       )]
-    checks_json: Option<PathBuf>,
+    checks_toml: Option<PathBuf>,
 }
 
 impl Cfg {
@@ -150,16 +150,16 @@ impl Cfg {
         CUSTOM_CHECKS.get()
     }
 
-    /// If a checks JSON file is specified, parse it and set the custom checks static variable.
-    /// If the checks JSON file is not specified, but the `--gen-checks-json` flag is set, generate a checks JSON file in the current directory.
+    /// If a checks TOML file is specified, parse it and set the custom checks static variable.
+    /// If the checks TOML file is not specified, but the `--gen-checks-toml` flag is set, generate a checks TOML file in the current directory.
     pub fn handle_custom_checks(&self) {
-        if let Some(checks_json) = &self.checks_json {
-            let custom_checks = self.custom_checks_from_path(checks_json);
+        if let Some(checks_toml) = &self.checks_toml {
+            let custom_checks = self.custom_checks_from_path(checks_toml);
             CUSTOM_CHECKS
                 .set(custom_checks)
                 .expect("Custom checks already initialized");
-        } else if self.generate_custom_checks_json_enabled() {
-            self.generate_custom_checks_json();
+        } else if self.generate_custom_checks_toml_enabled() {
+            self.generate_custom_checks_toml();
         }
     }
 }
@@ -293,12 +293,12 @@ impl UtilOpt for Cfg {
 }
 
 impl CustomChecksOpt for Cfg {
-    fn generate_custom_checks_json_enabled(&self) -> bool {
-        self.generate_checks_json
+    fn generate_custom_checks_toml_enabled(&self) -> bool {
+        self.generate_checks_toml
     }
 
     fn cdps(&self) -> Option<u32> {
-        if self.checks_json.is_some() {
+        if self.checks_toml.is_some() {
             Cfg::custom_checks()
                 .expect("Custom checks are not initialized")
                 .cdps()
@@ -307,11 +307,11 @@ impl CustomChecksOpt for Cfg {
         }
     }
 
-    fn triggers_sent(&self) -> Option<u32> {
-        if self.checks_json.is_some() {
+    fn triggers_pht(&self) -> Option<u32> {
+        if self.checks_toml.is_some() {
             Cfg::custom_checks()
                 .expect("Custom checks are not initialized")
-                .triggers_sent()
+                .triggers_pht()
         } else {
             None
         }

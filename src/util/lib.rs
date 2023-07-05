@@ -161,7 +161,7 @@ pub mod test_util {
         pub its_trigger_period: Option<u16>,
         pub exit_code_any_errors: Option<u8>,
         pub mute_errors: bool,
-        pub generate_checks_json: bool,
+        pub generate_checks_toml: bool,
         pub custom_checks: Option<CustomChecks>,
     }
 
@@ -188,7 +188,7 @@ pub mod test_util {
                 its_trigger_period: None,
                 exit_code_any_errors: None,
                 mute_errors: false,
-                generate_checks_json: false,
+                generate_checks_toml: false,
                 custom_checks: None,
             }
         }
@@ -271,8 +271,8 @@ pub mod test_util {
     }
 
     impl CustomChecksOpt for MockConfig {
-        fn generate_custom_checks_json_enabled(&self) -> bool {
-            self.generate_checks_json
+        fn generate_custom_checks_toml_enabled(&self) -> bool {
+            self.generate_checks_toml
         }
 
         fn cdps(&self) -> Option<u32> {
@@ -283,9 +283,9 @@ pub mod test_util {
             }
         }
 
-        fn triggers_sent(&self) -> Option<u32> {
+        fn triggers_pht(&self) -> Option<u32> {
             if self.custom_checks.is_some() {
-                self.custom_checks.as_ref().unwrap().triggers_sent()
+                self.custom_checks.as_ref().unwrap().triggers_pht()
             } else {
                 None
             }

@@ -12,8 +12,8 @@ pub fn main() -> std::process::ExitCode {
 
     fastpasta::util::lib::init_error_logger(Cfg::global());
 
-    if Cfg::global().generate_custom_checks_json_enabled() {
-        log::info!("Generating custom checks JSON 'custom_checks.json' in current directory");
+    if Cfg::global().generate_custom_checks_toml_enabled() {
+        log::info!("Generating custom checks TOML 'custom_checks.toml' in current directory");
         return std::process::ExitCode::from(0);
     }
 
