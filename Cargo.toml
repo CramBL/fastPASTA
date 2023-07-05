@@ -48,6 +48,8 @@ sm = "0.9.0"
 stderrlog = "0.5.4"
 tabled = { version = "0.12.2", features = ["color"]}
 toml = "0.7.5"
+toml_macro = { path = "toml_macro" }
+toml_macro_derive = { path = "toml_macro/toml_macro_derive" }
 
 [[bench]]
 name = "benchmarks"

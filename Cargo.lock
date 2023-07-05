@@ -304,7 +304,7 @@ checksum = "b8cd2b2a819ad6eec39e8f1d6b53001af1e5469f8c177579cdaeb313115b825f"
 dependencies = [
  "heck",
  "proc-macro2 1.0.63",
- "quote 1.0.28",
+ "quote 1.0.29",
  "syn 2.0.23",
 ]
 
@@ -424,7 +424,7 @@ version = "0.1.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d2301688392eb071b0bf1a37be05c469d3cc4dbbd95df672fe28ab021e6a096"
 dependencies = [
- "quote 1.0.28",
+ "quote 1.0.29",
  "syn 1.0.109",
 ]
 
@@ -535,6 +535,8 @@ dependencies = [
  "tabled",
  "temp-dir",
  "toml",
+ "toml_macro",
+ "toml_macro_derive",
 ]
 
 [[package]]
@@ -984,7 +986,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39407670928234ebc5e6e580247dd567ad73a3578460c5990f9503df207e8f07"
 dependencies = [
  "proc-macro2 1.0.63",
- "quote 1.0.28",
+ "quote 1.0.29",
  "syn 2.0.23",
 ]
 
@@ -1073,7 +1075,7 @@ checksum = "da25490ff9892aab3fcf7c36f08cfb902dd3e71ca0f9f9517bea02a73a5ce38c"
 dependencies = [
  "proc-macro-error-attr",
  "proc-macro2 1.0.63",
- "quote 1.0.28",
+ "quote 1.0.29",
  "syn 1.0.109",
  "version_check",
 ]
@@ -1085,7 +1087,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1be40180e52ecc98ad80b184934baf3d0d29f979574e439af5a55274b35f869"
 dependencies = [
  "proc-macro2 1.0.63",
- "quote 1.0.28",
+ "quote 1.0.29",
  "version_check",
 ]
 
@@ -1118,9 +1120,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.28"
+version = "1.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b9ab9c7eadfd8df19006f1cf1a4aed13540ed5cbc047010ece5826e10825488"
+checksum = "573015e8ab27661678357f27dc26460738fd2b6c86e46f386fde94cb5d913105"
 dependencies = [
  "proc-macro2 1.0.63",
 ]
@@ -1236,7 +1238,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5dd83d6dde2b6b2d466e14d9d1acce8816dedee94f735eac6395808b3483c6d6"
 dependencies = [
  "proc-macro2 1.0.63",
- "quote 1.0.28",
+ "quote 1.0.29",
  "syn 2.0.23",
 ]
 
@@ -1332,7 +1334,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
 dependencies = [
  "proc-macro2 1.0.63",
- "quote 1.0.28",
+ "quote 1.0.29",
  "unicode-ident",
 ]
 
@@ -1343,7 +1345,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59fb7d6d8281a51045d62b8eb3a7d1ce347b76f312af50cd3dc0af39c87c1737"
 dependencies = [
  "proc-macro2 1.0.63",
- "quote 1.0.28",
+ "quote 1.0.29",
  "unicode-ident",
 ]
 
@@ -1369,7 +1371,7 @@ dependencies = [
  "heck",
  "proc-macro-error",
  "proc-macro2 1.0.63",
- "quote 1.0.28",
+ "quote 1.0.29",
  "syn 1.0.109",
 ]
 
@@ -1424,7 +1426,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9456a42c5b0d803c8cd86e73dd7cc9edd429499f37a3550d286d5e86720569f"
 dependencies = [
  "proc-macro2 1.0.63",
- "quote 1.0.28",
+ "quote 1.0.29",
  "syn 2.0.23",
 ]
 
@@ -1483,6 +1485,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "toml_macro"
+version = "0.1.0"
+
+[[package]]
+name = "toml_macro_derive"
+version = "0.1.0"
+dependencies = [
+ "quote 1.0.29",
+ "syn 2.0.23",
+]
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1530,7 +1544,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d257817081c7dffcdbab24b9e62d2def62e2ff7d00b1c20062551e6cccc145ff"
 dependencies = [
  "proc-macro2 1.0.63",
- "quote 1.0.28",
+ "quote 1.0.29",
 ]
 
 [[package]]
@@ -1578,7 +1592,7 @@ dependencies = [
  "log",
  "once_cell",
  "proc-macro2 1.0.63",
- "quote 1.0.28",
+ "quote 1.0.29",
  "syn 2.0.23",
  "wasm-bindgen-shared",
 ]
@@ -1589,7 +1603,7 @@ version = "0.2.87"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dee495e55982a3bd48105a7b947fd2a9b4a8ae3010041b9e0faab3f9cd028f1d"
 dependencies = [
- "quote 1.0.28",
+ "quote 1.0.29",
  "wasm-bindgen-macro-support",
 ]
 
@@ -1600,7 +1614,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54681b18a46765f095758388f2d0cf16eb8d4169b639ab575a8f5693af210c7b"
 dependencies = [
  "proc-macro2 1.0.63",
- "quote 1.0.28",
+ "quote 1.0.29",
  "syn 2.0.23",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
