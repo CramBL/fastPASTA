@@ -184,11 +184,19 @@ pub fn process<T: words::lib::RDH + 'static>(
 }
 
 use toml_macro::TomlConfig;
+use toml_macro_derive::TomlConfig;
 
-#[derive(Debug, Default, toml_macro_derive::TomlConfig)]
+#[derive(Debug, Default, TomlConfig)]
 struct TestToml {
+    #[description = "How many CRU Datapackets to expect"]
+    #[example = "20"]
     cdps: Option<u32>,
+    #[description = "trigger type description"]
+    #[example = "lala"]
     trigger_type: Option<String>,
+
+    #[description = "field with value description"]
+    #[example = "best example"]
     field_with_value: Option<u8>,
 }
 #[cfg(test)]
