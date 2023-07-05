@@ -1,10 +1,8 @@
 use proc_macro::TokenStream;
 
 use quote::{quote, ToTokens};
-use syn::ext::IdentExt;
 use syn::spanned::Spanned;
-use syn::MetaList;
-use syn::{parse_macro_input, DeriveInput};
+use syn::DeriveInput;
 
 #[proc_macro_derive(TomlConfig, attributes(description, example))]
 pub fn derive_signature(input: TokenStream) -> TokenStream {
@@ -16,8 +14,8 @@ pub fn derive_signature(input: TokenStream) -> TokenStream {
 }
 
 fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
-    const DESCRIPTION_ATTR_NAME: &'static str = "description";
-    const EXAMPLE_ATTR_NAME: &'static str = "example";
+    const DESCRIPTION_ATTR_NAME: &str = "description";
+    const EXAMPLE_ATTR_NAME: &str = "example";
 
     let fields = if let syn::Data::Struct(syn::DataStruct {
         fields: syn::Fields::Named(ref fields),
