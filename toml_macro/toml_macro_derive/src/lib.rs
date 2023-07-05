@@ -45,24 +45,39 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
                 let name = stringify!(#name);
                 let mut toml_string = String::from(&format!("[{}]\n", name));
 
+
+
                 #(
+                    // Stringify the type. It will look like `Option < TYPE >`
+                    let type_name = stringify!(#types);
+                    // Remove the `Option< >` part of the string
+                    let mut type_as_char = type_name.chars();
+                    for _ in 0..=7 {type_as_char.next();}
+                    type_as_char.next_back();
+
+                    let is_type_string = type_as_char.as_str().contains(&"String");
+                    println!("Type is String: {is_type_string}");
+
                     if let Some(field_val) = &self.#field_value {
                         println!("{}: {}", #field_id, field_val);
-                        toml_string.push_str(&format!("{field_name} = {field_value}\n",
-                        field_name = #field_id,
-                        field_value = field_val
+                        let formatted_field_val = if is_type_string {
+                                format!("\"{field_val}\"")
+                        } else {
+                                format!("{field_val}")
+                        };
+                        toml_string.push_str(&format!("{field_name} = {field_value} # [{type_name}]\n",
+                            field_name = #field_id,
+                            field_value = formatted_field_val,
+                            type_name = type_as_char.as_str()
                         ));
                     } else {
-                        let type_name = stringify!(#types);
-                        let mut type_as_char = type_name.chars();
-                        for _ in 0..=7 {type_as_char.next();}
-                        type_as_char.next_back();
+
                         println!("#{}: None [{type_name}] # (Uncomment and set to enable this check)",
                         #field_id,
                         type_name = type_as_char.as_str());
                         toml_string.push_str(&format!("#{field_name} = None [{type_name}] # (Uncomment and set to enable this check)\n",
-                        field_name = #field_id,
-                        type_name = type_as_char.as_str()
+                            field_name = #field_id,
+                            type_name = type_as_char.as_str()
                         ));
                     }
                 )*

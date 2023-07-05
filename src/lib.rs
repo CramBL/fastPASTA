@@ -189,6 +189,7 @@ use toml_macro::TomlConfig;
 struct TestToml {
     cdps: Option<u32>,
     trigger_type: Option<String>,
+    field_with_value: Option<u8>,
 }
 #[cfg(test)]
 mod tests {
@@ -202,8 +203,17 @@ mod tests {
 
     #[test]
     fn test_toml_macro() {
+        let test_toml = TestToml {
+            cdps: None,
+            trigger_type: Some("Best type ever".to_string()),
+            field_with_value: Some(50),
+        };
         let toml_string = TestToml::default().to_string_pretty_toml();
         println!("===== TOML string =====\n{}", toml_string);
+        println!(
+            "===== TOML string =====\n{}",
+            test_toml.to_string_pretty_toml()
+        );
     }
 
     static CFG_TEST_INIT_PROCESSING: OnceLock<MockConfig> = OnceLock::new();
