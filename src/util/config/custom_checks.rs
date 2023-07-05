@@ -77,7 +77,7 @@ pub trait CustomChecksOpt {
         std::fs::write("custom_checks.toml", toml).expect("Failed to write TOML file");
     }
 
-    /// Get the number of CDPS expected in the data, if it is set.
+    /// Get the number of CDPs expected in the data, if it is set.
     fn cdps(&self) -> Option<u32>;
 
     /// Get the number of sent Triggers expected in the data, if it is set.
