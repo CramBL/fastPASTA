@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 
 use quote::{quote, ToTokens};
 use syn::spanned::Spanned;
-use syn::DeriveInput;
+use syn::{Attribute, DeriveInput};
 
 #[proc_macro_derive(TomlConfig, attributes(description, example))]
 pub fn derive_signature(input: TokenStream) -> TokenStream {
@@ -35,33 +35,13 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
 
     for field in fields.named.iter() {
         if let Some(desc) = get_attribute(DESCRIPTION_ATTR_NAME, field) {
-            let attr_description_as_string = desc
-                .meta
-                .require_name_value()
-                .unwrap()
-                .value
-                .to_token_stream()
-                .to_string();
-            let mut as_char_iter = attr_description_as_string.chars();
-            as_char_iter.next();
-            as_char_iter.next_back();
-            descriptions.push(as_char_iter.as_str().to_owned());
+            descriptions.push(attribute_value_as_string(desc));
         } else {
             panic!("Every custom check field needs a description!")
         }
 
         if let Some(example) = get_attribute(EXAMPLE_ATTR_NAME, field) {
-            let attr_example_as_string = example
-                .meta
-                .require_name_value()
-                .unwrap()
-                .value
-                .to_token_stream()
-                .to_string();
-            let mut as_char_iter = attr_example_as_string.chars();
-            as_char_iter.next();
-            as_char_iter.next_back();
-            examples.push(as_char_iter.as_str().to_owned());
+            examples.push(attribute_value_as_string(example));
         } else {
             panic!("Every custom check field needs an example!")
         }
@@ -129,4 +109,18 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
 
 fn get_attribute<'a>(attr_name: &'a str, field: &'a syn::Field) -> Option<&'a syn::Attribute> {
     field.attrs.iter().find(|a| a.path().is_ident(attr_name))
+}
+
+fn attribute_value_as_string(attr: &Attribute) -> String {
+    let attr_description_as_string = attr
+        .meta
+        .require_name_value()
+        .unwrap()
+        .value
+        .to_token_stream()
+        .to_string();
+    let mut as_char_iter = attr_description_as_string.chars();
+    as_char_iter.next();
+    as_char_iter.next_back();
+    as_char_iter.as_str().to_owned()
 }
