@@ -103,9 +103,14 @@ pub struct CustomChecks {
     #[description = "Number of CRU Data Packets expected in the data"]
     #[example = "20, 500532"]
     cdps: Option<u32>,
+
     #[description = "Number of Physics (PhT) Triggers expected in the data"]
     #[example = "0, 10"]
     triggers_pht: Option<u32>,
+
+    #[description = "NOT YET IMPLEMENTED - Legal Chip ordering for Outer Barrel (ML/OL) proof of concept"]
+    #[example = "[[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]"]
+    chip_orders_ob: Option<(Vec<u32>, Vec<u32>)>,
 }
 
 impl CustomChecks {
@@ -127,6 +132,22 @@ mod tests {
     use temp_dir::TempDir;
 
     #[test]
+    fn test_serde_consistency() {
+        let custom_checks = CustomChecks {
+            cdps: Some(10),
+            triggers_pht: Some(0),
+            chip_orders_ob: Some((vec![0, 1, 2, 3, 4, 5, 6], vec![8, 9, 10, 11, 12, 13, 14])),
+        };
+
+        let toml = custom_checks.to_string_pretty_toml();
+
+        let custom_checks_deserde: CustomChecks =
+            toml::from_str(&toml).expect("Failed to parse TOML");
+
+        assert_eq!(custom_checks_deserde, custom_checks);
+    }
+
+    #[test]
     fn test_serialize_custom_checks() {
         let custom_checks = CustomChecks::default();
         let custom_checks_toml = custom_checks.to_string_pretty_toml();
@@ -143,6 +164,10 @@ mod tests {
 # Number of Physics (PhT) Triggers expected in the data
 # Example: 0, 10
 #triggers_pht = None [ u32 ] # (Uncomment and set to enable this check)
+
+# NOT YET IMPLEMENTED - Legal Chip ordering for Outer Barrel (ML/OL) proof of concept
+# Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
+#chip_orders_ob = None [ (Vec < u32 >, Vec < u32 >) ] # (Uncomment and set to enable this check)
 
 "#
         );
@@ -168,18 +193,25 @@ mod tests {
         let counters_toml = r#"
 # Number of CRU Data Packets expected in the data
 # Example: 20, 500532
-cdps = 10 # (Uncomment and set to enable this check)
+cdps = 10
 
 # Number of Physics (PhT) Triggers expected in the data
 # Example: 0, 10
-triggers_pht = 0 # (Uncomment and set to enable this check)
+triggers_pht = 0
+
+# NOT YET IMPLEMENTED - Legal Chip ordering for Outer Barrel (ML/OL) proof of concept
+# Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
+chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
+
 "#;
-        let counters: CustomChecks = toml::from_str(counters_toml).unwrap();
+        let custom_checks: CustomChecks = toml::from_str(counters_toml).unwrap();
+        println!("custom checks: {:?}", custom_checks);
         assert_eq!(
-            counters,
+            custom_checks,
             CustomChecks {
                 cdps: Some(10),
                 triggers_pht: Some(0),
+                chip_orders_ob: Some((vec![0, 1, 2, 3, 4, 5, 6], vec![8, 9, 10, 11, 12, 13, 14])),
             }
         );
     }
