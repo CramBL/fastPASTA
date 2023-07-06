@@ -81,15 +81,12 @@ fn generate_impl(
                 let mut toml_string = String::new();
 
                 #(
-
-                    // Determine if the type is String as their value needs to be in quotes in TOML format
-                    let is_type_string = #types.contains(&"String");
-
                     toml_string.push_str(&format!("# {description_comment}\n", description_comment = #descriptions));
                     toml_string.push_str(&format!("# Example: {example}\n", example = #examples));
 
                     if let Some(field_val) = &self.#field_values {
-                        let formatted_field_val = if is_type_string {
+                         // If the type is `String` the value needs to be in quotes in TOML format
+                        let formatted_field_val = if #types.contains(&"String") {
                                 format!("\"{field_val}\"")
                         } else {
                                 format!("{field_val}")
