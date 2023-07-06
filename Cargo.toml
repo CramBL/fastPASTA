@@ -31,23 +31,23 @@ temp-dir = "0.1.11"
 
 [dependencies]
 byteorder = "1.4.3"
-clap = { version = "4.3.3", features = ["derive"] }
+clap = { version = "4.3.11", features = ["derive"] }
 crossbeam-channel = "0.5.8"
 ctrlc = { version = "3.4.0", features = ["termination"] }
 flume = "0.10.14"
 fmt = "0.1.0"
 indicatif = "0.17.5"
-itertools = "0.10.5"
+itertools = "0.11.0"
 log = "0.4.19"
 owo-colors = "3.5.0"
-regex = "1.8.4"
-ringbuffer = "0.14.0"
+regex = "1.9.0"
+ringbuffer = "0.14.1"
 serde = { version = "1.0.166", features = ["serde_derive"]}
 serde_derive = "1.0.166"
 sm = "0.9.0"
 stderrlog = "0.5.4"
 tabled = { version = "0.12.2", features = ["color"]}
-toml = "0.7.5"
+toml = "0.7.6"
 toml_macro = { path = "toml_macro" }
 toml_macro_derive = { path = "toml_macro/toml_macro_derive" }
 
