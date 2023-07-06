@@ -4,56 +4,6 @@ use serde_derive::{Deserialize, Serialize};
 use std::path::PathBuf;
 use toml_macro::TomlConfig;
 use toml_macro_derive::TomlConfig;
-/// Module containing macros related to the custom checks.
-pub mod macros {
-    #[macro_export]
-    /// Macro to generate a TOML string from a struct field with the following structure:
-    /// * a commented out descriptive line.
-    /// * a commented out example value & type line.
-    /// * If the field values is `Some`
-    ///    * a newline with the field in TOML format.
-    /// * else
-    ///   * a newline with a commented out TOML field with the field name and a the placeholder value: `(uncomment and set to enable)`.
-    /// # Example
-    /// ```
-    /// # use fastpasta::util::config::custom_checks::macros::field_to_toml_string;
-    /// let toml_string = field_to_toml_string!(
-    ///     "Number of CRU Data Packets expected in the data.",
-    ///     "Example value: 20 [type: u32]",
-    ///     cdps,
-    ///     Some(1)
-    /// );
-    /// assert_eq!(
-    ///    toml_string,
-    ///   "# Number of CRU Data Packets expected in the data.\
-    ///  \n# Example value: 20 [type: u32]\
-    ///  \ncdps = 1\
-    ///  \n"
-    /// );
-    /// ```
-
-    macro_rules! field_to_toml_string {
-        ($comment:expr, $example:expr, $field_name:ident, $field_value:expr) => {
-            if let Some(value) = $field_value {
-                format!(
-                    "# {comment}\n# {example}\n{field_name} = {value}\n",
-                    comment = $comment,
-                    example = $example,
-                    field_name = stringify!($field_name),
-                    value = value
-                )
-            } else {
-                format!(
-                    "# {comment}\n# {example}\n#{field_name} = (uncomment and set to enable)\n",
-                    comment = $comment,
-                    example = $example,
-                    field_name = stringify!($field_name)
-                )
-            }
-        };
-    }
-    pub use field_to_toml_string;
-}
 
 /// Trait for the configuration of various expected counters in the data.
 pub trait CustomChecksOpt {
