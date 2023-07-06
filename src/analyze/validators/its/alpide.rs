@@ -30,7 +30,11 @@ pub fn check_alpide_data_frame(
     let mut validated_lanes: Vec<ValidatedLane> = Vec::new();
 
     let valid_chip_order_ob: Option<(&[u8], &[u8])> =
-        Cfg::custom_checks().map(|c| c.chip_orders_ob().unwrap_or_default());
+        if let Some(custom_checks) = Cfg::custom_checks() {
+            custom_checks.chip_orders_ob()
+        } else {
+            None
+        };
 
     alpide_readout_frame
         .lane_data_frames
