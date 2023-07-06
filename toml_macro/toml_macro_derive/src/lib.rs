@@ -28,9 +28,9 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
 
     let mut descriptions: Vec<String> = Vec::new();
     let mut examples: Vec<String> = Vec::new();
-    let mut field_id = Vec::new();
-    let mut field_value = Vec::new();
-    let mut types = Vec::new();
+    let mut field_ids: Vec<quote::__private::TokenStream> = Vec::new();
+    let mut field_values: Vec<&Option<syn::Ident>> = Vec::new();
+    let mut types: Vec<quote::__private::TokenStream> = Vec::new();
 
     for field in fields.named.iter() {
         if let Some(desc) = get_attribute(DESCRIPTION_ATTR_NAME, field) {
@@ -45,23 +45,41 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
             panic!("Every custom check field needs an example!")
         }
 
-        let literal_key_str = field_name_to_key_literal(field.ident.as_ref().unwrap());
-        field_id.push(quote! { #literal_key_str  });
+        let literal_key_str: syn::LitStr = field_name_to_key_literal(field.ident.as_ref().unwrap());
+        field_ids.push(quote! { #literal_key_str  });
 
-        field_value.push(&field.ident);
-        let type_name = &field.ty;
+        field_values.push(&field.ident);
+        let type_name: &syn::Type = &field.ty;
         types.push(type_name.to_token_stream());
     }
 
-    let name = &ast.ident;
-    let gen = quote! {
-        impl TomlConfig for #name {
+    let struct_name = &ast.ident;
+    let gen: quote::__private::TokenStream = generate_impl(
+        struct_name,
+        descriptions,
+        examples,
+        field_ids,
+        field_values,
+        types,
+    );
+    gen.into()
+}
+
+fn generate_impl(
+    struct_name: &syn::Ident,
+    descriptions: Vec<String>,
+    examples: Vec<String>,
+    field_ids: Vec<quote::__private::TokenStream>,
+    field_values: Vec<&Option<syn::Ident>>,
+    types: Vec<quote::__private::TokenStream>,
+) -> quote::__private::TokenStream {
+    let gen: quote::__private::TokenStream = quote! {
+        impl TomlConfig for #struct_name {
             fn to_string_pretty_toml(&self) -> String {
 
                 let mut toml_string = String::new();
 
                 #(
-
                     // Stringify the type. It will look like `Option < TYPE >`
                     let type_name = stringify!(#types);
                     // Remove the `Option< >` part of the string
@@ -73,36 +91,31 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
 
                     toml_string.push_str(&format!("# {description_comment}\n", description_comment = #descriptions));
                     toml_string.push_str(&format!("# Example: {example}\n", example = #examples));
-                    if let Some(field_val) = &self.#field_value {
-                        //println!("{}: {}", #field_id, field_val);
+
+                    if let Some(field_val) = &self.#field_values {
                         let formatted_field_val = if is_type_string {
                                 format!("\"{field_val}\"")
                         } else {
                                 format!("{field_val}")
                         };
                         toml_string.push_str(&format!("{field_name} = {field_value} # [{type_name}]\n\n",
-                            field_name = #field_id,
+                            field_name = #field_ids,
                             field_value = formatted_field_val,
                             type_name = type_as_char.as_str()
                         ));
                     } else {
-
-                        // println!("#{}: None [{type_name}] # (Uncomment and set to enable this check)",
-                        // #field_id,
-                        // type_name = type_as_char.as_str());
                         toml_string.push_str(&format!("#{field_name} = None [{type_name}] # (Uncomment and set to enable this check)\n\n",
-                            field_name = #field_id,
+                            field_name = #field_ids,
                             type_name = type_as_char.as_str()
                         ));
                     }
                 )*
 
-
                 toml_string
             }
         }
     };
-    gen.into()
+    gen
 }
 
 fn get_attribute<'a>(attr_name: &'a str, field: &'a syn::Field) -> Option<&'a syn::Attribute> {
