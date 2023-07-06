@@ -449,7 +449,7 @@ fn check_sanity_custom_exit_code() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn check_sanity_custom_checks_cdp_count() -> Result<(), Box<dyn std::error::Error>> {
-    let custom_checks_str = r#"[counter_checks]
+    let custom_checks_str = r#"
 # Number of CRU Data Packets expected in the data
 # Example value: 20 [type: u32]
 cdps = 10
@@ -483,7 +483,7 @@ cdps = 10
 
 #[test]
 fn check_sanity_custom_checks_bad_cdp_count() -> Result<(), Box<dyn std::error::Error>> {
-    let custom_checks_str = r#"[counter_checks]
+    let custom_checks_str = r#"
 # Number of CRU Data Packets expected in the data
 # Example value: 20 [type: u32]
 cdps = 0
@@ -518,7 +518,7 @@ cdps = 0
 
 #[test]
 fn check_sanity_custom_checks_trigger_pht_count() -> Result<(), Box<dyn std::error::Error>> {
-    let custom_checks_str = r#"[counter_checks]
+    let custom_checks_str = r#"
 # Number of CRU Data Packets expected in the data
 # Example value: 20 [type: u32]
 # cdps = 10
