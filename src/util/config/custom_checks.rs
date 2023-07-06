@@ -123,6 +123,15 @@ impl CustomChecks {
     pub fn triggers_pht(&self) -> Option<u32> {
         self.triggers_pht
     }
+
+    /// Get the chip orders expected in the data, if it is set.
+    ///
+    /// Returns a tuple of two slices, representing the legal chip orders for the Outer Barrel (ML/OL).
+    pub fn chip_orders_ob(&self) -> Option<(&[u32], &[u32])> {
+        self.chip_orders_ob
+            .as_ref()
+            .map(|(a, b)| (a.as_slice(), b.as_slice()))
+    }
 }
 
 #[cfg(test)]
