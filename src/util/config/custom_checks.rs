@@ -22,9 +22,9 @@ pub trait CustomChecksOpt {
     }
 
     /// Write a [CustomChecks] instance to a TOML file in the current directory.
-    fn generate_custom_checks_toml(&self) {
+    fn generate_custom_checks_toml(&self, file_name: &str) {
         let toml = CustomChecks::default().to_string_pretty_toml();
-        std::fs::write("custom_checks.toml", toml).expect("Failed to write TOML file");
+        std::fs::write(file_name, toml).expect("Failed to write TOML file");
     }
 
     /// Get the number of CDPs expected in the data, if it is set.
@@ -108,9 +108,9 @@ pub struct CustomChecks {
     #[example = "0, 10"]
     triggers_pht: Option<u32>,
 
-    #[description = "NOT YET IMPLEMENTED - Legal Chip ordering for Outer Barrel (ML/OL) proof of concept"]
+    #[description = "Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of two lists of 7 chip IDs"]
     #[example = "[[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]"]
-    chip_orders_ob: Option<(Vec<u32>, Vec<u32>)>,
+    chip_orders_ob: Option<(Vec<u8>, Vec<u8>)>,
 }
 
 impl CustomChecks {
@@ -122,6 +122,15 @@ impl CustomChecks {
     /// Get the number of sent Triggers expected in the data, if it is set.
     pub fn triggers_pht(&self) -> Option<u32> {
         self.triggers_pht
+    }
+
+    /// Get the chip orders expected in the data, if it is set.
+    ///
+    /// Returns a tuple of two slices, representing the legal chip orders for the Outer Barrel (ML/OL).
+    pub fn chip_orders_ob(&self) -> Option<(&[u8], &[u8])> {
+        self.chip_orders_ob
+            .as_ref()
+            .map(|(a, b)| (a.as_slice(), b.as_slice()))
     }
 }
 
@@ -165,9 +174,9 @@ mod tests {
 # Example: 0, 10
 #triggers_pht = None [ u32 ] # (Uncomment and set to enable this check)
 
-# NOT YET IMPLEMENTED - Legal Chip ordering for Outer Barrel (ML/OL) proof of concept
+# Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of two lists of 7 chip IDs
 # Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
-#chip_orders_ob = None [ (Vec < u32 >, Vec < u32 >) ] # (Uncomment and set to enable this check)
+#chip_orders_ob = None [ (Vec < u8 >, Vec < u8 >) ] # (Uncomment and set to enable this check)
 
 "#
         );
@@ -183,6 +192,10 @@ mod tests {
 # Number of Physics (PhT) Triggers expected in the data
 # Example: 0, 10
 #triggers_pht = None [ u32 ] # (Uncomment and set to enable this check)
+
+# Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of two lists of 7 chip IDs
+# Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
+#chip_orders_ob = None [ (Vec < u8 >, Vec < u8 >) ] # (Uncomment and set to enable this check)
 "#;
         let custom_checks: CustomChecks = toml::from_str(custom_checks_toml).unwrap();
         assert_eq!(custom_checks, CustomChecks::default());
@@ -199,7 +212,7 @@ cdps = 10
 # Example: 0, 10
 triggers_pht = 0
 
-# NOT YET IMPLEMENTED - Legal Chip ordering for Outer Barrel (ML/OL) proof of concept
+# Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of two lists of 7 chip IDs
 # Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 
@@ -247,9 +260,10 @@ chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 
     #[test]
     fn test_write_toml_to_file_trait() {
+        let mock_file_name = "mock_test_custom_checks.toml";
         let mock_config = crate::util::lib::test_util::MockConfig::default();
-        mock_config.generate_custom_checks_toml();
+        mock_config.generate_custom_checks_toml(mock_file_name);
         // Cleanup
-        std::fs::remove_file("custom_checks.toml").unwrap();
+        std::fs::remove_file(mock_file_name).unwrap();
     }
 }

@@ -146,7 +146,8 @@ impl Cfg {
         CONFIG.get().expect("Config is not initialized")
     }
 
-    fn custom_checks() -> Option<&'static CustomChecks> {
+    /// Get a reference to the [CustomChecks] struct, if it is initialized
+    pub fn custom_checks() -> Option<&'static CustomChecks> {
         CUSTOM_CHECKS.get()
     }
 
@@ -159,7 +160,7 @@ impl Cfg {
                 .set(custom_checks)
                 .expect("Custom checks already initialized");
         } else if self.generate_custom_checks_toml_enabled() {
-            self.generate_custom_checks_toml();
+            self.generate_custom_checks_toml("custom_checks.toml");
         }
     }
 }
