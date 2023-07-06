@@ -36,6 +36,7 @@ To verify or view curated content of the scanned raw binary data from ALICE.
     - [Read from file -\> filter by link -\> validate](#read-from-file---filter-by-link---validate)
     - [Read from file -\> view ITS readout frames with `less`](#read-from-file---view-its-readout-frames-with-less)
   - [Command flow](#command-flow)
+- [Customize checks](#customize-checks)
 - [Error messages](#error-messages)
     - [Messages are formatted as follows:](#messages-are-formatted-as-follows)
     - [Example of failed RDH sanity check](#example-of-failed-rdh-sanity-check)
@@ -131,8 +132,29 @@ flowchart TD;
   or
   target system"};
   check_all -- "its" --> check_all_its{{$ fastpasta check all its}};
-  check_all -- "its-stave" --> check_all_its_stave{Which ITS stave?};
-  check_all_its_stave -- "--filter-its-stave LX_YZ" --> check_all_its_stave_filter{{$ fastpasta check all its-stave --filter-its-stave L5_12}};
+  check_all -- "its-stave" --> check_all_its_stave{{$ fastpasta check all its-stave}};
+```
+
+# Customize checks
+To perform very specific checks on the raw data, it is possible to supply a `TOML` file with the `--checks-toml <PATH>` option.
+
+To get started use the `--generate-checks-toml` flag to generate a template that shows which custom checks are available, along with descriptions, and examples.
+
+The generated TOML file will contain content like this:
+```toml
+# Number of Physics (PhT) Triggers expected in the data
+# Example: 0, 10
+#triggers_pht = None [ u32 ] # (Uncomment and set to enable this check)
+```
+To enable the check for 1 Physics Trigger in the raw data, edit the file like this:
+```toml
+# Number of Physics (PhT) Triggers expected in the data
+# Example: 0, 10
+triggers_pht = 1 # This data should contain 1 PhT trigger.
+```
+Finally run fastPASTA as usual e.g.
+```shell
+$ fastpasta check all its input-data.raw --checks-toml custom_checks.toml
 ```
 
 # Error messages
