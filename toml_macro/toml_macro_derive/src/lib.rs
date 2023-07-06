@@ -34,11 +34,7 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
     let mut types = Vec::new();
 
     for field in fields.named.iter() {
-        let description: Option<&syn::Attribute> = field
-            .attrs
-            .iter()
-            .find(|a| a.path().is_ident(DESCRIPTION_ATTR_NAME));
-        if let Some(desc) = description {
+        if let Some(desc) = get_attribute(DESCRIPTION_ATTR_NAME, field) {
             let attr_description_as_string = desc
                 .meta
                 .require_name_value()
@@ -54,11 +50,7 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
             panic!("Every custom check field needs a description!")
         }
 
-        let example: Option<&syn::Attribute> = field
-            .attrs
-            .iter()
-            .find(|a| a.path().is_ident(EXAMPLE_ATTR_NAME));
-        if let Some(example) = example {
+        if let Some(example) = get_attribute(EXAMPLE_ATTR_NAME, field) {
             let attr_example_as_string = example
                 .meta
                 .require_name_value()
@@ -133,4 +125,8 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
         }
     };
     gen.into()
+}
+
+fn get_attribute<'a>(attr_name: &'a str, field: &'a syn::Field) -> Option<&'a syn::Attribute> {
+    field.attrs.iter().find(|a| a.path().is_ident(attr_name))
 }
