@@ -183,22 +183,6 @@ pub fn process<T: words::lib::RDH + 'static>(
     Ok(())
 }
 
-use toml_macro::TomlConfig;
-use toml_macro_derive::TomlConfig;
-
-#[derive(Debug, Default, TomlConfig)]
-struct TestToml {
-    #[description = "How many CRU Datapackets to expect"]
-    #[example = "20"]
-    cdps: Option<u32>,
-    #[description = "trigger type description"]
-    #[example = "lala"]
-    trigger_type: Option<String>,
-
-    #[description = "field with value description"]
-    #[example = "best example"]
-    field_with_value: Option<u8>,
-}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -208,21 +192,6 @@ mod tests {
     use pretty_assertions::assert_eq;
     use std::path::PathBuf;
     use std::sync::OnceLock;
-
-    #[test]
-    fn test_toml_macro() {
-        let test_toml = TestToml {
-            cdps: None,
-            trigger_type: Some("Best type ever".to_string()),
-            field_with_value: Some(50),
-        };
-        let toml_string = TestToml::default().to_string_pretty_toml();
-        println!("===== TOML string =====\n{}", toml_string);
-        println!(
-            "===== TOML string =====\n{}",
-            test_toml.to_string_pretty_toml()
-        );
-    }
 
     static CFG_TEST_INIT_PROCESSING: OnceLock<MockConfig> = OnceLock::new();
 
