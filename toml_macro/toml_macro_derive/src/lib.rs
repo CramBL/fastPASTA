@@ -87,9 +87,9 @@ fn generate_impl(
                     if let Some(field_val) = &self.#field_values {
                          // If the type is `String` the value needs to be in quotes in TOML format
                         let formatted_field_val = if #types.contains(&"String") {
-                                format!("\"{field_val}\"")
+                                format!("\"{field_val:?}\"")
                         } else {
-                                format!("{field_val}")
+                                format!("{field_val:?}")
                         };
                         toml_string.push_str(&format!("{field_name} = {field_value} # [{type_name}]\n\n",
                             field_name = #field_ids,
