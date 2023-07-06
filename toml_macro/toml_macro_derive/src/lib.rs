@@ -89,7 +89,14 @@ fn generate_impl(
                         let formatted_field_val = if #types.contains(&"String") {
                                 format!("\"{field_val:?}\"")
                         } else {
-                                format!("{field_val:?}")
+                            // If the type is a tuple struct, the value needs to be in square brackets in TOML format
+                            // This is safe as we know by now that the type is not a `String`
+                            let field_val_string = format!("{field_val:?}");
+                            field_val_string.chars().map(|c| match c {
+                                '(' => '[',
+                                ')' => ']',
+                                _ => c
+                            }).collect::<String>()
                         };
                         toml_string.push_str(&format!("{field_name} = {field_value} # [{type_name}]\n\n",
                             field_name = #field_ids,
