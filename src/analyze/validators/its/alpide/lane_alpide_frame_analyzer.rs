@@ -299,15 +299,6 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
                                 chip_ids = chip_ids
                             ));
                         }
-                    } else if chip_ids != [0, 1, 2, 3, 4, 5, 6]
-                        && chip_ids != [8, 9, 10, 11, 12, 13, 14]
-                    {
-                        return Err(format!(
-                            "{newline_indent}Expected [0-6] or [8-14] in {layer} but found {chip_ids:?}",
-                            newline_indent = Self::ERR_MSG_PREFIX,
-                            layer = data_from,
-                            chip_ids = chip_ids
-                        ));
                     }
                 }
             }
