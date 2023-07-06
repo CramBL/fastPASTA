@@ -87,8 +87,8 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         impl TomlConfig for #name {
             fn to_string_pretty_toml(&self) -> String {
-                let name = stringify!(#name);
-                let mut toml_string = String::from(&format!("[{}]\n", name));
+
+                let mut toml_string = String::new();
 
                 #(
 
@@ -104,23 +104,23 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
                     toml_string.push_str(&format!("# {description_comment}\n", description_comment = #descriptions));
                     toml_string.push_str(&format!("# Example: {example}\n", example = #examples));
                     if let Some(field_val) = &self.#field_value {
-                        println!("{}: {}", #field_id, field_val);
+                        //println!("{}: {}", #field_id, field_val);
                         let formatted_field_val = if is_type_string {
                                 format!("\"{field_val}\"")
                         } else {
                                 format!("{field_val}")
                         };
-                        toml_string.push_str(&format!("{field_name} = {field_value} # [{type_name}]\n",
+                        toml_string.push_str(&format!("{field_name} = {field_value} # [{type_name}]\n\n",
                             field_name = #field_id,
                             field_value = formatted_field_val,
                             type_name = type_as_char.as_str()
                         ));
                     } else {
 
-                        println!("#{}: None [{type_name}] # (Uncomment and set to enable this check)",
-                        #field_id,
-                        type_name = type_as_char.as_str());
-                        toml_string.push_str(&format!("#{field_name} = None [{type_name}] # (Uncomment and set to enable this check)\n",
+                        // println!("#{}: None [{type_name}] # (Uncomment and set to enable this check)",
+                        // #field_id,
+                        // type_name = type_as_char.as_str());
+                        toml_string.push_str(&format!("#{field_name} = None [{type_name}] # (Uncomment and set to enable this check)\n\n",
                             field_name = #field_id,
                             type_name = type_as_char.as_str()
                         ));
