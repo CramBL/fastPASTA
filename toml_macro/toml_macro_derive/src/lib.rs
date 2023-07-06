@@ -1,7 +1,6 @@
 use proc_macro::TokenStream;
 
 use quote::{quote, ToTokens};
-use syn::spanned::Spanned;
 use syn::{Attribute, DeriveInput};
 
 #[proc_macro_derive(TomlConfig, attributes(description, example))]
@@ -46,12 +45,11 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
             panic!("Every custom check field needs an example!")
         }
 
-        let field_name: &syn::Ident = field.ident.as_ref().unwrap();
-        let name: String = field_name.to_string();
-        let literal_key_str = syn::LitStr::new(&name, field.span());
-        let type_name = &field.ty;
-        field_id.push(quote! { #literal_key_str });
+        let literal_key_str = field_name_to_key_literal(field.ident.as_ref().unwrap());
+        field_id.push(quote! { #literal_key_str  });
+
         field_value.push(&field.ident);
+        let type_name = &field.ty;
         types.push(type_name.to_token_stream());
     }
 
@@ -123,4 +121,9 @@ fn attribute_value_as_string(attr: &Attribute) -> String {
     as_char_iter.next();
     as_char_iter.next_back();
     as_char_iter.as_str().to_owned()
+}
+
+fn field_name_to_key_literal(field_name: &syn::Ident) -> syn::LitStr {
+    let name: String = field_name.to_string();
+    syn::LitStr::new(&name, field_name.span())
 }
