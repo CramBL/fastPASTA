@@ -30,7 +30,7 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
     let mut examples: Vec<String> = Vec::new();
     let mut field_ids: Vec<quote::__private::TokenStream> = Vec::new();
     let mut field_values: Vec<&Option<syn::Ident>> = Vec::new();
-    let mut types: Vec<quote::__private::TokenStream> = Vec::new();
+    let mut types: Vec<String> = Vec::new();
 
     for field in fields.named.iter() {
         if let Some(desc) = get_attribute(DESCRIPTION_ATTR_NAME, field) {
@@ -49,12 +49,11 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
         field_ids.push(quote! { #literal_key_str  });
 
         field_values.push(&field.ident);
-        let type_name: &syn::Type = &field.ty;
-        types.push(type_name.to_token_stream());
+        types.push(field_option_type_to_inner_type_string(&field.ty));
     }
 
     let struct_name = &ast.ident;
-    let gen: quote::__private::TokenStream = generate_impl(
+    let generated_code_token_stream: quote::__private::TokenStream = generate_impl(
         struct_name,
         descriptions,
         examples,
@@ -62,32 +61,29 @@ fn impl_toml_config(ast: &syn::DeriveInput) -> TokenStream {
         field_values,
         types,
     );
-    gen.into()
+    // Return the generated impl as a proc_macro::TokenStream instead of the TokenStream type that quote returns
+    generated_code_token_stream.into()
 }
 
+/// Generate the implementation of the [TomlConfig] trait
 fn generate_impl(
     struct_name: &syn::Ident,
     descriptions: Vec<String>,
     examples: Vec<String>,
     field_ids: Vec<quote::__private::TokenStream>,
     field_values: Vec<&Option<syn::Ident>>,
-    types: Vec<quote::__private::TokenStream>,
+    types: Vec<String>,
 ) -> quote::__private::TokenStream {
-    let gen: quote::__private::TokenStream = quote! {
+    quote! {
         impl TomlConfig for #struct_name {
             fn to_string_pretty_toml(&self) -> String {
 
                 let mut toml_string = String::new();
 
                 #(
-                    // Stringify the type. It will look like `Option < TYPE >`
-                    let type_name = stringify!(#types);
-                    // Remove the `Option< >` part of the string
-                    let mut type_as_char = type_name.chars();
-                    for _ in 0..=7 {type_as_char.next();}
-                    type_as_char.next_back();
+
                     // Determine if the type is String as their value needs to be in quotes in TOML format
-                    let is_type_string = type_as_char.as_str().contains(&"String");
+                    let is_type_string = #types.contains(&"String");
 
                     toml_string.push_str(&format!("# {description_comment}\n", description_comment = #descriptions));
                     toml_string.push_str(&format!("# Example: {example}\n", example = #examples));
@@ -101,12 +97,12 @@ fn generate_impl(
                         toml_string.push_str(&format!("{field_name} = {field_value} # [{type_name}]\n\n",
                             field_name = #field_ids,
                             field_value = formatted_field_val,
-                            type_name = type_as_char.as_str()
+                            type_name = #types
                         ));
                     } else {
                         toml_string.push_str(&format!("#{field_name} = None [{type_name}] # (Uncomment and set to enable this check)\n\n",
                             field_name = #field_ids,
-                            type_name = type_as_char.as_str()
+                            type_name = #types
                         ));
                     }
                 )*
@@ -114,8 +110,7 @@ fn generate_impl(
                 toml_string
             }
         }
-    };
-    gen
+    }
 }
 
 fn get_attribute<'a>(attr_name: &'a str, field: &'a syn::Field) -> Option<&'a syn::Attribute> {
@@ -139,4 +134,15 @@ fn attribute_value_as_string(attr: &Attribute) -> String {
 fn field_name_to_key_literal(field_name: &syn::Ident) -> syn::LitStr {
     let name: String = field_name.to_string();
     syn::LitStr::new(&name, field_name.span())
+}
+
+// Convert a fields type of type Option<InnerType> to InnerType as a string
+fn field_option_type_to_inner_type_string(field_option_type: &syn::Type) -> String {
+    let type_name = field_option_type.to_token_stream().to_string();
+    let mut type_as_char = type_name.chars();
+    for _ in 0..=7 {
+        type_as_char.next();
+    }
+    type_as_char.next_back();
+    type_as_char.as_str().to_string()
 }
