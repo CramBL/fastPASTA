@@ -9,6 +9,8 @@ use alpide_readout_frame::AlpideReadoutFrame;
 use itertools::Itertools;
 use lane_alpide_frame_analyzer::LaneAlpideFrameAnalyzer;
 
+use crate::util::config::Cfg;
+
 // Helper struct to group lanes and bunch counters, used for comparing bunch counters between lanes
 struct ValidatedLane {
     lane_id: u8,
@@ -27,13 +29,16 @@ pub fn check_alpide_data_frame(
 
     let mut validated_lanes: Vec<ValidatedLane> = Vec::new();
 
+    let valid_chip_order_ob: Option<(&[u8], &[u8])> =
+        Cfg::custom_checks().map(|c| c.chip_orders_ob().unwrap_or_default());
+
     alpide_readout_frame
         .lane_data_frames
         .drain(..)
         .for_each(|lane_data_frame| {
             // Process data for each lane
             // New decoder for each lane
-            let mut analyzer = LaneAlpideFrameAnalyzer::new(from_layer);
+            let mut analyzer = LaneAlpideFrameAnalyzer::new(from_layer, valid_chip_order_ob);
             let lane_number = lane_data_frame.lane_number(from_layer);
             log::trace!("Processing lane #{lane_number}");
 

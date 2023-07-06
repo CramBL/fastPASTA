@@ -9,7 +9,7 @@ use crate::words::its::{
 use itertools::Itertools;
 
 /// Decodes the ALPIDE data from a readout frame for a single lane
-pub struct LaneAlpideFrameAnalyzer {
+pub struct LaneAlpideFrameAnalyzer<'a> {
     // Works on a single lane at a time
     lane_number: u8,
     is_header_seen: bool, // Set when a Chip Header is seen, reset when a Chip Trailer is seen
@@ -21,15 +21,16 @@ pub struct LaneAlpideFrameAnalyzer {
     errors: Option<Vec<String>>,
     from_layer: Option<Layer>,
     validated_bc: Option<u8>, // Bunch counter for the frame if the bunch counters match
+    valid_chip_order_ob: Option<(&'a [u8], &'a [u8])>, // Valid chip order for Outer Barrel
 }
 
-impl LaneAlpideFrameAnalyzer {
+impl<'a> LaneAlpideFrameAnalyzer<'a> {
     const ERR_MSG_PREFIX: &'static str = "\n\t\t\t"; // Newline + indentation for error messages
     const IL_CHIP_COUNT: usize = 1; // Number of chips in an inner layer readout frame
     const ML_OL_CHIP_COUNT: usize = 7; // Number of chips in a middle/outer layer readout frame
 
     /// Creates a new decoder by specifying the layer the data is from
-    pub fn new(data_origin: Layer) -> Self {
+    pub fn new(data_origin: Layer, valid_chip_order_ob: Option<(&'a [u8], &'a [u8])>) -> Self {
         Self {
             lane_number: 0,
             is_header_seen: false,
@@ -44,6 +45,7 @@ impl LaneAlpideFrameAnalyzer {
             errors: Some(Vec::new()),
             from_layer: Some(data_origin),
             validated_bc: None,
+            valid_chip_order_ob,
         }
     }
 
@@ -285,7 +287,21 @@ impl LaneAlpideFrameAnalyzer {
                 }
                 Layer::Middle | Layer::Outer => {
                     // Check that the chip IDs are in the correct order
-                    if chip_ids != [0, 1, 2, 3, 4, 5, 6] && chip_ids != [8, 9, 10, 11, 12, 13, 14] {
+                    if let Some((valid_order_a, valid_order_b)) = self.valid_chip_order_ob.as_ref()
+                    {
+                        if chip_ids != *valid_order_a && chip_ids != *valid_order_b {
+                            return Err(format!(
+                                "{newline_indent}Expected {expected_chip_order_a:?} or {expected_chip_order_b:?} in {layer} but found {chip_ids:?}",
+                                newline_indent = Self::ERR_MSG_PREFIX,
+                                layer = data_from,
+                                expected_chip_order_a = valid_order_a,
+                                expected_chip_order_b = valid_order_b,
+                                chip_ids = chip_ids
+                            ));
+                        }
+                    } else if chip_ids != [0, 1, 2, 3, 4, 5, 6]
+                        && chip_ids != [8, 9, 10, 11, 12, 13, 14]
+                    {
                         return Err(format!(
                             "{newline_indent}Expected [0-6] or [8-14] in {layer} but found {chip_ids:?}",
                             newline_indent = Self::ERR_MSG_PREFIX,
