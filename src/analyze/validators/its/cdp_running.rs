@@ -562,7 +562,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 
         let mem_pos_start = alpide_readout_frame.start_mem_pos();
         let mem_pos_end = alpide_readout_frame.end_mem_pos();
-        let is_ib = alpide_readout_frame.is_from_layer() == Layer::Inner;
+        let is_ib = alpide_readout_frame.from_layer() == Layer::Inner;
 
         // Check if the frame is valid in terms of lanes in the data.
         if let Err(err_msg) = alpide_readout_frame.check_frame_lanes_valid() {

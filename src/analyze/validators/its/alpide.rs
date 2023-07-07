@@ -42,10 +42,10 @@ pub fn check_alpide_data_frame(
             // Process data for each lane
             // New decoder for each lane
             let mut analyzer = LaneAlpideFrameAnalyzer::new(
-                alpide_readout_frame.is_from_layer(),
+                alpide_readout_frame.from_layer(),
                 valid_chip_order_ob,
             );
-            let lane_number = lane_data_frame.lane_number(alpide_readout_frame.is_from_layer());
+            let lane_number = lane_data_frame.lane_number(alpide_readout_frame.from_layer());
             log::trace!("Processing lane #{lane_number}");
 
             if let Err(mut error_msgs) = analyzer.analyze_alpide_frame(lane_data_frame) {

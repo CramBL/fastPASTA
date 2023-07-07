@@ -57,7 +57,7 @@ impl AlpideReadoutFrame {
             self.frame_end_mem_pos, 0,
             "Attempted check a lane data frame's validity before closing it"
         );
-        let expect_lane_count = match self.is_from_layer() {
+        let expect_lane_count = match self.from_layer() {
             Layer::Inner => Self::IL_FRAME_LANE_COUNT,
             Layer::Middle => Self::ML_FRAME_LANE_COUNT,
             Layer::Outer => Self::OL_FRAME_LANE_COUNT,
@@ -69,7 +69,7 @@ impl AlpideReadoutFrame {
                 "Invalid number of lanes: {num_lanes}, expected {expect_lane_count}",
                 num_lanes = self.lane_data_frames.len()
             ))
-        } else if self.is_from_layer() == Layer::Inner {
+        } else if self.from_layer() == Layer::Inner {
             // Check frame lane grouping is correct (these groupings are hardcoded in the firmware)
             let mut lane_ids = self
                 .lane_data_frames
@@ -90,8 +90,8 @@ impl AlpideReadoutFrame {
 
 // impl for simple utility functions
 impl AlpideReadoutFrame {
-    /// Returns the barrel that the readout frame is from
-    pub fn is_from_layer(&self) -> Layer {
+    /// Returns the [Layer] that the readout frame is from
+    pub fn from_layer(&self) -> Layer {
         self.from_layer.expect("No barrel set for readout frame")
     }
 
