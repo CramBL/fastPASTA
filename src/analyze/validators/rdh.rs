@@ -133,32 +133,22 @@ impl<T: RDH> RdhCruSanityValidator<T> {
     pub fn sanity_check(&mut self, rdh: &T) -> Result<(), String> {
         let mut err_str = String::new();
         let mut err_cnt: u8 = 0;
-        let mut rdh_errors: Vec<String> = vec![];
 
         if let Err(e) = self.rdh0_validator.sanity_check(rdh.rdh0()) {
             err_cnt += 1;
-            rdh_errors.push(e);
+            err_str.push_str(&e);
         };
-        match self.rdh1_validator.sanity_check(rdh.rdh1()) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
+        if let Err(e) = self.rdh1_validator.sanity_check(rdh.rdh1()) {
+            err_cnt += 1;
+            err_str.push_str(&e);
         };
-        match self.rdh2_validator.sanity_check(rdh.rdh2()) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
+        if let Err(e) = self.rdh2_validator.sanity_check(rdh.rdh2()) {
+            err_cnt += 1;
+            err_str.push_str(&e);
         };
-        match self.rdh3_validator.sanity_check(rdh.rdh3()) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
+        if let Err(e) = self.rdh3_validator.sanity_check(rdh.rdh3()) {
+            err_cnt += 1;
+            err_str.push_str(&e);
         };
 
         if rdh.dw() > 1 {
@@ -171,10 +161,6 @@ impl<T: RDH> RdhCruSanityValidator<T> {
             let tmp = rdh.data_format();
             write!(err_str, "data format = {:#x} ", tmp).unwrap();
         }
-
-        rdh_errors.into_iter().for_each(|e| {
-            err_str.push_str(&e);
-        });
 
         if err_cnt != 0 {
             err_str.insert_str(0, "[E10] RDH sanity check failed: ");
