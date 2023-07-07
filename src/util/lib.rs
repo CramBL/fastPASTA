@@ -289,5 +289,13 @@ pub mod test_util {
                 None
             }
         }
+
+        fn rdh_version(&self) -> Option<u8> {
+            if self.custom_checks.is_some() {
+                self.custom_checks.as_ref().unwrap().rdh_version()
+            } else {
+                None
+            }
+        }
     }
 }

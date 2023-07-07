@@ -317,6 +317,16 @@ impl CustomChecksOpt for Cfg {
             None
         }
     }
+
+    fn rdh_version(&self) -> Option<u8> {
+        if self.checks_toml.is_some() {
+            Cfg::custom_checks()
+                .expect("Custom checks are not initialized")
+                .rdh_version()
+        } else {
+            None
+        }
+    }
 }
 
 /// Holds the [CheckCommands] subcommands
