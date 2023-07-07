@@ -68,3 +68,15 @@ pub fn assert_no_errors_or_warn(
     match_on_out_no_case(stderr_byte_output, "warn - ", 0)?;
     Ok(())
 }
+
+/// Create a custom checks TOML file from with `toml_content` at the specified `toml_path` path
+pub fn create_custom_checks_toml(
+    toml_content: &str,
+    toml_path: &std::path::PathBuf,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut custom_checks_file = std::fs::File::create(toml_path)?;
+    std::io::Write::write_all(&mut custom_checks_file, toml_content.as_bytes())?;
+    custom_checks_file.sync_all()?;
+
+    Ok(())
+}
