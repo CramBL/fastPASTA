@@ -23,6 +23,7 @@ pub(crate) struct FeeId(pub(crate) u16); // [0]reserved0, [2:0]layer, [1:0]reser
 ///
 /// The RDH0 is 64 bit long.
 #[repr(packed)]
+#[derive(PartialEq)]
 pub struct Rdh0 {
     /// RDH header ID
     pub header_id: u8,
@@ -79,21 +80,11 @@ impl Debug for Rdh0 {
         write!(f, "Rdh0: header_id: {tmp_header_id:x?}, header_size: {tmp_header_size:x?}, fee_id: {tmp_fee_id:x?}, priority_bit: {tmp_priority_bit:x?}, system_id: {tmp_system_id:x?}, reserved0: {tmp_reserved0:x?}")
     }
 }
-impl PartialEq for Rdh0 {
-    fn eq(&self, other: &Self) -> bool {
-        self.header_id == other.header_id
-            && self.header_size == other.header_size
-            && self.fee_id == other.fee_id
-            && self.priority_bit == other.priority_bit
-            && self.system_id == other.system_id
-            && self.reserved0 == other.reserved0
-    }
-}
-
 /// Represents the RDH1 subword of the RDH.
 ///
 /// The RDH1 is 64 bit long.
 #[repr(packed)]
+#[derive(PartialEq)]
 pub struct Rdh1 {
     /// RDH bunch counter 12 bit + reserved 20 bit
     pub(crate) bc_reserved0: BcReserved,
@@ -138,11 +129,6 @@ impl Debug for Rdh1 {
         )
     }
 }
-impl PartialEq for Rdh1 {
-    fn eq(&self, other: &Self) -> bool {
-        self.bc_reserved0 == other.bc_reserved0 && self.orbit == other.orbit
-    }
-}
 
 impl Display for Rdh1 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -154,7 +140,7 @@ impl Display for Rdh1 {
 
 /// Represents the RDH2 subword of the RDH.
 #[repr(packed)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct Rdh2 {
     /// RDH trigger type 32 bit.
     pub trigger_type: u32,
@@ -196,15 +182,6 @@ impl Debug for Rdh2 {
     }
 }
 
-impl PartialEq for Rdh2 {
-    fn eq(&self, other: &Self) -> bool {
-        self.trigger_type == other.trigger_type
-            && self.pages_counter == other.pages_counter
-            && self.stop_bit == other.stop_bit
-            && self.reserved0 == other.reserved0
-    }
-}
-
 impl Display for Rdh2 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let tmp_trigger_type = self.trigger_type;
@@ -220,7 +197,7 @@ impl Display for Rdh2 {
 
 /// Represents the RDH3 subword of the RDH.
 #[repr(packed)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct Rdh3 {
     /// RDH detector field 32 bit, but 23:4 are reserved bits.
     pub detector_field: u32,
@@ -239,13 +216,6 @@ impl RdhSubWord for Rdh3 {
     }
 }
 
-impl PartialEq for Rdh3 {
-    fn eq(&self, other: &Self) -> bool {
-        self.detector_field == other.detector_field
-            && self.par_bit == other.par_bit
-            && self.reserved0 == other.reserved0
-    }
-}
 impl Debug for Rdh3 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // To align the output, when printing a packed struct, temporary variables are needed
