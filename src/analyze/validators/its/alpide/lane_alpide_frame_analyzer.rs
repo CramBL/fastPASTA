@@ -18,12 +18,13 @@ pub struct LaneAlpideFrameAnalyzer<'a> {
     chip_data: Vec<AlpideFrameChipData>,
     // Indicate that the next byte should be saved as bunch counter for frame
     next_is_bc: bool,
-    errors: Option<Vec<String>>,
+    errors: Option<String>,
     from_layer: Option<Layer>,
     validated_bc: Option<u8>, // Bunch counter for the frame if the bunch counters match
     valid_chip_order_ob: Option<(&'a [u8], &'a [u8])>, // Valid chip order for Outer Barrel
 }
 
+// impl for core utlity
 impl<'a> LaneAlpideFrameAnalyzer<'a> {
     const ERR_MSG_PREFIX: &'static str = "\n\t\t\t"; // Newline + indentation for error messages
     const IL_CHIP_COUNT: usize = 1; // Number of chips in an inner layer readout frame
@@ -42,7 +43,7 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
                 Layer::Middle | Layer::Outer => Vec::with_capacity(Self::ML_OL_CHIP_COUNT),
             },
             next_is_bc: false,
-            errors: Some(Vec::new()),
+            errors: Some(String::new()),
             from_layer: Some(data_origin),
             validated_bc: None,
             valid_chip_order_ob,
@@ -53,10 +54,7 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
     ///
     /// First data is decoded, then it is validated.
     /// If the validation fails, the error messages are stored in the errors vector that is returned.
-    pub fn analyze_alpide_frame(
-        &mut self,
-        lane_data_frame: LaneDataFrame,
-    ) -> Result<(), std::vec::Vec<String>> {
+    pub fn analyze_alpide_frame(&mut self, lane_data_frame: LaneDataFrame) -> Result<(), String> {
         self.lane_number = lane_data_frame.lane_number(self.from_layer.unwrap());
         log::debug!(
             "Processing ALPIDE frame for lane {lane_id}",
@@ -72,19 +70,25 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
         // Check all bunch counters match
         if let Err(msg) = self.check_bunch_counters() {
             // if it is already in the errors_per_lane, add it to the list
-            let error_str = format!("\n\t\tBunch counters mismatch:{msg}");
-            self.errors.as_mut().unwrap().push(error_str);
+            self.errors
+                .as_mut()
+                .unwrap()
+                .push_str(&format!("\n\t\tChip ID count mismatch:{msg}"));
         }
 
         if let Err(msg) = self.check_chip_count() {
-            let error_str = format!("\n\t\tChip ID count mismatch:{msg}");
-            self.errors.as_mut().unwrap().push(error_str);
+            self.errors
+                .as_mut()
+                .unwrap()
+                .push_str(&format!("\n\t\tChip ID count mismatch:{msg}"));
         } else {
             // Only check if the chip count is valid.
             // Check chip ID order
             if let Err(msg) = self.check_chip_id_order() {
-                let error_str = format!("\n\t\tChip ID order mismatch:{msg}");
-                self.errors.as_mut().unwrap().push(error_str);
+                self.errors
+                    .as_mut()
+                    .unwrap()
+                    .push_str(&format!("\n\t\tChip ID order mismatch:{msg}"))
             }
         }
 
@@ -106,7 +110,7 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
         }
         if self.next_is_bc {
             if let Err(msg) = self.store_bunch_counter(alpide_byte) {
-                self.errors.as_mut().unwrap().push(msg);
+                self.errors.as_mut().unwrap().push_str(&msg);
             }
 
             // Done with the byte containing the bunch counter
@@ -157,43 +161,6 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
                 log::warn!("Unknown ALPIDE word: {alpide_byte:#02X}")
             }
         }
-    }
-
-    fn store_bunch_counter(&mut self, bc: u8) -> Result<(), String> {
-        // Search for the chip data matching the last chip id
-        match self
-            .chip_data
-            .iter_mut()
-            .find(|cd| cd.chip_id == self.last_chip_id)
-        {
-            Some(cd) => {
-                // Store the bunch counter for the chip data
-                cd.store_bc(bc)?;
-            }
-            None => {
-                // ID not found, create a instance of AlpideFrameChipData with the ID
-                let mut cd = AlpideFrameChipData::from_id_no_data(self.last_chip_id);
-                // Add the bunch counter to the bunch counter vector
-                cd.store_bc(bc)?;
-                // Add the chip data to the chip data vector
-                self.chip_data.push(cd);
-            }
-        }
-        Ok(())
-    }
-
-    /// Print the bunch counter for each chip
-    pub fn print_chip_bunch_counters(&self) {
-        self.chip_data
-            .iter()
-            .sorted_by(|a, b| Ord::cmp(&a.chip_id, &b.chip_id))
-            .for_each(|cd| {
-                println!(
-                    "Chip ID: {:>2} | Bunch counter: {:?}",
-                    cd.chip_id,
-                    cd.bunch_counter.unwrap()
-                );
-            });
     }
 
     /// Check that all bunch counters are identical
@@ -306,9 +273,49 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
         Ok(())
     }
 
+    fn store_bunch_counter(&mut self, bc: u8) -> Result<(), String> {
+        // Search for the chip data matching the last chip id
+        match self
+            .chip_data
+            .iter_mut()
+            .find(|cd| cd.chip_id == self.last_chip_id)
+        {
+            Some(cd) => {
+                // Store the bunch counter for the chip data
+                cd.store_bc(bc)?;
+            }
+            None => {
+                // ID not found, create a instance of AlpideFrameChipData with the ID
+                let mut cd = AlpideFrameChipData::from_id_no_data(self.last_chip_id);
+                // Add the bunch counter to the bunch counter vector
+                cd.store_bc(bc)?;
+                // Add the chip data to the chip data vector
+                self.chip_data.push(cd);
+            }
+        }
+        Ok(())
+    }
+}
+
+// impl for utility member functions
+impl<'a> LaneAlpideFrameAnalyzer<'a> {
+    /// Print the bunch counter for each chip
+    pub fn print_chip_bunch_counters(&self) {
+        self.chip_data
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&a.chip_id, &b.chip_id))
+            .for_each(|cd| {
+                println!(
+                    "Chip ID: {:>2} | Bunch counter: {:?}",
+                    cd.chip_id,
+                    cd.bunch_counter.unwrap()
+                );
+            });
+    }
+
     fn has_errors(&self) -> bool {
-        if let Some(error_vec) = self.errors.as_ref() {
-            !error_vec.is_empty()
+        if let Some(error_msg) = self.errors.as_ref() {
+            !error_msg.is_empty()
         } else {
             false
         }

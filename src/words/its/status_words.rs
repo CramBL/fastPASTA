@@ -239,6 +239,7 @@ pub fn is_lane_active(lane: u8, active_lanes: u32) -> bool {
 }
 /// Struct to represent the IHW status word
 #[repr(packed)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Ihw {
     // Total of 80 bits
     // ID: 0xE0
@@ -284,25 +285,9 @@ impl StatusWord for Ihw {
     }
 }
 
-impl Debug for Ihw {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let id = self.id();
-        let reserved = self.reserved();
-        let active_lanes = self.active_lanes();
-        write!(f, "{id:x} {reserved:x} {active_lanes:x}")
-    }
-}
-
-impl PartialEq for Ihw {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-            && self.reserved == other.reserved
-            && self.active_lanes == other.active_lanes
-    }
-}
-
 /// Struct to represent the TDH status word
 #[repr(packed)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Tdh {
     // 11:0 trigger_type
     // 12: internal_trigger, 13: no_data, 14: continuation, 15: reserved
@@ -393,37 +378,9 @@ impl StatusWord for Tdh {
     }
 }
 
-impl Debug for Tdh {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let id = self.id();
-        let reserved0 = self.reserved0();
-        let trigger_orbit = self.trigger_orbit;
-        let reserved1 = self.reserved1();
-        let trigger_bc = self.trigger_bc();
-        let reserved2 = self.reserved2();
-        let continuation = self.continuation();
-        let no_data = self.no_data();
-        let internal_trigger = self.internal_trigger();
-        let trigger_type = self.trigger_type();
-        write!(
-            f,
-            "TDH: {id:X} {reserved0:x} {trigger_orbit:x} {reserved1:x} {trigger_bc:x} {reserved2:x} {continuation:x} {no_data:x} {internal_trigger:x} {trigger_type:x}"
-        )
-    }
-}
-
-impl PartialEq for Tdh {
-    fn eq(&self, other: &Self) -> bool {
-        self.reserved0_id == other.reserved0_id
-            && self.trigger_orbit == other.trigger_orbit
-            && self.trigger_bc_reserved1 == other.trigger_bc_reserved1
-            && self.trigger_type_internal_trigger_no_data_continuation_reserved2
-                == other.trigger_type_internal_trigger_no_data_continuation_reserved2
-    }
-}
-
 /// Struct representing the TDT
 #[repr(packed)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Tdt {
     // 55:0 lane_status
     lane_status_15_0: u32,
@@ -515,49 +472,9 @@ impl StatusWord for Tdt {
     }
 }
 
-impl Debug for Tdt {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let id = self.id();
-        let lane_starts_violation = self.lane_starts_violation();
-        let transmission_timeout = self.transmission_timeout();
-        let packet_done = self.packet_done();
-        let timeout_to_start = self.timeout_to_start();
-        let timeout_start_stop = self.timeout_start_stop();
-        let timeout_in_idle = self.timeout_in_idle();
-        let lane_status_27_24 = self.lane_status_27_24();
-        let lane_status_23_16 = self.lane_status_23_16();
-        let lane_status_15_0 = self.lane_status_15_0();
-        write!(
-            f,
-            "{:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x}",
-            id,
-            lane_starts_violation as u8,
-            transmission_timeout as u8,
-            packet_done as u8,
-            timeout_to_start as u8,
-            timeout_start_stop as u8,
-            timeout_in_idle as u8,
-            lane_status_27_24,
-            lane_status_23_16,
-            lane_status_15_0
-        )
-    }
-}
-
-impl PartialEq for Tdt {
-    fn eq(&self, other: &Self) -> bool {
-        self.res0_lane_starts_violation_res1_transmission_timeout_packet_done
-            == other.res0_lane_starts_violation_res1_transmission_timeout_packet_done
-            && self.timeout_to_start_timeout_start_stop_timeout_in_idle_res2
-                == other.timeout_to_start_timeout_start_stop_timeout_in_idle_res2
-            && self.lane_status_27_24 == other.lane_status_27_24
-            && self.lane_status_23_16 == other.lane_status_23_16
-            && self.lane_status_15_0 == other.lane_status_15_0
-    }
-}
-
 /// Struct representing the DDW0.
 #[repr(packed)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Ddw0 {
     // 64:56 reserved0, 55:0 lane_status
     res3_lane_status: u64,
@@ -618,31 +535,9 @@ impl StatusWord for Ddw0 {
     }
 }
 
-impl Debug for Ddw0 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let id = self.id();
-        let index = self.index();
-        let lane_starts_violation = self.lane_starts_violation();
-        let transmission_timeout = self.transmission_timeout();
-        let lane_status = self.lane_status();
-        write!(
-            f,
-            "DDW0: {:x} {:x} {:x} {:x} {:x}",
-            id, index, lane_starts_violation as u8, transmission_timeout as u8, lane_status
-        )
-    }
-}
-
-impl PartialEq for Ddw0 {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-            && self.index == other.index
-            && self.res3_lane_status == other.res3_lane_status
-    }
-}
-
 /// Struct representing the CDW.
 #[repr(packed)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Cdw {
     calibration_word_index_lsb_calibration_user_fields: u64, // 63:48 calibration_word_index_LSB 47:0 calibration_user_fields
     calibration_word_index_msb: u8,                          // 71:64 calibration_word_index_MSB
@@ -683,27 +578,6 @@ impl StatusWord for Cdw {
             calibration_word_index_msb: buf[8],
             id: buf[9],
         })
-    }
-}
-
-impl Debug for Cdw {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let id = self.id();
-        let calibration_word_index = self.calibration_word_index();
-        let calibration_user_fields = self.calibration_user_fields();
-        write!(
-            f,
-            "{id:x} {calibration_word_index:x} {calibration_user_fields:x}"
-        )
-    }
-}
-
-impl PartialEq for Cdw {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-            && self.calibration_word_index_msb == other.calibration_word_index_msb
-            && self.calibration_word_index_lsb_calibration_user_fields
-                == other.calibration_word_index_lsb_calibration_user_fields
     }
 }
 

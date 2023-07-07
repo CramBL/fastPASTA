@@ -133,32 +133,22 @@ impl<T: RDH> RdhCruSanityValidator<T> {
     pub fn sanity_check(&mut self, rdh: &T) -> Result<(), String> {
         let mut err_str = String::new();
         let mut err_cnt: u8 = 0;
-        let mut rdh_errors: Vec<String> = vec![];
 
         if let Err(e) = self.rdh0_validator.sanity_check(rdh.rdh0()) {
             err_cnt += 1;
-            rdh_errors.push(e);
+            err_str.push_str(&e);
         };
-        match self.rdh1_validator.sanity_check(rdh.rdh1()) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
+        if let Err(e) = self.rdh1_validator.sanity_check(rdh.rdh1()) {
+            err_cnt += 1;
+            err_str.push_str(&e);
         };
-        match self.rdh2_validator.sanity_check(rdh.rdh2()) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
+        if let Err(e) = self.rdh2_validator.sanity_check(rdh.rdh2()) {
+            err_cnt += 1;
+            err_str.push_str(&e);
         };
-        match self.rdh3_validator.sanity_check(rdh.rdh3()) {
-            Ok(_) => (),
-            Err(e) => {
-                err_cnt += 1;
-                rdh_errors.push(e);
-            }
+        if let Err(e) = self.rdh3_validator.sanity_check(rdh.rdh3()) {
+            err_cnt += 1;
+            err_str.push_str(&e);
         };
 
         if rdh.dw() > 1 {
@@ -171,10 +161,6 @@ impl<T: RDH> RdhCruSanityValidator<T> {
             let tmp = rdh.data_format();
             write!(err_str, "data format = {:#x} ", tmp).unwrap();
         }
-
-        rdh_errors.into_iter().for_each(|e| {
-            err_str.push_str(&e);
-        });
 
         if err_cnt != 0 {
             err_str.insert_str(0, "[E10] RDH sanity check failed: ");
@@ -322,13 +308,14 @@ impl Rdh0Validator {
         }
         if err_cnt != 0 {
             err_str.insert_str(0, "RDH0: ");
-            return Err(err_str.to_owned());
+            return Err(err_str);
         }
         Ok(())
     }
 }
 
 /// Validator for the [RDH] subword [RDH1][Rdh1].
+#[derive(Default)]
 struct Rdh1Validator {
     valid_rdh1: Rdh1,
 }
@@ -338,27 +325,23 @@ impl Rdh1Validator {
         let mut err_cnt: u8 = 0;
         if rdh1.reserved0() != self.valid_rdh1.reserved0() {
             err_cnt += 1;
-            write!(
-                err_str,
-                "{} = {:#x} ",
-                stringify!(rdh1.reserved0),
-                rdh1.reserved0()
-            )
-            .unwrap();
+            write!(err_str, "reserved0 = {:#x} ", rdh1.reserved0()).unwrap();
         }
         // Max bunch counter is 0xdeb
         if rdh1.bc() > 0xdeb {
             err_cnt += 1;
-            write!(err_str, "{} = {:#x} ", stringify!(bc), rdh1.bc()).unwrap();
+            write!(err_str, "BC = {:#x} ", rdh1.bc()).unwrap();
         }
 
         if err_cnt != 0 {
-            return Err(err_str.to_owned());
+            err_str.insert_str(0, "RDH1: ");
+            return Err(err_str);
         }
         Ok(())
     }
 }
 
+#[derive(Default)]
 struct Rdh2Validator;
 impl Rdh2Validator {
     pub fn sanity_check(&self, rdh2: &Rdh2) -> Result<(), String> {
@@ -366,18 +349,12 @@ impl Rdh2Validator {
         let mut err_cnt: u8 = 0;
         if rdh2.reserved0 != 0 {
             err_cnt += 1;
-            write!(
-                err_str,
-                "{} = {:#x} ",
-                stringify!(rdh2.reserved0),
-                rdh2.reserved0
-            )
-            .unwrap();
+            write!(err_str, "reserved0 = {:#x} ", rdh2.reserved0).unwrap();
         }
 
         if rdh2.stop_bit > 1 {
             err_cnt += 1;
-            write!(err_str, "stop_bit = {:#x} ", rdh2.stop_bit).unwrap();
+            write!(err_str, "stop bit = {:#x} ", rdh2.stop_bit).unwrap();
         }
         let spare_bits_15_to_26_set: u32 = 0b0000_0111_1111_1111_1000_0000_0000_0000;
         if rdh2.trigger_type == 0 || (rdh2.trigger_type & spare_bits_15_to_26_set != 0) {
@@ -387,12 +364,14 @@ impl Rdh2Validator {
         }
 
         if err_cnt != 0 {
-            return Err(err_str.to_owned());
+            err_str.insert_str(0, "RDH2: ");
+            return Err(err_str);
         }
         Ok(())
     }
 }
 
+#[derive(Default)]
 struct Rdh3Validator;
 impl Rdh3Validator {
     pub fn sanity_check(&self, rdh3: &Rdh3) -> Result<(), String> {
@@ -401,19 +380,20 @@ impl Rdh3Validator {
         if rdh3.reserved0 != 0 {
             err_cnt += 1;
             let tmp = rdh3.reserved0;
-            write!(err_str, "{} = {:#x} ", stringify!(rdh3.reserved0), tmp).unwrap();
+            write!(err_str, "reserved0 = {:#x} ", tmp).unwrap();
         }
         let reserved_bits_4_to_23_set: u32 = 0b1111_1111_1111_1111_1111_0000;
         if rdh3.detector_field & reserved_bits_4_to_23_set != 0 {
             err_cnt += 1;
             let tmp = rdh3.detector_field;
-            write!(err_str, "{} = {:#x} ", stringify!(detector_field), tmp).unwrap();
+            write!(err_str, "detector_field = {:#x} ", tmp).unwrap();
         }
 
         // No checks on Par bit
 
         if err_cnt != 0 {
-            return Err(err_str.to_owned());
+            err_str.insert_str(0, "RDH3: ");
+            return Err(err_str);
         }
         Ok(())
     }
