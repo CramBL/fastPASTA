@@ -23,6 +23,7 @@ pub struct RdhCruSanityValidator<T: RDH> {
     // valid link IDs are 0-11 and 15
     // datawrapper ID is 0 or 1
 }
+
 impl<T: RDH> Default for RdhCruSanityValidator<T> {
     fn default() -> Self {
         Self::new()
@@ -56,6 +57,7 @@ impl<T: RDH> RdhCruSanityValidator<T> {
         match specialization {
             SpecializeChecks::ITS => Self {
                 rdh0_validator: Rdh0Validator::new(
+                    None,
                     0x40,
                     FEE_ID_SANITY_VALIDATOR,
                     0,
@@ -214,19 +216,20 @@ struct Rdh0Validator {
 
 impl Default for Rdh0Validator {
     fn default() -> Self {
-        Self::new(0x40, FEE_ID_SANITY_VALIDATOR, 0, None)
+        Self::new(None, 0x40, FEE_ID_SANITY_VALIDATOR, 0, None)
     }
 }
 
 impl Rdh0Validator {
     pub fn new(
+        header_id: Option<u8>,
         header_size: u8,
         fee_id: FeeIdSanityValidator,
         priority_bit: u8,
         system_id: Option<u8>,
     ) -> Self {
         Self {
-            header_id: None,
+            header_id,
             header_size,
             fee_id,
             priority_bit,
@@ -507,7 +510,7 @@ mod tests {
     #[test]
     fn invalidate_rdh0_bad_system_id() {
         let mut validator =
-            Rdh0Validator::new(0x40, FEE_ID_SANITY_VALIDATOR, 0, Some(ITS_SYSTEM_ID));
+            Rdh0Validator::new(None, 0x40, FEE_ID_SANITY_VALIDATOR, 0, Some(ITS_SYSTEM_ID));
         let rdh0 = Rdh0 {
             header_id: 7,
             header_size: 0x40,
@@ -523,7 +526,7 @@ mod tests {
 
     #[test]
     fn validate_rdh0_non_its_system_id() {
-        let mut validator = Rdh0Validator::new(0x40, FEE_ID_SANITY_VALIDATOR, 0, None);
+        let mut validator = Rdh0Validator::new(None, 0x40, FEE_ID_SANITY_VALIDATOR, 0, None);
         let rdh0 = Rdh0 {
             header_id: 7,
             header_size: 0x40,
@@ -540,7 +543,7 @@ mod tests {
     #[test]
     fn invalidate_rdh0_bad_reserved0() {
         let mut validator =
-            Rdh0Validator::new(0x40, FEE_ID_SANITY_VALIDATOR, 0, Some(ITS_SYSTEM_ID));
+            Rdh0Validator::new(None, 0x40, FEE_ID_SANITY_VALIDATOR, 0, Some(ITS_SYSTEM_ID));
         let rdh0 = Rdh0 {
             header_id: 7,
             header_size: 0x40,
