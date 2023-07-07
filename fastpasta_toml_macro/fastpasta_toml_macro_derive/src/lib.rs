@@ -104,7 +104,7 @@ fn generate_impl(
                             type_name = #types
                         ));
                     } else {
-                        toml_string.push_str(&format!("#{field_name} = None [{type_name}] # (Uncomment and set to enable this check)\n\n",
+                        toml_string.push_str(&format!("#{field_name} = None [{type_name}] # (Uncomment and set to enable)\n\n",
                             field_name = #field_ids,
                             type_name = #types
                         ));
