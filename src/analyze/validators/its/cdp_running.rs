@@ -571,7 +571,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             let err_msg = format!(
                 "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} {err_msg}. Lanes: {lanes:?}",
                 feeid=self.current_rdh.as_ref().unwrap().fee_id(),
-                lanes = alpide_readout_frame.lane_data_frames.iter().map(|lane|
+                lanes = alpide_readout_frame.lane_data_frames_as_slice().iter().map(|lane|
                     lane_id_to_lane_number(lane.lane_id, is_ib)).collect::<Vec<u8>>(),
             );
             self.stats_send_ch

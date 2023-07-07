@@ -8,7 +8,7 @@ use crate::words::its::{alpide_words::LaneDataFrame, data_words::ib_data_word_id
 pub struct AlpideReadoutFrame {
     frame_start_mem_pos: u64,
     frame_end_mem_pos: u64,
-    pub(crate) lane_data_frames: Vec<LaneDataFrame>, // Vector of data frames for each lane
+    lane_data_frames: Vec<LaneDataFrame>, // Vector of data frames for each lane
     from_layer: Option<Layer>,
 }
 
@@ -112,5 +112,15 @@ impl AlpideReadoutFrame {
     /// Get the memory position where the [AlpideReadoutFrame] ended
     pub fn end_mem_pos(&self) -> u64 {
         self.frame_end_mem_pos
+    }
+
+    /// Borrow the [LaneDataFrame]s as a slice
+    pub fn lane_data_frames_as_slice(&self) -> &[LaneDataFrame] {
+        &self.lane_data_frames
+    }
+
+    /// Drain the vector of [LaneDataFrame]s
+    pub fn drain_lane_data_frames(&mut self) -> std::vec::Drain<LaneDataFrame> {
+        self.lane_data_frames.drain(..)
     }
 }
