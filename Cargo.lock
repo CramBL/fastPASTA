@@ -511,6 +511,8 @@ dependencies = [
  "crossbeam-channel",
  "ctrlc",
  "fancy-regex",
+ "fastpasta_toml_macro",
+ "fastpasta_toml_macro_derive",
  "flume",
  "fmt",
  "gag",
@@ -529,8 +531,21 @@ dependencies = [
  "tabled",
  "temp-dir",
  "toml",
- "toml_macro",
- "toml_macro_derive",
+]
+
+[[package]]
+name = "fastpasta_toml_macro"
+version = "0.1.0"
+dependencies = [
+ "fastpasta_toml_macro_derive",
+]
+
+[[package]]
+name = "fastpasta_toml_macro_derive"
+version = "0.1.0"
+dependencies = [
+ "quote 1.0.29",
+ "syn 2.0.23",
 ]
 
 [[package]]
@@ -1489,18 +1504,6 @@ dependencies = [
  "serde_spanned",
  "toml_datetime",
  "winnow",
-]
-
-[[package]]
-name = "toml_macro"
-version = "0.1.0"
-
-[[package]]
-name = "toml_macro_derive"
-version = "0.1.0"
-dependencies = [
- "quote 1.0.29",
- "syn 2.0.23",
 ]
 
 [[package]]

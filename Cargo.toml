@@ -49,8 +49,8 @@ sm = "0.9.0"
 stderrlog = "0.5.4"
 tabled = { version = "0.12.2", features = ["color"]}
 toml = "0.7.6"
-toml_macro = { version = "0.1.0",  path = "toml_macro" }
-toml_macro_derive = { version = "0.1.0", path = "toml_macro/toml_macro_derive" }
+fastpasta_toml_macro = { version = "0.1.0",  path = "fastpasta_toml_macro" }
+fastpasta_toml_macro_derive = { version = "0.1.0", path = "fastpasta_toml_macro/fastpasta_toml_macro_derive" }
 
 [[bench]]
 name = "benchmarks"
