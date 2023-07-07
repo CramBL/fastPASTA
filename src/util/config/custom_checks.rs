@@ -6,8 +6,11 @@ use std::path::PathBuf;
 
 /// Trait for the configuration of various expected counters in the data.
 pub trait CustomChecksOpt {
+    /// Get a reference to the [CustomChecks] struct, if it is initialized
+    fn custom_checks(&'static self) -> Option<&'static CustomChecks>;
+
     /// Returns if any custom checks are enabled.
-    fn custom_checks_enabled(&self) -> bool {
+    fn custom_checks_enabled(&'static self) -> bool {
         self.cdps().is_some() || self.triggers_pht().is_some()
     }
 
@@ -27,20 +30,24 @@ pub trait CustomChecksOpt {
     }
 
     /// Get the number of CDPs expected in the data, if it is set.
-    fn cdps(&self) -> Option<u32>;
+    fn cdps(&'static self) -> Option<u32>;
 
     /// Get the number of sent Triggers expected in the data, if it is set.
-    fn triggers_pht(&self) -> Option<u32>;
+    fn triggers_pht(&'static self) -> Option<u32>;
 
     /// Get the expected RDH version, if it is set.
-    fn rdh_version(&self) -> Option<u8>;
+    fn rdh_version(&'static self) -> Option<u8>;
 }
 
 impl<T> CustomChecksOpt for &T
 where
     T: CustomChecksOpt,
 {
-    fn custom_checks_enabled(&self) -> bool {
+    fn custom_checks(&'static self) -> Option<&'static CustomChecks> {
+        (*self).custom_checks()
+    }
+
+    fn custom_checks_enabled(&'static self) -> bool {
         (*self).custom_checks_enabled()
     }
 
@@ -48,15 +55,15 @@ where
         (*self).generate_custom_checks_toml_enabled()
     }
 
-    fn cdps(&self) -> Option<u32> {
+    fn cdps(&'static self) -> Option<u32> {
         (*self).cdps()
     }
 
-    fn triggers_pht(&self) -> Option<u32> {
+    fn triggers_pht(&'static self) -> Option<u32> {
         (*self).triggers_pht()
     }
 
-    fn rdh_version(&self) -> Option<u8> {
+    fn rdh_version(&'static self) -> Option<u8> {
         (*self).rdh_version()
     }
 }
@@ -65,7 +72,11 @@ impl<T> CustomChecksOpt for Box<T>
 where
     T: CustomChecksOpt,
 {
-    fn custom_checks_enabled(&self) -> bool {
+    fn custom_checks(&'static self) -> Option<&'static CustomChecks> {
+        (**self).custom_checks()
+    }
+
+    fn custom_checks_enabled(&'static self) -> bool {
         (**self).custom_checks_enabled()
     }
 
@@ -73,15 +84,15 @@ where
         (**self).generate_custom_checks_toml_enabled()
     }
 
-    fn cdps(&self) -> Option<u32> {
+    fn cdps(&'static self) -> Option<u32> {
         (**self).cdps()
     }
 
-    fn triggers_pht(&self) -> Option<u32> {
+    fn triggers_pht(&'static self) -> Option<u32> {
         (**self).triggers_pht()
     }
 
-    fn rdh_version(&self) -> Option<u8> {
+    fn rdh_version(&'static self) -> Option<u8> {
         (**self).rdh_version()
     }
 }
@@ -90,7 +101,11 @@ impl<T> CustomChecksOpt for std::sync::Arc<T>
 where
     T: CustomChecksOpt,
 {
-    fn custom_checks_enabled(&self) -> bool {
+    fn custom_checks(&'static self) -> Option<&'static CustomChecks> {
+        (**self).custom_checks()
+    }
+
+    fn custom_checks_enabled(&'static self) -> bool {
         (**self).custom_checks_enabled()
     }
 
@@ -98,15 +113,15 @@ where
         (**self).generate_custom_checks_toml_enabled()
     }
 
-    fn cdps(&self) -> Option<u32> {
+    fn cdps(&'static self) -> Option<u32> {
         (**self).cdps()
     }
 
-    fn triggers_pht(&self) -> Option<u32> {
+    fn triggers_pht(&'static self) -> Option<u32> {
         (**self).triggers_pht()
     }
 
-    fn rdh_version(&self) -> Option<u8> {
+    fn rdh_version(&'static self) -> Option<u8> {
         (**self).rdh_version()
     }
 }

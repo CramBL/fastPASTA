@@ -146,11 +146,6 @@ impl Cfg {
         CONFIG.get().expect("Config is not initialized")
     }
 
-    /// Get a reference to the [CustomChecks] struct, if it is initialized
-    pub fn custom_checks() -> Option<&'static CustomChecks> {
-        CUSTOM_CHECKS.get()
-    }
-
     /// If a checks TOML file is specified, parse it and set the custom checks static variable.
     /// If the checks TOML file is not specified, but the `--gen-checks-toml` flag is set, generate a checks TOML file in the current directory.
     pub fn handle_custom_checks(&self) {
@@ -294,13 +289,18 @@ impl UtilOpt for Cfg {
 }
 
 impl CustomChecksOpt for Cfg {
+    /// Get a reference to the [CustomChecks] struct, if it is initialized
+    fn custom_checks(&self) -> Option<&'static CustomChecks> {
+        CUSTOM_CHECKS.get()
+    }
+
     fn generate_custom_checks_toml_enabled(&self) -> bool {
         self.generate_checks_toml
     }
 
-    fn cdps(&self) -> Option<u32> {
+    fn cdps(&'static self) -> Option<u32> {
         if self.checks_toml.is_some() {
-            Cfg::custom_checks()
+            self.custom_checks()
                 .expect("Custom checks are not initialized")
                 .cdps()
         } else {
@@ -308,9 +308,9 @@ impl CustomChecksOpt for Cfg {
         }
     }
 
-    fn triggers_pht(&self) -> Option<u32> {
+    fn triggers_pht(&'static self) -> Option<u32> {
         if self.checks_toml.is_some() {
-            Cfg::custom_checks()
+            self.custom_checks()
                 .expect("Custom checks are not initialized")
                 .triggers_pht()
         } else {
@@ -318,9 +318,9 @@ impl CustomChecksOpt for Cfg {
         }
     }
 
-    fn rdh_version(&self) -> Option<u8> {
+    fn rdh_version(&'static self) -> Option<u8> {
         if self.checks_toml.is_some() {
-            Cfg::custom_checks()
+            self.custom_checks()
                 .expect("Custom checks are not initialized")
                 .rdh_version()
         } else {

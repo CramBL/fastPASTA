@@ -270,6 +270,10 @@ pub mod test_util {
     }
 
     impl CustomChecksOpt for MockConfig {
+        fn custom_checks(&'static self) -> Option<&'static CustomChecks> {
+            self.custom_checks.as_ref()
+        }
+
         fn generate_custom_checks_toml_enabled(&self) -> bool {
             self.generate_checks_toml
         }
