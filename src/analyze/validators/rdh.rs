@@ -60,7 +60,7 @@ impl<T: RDH> RdhCruSanityValidator<T> {
             SpecializeChecks::ITS => Self {
                 rdh0_validator: Rdh0Validator::new(
                     None,
-                    0x40,
+                    Rdh0::HEADER_SIZE,
                     FEE_ID_SANITY_VALIDATOR,
                     0,
                     Some(ITS_SYSTEM_ID),
@@ -80,7 +80,7 @@ impl<T: RDH> RdhCruSanityValidator<T> {
             Self {
                 rdh0_validator: Rdh0Validator::new(
                     Some(rdh_version),
-                    0x40,
+                    Rdh0::HEADER_SIZE,
                     FEE_ID_SANITY_VALIDATOR,
                     0,
                     None,
@@ -240,7 +240,7 @@ struct Rdh0Validator {
 
 impl Default for Rdh0Validator {
     fn default() -> Self {
-        Self::new(None, 0x40, FEE_ID_SANITY_VALIDATOR, 0, None)
+        Self::new(None, Rdh0::HEADER_SIZE, FEE_ID_SANITY_VALIDATOR, 0, None)
     }
 }
 
@@ -465,7 +465,7 @@ mod tests {
         let mut validator = Rdh0Validator::default();
         let rdh0 = Rdh0 {
             header_id: 7,
-            header_size: 0x40,
+            header_size: Rdh0::HEADER_SIZE,
             fee_id: FeeId(0x502A),
             priority_bit: 0,
             system_id: ITS_SYSTEM_ID,
@@ -473,7 +473,7 @@ mod tests {
         };
         let rdh0_2 = Rdh0 {
             header_id: 7,
-            header_size: 0x40,
+            header_size: Rdh0::HEADER_SIZE,
             fee_id: FeeId(0x502A),
             priority_bit: 0,
             system_id: ITS_SYSTEM_ID,
@@ -489,7 +489,7 @@ mod tests {
         let mut validator = Rdh0Validator::default();
         let mut rdh0 = Rdh0 {
             header_id: 0x7,
-            header_size: 0x40,
+            header_size: Rdh0::HEADER_SIZE,
             fee_id: FeeId(0x502A),
             priority_bit: 0,
             system_id: ITS_SYSTEM_ID,
@@ -521,7 +521,7 @@ mod tests {
         let fee_id_bad_stave_number_is_48 = FeeId(0x30);
         let rdh0 = Rdh0 {
             header_id: 7,
-            header_size: 0x40,
+            header_size: Rdh0::HEADER_SIZE,
             fee_id: fee_id_bad_stave_number_is_48,
             priority_bit: 0,
             system_id: ITS_SYSTEM_ID,
@@ -533,11 +533,16 @@ mod tests {
     }
     #[test]
     fn invalidate_rdh0_bad_system_id() {
-        let mut validator =
-            Rdh0Validator::new(None, 0x40, FEE_ID_SANITY_VALIDATOR, 0, Some(ITS_SYSTEM_ID));
+        let mut validator = Rdh0Validator::new(
+            None,
+            Rdh0::HEADER_SIZE,
+            FEE_ID_SANITY_VALIDATOR,
+            0,
+            Some(ITS_SYSTEM_ID),
+        );
         let rdh0 = Rdh0 {
             header_id: 7,
-            header_size: 0x40,
+            header_size: Rdh0::HEADER_SIZE,
             fee_id: FeeId(0x502A),
             priority_bit: 0,
             system_id: 0x3,
@@ -550,10 +555,11 @@ mod tests {
 
     #[test]
     fn validate_rdh0_non_its_system_id() {
-        let mut validator = Rdh0Validator::new(None, 0x40, FEE_ID_SANITY_VALIDATOR, 0, None);
+        let mut validator =
+            Rdh0Validator::new(None, Rdh0::HEADER_SIZE, FEE_ID_SANITY_VALIDATOR, 0, None);
         let rdh0 = Rdh0 {
             header_id: 7,
-            header_size: 0x40,
+            header_size: Rdh0::HEADER_SIZE,
             fee_id: FeeId(0x502A),
             priority_bit: 0,
             system_id: 0x99,
@@ -566,11 +572,16 @@ mod tests {
 
     #[test]
     fn invalidate_rdh0_bad_reserved0() {
-        let mut validator =
-            Rdh0Validator::new(None, 0x40, FEE_ID_SANITY_VALIDATOR, 0, Some(ITS_SYSTEM_ID));
+        let mut validator = Rdh0Validator::new(
+            None,
+            Rdh0::HEADER_SIZE,
+            FEE_ID_SANITY_VALIDATOR,
+            0,
+            Some(ITS_SYSTEM_ID),
+        );
         let rdh0 = Rdh0 {
             header_id: 7,
-            header_size: 0x40,
+            header_size: Rdh0::HEADER_SIZE,
             fee_id: FeeId(0x502A),
             priority_bit: 0,
             system_id: ITS_SYSTEM_ID,
