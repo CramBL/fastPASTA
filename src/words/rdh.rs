@@ -5,17 +5,17 @@ use byteorder::{ByteOrder, LittleEndian};
 use std::fmt::{self, Debug, Display};
 
 // Newtype pattern used to enforce type safety on fields that are not byte-aligned
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Default)]
 #[repr(packed)]
 pub(crate) struct CruidDw(pub(crate) u16); // 12 bit cru_id, 4 bit dw
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Default)]
 #[repr(packed)]
 pub(crate) struct BcReserved(pub(crate) u32); // 12 bit bc, 20 bit reserved
 #[repr(packed)]
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub(crate) struct DataformatReserved(pub(crate) u64); // 8 bit data_format, 56 bit reserved0
 #[repr(packed)]
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub(crate) struct FeeId(pub(crate) u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
                                          // Exaxmple: L4_12 -> Layer 4 stave 12 = 0b0100_00XX_0000_1100
 
@@ -84,7 +84,7 @@ impl Debug for Rdh0 {
 ///
 /// The RDH1 is 64 bit long.
 #[repr(packed)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Default)]
 pub struct Rdh1 {
     /// RDH bunch counter 12 bit + reserved 20 bit
     pub(crate) bc_reserved0: BcReserved,

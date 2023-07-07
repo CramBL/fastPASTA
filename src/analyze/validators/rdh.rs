@@ -315,6 +315,7 @@ impl Rdh0Validator {
 }
 
 /// Validator for the [RDH] subword [RDH1][Rdh1].
+#[derive(Default)]
 struct Rdh1Validator {
     valid_rdh1: Rdh1,
 }
@@ -340,6 +341,7 @@ impl Rdh1Validator {
     }
 }
 
+#[derive(Default)]
 struct Rdh2Validator;
 impl Rdh2Validator {
     pub fn sanity_check(&self, rdh2: &Rdh2) -> Result<(), String> {
@@ -369,6 +371,7 @@ impl Rdh2Validator {
     }
 }
 
+#[derive(Default)]
 struct Rdh3Validator;
 impl Rdh3Validator {
     pub fn sanity_check(&self, rdh3: &Rdh3) -> Result<(), String> {
