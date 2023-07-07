@@ -556,11 +556,11 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         alpide_readout_frame.close_frame(self.calc_current_word_mem_pos());
         debug_assert!(!self.is_readout_frame);
         debug_assert!(
-            alpide_readout_frame.frame_start_mem_pos != 0,
+            alpide_readout_frame.start_mem_pos() != 0,
             "Frame start mem pos not set"
         );
 
-        let mem_pos_start = alpide_readout_frame.frame_start_mem_pos;
+        let mem_pos_start = alpide_readout_frame.start_mem_pos();
         let mem_pos_end = alpide_readout_frame.end_mem_pos();
         let is_ib = alpide_readout_frame.is_from_layer() == Layer::Inner;
 
