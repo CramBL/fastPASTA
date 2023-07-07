@@ -1,5 +1,5 @@
 /target
 /test_files
 .vscode/launch.json
-/toml_macro/target
-/toml_macro/toml_macro_derive/target
+/fastpasta_toml_macro/target
+/fastpasta_toml_macro/fastpasta_toml_macro_derive/target

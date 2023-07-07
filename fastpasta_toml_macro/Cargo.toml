@@ -1,5 +1,5 @@
 [package]
-name = "toml_macro"
+name = "fastpasta_toml_macro"
 version = "0.1.0"
 edition = "2021"
 
