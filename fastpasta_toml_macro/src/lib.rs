@@ -1,3 +1,5 @@
+// Re-export the derive macro
+pub use fastpasta_toml_macro_derive::TomlConfig;
 /// This trait is derived through the [TomlConfig](fastpasta_toml_macro_derive::TomlConfig) derive macro.
 pub trait TomlConfig {
     /// Generates a customized pretty [String] representation of the serialized struct as a `TOML` template.
