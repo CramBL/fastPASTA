@@ -101,6 +101,21 @@ pub fn init_processing(
                 Err(e)
             }
         },
+        // No tag to go by for `version > 7`, use `u8` and hope it goes well.
+        // Upper limit is 200 and not just max of u8 (255) because:
+        //      1. Unlikely there will ever be an RDH version 200+
+        //      2. High values decoded from this field (especially 255) is typically a sign that the data is not actually ALICE data so early exit is preferred
+        8..=200 => {
+            match process::<RdhCRU<u8>>(config, loader, stat_send_channel.clone(), stop_flag) {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    stat_send_channel
+                        .send(StatType::Fatal(e.to_string()))
+                        .unwrap();
+                    Err(e)
+                }
+            }
+        }
         _ => Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             format!("Unknown RDH version: {rdh_version}"),
