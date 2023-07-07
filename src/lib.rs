@@ -45,6 +45,7 @@
 //! $ fastpasta <input_file> view rdh
 //! ```
 
+use analyze::validators::rdh::Rdh0Validator;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
 use stats::StatType;
 use util::lib::{Config, DataOutputMode};
@@ -68,8 +69,16 @@ pub fn init_processing(
     stat_send_channel: flume::Sender<StatType>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
-    // Determine RDH version
+    // Load the first few bytes that should contain RDH0 and do a basic sanity check before continuing.
+    // Early exit if the check fails.
     let rdh0 = Rdh0::load(&mut reader).expect("Failed to read first RDH0");
+    if let Err(e) = Rdh0Validator::default().sanity_check(&rdh0) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("Initial RDH0 deserialization failed sanity check: {e}"),
+        ));
+    }
+    // Determine RDH version
     let rdh_version = rdh0.header_id;
 
     // Send RDH version to stats thread
