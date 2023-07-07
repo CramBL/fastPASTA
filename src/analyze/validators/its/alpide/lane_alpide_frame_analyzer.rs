@@ -24,6 +24,7 @@ pub struct LaneAlpideFrameAnalyzer<'a> {
     valid_chip_order_ob: Option<(&'a [u8], &'a [u8])>, // Valid chip order for Outer Barrel
 }
 
+// impl for core utlity
 impl<'a> LaneAlpideFrameAnalyzer<'a> {
     const ERR_MSG_PREFIX: &'static str = "\n\t\t\t"; // Newline + indentation for error messages
     const IL_CHIP_COUNT: usize = 1; // Number of chips in an inner layer readout frame
@@ -162,43 +163,6 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
         }
     }
 
-    fn store_bunch_counter(&mut self, bc: u8) -> Result<(), String> {
-        // Search for the chip data matching the last chip id
-        match self
-            .chip_data
-            .iter_mut()
-            .find(|cd| cd.chip_id == self.last_chip_id)
-        {
-            Some(cd) => {
-                // Store the bunch counter for the chip data
-                cd.store_bc(bc)?;
-            }
-            None => {
-                // ID not found, create a instance of AlpideFrameChipData with the ID
-                let mut cd = AlpideFrameChipData::from_id_no_data(self.last_chip_id);
-                // Add the bunch counter to the bunch counter vector
-                cd.store_bc(bc)?;
-                // Add the chip data to the chip data vector
-                self.chip_data.push(cd);
-            }
-        }
-        Ok(())
-    }
-
-    /// Print the bunch counter for each chip
-    pub fn print_chip_bunch_counters(&self) {
-        self.chip_data
-            .iter()
-            .sorted_by(|a, b| Ord::cmp(&a.chip_id, &b.chip_id))
-            .for_each(|cd| {
-                println!(
-                    "Chip ID: {:>2} | Bunch counter: {:?}",
-                    cd.chip_id,
-                    cd.bunch_counter.unwrap()
-                );
-            });
-    }
-
     /// Check that all bunch counters are identical
     ///
     /// If the check passes, the bunch counter value is stored as the validated bunch counter (bc).
@@ -309,9 +273,49 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
         Ok(())
     }
 
+    fn store_bunch_counter(&mut self, bc: u8) -> Result<(), String> {
+        // Search for the chip data matching the last chip id
+        match self
+            .chip_data
+            .iter_mut()
+            .find(|cd| cd.chip_id == self.last_chip_id)
+        {
+            Some(cd) => {
+                // Store the bunch counter for the chip data
+                cd.store_bc(bc)?;
+            }
+            None => {
+                // ID not found, create a instance of AlpideFrameChipData with the ID
+                let mut cd = AlpideFrameChipData::from_id_no_data(self.last_chip_id);
+                // Add the bunch counter to the bunch counter vector
+                cd.store_bc(bc)?;
+                // Add the chip data to the chip data vector
+                self.chip_data.push(cd);
+            }
+        }
+        Ok(())
+    }
+}
+
+// impl for utility member functions
+impl<'a> LaneAlpideFrameAnalyzer<'a> {
+    /// Print the bunch counter for each chip
+    pub fn print_chip_bunch_counters(&self) {
+        self.chip_data
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&a.chip_id, &b.chip_id))
+            .for_each(|cd| {
+                println!(
+                    "Chip ID: {:>2} | Bunch counter: {:?}",
+                    cd.chip_id,
+                    cd.bunch_counter.unwrap()
+                );
+            });
+    }
+
     fn has_errors(&self) -> bool {
-        if let Some(error_vec) = self.errors.as_ref() {
-            !error_vec.is_empty()
+        if let Some(error_msg) = self.errors.as_ref() {
+            !error_msg.is_empty()
         } else {
             false
         }
