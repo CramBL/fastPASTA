@@ -2,7 +2,7 @@ use super::rdh_stats::RdhStats;
 use crate::util::config::custom_checks::CustomChecksOpt;
 
 pub fn validate_custom_stats(
-    custom_checks: &impl CustomChecksOpt,
+    custom_checks: &'static impl CustomChecksOpt,
     rdh_stats: &RdhStats,
 ) -> Result<(), Vec<String>> {
     let mut errors = Vec::new();

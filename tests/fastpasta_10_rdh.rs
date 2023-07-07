@@ -461,10 +461,7 @@ cdps = 10
     let tmp_dir = TempDir::new()?;
     let tmp_custom_checks_path = tmp_dir.path().join(custom_checks_file_name);
 
-    let mut custom_checks_file = std::fs::File::create(tmp_custom_checks_path.clone())?;
-    std::io::Write::write_all(&mut custom_checks_file, custom_checks_str.as_bytes())?;
-
-    custom_checks_file.sync_all()?;
+    create_custom_checks_toml(custom_checks_str, &tmp_custom_checks_path)?;
 
     let mut cmd = Command::cargo_bin("fastpasta")?;
     cmd.arg(FILE_10_RDH)
@@ -495,10 +492,7 @@ cdps = 0
     let tmp_dir = TempDir::new()?;
     let tmp_custom_checks_path = tmp_dir.path().join(custom_checks_file_name);
 
-    let mut custom_checks_file = std::fs::File::create(tmp_custom_checks_path.clone())?;
-    std::io::Write::write_all(&mut custom_checks_file, custom_checks_str.as_bytes())?;
-
-    custom_checks_file.sync_all()?;
+    create_custom_checks_toml(custom_checks_str, &tmp_custom_checks_path)?;
 
     let mut cmd = Command::cargo_bin("fastpasta")?;
     cmd.arg(FILE_10_RDH)
@@ -530,10 +524,7 @@ triggers_pht = 0 # PhT triggers are only expected in triggered mode
     let tmp_dir = TempDir::new()?;
     let tmp_custom_checks_path = tmp_dir.path().join(custom_checks_file_name);
 
-    let mut custom_checks_file = std::fs::File::create(tmp_custom_checks_path.clone())?;
-    std::io::Write::write_all(&mut custom_checks_file, custom_checks_str.as_bytes())?;
-
-    custom_checks_file.sync_all()?;
+    create_custom_checks_toml(custom_checks_str, &tmp_custom_checks_path)?;
 
     let mut cmd = Command::cargo_bin("fastpasta")?;
     cmd.arg(FILE_10_RDH)
@@ -545,6 +536,57 @@ triggers_pht = 0 # PhT triggers are only expected in triggered mode
     cmd.assert().success();
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_sanity_custom_checks_rdh_version() -> Result<(), Box<dyn std::error::Error>> {
+    let custom_checks_str = r#"
+rdh_version = 7
+"#;
+    let custom_checks_file_name = "tmp_custom_checks.toml";
+    let tmp_dir = TempDir::new()?;
+    let tmp_custom_checks_path = tmp_dir.path().join(custom_checks_file_name);
+    create_custom_checks_toml(custom_checks_str, &tmp_custom_checks_path)?;
+
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("sanity")
+        .arg("--checks-toml")
+        .arg(tmp_custom_checks_path);
+
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_sanity_custom_checks_rdh_version_wrong() -> Result<(), Box<dyn std::error::Error>> {
+    // TempDir and Path has to be created in this scope.
+    let tmp_dir = TempDir::new()?;
+    let tmp_custom_checks_path = tmp_dir.path().join("tmp_custom_checks.toml");
+
+    let custom_checks_str = r#"
+rdh_version = 6
+"#;
+    create_custom_checks_toml(custom_checks_str, &tmp_custom_checks_path)?;
+
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("sanity")
+        .arg("--checks-toml")
+        .arg(tmp_custom_checks_path);
+
+    cmd.assert().success();
+
+    match_on_out_no_case(&cmd.output()?.stderr, "ERROR -.*rdh.*sanity.*fail", 10)?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())

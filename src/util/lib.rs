@@ -270,6 +270,15 @@ pub mod test_util {
     }
 
     impl CustomChecksOpt for MockConfig {
+        fn custom_checks(&'static self) -> Option<&'static CustomChecks> {
+            self.custom_checks.as_ref()
+        }
+
+        fn custom_checks_enabled(&'static self) -> bool {
+            self.custom_checks()
+                .is_some_and(|c| *c != CustomChecks::default())
+        }
+
         fn generate_custom_checks_toml_enabled(&self) -> bool {
             self.generate_checks_toml
         }
@@ -285,6 +294,14 @@ pub mod test_util {
         fn triggers_pht(&self) -> Option<u32> {
             if self.custom_checks.is_some() {
                 self.custom_checks.as_ref().unwrap().triggers_pht()
+            } else {
+                None
+            }
+        }
+
+        fn rdh_version(&self) -> Option<u8> {
+            if self.custom_checks.is_some() {
+                self.custom_checks.as_ref().unwrap().rdh_version()
             } else {
                 None
             }

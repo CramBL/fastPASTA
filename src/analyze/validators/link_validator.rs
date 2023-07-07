@@ -11,9 +11,10 @@
 //! In the `do_checks` function, the [LinkValidator] will delegate the payload to the correct validator depending on the target system.
 //! The new system should be added to the match statement, along with how to delegate the payload to the new validator.
 
-pub(crate) use super::{its, rdh, rdh::RdhCruSanityValidator, rdh_running::RdhCruRunningChecker};
+pub(crate) use super::{its, rdh::RdhCruSanityValidator, rdh_running::RdhCruRunningChecker};
 use crate::stats::StatType;
 use crate::util::config::check::{CheckCommands, ChecksOpt, System};
+use crate::util::config::custom_checks::CustomChecksOpt;
 use crate::util::config::filter::FilterOpt;
 use crate::words::lib::RDH;
 use crate::words::rdh_cru::{RdhCRU, V7};
@@ -37,7 +38,7 @@ pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
-impl<T: RDH, C: ChecksOpt + FilterOpt + 'static> LinkValidator<T, C> {
+impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator<T, C> {
     /// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
     ///
     /// Larger capacity means less overhead, but more memory usage
@@ -49,15 +50,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + 'static> LinkValidator<T, C> {
         global_config: &'static C,
         send_stats_ch: flume::Sender<StatType>,
     ) -> (Self, crossbeam_channel::Sender<CdpTuple<T>>) {
-        let rdh_sanity_validator = if let Some(system) = global_config.check().unwrap().target() {
-            match system {
-                System::ITS | System::ITS_Stave => {
-                    RdhCruSanityValidator::<T>::with_specialization(rdh::SpecializeChecks::ITS)
-                }
-            }
-        } else {
-            RdhCruSanityValidator::default()
-        };
+        let rdh_sanity_validator = RdhCruSanityValidator::new_from_config(global_config);
+
         let (send_channel, data_rcv_channel) =
             crossbeam_channel::bounded(Self::CHANNEL_CDP_CAPACITY);
         (

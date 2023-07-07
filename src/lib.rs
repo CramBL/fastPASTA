@@ -45,6 +45,7 @@
 //! $ fastpasta <input_file> view rdh
 //! ```
 
+use analyze::validators::rdh::Rdh0Validator;
 use input::{bufreader_wrapper::BufferedReaderWrapper, input_scanner::InputScanner};
 use stats::StatType;
 use util::lib::{Config, DataOutputMode};
@@ -68,8 +69,16 @@ pub fn init_processing(
     stat_send_channel: flume::Sender<StatType>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
-    // Determine RDH version
+    // Load the first few bytes that should contain RDH0 and do a basic sanity check before continuing.
+    // Early exit if the check fails.
     let rdh0 = Rdh0::load(&mut reader).expect("Failed to read first RDH0");
+    if let Err(e) = Rdh0Validator::default().sanity_check(&rdh0) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("Initial RDH0 deserialization failed sanity check: {e}"),
+        ));
+    }
+    // Determine RDH version
     let rdh_version = rdh0.header_id;
 
     // Send RDH version to stats thread
@@ -101,6 +110,21 @@ pub fn init_processing(
                 Err(e)
             }
         },
+        // No tag to go by for `version > 7`, use `u8` and hope it goes well.
+        // Upper limit is 200 and not just max of u8 (255) because:
+        //      1. Unlikely there will ever be an RDH version 200+
+        //      2. High values decoded from this field (especially 255) is typically a sign that the data is not actually ALICE data so early exit is preferred
+        8..=200 => {
+            match process::<RdhCRU<u8>>(config, loader, stat_send_channel.clone(), stop_flag) {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    stat_send_channel
+                        .send(StatType::Fatal(e.to_string()))
+                        .unwrap();
+                    Err(e)
+                }
+            }
+        }
         _ => Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             format!("Unknown RDH version: {rdh_version}"),
