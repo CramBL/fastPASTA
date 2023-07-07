@@ -46,30 +46,27 @@ impl<T: RDH> RdhCruRunningChecker<T> {
         }
 
         let mut err_str = String::from("[E11] RDH running check failed: ");
-        let mut rdh_errors: Vec<String> = vec![];
         let mut err_cnt: u8 = 0;
 
         if let Err(e) = self.check_stop_bit_and_page_counter(rdh.rdh2()) {
             err_cnt += 1;
-            rdh_errors.push(e);
+            err_str.push_str(&e);
         };
 
         if let Err(e) = self.check_orbit_counter_changes(rdh.rdh1()) {
             err_cnt += 1;
-            rdh_errors.push(e);
+            err_str.push_str(&e);
         };
 
         if let Err(e) = self.check_orbit_trigger_det_field_feeid_same_when_page_not_0(rdh) {
             err_cnt += 1;
-            rdh_errors.push(e);
+            err_str.push_str(&e);
         }
 
         self.last_rdh_cru = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
 
         if err_cnt != 0 {
-            rdh_errors.into_iter().for_each(|e| {
-                err_str.push_str(&e);
-            });
+            err_str.insert_str(0, "[E11] RDH running check failed: ");
             return Err(err_str);
         }
 
@@ -126,7 +123,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
         };
 
         if err_cnt != 0 {
-            return Err(err_str.to_owned());
+            return Err(err_str);
         }
 
         Ok(())
@@ -198,7 +195,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
             }
         }
         if err_cnt != 0 {
-            Err(err_str.to_owned())
+            Err(err_str)
         } else {
             Ok(())
         }
