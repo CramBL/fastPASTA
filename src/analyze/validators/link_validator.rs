@@ -11,7 +11,7 @@
 //! In the `do_checks` function, the [LinkValidator] will delegate the payload to the correct validator depending on the target system.
 //! The new system should be added to the match statement, along with how to delegate the payload to the new validator.
 
-pub(crate) use super::{its, rdh, rdh::RdhCruSanityValidator, rdh_running::RdhCruRunningChecker};
+pub(crate) use super::{its, rdh::RdhCruSanityValidator, rdh_running::RdhCruRunningChecker};
 use crate::stats::StatType;
 use crate::util::config::check::{CheckCommands, ChecksOpt, System};
 use crate::util::config::custom_checks::CustomChecksOpt;
@@ -50,15 +50,8 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
         global_config: &'static C,
         send_stats_ch: flume::Sender<StatType>,
     ) -> (Self, crossbeam_channel::Sender<CdpTuple<T>>) {
-        let rdh_sanity_validator = if let Some(system) = global_config.check().unwrap().target() {
-            match system {
-                System::ITS | System::ITS_Stave => {
-                    RdhCruSanityValidator::<T>::with_specialization(rdh::SpecializeChecks::ITS)
-                }
-            }
-        } else {
-            RdhCruSanityValidator::default()
-        };
+        let rdh_sanity_validator = RdhCruSanityValidator::new_from_config(global_config);
+
         let (send_channel, data_rcv_channel) =
             crossbeam_channel::bounded(Self::CHANNEL_CDP_CAPACITY);
         (
