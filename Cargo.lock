@@ -512,7 +512,6 @@ dependencies = [
  "ctrlc",
  "fancy-regex",
  "fastpasta_toml_macro",
- "fastpasta_toml_macro_derive",
  "flume",
  "fmt",
  "gag",
