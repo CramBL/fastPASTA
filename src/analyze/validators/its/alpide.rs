@@ -38,8 +38,7 @@ pub fn check_alpide_data_frame(
         };
 
     alpide_readout_frame
-        .lane_data_frames
-        .drain(..)
+        .drain_lane_data_frames()
         .for_each(|lane_data_frame| {
             // Process data for each lane
             // New decoder for each lane
@@ -47,12 +46,9 @@ pub fn check_alpide_data_frame(
             let lane_number = lane_data_frame.lane_number(from_layer);
             log::trace!("Processing lane #{lane_number}");
 
-            if let Err(error_msgs) = analyzer.analyze_alpide_frame(lane_data_frame) {
-                let mut lane_error_string = format!("\n\tLane {lane_number} errors: ");
-                error_msgs.into_iter().for_each(|err| {
-                    lane_error_string.push_str(&err);
-                });
-                lane_error_msgs.push(lane_error_string);
+            if let Err(mut error_msgs) = analyzer.analyze_alpide_frame(lane_data_frame) {
+                error_msgs.insert_str(0, &format!("\n\tLane {lane_number} errors: "));
+                lane_error_msgs.push(error_msgs);
                 lane_error_ids.push(lane_number);
             } else {
                 // If the bunch counter is validated for this lane, add it to the list of validated lanes.
