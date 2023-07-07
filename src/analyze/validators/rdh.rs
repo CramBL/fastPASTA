@@ -96,7 +96,8 @@ impl<T: RDH> RdhCruSanityValidator<T> {
     }
 
     /// Customize the RDH validator by supplying an instance that implements [CustomChecksOpt].
-    pub fn with_custom_checks(custom_checks_opt: &'static impl CustomChecksOpt) -> Self {
+    /// If no custom checks are enabled that applies to the [RdhCruSanityValidator], the default instance is returned.
+    fn with_custom_checks(custom_checks_opt: &'static impl CustomChecksOpt) -> Self {
         if let Some(rdh_version) = custom_checks_opt.rdh_version() {
             // New RDH0 validator
             Self {
@@ -113,7 +114,7 @@ impl<T: RDH> RdhCruSanityValidator<T> {
                 _phantom: std::marker::PhantomData,
             }
         } else {
-            unreachable!("Attempted to instantiate a custom RDH validator when without specifying any custom RDH specification")
+            Self::default()
         }
     }
 
@@ -293,28 +294,19 @@ impl Rdh0Validator {
             err_cnt += 1;
             write!(
                 err_str,
-                "{} = {:#x} ",
-                stringify!(header_id),
-                rdh0.header_id
+                "Header ID = {} (expected {})",
+                rdh0.header_id,
+                self.header_id.unwrap()
             )
             .unwrap();
         }
         if rdh0.header_size != self.header_size {
             err_cnt += 1;
-            write!(
-                err_str,
-                "{} = {:#x} ",
-                stringify!(header_size),
-                rdh0.header_size
-            )
-            .unwrap();
+            write!(err_str, "Header size = {:#x} ", rdh0.header_size).unwrap();
         }
-        match self.fee_id.sanity_check(rdh0.fee_id) {
-            Ok(_) => {} // Check passed
-            Err(e) => {
-                err_cnt += 1;
-                write!(err_str, "{} = {} ", stringify!(fee_id), e).unwrap();
-            }
+        if let Err(e) = self.fee_id.sanity_check(rdh0.fee_id) {
+            err_cnt += 1;
+            write!(err_str, "FEE ID = {} ", e).unwrap();
         }
         if rdh0.priority_bit != self.priority_bit {
             err_cnt += 1;
