@@ -2,6 +2,7 @@
 //!
 //! The [RdhCruSanityValidator] is composed of multiple subvalidators, each checking an [RDH] subword.
 
+use crate::util::config::check::{ChecksOpt, System};
 use crate::util::config::custom_checks::CustomChecksOpt;
 use crate::words::lib::RDH;
 use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3};
@@ -51,6 +52,27 @@ impl<T: RDH> RdhCruSanityValidator<T> {
             rdh2_validator: &RDH2_VALIDATOR,
             rdh3_validator: &RDH3_VALIDATOR,
             _phantom: std::marker::PhantomData,
+        }
+    }
+
+    /// Instantiate a [RdhCruSanityValidator] from a configuration object that implements [CustomChecksOpt] and [ChecksOpt].
+    pub fn new_from_config(config: &'static (impl CustomChecksOpt + ChecksOpt)) -> Self {
+        if config.custom_checks_enabled() {
+            let mut validator = Self::with_custom_checks(config);
+            if let Some(system) = config.check().unwrap().target() {
+                match system {
+                    System::ITS | System::ITS_Stave => {
+                        validator.specialize(SpecializeChecks::ITS);
+                    }
+                }
+            }
+            validator
+        } else if let Some(system) = config.check().unwrap().target() {
+            match system {
+                System::ITS | System::ITS_Stave => Self::with_specialization(SpecializeChecks::ITS),
+            }
+        } else {
+            Self::default()
         }
     }
 
