@@ -10,9 +10,7 @@ pub trait CustomChecksOpt {
     fn custom_checks(&'static self) -> Option<&'static CustomChecks>;
 
     /// Returns if any custom checks are enabled.
-    fn custom_checks_enabled(&'static self) -> bool {
-        self.cdps().is_some() || self.triggers_pht().is_some()
-    }
+    fn custom_checks_enabled(&'static self) -> bool;
 
     /// Returns if the option to generate a TOML file with default custom checks is enabled.
     fn generate_custom_checks_toml_enabled(&self) -> bool;

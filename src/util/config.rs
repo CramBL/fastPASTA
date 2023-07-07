@@ -294,6 +294,11 @@ impl CustomChecksOpt for Cfg {
         CUSTOM_CHECKS.get()
     }
 
+    fn custom_checks_enabled(&'static self) -> bool {
+        self.custom_checks()
+            .is_some_and(|c| *c != CustomChecks::default())
+    }
+
     fn generate_custom_checks_toml_enabled(&self) -> bool {
         self.generate_checks_toml
     }
