@@ -239,6 +239,7 @@ pub fn is_lane_active(lane: u8, active_lanes: u32) -> bool {
 }
 /// Struct to represent the IHW status word
 #[repr(packed)]
+#[derive(Clone, PartialEq)]
 pub struct Ihw {
     // Total of 80 bits
     // ID: 0xE0
@@ -293,16 +294,9 @@ impl Debug for Ihw {
     }
 }
 
-impl PartialEq for Ihw {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-            && self.reserved == other.reserved
-            && self.active_lanes == other.active_lanes
-    }
-}
-
 /// Struct to represent the TDH status word
 #[repr(packed)]
+#[derive(Clone, PartialEq)]
 pub struct Tdh {
     // 11:0 trigger_type
     // 12: internal_trigger, 13: no_data, 14: continuation, 15: reserved
@@ -412,18 +406,9 @@ impl Debug for Tdh {
     }
 }
 
-impl PartialEq for Tdh {
-    fn eq(&self, other: &Self) -> bool {
-        self.reserved0_id == other.reserved0_id
-            && self.trigger_orbit == other.trigger_orbit
-            && self.trigger_bc_reserved1 == other.trigger_bc_reserved1
-            && self.trigger_type_internal_trigger_no_data_continuation_reserved2
-                == other.trigger_type_internal_trigger_no_data_continuation_reserved2
-    }
-}
-
 /// Struct representing the TDT
 #[repr(packed)]
+#[derive(Clone, PartialEq)]
 pub struct Tdt {
     // 55:0 lane_status
     lane_status_15_0: u32,
@@ -544,20 +529,9 @@ impl Debug for Tdt {
     }
 }
 
-impl PartialEq for Tdt {
-    fn eq(&self, other: &Self) -> bool {
-        self.res0_lane_starts_violation_res1_transmission_timeout_packet_done
-            == other.res0_lane_starts_violation_res1_transmission_timeout_packet_done
-            && self.timeout_to_start_timeout_start_stop_timeout_in_idle_res2
-                == other.timeout_to_start_timeout_start_stop_timeout_in_idle_res2
-            && self.lane_status_27_24 == other.lane_status_27_24
-            && self.lane_status_23_16 == other.lane_status_23_16
-            && self.lane_status_15_0 == other.lane_status_15_0
-    }
-}
-
 /// Struct representing the DDW0.
 #[repr(packed)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Ddw0 {
     // 64:56 reserved0, 55:0 lane_status
     res3_lane_status: u64,
@@ -618,31 +592,9 @@ impl StatusWord for Ddw0 {
     }
 }
 
-impl Debug for Ddw0 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let id = self.id();
-        let index = self.index();
-        let lane_starts_violation = self.lane_starts_violation();
-        let transmission_timeout = self.transmission_timeout();
-        let lane_status = self.lane_status();
-        write!(
-            f,
-            "DDW0: {:x} {:x} {:x} {:x} {:x}",
-            id, index, lane_starts_violation as u8, transmission_timeout as u8, lane_status
-        )
-    }
-}
-
-impl PartialEq for Ddw0 {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-            && self.index == other.index
-            && self.res3_lane_status == other.res3_lane_status
-    }
-}
-
 /// Struct representing the CDW.
 #[repr(packed)]
+#[derive(Clone, PartialEq)]
 pub struct Cdw {
     calibration_word_index_lsb_calibration_user_fields: u64, // 63:48 calibration_word_index_LSB 47:0 calibration_user_fields
     calibration_word_index_msb: u8,                          // 71:64 calibration_word_index_MSB
@@ -695,15 +647,6 @@ impl Debug for Cdw {
             f,
             "{id:x} {calibration_word_index:x} {calibration_user_fields:x}"
         )
-    }
-}
-
-impl PartialEq for Cdw {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-            && self.calibration_word_index_msb == other.calibration_word_index_msb
-            && self.calibration_word_index_lsb_calibration_user_fields
-                == other.calibration_word_index_lsb_calibration_user_fields
     }
 }
 
