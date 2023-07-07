@@ -31,6 +31,9 @@ pub trait CustomChecksOpt {
 
     /// Get the number of sent Triggers expected in the data, if it is set.
     fn triggers_pht(&self) -> Option<u32>;
+
+    /// Get the expected RDH version, if it is set.
+    fn rdh_version(&self) -> Option<u8>;
 }
 
 impl<T> CustomChecksOpt for &T
@@ -51,6 +54,10 @@ where
 
     fn triggers_pht(&self) -> Option<u32> {
         (*self).triggers_pht()
+    }
+
+    fn rdh_version(&self) -> Option<u8> {
+        (*self).rdh_version()
     }
 }
 
@@ -73,6 +80,10 @@ where
     fn triggers_pht(&self) -> Option<u32> {
         (**self).triggers_pht()
     }
+
+    fn rdh_version(&self) -> Option<u8> {
+        (**self).rdh_version()
+    }
 }
 
 impl<T> CustomChecksOpt for std::sync::Arc<T>
@@ -94,6 +105,10 @@ where
     fn triggers_pht(&self) -> Option<u32> {
         (**self).triggers_pht()
     }
+
+    fn rdh_version(&self) -> Option<u8> {
+        (**self).rdh_version()
+    }
 }
 
 /// Struct for the configuration of various expected counters in the data.
@@ -110,6 +125,11 @@ pub struct CustomChecks {
     #[description = "Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of two lists of 7 chip IDs"]
     #[example = "[[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]"]
     chip_orders_ob: Option<(Vec<u8>, Vec<u8>)>,
+
+    // RDH format specification
+    #[description = "The RDH version expected in the data"]
+    #[example = "7"]
+    rdh_version: Option<u8>,
 }
 
 impl CustomChecks {
@@ -121,6 +141,11 @@ impl CustomChecks {
     /// Get the number of sent Triggers expected in the data, if it is set.
     pub fn triggers_pht(&self) -> Option<u32> {
         self.triggers_pht
+    }
+
+    /// Get the expected RDH version, if it is set.
+    pub fn rdh_version(&self) -> Option<u8> {
+        self.rdh_version
     }
 
     /// Get the chip orders expected in the data, if it is set.
@@ -145,6 +170,7 @@ mod tests {
             cdps: Some(10),
             triggers_pht: Some(0),
             chip_orders_ob: Some((vec![0, 1, 2, 3, 4, 5, 6], vec![8, 9, 10, 11, 12, 13, 14])),
+            rdh_version: Some(7),
         };
 
         let toml = custom_checks.to_string_pretty_toml();
@@ -177,6 +203,10 @@ mod tests {
 # Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 #chip_orders_ob = None [ (Vec < u8 >, Vec < u8 >) ] # (Uncomment and set to enable)
 
+# The RDH version expected in the data
+# Example: 7
+#rdh_version = None [ u8 ] # (Uncomment and set to enable)
+
 "#
         );
     }
@@ -195,6 +225,10 @@ mod tests {
 # Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of two lists of 7 chip IDs
 # Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 #chip_orders_ob = None [ (Vec < u8 >, Vec < u8 >) ] # (Uncomment and set to enable)
+
+# The RDH version expected in the data
+# Example: 7
+#rdh_version = None [ u8 ] # (Uncomment and set to enable)
 "#;
         let custom_checks: CustomChecks = toml::from_str(custom_checks_toml).unwrap();
         assert_eq!(custom_checks, CustomChecks::default());
@@ -215,6 +249,8 @@ triggers_pht = 0
 # Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 
+rdh_version = 6
+
 "#;
         let custom_checks: CustomChecks = toml::from_str(counters_toml).unwrap();
         println!("custom checks: {:?}", custom_checks);
@@ -224,6 +260,7 @@ chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
                 cdps: Some(10),
                 triggers_pht: Some(0),
                 chip_orders_ob: Some((vec![0, 1, 2, 3, 4, 5, 6], vec![8, 9, 10, 11, 12, 13, 14])),
+                rdh_version: Some(6)
             }
         );
     }
