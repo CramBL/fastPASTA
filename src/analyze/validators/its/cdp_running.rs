@@ -288,12 +288,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                 }
                 if tdt.packet_done() && self.alpide_checks_enabled {
                     self.is_readout_frame = false;
-                    self.alpide_readout_frame
-                        .as_mut()
-                        .unwrap()
-                        .frame_end_mem_pos = self.calc_current_word_mem_pos();
-                    let alpide_readout_frame = self.alpide_readout_frame.take().unwrap();
-                    self.process_alpide_data(alpide_readout_frame);
+                    let complete_readout_frame = self.alpide_readout_frame.take().unwrap();
+                    self.process_alpide_data(complete_readout_frame);
                 }
                 self.current_tdt = Some(tdt);
             }
@@ -555,7 +551,9 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     }
 
     /// Process ALPIDE data for a readout frame. Includes checks across lanes and within a lane.
-    fn process_alpide_data(&mut self, alpide_readout_frame: AlpideReadoutFrame) {
+    fn process_alpide_data(&mut self, mut alpide_readout_frame: AlpideReadoutFrame) {
+        // First close/end the frame by setting the end memory position to the current word position
+        alpide_readout_frame.close_frame(self.calc_current_word_mem_pos());
         debug_assert!(!self.is_readout_frame);
         debug_assert!(
             alpide_readout_frame.frame_start_mem_pos != 0,
@@ -563,7 +561,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         );
 
         let mem_pos_start = alpide_readout_frame.frame_start_mem_pos;
-        let mem_pos_end = alpide_readout_frame.frame_end_mem_pos;
+        let mem_pos_end = alpide_readout_frame.end_mem_pos();
         let is_ib = alpide_readout_frame.is_from_layer() == Layer::Inner;
 
         // Check if the frame is valid in terms of lanes in the data.
