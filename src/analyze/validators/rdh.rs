@@ -1,6 +1,8 @@
 //! contains the [RdhCruSanityValidator] that contains all the sanity checks for an [RDH].
 //!
 //! The [RdhCruSanityValidator] is composed of multiple subvalidators, each checking an [RDH] subword.
+
+use crate::util::config::custom_checks::CustomChecksOpt;
 use crate::words::lib::RDH;
 use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3};
 use std::fmt::Write as _;
@@ -68,6 +70,28 @@ impl<T: RDH> RdhCruSanityValidator<T> {
                 rdh3_validator: &RDH3_VALIDATOR,
                 _phantom: std::marker::PhantomData,
             },
+        }
+    }
+
+    /// Customize the RDH validator by supplying an instance that implements [CustomChecksOpt].
+    pub fn with_custom_checks(custom_checks_opt: &impl CustomChecksOpt) -> Self {
+        if let Some(rdh_version) = custom_checks_opt.rdh_version() {
+            // New RDH0 validator
+            Self {
+                rdh0_validator: Rdh0Validator::new(
+                    Some(rdh_version),
+                    0x40,
+                    FEE_ID_SANITY_VALIDATOR,
+                    0,
+                    None,
+                ),
+                rdh1_validator: &RDH1_VALIDATOR,
+                rdh2_validator: &RDH2_VALIDATOR,
+                rdh3_validator: &RDH3_VALIDATOR,
+                _phantom: std::marker::PhantomData,
+            }
+        } else {
+            unreachable!("Attempted to instantiate a custom RDH validator when without specifying any custom RDH specification")
         }
     }
 
