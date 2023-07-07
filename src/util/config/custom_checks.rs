@@ -167,15 +167,15 @@ mod tests {
             custom_checks_toml,
             r#"# Number of CRU Data Packets expected in the data
 # Example: 20, 500532
-#cdps = None [ u32 ] # (Uncomment and set to enable this check)
+#cdps = None [ u32 ] # (Uncomment and set to enable)
 
 # Number of Physics (PhT) Triggers expected in the data
 # Example: 0, 10
-#triggers_pht = None [ u32 ] # (Uncomment and set to enable this check)
+#triggers_pht = None [ u32 ] # (Uncomment and set to enable)
 
 # Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of two lists of 7 chip IDs
 # Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
-#chip_orders_ob = None [ (Vec < u8 >, Vec < u8 >) ] # (Uncomment and set to enable this check)
+#chip_orders_ob = None [ (Vec < u8 >, Vec < u8 >) ] # (Uncomment and set to enable)
 
 "#
         );
@@ -186,15 +186,15 @@ mod tests {
         let custom_checks_toml = r#"
 # Number of CRU Data Packets expected in the data
 # Example: 20, 500532
-#cdps = None [ u32 ] # (Uncomment and set to enable this check)
+#cdps = None [ u32 ] # (Uncomment and set to enable)
 
 # Number of Physics (PhT) Triggers expected in the data
 # Example: 0, 10
-#triggers_pht = None [ u32 ] # (Uncomment and set to enable this check)
+#triggers_pht = None [ u32 ] # (Uncomment and set to enable)
 
 # Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of two lists of 7 chip IDs
 # Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
-#chip_orders_ob = None [ (Vec < u8 >, Vec < u8 >) ] # (Uncomment and set to enable this check)
+#chip_orders_ob = None [ (Vec < u8 >, Vec < u8 >) ] # (Uncomment and set to enable)
 "#;
         let custom_checks: CustomChecks = toml::from_str(custom_checks_toml).unwrap();
         assert_eq!(custom_checks, CustomChecks::default());
