@@ -9,7 +9,7 @@ use alpide_readout_frame::AlpideReadoutFrame;
 use itertools::Itertools;
 use lane_alpide_frame_analyzer::LaneAlpideFrameAnalyzer;
 
-use crate::util::config::Cfg;
+use crate::util::config::custom_checks::CustomChecksOpt;
 
 // Helper struct to group lanes and bunch counters, used for comparing bunch counters between lanes
 struct ValidatedLane {
@@ -22,6 +22,7 @@ struct ValidatedLane {
 /// Returns a tuple of a vector of lane ids with errors, and a vector of error messages.
 pub fn check_alpide_data_frame(
     mut alpide_readout_frame: AlpideReadoutFrame,
+    custom_checks: &'static impl CustomChecksOpt,
 ) -> (Vec<u8>, Vec<String>) {
     let mut lane_error_msgs: Vec<String> = Vec::new();
     let mut lane_error_ids: Vec<u8> = Vec::new();
@@ -30,7 +31,7 @@ pub fn check_alpide_data_frame(
     let mut validated_lanes: Vec<ValidatedLane> = Vec::new();
 
     let valid_chip_order_ob: Option<(&[u8], &[u8])> =
-        if let Some(custom_checks) = Cfg::custom_checks() {
+        if let Some(custom_checks) = custom_checks.custom_checks() {
             custom_checks.chip_orders_ob()
         } else {
             None

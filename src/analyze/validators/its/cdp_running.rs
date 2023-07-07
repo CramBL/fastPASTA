@@ -10,7 +10,6 @@ use super::{
     lib::ItsPayloadWord,
     status_words::STATUS_WORD_SANITY_CHECKER,
 };
-use crate::analyze::validators::its::alpide::alpide_readout_frame::AlpideReadoutFrame;
 use crate::stats::StatType;
 use crate::util::config::{
     check::{CheckCommands, ChecksOpt, System},
@@ -23,6 +22,10 @@ use crate::words::its::status_words::is_lane_active;
 use crate::words::its::status_words::{Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt};
 use crate::words::its::{Layer, Stave};
 use crate::words::lib::{ByteSlice, RDH};
+use crate::{
+    analyze::validators::its::alpide::alpide_readout_frame::AlpideReadoutFrame,
+    util::config::custom_checks::CustomChecksOpt,
+};
 
 #[derive(Debug, Clone, Copy)]
 enum StatusWordKind<'a> {
@@ -61,7 +64,7 @@ pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
     from_stave: Option<Stave>,
 }
 
-impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
+impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, C> {
     /// Creates a new [CdpRunningValidator] from a config that implements [ChecksOpt] + [FilterOpt] and a [StatType] producer channel.
     pub fn new(config: &'static C, stats_send_ch: flume::Sender<StatType>) -> Self {
         Self {
@@ -580,7 +583,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt> CdpRunningValidator<T, C> {
 
         // Process the data frame
         let (lanes_in_error_ids, lane_error_msgs) =
-            super::alpide::check_alpide_data_frame(alpide_readout_frame);
+            super::alpide::check_alpide_data_frame(alpide_readout_frame, self.config);
 
         // Format and send all errors
         if !lane_error_msgs.is_empty() {

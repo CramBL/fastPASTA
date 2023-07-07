@@ -14,6 +14,7 @@
 pub(crate) use super::{its, rdh, rdh::RdhCruSanityValidator, rdh_running::RdhCruRunningChecker};
 use crate::stats::StatType;
 use crate::util::config::check::{CheckCommands, ChecksOpt, System};
+use crate::util::config::custom_checks::CustomChecksOpt;
 use crate::util::config::filter::FilterOpt;
 use crate::words::lib::RDH;
 use crate::words::rdh_cru::{RdhCRU, V7};
@@ -37,7 +38,7 @@ pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
-impl<T: RDH, C: ChecksOpt + FilterOpt + 'static> LinkValidator<T, C> {
+impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator<T, C> {
     /// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
     ///
     /// Larger capacity means less overhead, but more memory usage

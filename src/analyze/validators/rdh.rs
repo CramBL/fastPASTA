@@ -74,7 +74,7 @@ impl<T: RDH> RdhCruSanityValidator<T> {
     }
 
     /// Customize the RDH validator by supplying an instance that implements [CustomChecksOpt].
-    pub fn with_custom_checks(custom_checks_opt: &impl CustomChecksOpt) -> Self {
+    pub fn with_custom_checks(custom_checks_opt: &'static impl CustomChecksOpt) -> Self {
         if let Some(rdh_version) = custom_checks_opt.rdh_version() {
             // New RDH0 validator
             Self {
