@@ -28,6 +28,8 @@ pub fn check_alpide_data_frame(
     let mut lane_error_ids: Vec<u8> = Vec::new();
     let mut validated_lanes: Vec<ValidatedLane> = Vec::new();
 
+    let frame_from_layer = alpide_readout_frame.from_layer();
+
     let valid_chip_order_ob: Option<(&[u8], &[u8])> =
         if let Some(custom_checks) = custom_checks.custom_checks() {
             custom_checks.chip_orders_ob()
@@ -41,11 +43,8 @@ pub fn check_alpide_data_frame(
         .for_each(|lane_data_frame| {
             // Process data for each lane
             // New decoder for each lane
-            let mut analyzer = LaneAlpideFrameAnalyzer::new(
-                alpide_readout_frame.from_layer(),
-                valid_chip_order_ob,
-            );
-            let lane_number = lane_data_frame.lane_number(alpide_readout_frame.from_layer());
+            let mut analyzer = LaneAlpideFrameAnalyzer::new(frame_from_layer, valid_chip_order_ob);
+            let lane_number = lane_data_frame.lane_number(frame_from_layer);
             log::trace!("Processing lane #{lane_number}");
 
             if let Err(mut error_msgs) = analyzer.analyze_alpide_frame(lane_data_frame) {
