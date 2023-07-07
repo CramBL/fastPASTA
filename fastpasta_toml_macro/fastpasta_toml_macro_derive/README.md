@@ -6,8 +6,20 @@ Nested structs are not currently supported.
 # Purpose
 Make it easy to write a struct that defines a `TOML` template for optional configuration of an executable. Once the struct is deserialized with the derive macro implemented `to_string_pretty_toml()` function, it can be written to a (TOML) file, the file should be understandable without knowing any details of the binary. Deserializing the produced TOML file with no edits produceses the original struct with all optional fields `None`. Editing the produced TOML file will then deserialize into the original struct with those edited values.
 
-# What is derived?
+# Table of Contents
+- [Description](#description)
+- [Purpose](#purpose)
+- [Table of Contents](#table-of-contents)
+- [Guide](#guide)
+  - [What is derived?](#what-is-derived)
+  - [Example use in fastPASTA](#example-use-in-fastpasta)
+    - [Implementing](#implementing)
+    - [Serializing](#serializing)
+    - [Deserializing](#deserializing)
 
+# Guide
+
+## What is derived?
 A `pub trait` named `TomlConfig` with a single function with the signature:  `fn to_string_pretty_toml(&self) -> String`
 
 ```rust
@@ -15,12 +27,13 @@ pub trait TomlConfig {
     fn to_string_pretty_toml(&self) -> String;
 }
 ```
-# Example use in fastPASTA
+
+## Example use in fastPASTA
 This macro was originally made for use in the [fastPASTA](https://crates.io/crates/fastpasta) crate.
+The example is based on how the macro is used in `fastPASTA`.
 
-This example is based on how the macro is used in `fastPASTA`.
-
-The a struct named `CustomChecks` is implemented like this:
+### Implementing
+The struct `CustomChecks` is implemented like this:
 
 ```rust
 use fastpasta_toml_macro_derive::TomlConfig;
@@ -48,6 +61,7 @@ pub struct CustomChecks {
     chip_orders_ob: Option<(Vec<u8>, Vec<u8>)>,
 }
 ```
+### Serializing
 
 The template file is generated e.g. like this.
 ```rust
@@ -68,7 +82,6 @@ The contents of "custom_checks.toml" is now:
 # Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 #chip_orders_ob = None [ (Vec < u8 >, Vec < u8 >) ] # (Uncomment and set to enable this check)
 ```
-
 Editing all the fields to contain `Some` values could look like this:
 ```toml
 # Number of CRU Data Packets expected in the data
@@ -83,6 +96,8 @@ triggers_pht = 0
 # Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 ```
+### Deserializing
+
 Deserializing from a TOML file is the same method as with any other TOML file, using `serde_derive`:
 ```rust
 let toml = std::fs::read_to_string("custom_checks.toml").unwrap();
