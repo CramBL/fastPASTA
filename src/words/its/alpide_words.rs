@@ -113,10 +113,10 @@ impl AlpideFrameChipData {
     pub fn store_bc(&mut self, bc: u8) -> Result<(), String> {
         if self.bunch_counter.is_some() {
             return Err(format!(
-                "Bunch counter already set for chip {}, is {}, tried to set to {}",
-                self.chip_id,
-                self.bunch_counter.unwrap(),
-                bc
+                "Bunch counter already set for chip {id}, is {current_bc}, tried to set to {new_bc}",
+                id = self.chip_id,
+                current_bc = self.bunch_counter.unwrap(),
+                new_bc = bc
             ));
         }
         self.bunch_counter = Some(bc);
