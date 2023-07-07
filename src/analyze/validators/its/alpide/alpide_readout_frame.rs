@@ -123,4 +123,9 @@ impl AlpideReadoutFrame {
     pub fn drain_lane_data_frames(&mut self) -> std::vec::Drain<LaneDataFrame> {
         self.lane_data_frames.drain(..)
     }
+
+    /// Take (consumes) the vector of [LaneDataFrame]s
+    pub fn take_lane_data_frames(&mut self) -> std::vec::Vec<LaneDataFrame> {
+        std::mem::take(&mut self.lane_data_frames)
+    }
 }

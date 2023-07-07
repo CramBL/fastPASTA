@@ -38,7 +38,8 @@ pub fn check_alpide_data_frame(
         };
 
     alpide_readout_frame
-        .drain_lane_data_frames()
+        .take_lane_data_frames()
+        .into_iter()
         .for_each(|lane_data_frame| {
             // Process data for each lane
             // New decoder for each lane
