@@ -239,7 +239,7 @@ pub fn is_lane_active(lane: u8, active_lanes: u32) -> bool {
 }
 /// Struct to represent the IHW status word
 #[repr(packed)]
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Ihw {
     // Total of 80 bits
     // ID: 0xE0
@@ -285,18 +285,9 @@ impl StatusWord for Ihw {
     }
 }
 
-impl Debug for Ihw {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let id = self.id();
-        let reserved = self.reserved();
-        let active_lanes = self.active_lanes();
-        write!(f, "{id:x} {reserved:x} {active_lanes:x}")
-    }
-}
-
 /// Struct to represent the TDH status word
 #[repr(packed)]
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Tdh {
     // 11:0 trigger_type
     // 12: internal_trigger, 13: no_data, 14: continuation, 15: reserved
@@ -387,28 +378,9 @@ impl StatusWord for Tdh {
     }
 }
 
-impl Debug for Tdh {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let id = self.id();
-        let reserved0 = self.reserved0();
-        let trigger_orbit = self.trigger_orbit;
-        let reserved1 = self.reserved1();
-        let trigger_bc = self.trigger_bc();
-        let reserved2 = self.reserved2();
-        let continuation = self.continuation();
-        let no_data = self.no_data();
-        let internal_trigger = self.internal_trigger();
-        let trigger_type = self.trigger_type();
-        write!(
-            f,
-            "TDH: {id:X} {reserved0:x} {trigger_orbit:x} {reserved1:x} {trigger_bc:x} {reserved2:x} {continuation:x} {no_data:x} {internal_trigger:x} {trigger_type:x}"
-        )
-    }
-}
-
 /// Struct representing the TDT
 #[repr(packed)]
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Tdt {
     // 55:0 lane_status
     lane_status_15_0: u32,
@@ -500,35 +472,6 @@ impl StatusWord for Tdt {
     }
 }
 
-impl Debug for Tdt {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let id = self.id();
-        let lane_starts_violation = self.lane_starts_violation();
-        let transmission_timeout = self.transmission_timeout();
-        let packet_done = self.packet_done();
-        let timeout_to_start = self.timeout_to_start();
-        let timeout_start_stop = self.timeout_start_stop();
-        let timeout_in_idle = self.timeout_in_idle();
-        let lane_status_27_24 = self.lane_status_27_24();
-        let lane_status_23_16 = self.lane_status_23_16();
-        let lane_status_15_0 = self.lane_status_15_0();
-        write!(
-            f,
-            "{:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x}",
-            id,
-            lane_starts_violation as u8,
-            transmission_timeout as u8,
-            packet_done as u8,
-            timeout_to_start as u8,
-            timeout_start_stop as u8,
-            timeout_in_idle as u8,
-            lane_status_27_24,
-            lane_status_23_16,
-            lane_status_15_0
-        )
-    }
-}
-
 /// Struct representing the DDW0.
 #[repr(packed)]
 #[derive(Clone, PartialEq, Debug)]
@@ -594,7 +537,7 @@ impl StatusWord for Ddw0 {
 
 /// Struct representing the CDW.
 #[repr(packed)]
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Cdw {
     calibration_word_index_lsb_calibration_user_fields: u64, // 63:48 calibration_word_index_LSB 47:0 calibration_user_fields
     calibration_word_index_msb: u8,                          // 71:64 calibration_word_index_MSB
@@ -635,18 +578,6 @@ impl StatusWord for Cdw {
             calibration_word_index_msb: buf[8],
             id: buf[9],
         })
-    }
-}
-
-impl Debug for Cdw {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let id = self.id();
-        let calibration_word_index = self.calibration_word_index();
-        let calibration_user_fields = self.calibration_user_fields();
-        write!(
-            f,
-            "{id:x} {calibration_word_index:x} {calibration_user_fields:x}"
-        )
     }
 }
 
