@@ -6,12 +6,13 @@ use crate::words::its::{alpide_words::LaneDataFrame, data_words::ib_data_word_id
 /// Struct for storing the contents of a single ALPIDE readout frame
 #[derive(Default)]
 pub struct AlpideReadoutFrame {
-    pub(crate) frame_start_mem_pos: u64,
+    frame_start_mem_pos: u64,
     frame_end_mem_pos: u64,
     pub(crate) lane_data_frames: Vec<LaneDataFrame>, // Vector of data frames for each lane
     from_layer: Option<Layer>,
 }
 
+// impl for core functionality
 impl AlpideReadoutFrame {
     const IL_FRAME_LANE_COUNT: usize = 3;
     const ML_FRAME_LANE_COUNT: usize = 8;
@@ -87,6 +88,7 @@ impl AlpideReadoutFrame {
     }
 }
 
+// impl for simple utility functions
 impl AlpideReadoutFrame {
     /// Returns the barrel that the readout frame is from
     pub fn is_from_layer(&self) -> Layer {
@@ -100,6 +102,11 @@ impl AlpideReadoutFrame {
             "frame_end_mem_pos set more than once!"
         );
         self.frame_end_mem_pos = frame_end_mem_pos
+    }
+
+    /// Get the memory position where the [AlpideReadoutFrame] started
+    pub fn start_mem_pos(&self) -> u64 {
+        self.frame_start_mem_pos
     }
 
     /// Get the memory position where the [AlpideReadoutFrame] ended
