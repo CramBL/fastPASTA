@@ -38,6 +38,11 @@ pub struct Rdh0 {
     pub reserved0: u16,
 }
 
+impl Rdh0 {
+    /// The side of a [Rdh0] word
+    pub const HEADER_SIZE: u8 = 0x40;
+}
+
 impl Display for Rdh0 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let tmp_fee = self.fee_id.0;
