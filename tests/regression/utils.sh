@@ -8,14 +8,11 @@
 ## An example of such a world is Windows in 2023... (and Git Bash on windows)
 function float_cmp() {
     # Floating-point numbers as arguments
-    float_a="$1"
-    float_b="$2"
+    float_a="$1"; float_b="$2"
 
     # Extract integer and fractional parts
-    int_a="${float_a%.*}"
-    frac_a="${float_a#*.}"
-    int_b="${float_b%.*}"
-    frac_b="${float_b#*.}"
+    int_a="${float_a%.*}"; frac_a="${float_a#*.}"
+    int_b="${float_b%.*}"; frac_b="${float_b#*.}"
 
     # Compare integer parts
     if (( int_a > int_b )); then
@@ -66,7 +63,7 @@ function println_green {
 
 TXT_BRIGHT_GREEN="\e[92m"
 function println_bright_green {
-    printf "${TXT_GREEN}${1}${TXT_CLEAR}\n"
+    printf "${TXT_BRIGHT_GREEN}${1}${TXT_CLEAR}\n"
 }
 
 TXT_BLUE="\e[34m"
@@ -81,5 +78,5 @@ function println_magenta {
 
 TXT_BRIGHT_YELLOW="\e[93m"
 function println_bright_yellow {
-    printf "${TXT_BRIGHT_MAGENTA}${1}${TXT_CLEAR}\n"
+    printf "${TXT_BRIGHT_YELLOW}${1}${TXT_CLEAR}\n"
 }
