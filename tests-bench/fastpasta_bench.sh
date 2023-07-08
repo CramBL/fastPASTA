@@ -32,6 +32,8 @@ printf "************************************************************************
 
 # Stores output of each test, from which the benchmark result is extracted and evaluated.
 bench_results_file="bench_comp_tdh_no_data_ihw.md"
+# Regex to extract the mean timings for each tested version of fastpasta
+re_mean_timings="(?<=\` \| )\d*(?=\.)"
 # Stores the mean timings of the local fastpasta vs. the remote (negative values -> the local is faster)
 bench_results_local_mean_diff=()
 
@@ -57,7 +59,8 @@ hyperfine --style full\
         --parameter-list fastpasta local__fastpasta__check_all_its_stave,remote__fastpasta__check_all_its_stave\
         --shell=bash "{fastpasta} ${tdh_no_data_ihw}" --export-markdown ${bench_results_file}
 
-timings=( $(cat bench_comp_tdh_no_data_ihw.md | grep -Po "(?<=\` \| )\d*(?=\.)" | head -n 2) )
+
+timings=( $(cat ${bench_results_file} | grep -Po "${re_mean_timings}" | head -n 2) )
 
 local_mean=${timings[0]}
 remote_mean=${timings[1]}
