@@ -167,6 +167,15 @@ test-coverage:
         coverage_format: cobertura
         path: target/coverage/cobertura.xml
 
+# Run benchmarks and check for performance regression
+regression-benchmarks:
+  stage: test
+  before_script:
+    - ls -l tests-bench/
+  script:
+    - tests-bench/fastpasta_bench.sh
+  dependencies:
+    - rust-latest-build
 
 ## Safety
 # Only includes address and leak sanitizing now, as there's simply too many false positives with memory and thread sanitizing on Rust code...
