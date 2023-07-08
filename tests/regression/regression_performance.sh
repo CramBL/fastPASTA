@@ -6,15 +6,15 @@ println_yellow "Building in release mode\n"
 
 cargo build -r
 
-println_blue "Installing latest version of fastpasta from crates.io\n"
+println_blue "\nInstalling latest version of fastpasta from crates.io"
 
 cargo install fastpasta --locked
 
-println_blue "Installing hyperfine for benchmarking"
+println_blue "\nInstalling hyperfine for benchmarking"
 
 cargo install hyperfine --locked
 
-println_blue "Installing binmult for effeciently copying file contents to sizes appropriate for benchmarking"
+println_blue "\nInstalling binmult for effeciently copying file contents to sizes appropriate for benchmarking"
 
 cargo install binmult --locked
 
@@ -40,7 +40,7 @@ mkdir ${tmp_file_path}
 
 # This is how much we'll ask `binmult` to "grow" the test files
 benchmark_file_size_mib=50
-println_blue "Growing all test files to approximately ${benchmark_file_size_mib} MiB"
+println_blue "Growing all test files to approximately ${benchmark_file_size_mib} MiB with binmult\n\n"
 
 # Files used in benchmarks
 file_tdh_no_data_ihw="tdh_no_data_ihw.raw"
@@ -50,12 +50,13 @@ file_rawtf_epn180_l6_1="rawtf_epn180_l6_1.raw"
 
 # Original files before they are `grown`
 pre_tests_files_array=(
-    file_10_rdh file_readout_superpage1 file_tdh_no_data_ihw file_rawtf_epn180_l6_1
+    file_10_rdh
+    file_readout_superpage1
+    file_tdh_no_data_ihw
+    file_rawtf_epn180_l6_1
 )
 
-tests_files_array=(
-
-)
+tests_files_array=()
 
 # Prepare more appropriate file sizes:
 for file in "${pre_tests_files_array[@]}"; do
@@ -117,8 +118,6 @@ completed_tests=0
 
 
 println_blue "Running ${cmd_count} command on each of ${file_count} files for a total of ${total_test_count} benchmarks"
-
-
 
 for file in "${tests_files_array[@]}"; do
 
