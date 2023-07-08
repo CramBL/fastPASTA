@@ -101,8 +101,7 @@ function evaluate_benchmark_test_result {
     local_minus_remote=$((${local_mean_timing}-${remote_mean_timing}))
     remote_minus_local=$((${remote_mean_timing}-${local_mean_timing}))
 
-    bench_results_local_mean_diff+=(${local_minus_remote})
-    println_bright_yellow "\t\tdifference between local and remote build: ${bench_results_local_mean_diff[@]} ms"
+    println_bright_yellow "\t\tdifference between local and remote build: ${local_minus_remote} ms"
 
     if [[ "${local_mean_timing}" -lt ${remote_mean_timing} ]]; then
         println_green "\t\t-> local build is faster by ${remote_minus_local} ms!"
