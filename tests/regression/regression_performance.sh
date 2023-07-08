@@ -49,7 +49,25 @@ re_mean_timings="(?<=\` \| )\d*(?=\.)"
 # Stores the mean timings of the local fastpasta vs. the remote (negative values -> the local is faster)
 bench_results_local_mean_diff=()
 
+function evaluate_benchmark_test_result {
+    local_mean_timing=${1}; remote_mean_timing=${2}
+    println_yellow "\n\tLocal fastpasta timing : ${local_mean_timing} ms (mean)"
+    println_yellow "\n\tRemote fastpasta timing: ${remote_mean_timing} ms (mean)"
 
+    local_minus_remote=$((${local_mean_timing}-${remote_mean_timing}))
+    remote_minus_local=$((${remote_mean_timing}-${local_mean_timing}))
+
+    bench_results_local_mean_diff+=(${local_minus_remote})
+    println_bright_yellow "\t\tdifference between local and remote build: ${bench_results_local_mean_diff[@]} ms"
+
+    if [[ "${local_mean_timing}" -lt ${remote_mean_timing} ]]; then
+        println_green "\t\t-> local build is faster by ${remote_minus_local} ms!"
+    elif [[ "${local_mean_timing}" -gt ${remote_mean_timing} ]]; then
+        println_red "\t\t-> local build is slower by ${local_minus_remote} ms..."
+    elif [[ "${local_mean_timing}" -eq ${remote_mean_timing} ]]; then
+        println_blue "\t\t-> local and remote are about equally fast"
+    fi
+}
 
 cmd="check all its-stave"
 function local__fastpasta__check_all_its_stave {
@@ -64,13 +82,16 @@ function remote__fastpasta__check_all_its_stave {
 }
 export -f remote__fastpasta__check_all_its_stave
 
+local_test_func=local__fastpasta__check_all_its_stave
+remote_test_func=remote__fastpasta__check_all_its_stave
+
 declare -a mean_timings
 function bench_check_all_its_stave {
     input_file=$1
     hyperfine --style full\
         --warmup 10\
         --time-unit millisecond\
-        --parameter-list fastpasta local__fastpasta__check_all_its_stave,remote__fastpasta__check_all_its_stave\
+        --parameter-list fastpasta ${local_test_func},${remote_test_func}\
         --shell=bash "{fastpasta} ${input_file}" --export-markdown ${bench_results_file}
 
     timing_res=( $(cat ${bench_results_file} | grep -Po "${re_mean_timings}" | head -n 2) )
@@ -87,22 +108,7 @@ for file in "${tests_files_array[@]}"; do
     local_mean=${mean_timings[0]}
     remote_mean=${mean_timings[1]}
 
-    println_yellow "\n\tLocal fastpasta timing : ${local_mean} ms (mean)"
-    println_yellow "\n\tRemote fastpasta timing: ${remote_mean} ms (mean)"
-
-    local_minus_remote=$((${local_mean}-${remote_mean}))
-    remote_minus_local=$((${remote_mean}-${local_mean}))
-
-    bench_results_local_mean_diff+=(${local_minus_remote})
-    println_bright_yellow "\t\tdifference between local and remote build: ${bench_results_local_mean_diff[@]} ms"
-
-    if [[ "${local_mean}" -lt ${remote_mean} ]]; then
-        println_green "\t\t-> local build is faster by ${remote_minus_local} ms!"
-    elif [[ "${local_mean}" -gt ${remote_mean} ]]; then
-        println_red "\t\t-> local build is slower by ${local_minus_remote} ms..."
-    elif [[ "${local_mean}" -eq ${remote_mean} ]]; then
-        println_blue "\t\t-> local and remote are about equally fast"
-    fi
+    evaluate_benchmark_test_result $local_mean $remote_mean
 
 done
 
