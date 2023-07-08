@@ -14,6 +14,9 @@ println_blue "Installing hyperfine for benchmarking"
 
 cargo install hyperfine --locked
 
+println_blue "Installing binmult for effeciently copying file contents to sizes appropriate for benchmarking"
+
+cargo install binmult --locked
 
 println_cyan "\nChecking version of local fastpasta build"
 
@@ -30,7 +33,14 @@ println_magenta "*** Benchmarking the local compiled binary vs. the latest remot
 println_magenta "***                                                                           ***"
 println_magenta "*********************************************************************************\n"
 
+## Make a temporary subdirectory for the test data (`binmult` will make+copy the larger files to this directory)
 file_path="tests/test-data/"
+tmp_file_path="${file_path}tmp/"
+mkdir ${tmp_file_path}
+
+# This is how much we'll ask `binmult` to "grow" the test files
+benchmark_file_size_mib=50
+println_blue "Growing all test files to approximately ${benchmark_file_size_mib} MiB"
 
 # Files used in benchmarks
 file_tdh_no_data_ihw="tdh_no_data_ihw.raw"
@@ -38,9 +48,27 @@ file_10_rdh="10_rdh.raw"
 file_readout_superpage1="readout.superpage.1.raw"
 file_rawtf_epn180_l6_1="rawtf_epn180_l6_1.raw"
 
-tests_files_array=(
-    #file_10_rdh file_readout_superpage1 file_tdh_no_data_ihw file_rawtf_epn180_l6_1
+# Original files before they are `grown`
+pre_tests_files_array=(
+    file_10_rdh file_readout_superpage1 file_tdh_no_data_ihw file_rawtf_epn180_l6_1
 )
+
+tests_files_array=(
+
+)
+
+# Prepare more appropriate file sizes:
+for file in "${pre_tests_files_array[@]}"; do
+    # The file is a value, to get the contents we need to use `declare -n`
+    declare -n test_file=$file
+
+    binmult "${file_path}${test_file}" --output "${tmp_file_path}${file}.raw" --size "${benchmark_file_size_mib}"
+
+    tests_files_array+=("${tmp_file_path}${file}")
+
+done
+
+
 
 # Stores output of each test, from which the benchmark result is extracted and evaluated.
 bench_results_file="bench_comp.md"
@@ -69,8 +97,8 @@ declare -a mean_timings
 function bench_check_all_its_stave {
     local_cmd=$1; remote_cmd=$2;
     hyperfine \
-        "${local_cmd}" \
-        "${remote_cmd}" \
+        "${local_cmd} --mute-errors" \
+        "${remote_cmd} --mute-errors" \
         --warmup 3\
         --time-unit millisecond\
         --shell=bash\
@@ -93,10 +121,6 @@ println_blue "Running ${cmd_count} command on each of ${file_count} files for a 
 
 
 for file in "${tests_files_array[@]}"; do
-    # The file is a value, to get the contents we need to use `declare -n`
-    declare -n test_file=$file
-
-    current_file_path="${file_path}${test_file}"
 
     for command in "${test_cmds_array[@]}"; do
         declare -n test_command=$command
@@ -104,9 +128,9 @@ for file in "${tests_files_array[@]}"; do
 
         println_blue "\n---\nStarting test $(( ${completed_tests} + 1 ))/${total_test_count}"
 
-        println_magenta "\n ==> Benchmarking file ${current_file_path} with command: ${current_cmd}\n"
+        println_magenta "\n ==> Benchmarking file ${file} with command: ${current_cmd}\n"
 
-        bench_check_all_its_stave "${local_pre} ${current_file_path} ${current_cmd}" "${remote_pre} ${current_file_path} ${current_cmd}"
+        bench_check_all_its_stave "${local_pre} ${file}.raw ${current_cmd}" "${remote_pre} ${file}.raw ${current_cmd}"
         local_mean=${mean_timings[0]}; remote_mean=${mean_timings[1]};
         local_minus_remote=$((${local_mean}-${remote_mean}))
         bench_results_local_mean_diff+=(${local_minus_remote})
@@ -148,3 +172,4 @@ else
 fi
 
 rm ${bench_results_file}
+rm -rf ${tmp_file_path}
