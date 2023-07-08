@@ -48,7 +48,7 @@ println_cyan "\nChecking version of local fastpasta build"
 
 target/release/fastpasta --version
 
-println_cyan "\nChecking version of remote fastpasta installation"
+println_cyan "Checking version of remote fastpasta installation"
 
 fastpasta --version
 
@@ -59,18 +59,20 @@ println_magenta "*** Benchmarking the local compiled binary vs. the latest remot
 println_magenta "***                                                                           ***"
 println_magenta "*********************************************************************************\n"
 
-tests_files_array=()
+file_tdh_no_data_ihw="tests/test-data/tdh_no_data_ihw.raw"
+file_10_rdh="tests/test-data/10_rdh.raw"
+
+tests_files_array=(file_tdh_no_data_ihw file_10_rdh)
 
 # Stores output of each test, from which the benchmark result is extracted and evaluated.
-bench_results_file="bench_comp_tdh_no_data_ihw.md"
+bench_results_file="bench_comp.md"
 # Regex to extract the mean timings for each tested version of fastpasta
 re_mean_timings="(?<=\` \| )\d*(?=\.)"
 # Stores the mean timings of the local fastpasta vs. the remote (negative values -> the local is faster)
 bench_results_local_mean_diff=()
 
 
-tdh_no_data_ihw="tests/test-data/tdh_no_data_ihw.raw"
-println_magenta "Benchmarking file ${tdh_no_data_ihw} with command: ${cmd}"
+println_magenta "Benchmarking file ${file_tdh_no_data_ihw} with command: ${cmd}"
 
 cmd="check all its-stave"
 function local__fastpasta__check_all_its_stave {
@@ -101,7 +103,7 @@ function bench_check_all_its_stave {
     mean_timings[1]=${timing_res[1]}
 }
 
-bench_check_all_its_stave "${tdh_no_data_ihw}"
+bench_check_all_its_stave "${file_tdh_no_data_ihw}"
 local_mean=${mean_timings[0]}
 remote_mean=${mean_timings[1]}
 
