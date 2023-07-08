@@ -42,32 +42,44 @@ function float_cmp() {
 
 # Printing utility
 
-TXT_RED="\e[31m"
-TXT_YELLOW="\e[33m"
-TXT_GREEN="\e[32m"
-TXT_BLUE="\e[34m"
-TXT_BRIGHT_YELLOW="\e[93m"
-TXT_BRIGHT_CYAN="\e[96m"
-TXT_BRIGHT_MAGENTA="\e[95m"
-TXT_BRIGHT_GREEN="\e[92m"
 TXT_CLEAR="\e[0m"
 
+TXT_YELLOW="\e[33m"
 function println_yellow {
     printf "${TXT_YELLOW}${1}${TXT_CLEAR}\n"
 }
 
+TXT_BRIGHT_CYAN="\e[96m"
 function println_cyan {
     printf "${TXT_BRIGHT_CYAN}${1}${TXT_CLEAR}\n"
 }
+
+TXT_RED="\e[31m"
 function println_red {
     printf "${TXT_RED}${1}${TXT_CLEAR}\n"
 }
+
+TXT_GREEN="\e[32m"
 function println_green {
     printf "${TXT_GREEN}${1}${TXT_CLEAR}\n"
 }
+
+TXT_BRIGHT_GREEN="\e[92m"
+function println_bright_green {
+    printf "${TXT_GREEN}${1}${TXT_CLEAR}\n"
+}
+
+TXT_BLUE="\e[34m"
 function println_blue {
     printf "${TXT_BLUE}${1}${TXT_CLEAR}\n"
 }
+
+TXT_BRIGHT_MAGENTA="\e[95m"
 function println_magenta {
+    printf "${TXT_BRIGHT_MAGENTA}${1}${TXT_CLEAR}\n"
+}
+
+TXT_BRIGHT_YELLOW="\e[93m"
+function println_bright_yellow {
     printf "${TXT_BRIGHT_MAGENTA}${1}${TXT_CLEAR}\n"
 }
