@@ -1,34 +1,65 @@
 #!/bin/bash
 
-printf "Building in release mode\n\n"
+TXT_RED="\e[31m"
+TXT_YELLOW="\e[33m"
+TXT_GREEN="\e[32m"
+TXT_BLUE="\e[34m"
+TXT_BRIGHT_YELLOW="\e[93m"
+TXT_BRIGHT_CYAN="\e[96m"
+TXT_BRIGHT_MAGENTA="\e[95m"
+TXT_BRIGHT_GREEN="\e[92m"
+TXT_CLEAR="\e[0m"
+
+function println_yellow {
+    printf "${TXT_YELLOW}${1}${TXT_CLEAR}\n"
+}
+function println_cyan {
+    printf "${TXT_BRIGHT_CYAN}${1}${TXT_CLEAR}\n"
+}
+function println_red {
+    printf "${TXT_RED}${1}${TXT_CLEAR}\n"
+}
+function println_green {
+    printf "${TXT_GREEN}${1}${TXT_CLEAR}\n"
+}
+function println_blue {
+    printf "${TXT_BLUE}${1}${TXT_CLEAR}\n"
+}
+function println_magenta {
+    printf "${TXT_BRIGHT_MAGENTA}${1}${TXT_CLEAR}\n"
+}
+
+
+
+println_yellow "Building in release mode\n"
 
 cargo build -r
 
-printf "Installing latest version of fastpasta from crates.io\n\n"
+println_blue "Installing latest version of fastpasta from crates.io\n"
 
 cargo install fastpasta --locked
 
-printf "Installing hyperfine for benchmarking\n\n"
+println_blue "Installing hyperfine for benchmarking"
 
 cargo install hyperfine --locked
 
-quiet cargo install cowsay
 
-
-printf "\nChecking version of local fastpasta build\n"
+println_cyan "\nChecking version of local fastpasta build"
 
 target/release/fastpasta --version
 
-printf "\nChecking version of remote fastpasta installation\n"
+println_cyan "\nChecking version of remote fastpasta installation"
 
 fastpasta --version
 
-printf "\n===================================================================================================== \n"
-printf "*********************************************************************************\n"
-printf "***                                                                           ***\n"
-printf "*** Benchmarking the local compiled binary vs. the latest remote installation ***\n"
-printf "***                                                                           ***\n"
-printf "*********************************************************************************\n\n"
+println_magenta "\n===================================================================================================== "
+println_magenta "*********************************************************************************"
+println_magenta "***                                                                           ***"
+println_magenta "*** Benchmarking the local compiled binary vs. the latest remote installation ***"
+println_magenta "***                                                                           ***"
+println_magenta "*********************************************************************************\n"
+
+tests_files_array=()
 
 # Stores output of each test, from which the benchmark result is extracted and evaluated.
 bench_results_file="bench_comp_tdh_no_data_ihw.md"
@@ -37,10 +68,11 @@ re_mean_timings="(?<=\` \| )\d*(?=\.)"
 # Stores the mean timings of the local fastpasta vs. the remote (negative values -> the local is faster)
 bench_results_local_mean_diff=()
 
-cmd="check all its-stave"
-tdh_no_data_ihw="tests/test-data/tdh_no_data_ihw.raw"
-cowsay "Benchmarking file ${tdh_no_data_ihw} with command: ${cmd}"
 
+tdh_no_data_ihw="tests/test-data/tdh_no_data_ihw.raw"
+println_magenta "Benchmarking file ${tdh_no_data_ihw} with command: ${cmd}"
+
+cmd="check all its-stave"
 function local__fastpasta__check_all_its_stave {
     file=$1
     target/release/fastpasta $file $cmd
@@ -73,21 +105,21 @@ bench_check_all_its_stave "${tdh_no_data_ihw}"
 local_mean=${mean_timings[0]}
 remote_mean=${mean_timings[1]}
 
-echo "Local fastpasta timing (mean): ${local_mean} ms"
-echo "Remote fastpasta timing (mean): ${remote_mean} ms"
+println_yellow "Local fastpasta timing (mean): ${local_mean} ms"
+println_yellow "Remote fastpasta timing (mean): ${remote_mean} ms"
 
 local_minus_remote=$((${local_mean}-${remote_mean}))
 remote_minus_local=$((${remote_mean}-${local_mean}))
 
 bench_results_local_mean_diff+=(${local_minus_remote})
-echo "bench_results_local_mean_diff: ${bench_results_local_mean_diff[@]}"
+println_yellow "bench_results_local_mean_diff: ${bench_results_local_mean_diff[@]}"
 
 if [[ "${local_mean}" -lt ${remote_mean} ]]; then
-    cowsay "local build is faster by ${remote_minus_local} ms!"
+    println_green "local build is faster by ${remote_minus_local} ms!"
 elif [[ "${local_mean}" -gt ${remote_mean} ]]; then
-    cowsay --dead "local build is slower by ${local_minus_remote} ms..."
+    println_red "local build is slower by ${local_minus_remote} ms..."
 elif [[ "${local_mean}" -eq ${remote_mean} ]]; then
-    echo "local and remote are about equally fast"
+    println_blue "local and remote are about equally fast"
 fi
 
 
@@ -99,21 +131,21 @@ done
 
 total_test_count=${#bench_results_local_mean_diff[@]}
 
-echo "Total timing difference in ${total_test_count} tests: ${total_diff} ms"
+println_magenta "Total timing difference in ${total_test_count} tests: ${total_diff} ms"
 
 
 avg_diff=$(awk -v sum=$total_diff -v total_tests=${total_test_count} 'BEGIN { print sum/total_tests }')
 
-echo "Average timing difference: ${avg_diff} ms"
+println_magenta "Average timing difference: ${avg_diff} ms"
 
 if (( ${avg_diff} == 0  )); then
-    printf "No difference"
+    println_blue "No difference"
 elif (( ${avg_diff} < 0 )); then
-    cowsay "Nice! Seems faster overall!"
+    println_green "Nice! Seems faster overall!"
 elif (( ${avg_diff} > 10 )); then
-        cowsay --dead "This is really bad... D:"
+        println_red "This is really bad... D:"
 else
-    cowsay --dead "It's slower but it could be worse..."
+    println_red  "It's slower but it could be worse..."
 fi
 
 rm ${bench_results_file}
