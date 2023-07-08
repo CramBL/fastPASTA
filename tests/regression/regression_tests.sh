@@ -7,15 +7,7 @@
 #### CI Tip: Make shell scripts executable on CI with `git update-index --chmod=+x regression_tests.sh`
 ####
 ###########
-TXT_RED="\e[31m"
-TXT_YELLOW="\e[33m"
-TXT_GREEN="\e[32m"
-TXT_BLUE="\e[34m"
-TXT_BRIGHT_YELLOW="\e[93m"
-TXT_BRIGHT_CYAN="\e[96m"
-TXT_BRIGHT_MAGENTA="\e[95m"
-TXT_BRIGHT_GREEN="\e[92m"
-TXT_CLEAR="\e[0m"
+source ./tests/regression/utils.sh
 
 # Prefix for each command.
 ## Run the binary and go to the test-data folder
@@ -404,9 +396,9 @@ function run_test {
     # Check if the number of matches is the same as the expected number of matches
     if (( "${matches}" == "${cond}" ));
     then
-        echo -e "${TXT_GREEN}Test passed${TXT_CLEAR}"
+        println_green "Test passed"
     else
-        echo -e "${TXT_RED}Test failed${TXT_CLEAR}"
+        println_red "Test failed"
         # Add the test info to the failed tests arrays
         failed_tests+=("${test}")
         failed_patterns+=("${pattern}")
@@ -454,16 +446,16 @@ done
 echo
 if  (( "${#failed_tests[@]}" == 0 ));
 then
-    echo -e "${TXT_BRIGHT_GREEN}ALL ${total_tests} TESTS PASSED! :)${TXT_CLEAR}"
+    println_bright_green "ALL ${total_tests} TESTS PASSED! :)"
     exit 0
 else
-    echo -e "${TXT_RED}${#failed_tests[@]} Failed test(s):${TXT_CLEAR}"
+    println_red "${#failed_tests[@]} Failed test(s):"
     for (( i = 0; i < ${#failed_tests[@]}; i++ )); do
         declare -n failed_test=${failed_tests[i]}
-        echo -e "${TXT_RED}${failed_tests[i]}${TXT_CLEAR}: ${failed_test[0]}"
+        println_red "${failed_tests[i]}${TXT_CLEAR}: ${failed_test[0]}"
         echo -e "${TXT_BRIGHT_CYAN}Pattern: ${TXT_CLEAR}${failed_patterns[i]}"
         echo -e "${TXT_BRIGHT_YELLOW}Expected:${TXT_CLEAR} ${failed_expected_matches[i]} ${TXT_BRIGHT_YELLOW}Got:${TXT_CLEAR} ${failed_matches[i]}"
-        echo -e "${TXT_BRIGHT_MAGENTA}Test output: ${TXT_CLEAR}"
+        println_magenta "Test output:"
         echo -e "${failed_output[i]}"
     done
     exit 1
