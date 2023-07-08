@@ -171,9 +171,9 @@ test-coverage:
 regression-benchmarks:
   stage: test
   before_script:
-    - ls -l tests-bench/
+    - ls -l tests/regression/
   script:
-    - tests-bench/fastpasta_bench.sh
+    - tests/regression/regression_performance.sh
   dependencies:
     - rust-latest-build
 

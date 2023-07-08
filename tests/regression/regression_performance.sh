@@ -1,35 +1,6 @@
 #!/bin/bash
 
-TXT_RED="\e[31m"
-TXT_YELLOW="\e[33m"
-TXT_GREEN="\e[32m"
-TXT_BLUE="\e[34m"
-TXT_BRIGHT_YELLOW="\e[93m"
-TXT_BRIGHT_CYAN="\e[96m"
-TXT_BRIGHT_MAGENTA="\e[95m"
-TXT_BRIGHT_GREEN="\e[92m"
-TXT_CLEAR="\e[0m"
-
-function println_yellow {
-    printf "${TXT_YELLOW}${1}${TXT_CLEAR}\n"
-}
-function println_cyan {
-    printf "${TXT_BRIGHT_CYAN}${1}${TXT_CLEAR}\n"
-}
-function println_red {
-    printf "${TXT_RED}${1}${TXT_CLEAR}\n"
-}
-function println_green {
-    printf "${TXT_GREEN}${1}${TXT_CLEAR}\n"
-}
-function println_blue {
-    printf "${TXT_BLUE}${1}${TXT_CLEAR}\n"
-}
-function println_magenta {
-    printf "${TXT_BRIGHT_MAGENTA}${1}${TXT_CLEAR}\n"
-}
-
-
+source ./tests/regression/utils.sh
 
 println_yellow "Building in release mode\n"
 
@@ -60,9 +31,11 @@ println_magenta "***                                                            
 println_magenta "*********************************************************************************\n"
 
 file_tdh_no_data_ihw="tests/test-data/tdh_no_data_ihw.raw"
-file_10_rdh="tests/test-data/10_rdh.raw"
+file_10_rdh="10_rdh.raw"
+file_readout_superpage1="readout.superpage.1.raw"
+file_path="tests/test-data/"
 
-tests_files_array=(file_tdh_no_data_ihw file_10_rdh)
+tests_files_array=(file_10_rdh file_readout_superpage1)
 
 # Stores output of each test, from which the benchmark result is extracted and evaluated.
 bench_results_file="bench_comp.md"
@@ -72,7 +45,6 @@ re_mean_timings="(?<=\` \| )\d*(?=\.)"
 bench_results_local_mean_diff=()
 
 
-println_magenta "Benchmarking file ${file_tdh_no_data_ihw} with command: ${cmd}"
 
 cmd="check all its-stave"
 function local__fastpasta__check_all_its_stave {
@@ -87,8 +59,6 @@ function remote__fastpasta__check_all_its_stave {
 }
 export -f remote__fastpasta__check_all_its_stave
 
-local_test=local__fastpasta__check_all_its_stave
-
 declare -a mean_timings
 function bench_check_all_its_stave {
     input_file=$1
@@ -102,6 +72,37 @@ function bench_check_all_its_stave {
     mean_timings[0]=${timing_res[0]}
     mean_timings[1]=${timing_res[1]}
 }
+
+for file in "${tests_files_array[@]}"; do
+    # The file is a value, to get the contents we need to use `declare -n`
+    declare -n test_file=$file
+    println_magenta "Benchmarking file ${file_path}${test_file} with command: ${cmd}"
+
+
+    bench_check_all_its_stave "${file_path}${test_file}"
+    local_mean=${mean_timings[0]}
+    remote_mean=${mean_timings[1]}
+
+    println_yellow "Local fastpasta timing (mean): ${local_mean} ms"
+    println_yellow "Remote fastpasta timing (mean): ${remote_mean} ms"
+
+    local_minus_remote=$((${local_mean}-${remote_mean}))
+    remote_minus_local=$((${remote_mean}-${local_mean}))
+
+    bench_results_local_mean_diff+=(${local_minus_remote})
+    println_yellow "bench_results_local_mean_diff: ${bench_results_local_mean_diff[@]}"
+
+    if [[ "${local_mean}" -lt ${remote_mean} ]]; then
+        println_green "local build is faster by ${remote_minus_local} ms!"
+    elif [[ "${local_mean}" -gt ${remote_mean} ]]; then
+        println_red "local build is slower by ${local_minus_remote} ms..."
+    elif [[ "${local_mean}" -eq ${remote_mean} ]]; then
+        println_blue "local and remote are about equally fast"
+    fi
+
+done
+
+println_magenta "Benchmarking file ${file_tdh_no_data_ihw} with command: ${cmd}"
 
 bench_check_all_its_stave "${file_tdh_no_data_ihw}"
 local_mean=${mean_timings[0]}
