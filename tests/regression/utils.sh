@@ -104,10 +104,10 @@ function evaluate_benchmark_test_result {
     println_bright_yellow "\t\tdifference between local and remote build: ${local_minus_remote} ms"
 
     if [[ "${local_mean_timing}" -lt ${remote_mean_timing} ]]; then
-        println_green "\t\t-> local build is faster by ${remote_minus_local} ms!"
+        println_green "\t\t\t-> local build is faster by ${remote_minus_local} ms!"
     elif [[ "${local_mean_timing}" -gt ${remote_mean_timing} ]]; then
-        println_red "\t\t-> local build is slower by ${local_minus_remote} ms..."
+        println_red "\t\t\t-> local build is slower by ${local_minus_remote} ms..."
     elif [[ "${local_mean_timing}" -eq ${remote_mean_timing} ]]; then
-        println_blue "\t\t-> local and remote are about equally fast"
+        println_blue "\t\t\t-> local and remote are about equally fast"
     fi
 }

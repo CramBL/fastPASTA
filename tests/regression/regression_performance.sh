@@ -39,7 +39,7 @@ file_readout_superpage1="readout.superpage.1.raw"
 file_rawtf_epn180_l6_1="rawtf_epn180_l6_1.raw"
 
 tests_files_array=(
-    file_10_rdh file_readout_superpage1 file_tdh_no_data_ihw file_rawtf_epn180_l6_1
+    #file_10_rdh file_readout_superpage1 file_tdh_no_data_ihw file_rawtf_epn180_l6_1
 )
 
 # Stores output of each test, from which the benchmark result is extracted and evaluated.
@@ -49,46 +49,73 @@ re_mean_timings="(?<=\` \| )\d*(?=\.)"
 # Stores the mean timings of the local fastpasta vs. the remote (negative values -> the local is faster)
 bench_results_local_mean_diff=()
 
-cmd="check all its-stave"
-function local__fastpasta__check_all_its_stave {
-    file=$1
-    target/release/fastpasta $file $cmd
-}
-export -f local__fastpasta__check_all_its_stave
+cmd0="check sanity"
+cmd1="check sanity its"
+cmd2="check all"
+cmd3="check all its"
+cmd4="check all its-stave"
 
-function remote__fastpasta__check_all_its_stave {
-    file=$1
-    fastpasta $file $cmd
-}
-export -f remote__fastpasta__check_all_its_stave
+test_cmds_array=(
+    cmd0 cmd1 cmd2 cmd3 cmd4
+)
+# Variables that are substituted before each test is started.
+current_cmd=${cmd0}
+current_file_path="${file_path}${file_other}"
 
-local_test_func=local__fastpasta__check_all_its_stave
-remote_test_func=remote__fastpasta__check_all_its_stave
+local_pre="target/release/fastpasta"
+remote_pre="fastpasta"
 
 declare -a mean_timings
 function bench_check_all_its_stave {
-    input_file=$1
-    hyperfine --style full\
-        --warmup 10\
+    local_cmd=$1; remote_cmd=$2;
+    hyperfine \
+        "${local_cmd}" \
+        "${remote_cmd}" \
+        --warmup 3\
         --time-unit millisecond\
-        --parameter-list fastpasta ${local_test_func},${remote_test_func}\
-        --shell=bash "{fastpasta} ${input_file}" --export-markdown ${bench_results_file}
+        --shell=bash\
+        --export-markdown ${bench_results_file}
 
     timing_res=( $(cat ${bench_results_file} | grep -Po "${re_mean_timings}" | head -n 2) )
     mean_timings[0]=${timing_res[0]}
     mean_timings[1]=${timing_res[1]}
 }
 
+
+file_count=${#tests_files_array[@]}
+cmd_count=${#test_cmds_array[@]}
+total_test_count=$(( ${file_count} * ${cmd_count} ))
+completed_tests=0
+
+
+println_blue "Running ${cmd_count} command on each of ${file_count} files for a total of ${total_test_count} benchmarks"
+
+
+
 for file in "${tests_files_array[@]}"; do
     # The file is a value, to get the contents we need to use `declare -n`
     declare -n test_file=$file
-    println_magenta "\n ==> Benchmarking file ${file_path}${test_file} with command: ${cmd}\n"
 
-    bench_check_all_its_stave "${file_path}${test_file}"
-    local_mean=${mean_timings[0]}
-    remote_mean=${mean_timings[1]}
+    current_file_path="${file_path}${test_file}"
 
-    evaluate_benchmark_test_result $local_mean $remote_mean
+    for command in "${test_cmds_array[@]}"; do
+        declare -n test_command=$command
+        current_cmd=${test_command}
+
+        println_blue "\n---\nStarting test $(( ${completed_tests} + 1 ))/${total_test_count}"
+
+        println_magenta "\n ==> Benchmarking file ${current_file_path} with command: ${current_cmd}\n"
+
+        bench_check_all_its_stave "${local_pre} ${current_file_path} ${current_cmd}" "${remote_pre} ${current_file_path} ${current_cmd}"
+        local_mean=${mean_timings[0]}; remote_mean=${mean_timings[1]};
+        local_minus_remote=$((${local_mean}-${remote_mean}))
+        bench_results_local_mean_diff+=(${local_minus_remote})
+
+        evaluate_benchmark_test_result $local_mean $remote_mean
+
+        completed_tests=$(( ${completed_tests} + 1 ))
+
+    done
 
 done
 
