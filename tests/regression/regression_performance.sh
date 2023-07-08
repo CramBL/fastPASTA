@@ -30,13 +30,16 @@ println_magenta "*** Benchmarking the local compiled binary vs. the latest remot
 println_magenta "***                                                                           ***"
 println_magenta "*********************************************************************************\n"
 
+file_path="tests/test-data/"
+
+# Files used in benchmarks
 file_tdh_no_data_ihw="tdh_no_data_ihw.raw"
 file_10_rdh="10_rdh.raw"
 file_readout_superpage1="readout.superpage.1.raw"
-file_path="tests/test-data/"
+file_rawtf_epn180_l6_1="rawtf_epn180_l6_1.raw"
 
 tests_files_array=(
-    file_10_rdh file_readout_superpage1 file_tdh_no_data_ihw
+    file_10_rdh file_readout_superpage1 file_tdh_no_data_ihw file_rawtf_epn180_l6_1
 )
 
 # Stores output of each test, from which the benchmark result is extracted and evaluated.
@@ -84,21 +87,21 @@ for file in "${tests_files_array[@]}"; do
     local_mean=${mean_timings[0]}
     remote_mean=${mean_timings[1]}
 
-    println_yellow "Local fastpasta timing : ${local_mean} ms (mean)"
-    println_yellow "Remote fastpasta timing: ${remote_mean} ms (mean)"
+    println_yellow "\n\tLocal fastpasta timing : ${local_mean} ms (mean)"
+    println_yellow "\n\tRemote fastpasta timing: ${remote_mean} ms (mean)"
 
     local_minus_remote=$((${local_mean}-${remote_mean}))
     remote_minus_local=$((${remote_mean}-${local_mean}))
 
     bench_results_local_mean_diff+=(${local_minus_remote})
-    println_bright_yellow "\tdifference between local and remote build: ${bench_results_local_mean_diff[@]} ms"
+    println_bright_yellow "\t\tdifference between local and remote build: ${bench_results_local_mean_diff[@]} ms"
 
     if [[ "${local_mean}" -lt ${remote_mean} ]]; then
-        println_green "\t-> local build is faster by ${remote_minus_local} ms!"
+        println_green "\t\t-> local build is faster by ${remote_minus_local} ms!"
     elif [[ "${local_mean}" -gt ${remote_mean} ]]; then
-        println_red "\t-> local build is slower by ${local_minus_remote} ms..."
+        println_red "\t\t-> local build is slower by ${local_minus_remote} ms..."
     elif [[ "${local_mean}" -eq ${remote_mean} ]]; then
-        println_blue "\t-> local and remote are about equally fast"
+        println_blue "\t\t-> local and remote are about equally fast"
     fi
 
 done
