@@ -30,12 +30,14 @@ println_magenta "*** Benchmarking the local compiled binary vs. the latest remot
 println_magenta "***                                                                           ***"
 println_magenta "*********************************************************************************\n"
 
-file_tdh_no_data_ihw="tests/test-data/tdh_no_data_ihw.raw"
+file_tdh_no_data_ihw="tdh_no_data_ihw.raw"
 file_10_rdh="10_rdh.raw"
 file_readout_superpage1="readout.superpage.1.raw"
 file_path="tests/test-data/"
 
-tests_files_array=(file_10_rdh file_readout_superpage1)
+tests_files_array=(
+    file_10_rdh file_readout_superpage1 file_tdh_no_data_ihw
+)
 
 # Stores output of each test, from which the benchmark result is extracted and evaluated.
 bench_results_file="bench_comp.md"
@@ -76,56 +78,35 @@ function bench_check_all_its_stave {
 for file in "${tests_files_array[@]}"; do
     # The file is a value, to get the contents we need to use `declare -n`
     declare -n test_file=$file
-    println_magenta "Benchmarking file ${file_path}${test_file} with command: ${cmd}"
-
+    println_magenta "\n ==> Benchmarking file ${file_path}${test_file} with command: ${cmd}\n"
 
     bench_check_all_its_stave "${file_path}${test_file}"
     local_mean=${mean_timings[0]}
     remote_mean=${mean_timings[1]}
 
-    println_yellow "Local fastpasta timing (mean): ${local_mean} ms"
-    println_yellow "Remote fastpasta timing (mean): ${remote_mean} ms"
+    println_yellow "Local fastpasta timing : ${local_mean} ms (mean)"
+    println_yellow "Remote fastpasta timing: ${remote_mean} ms (mean)"
 
     local_minus_remote=$((${local_mean}-${remote_mean}))
     remote_minus_local=$((${remote_mean}-${local_mean}))
 
     bench_results_local_mean_diff+=(${local_minus_remote})
-    println_yellow "bench_results_local_mean_diff: ${bench_results_local_mean_diff[@]}"
+    println_bright_yellow "\tdifference between local and remote build: ${bench_results_local_mean_diff[@]} ms"
 
     if [[ "${local_mean}" -lt ${remote_mean} ]]; then
-        println_green "local build is faster by ${remote_minus_local} ms!"
+        println_green "\t-> local build is faster by ${remote_minus_local} ms!"
     elif [[ "${local_mean}" -gt ${remote_mean} ]]; then
-        println_red "local build is slower by ${local_minus_remote} ms..."
+        println_red "\t-> local build is slower by ${local_minus_remote} ms..."
     elif [[ "${local_mean}" -eq ${remote_mean} ]]; then
-        println_blue "local and remote are about equally fast"
+        println_blue "\t-> local and remote are about equally fast"
     fi
 
 done
 
-println_magenta "Benchmarking file ${file_tdh_no_data_ihw} with command: ${cmd}"
 
-bench_check_all_its_stave "${file_tdh_no_data_ihw}"
-local_mean=${mean_timings[0]}
-remote_mean=${mean_timings[1]}
-
-println_yellow "Local fastpasta timing (mean): ${local_mean} ms"
-println_yellow "Remote fastpasta timing (mean): ${remote_mean} ms"
-
-local_minus_remote=$((${local_mean}-${remote_mean}))
-remote_minus_local=$((${remote_mean}-${local_mean}))
-
-bench_results_local_mean_diff+=(${local_minus_remote})
-println_yellow "bench_results_local_mean_diff: ${bench_results_local_mean_diff[@]}"
-
-if [[ "${local_mean}" -lt ${remote_mean} ]]; then
-    println_green "local build is faster by ${remote_minus_local} ms!"
-elif [[ "${local_mean}" -gt ${remote_mean} ]]; then
-    println_red "local build is slower by ${local_minus_remote} ms..."
-elif [[ "${local_mean}" -eq ${remote_mean} ]]; then
-    println_blue "local and remote are about equally fast"
-fi
-
-
+println_magenta "*********************************************************************************"
+println_magenta "***                  SUMMARY OF PERFORMANCE REGRESSION TESTS                  ***"
+println_magenta "*********************************************************************************\n"
 
 total_diff=0
 for i in ${bench_results_local_mean_diff[@]}; do
@@ -133,22 +114,21 @@ for i in ${bench_results_local_mean_diff[@]}; do
 done
 
 total_test_count=${#bench_results_local_mean_diff[@]}
-
 println_magenta "Total timing difference in ${total_test_count} tests: ${total_diff} ms"
 
-
 avg_diff=$(awk -v sum=$total_diff -v total_tests=${total_test_count} 'BEGIN { print sum/total_tests }')
-
 println_magenta "Average timing difference: ${avg_diff} ms"
 
-if (( ${avg_diff} == 0  )); then
+println_cyan "\n--- RESULT --- \n"
+
+if [[ $(float_cmp ${avg_diff} 0) == 0 ]]; then
     println_blue "No difference"
-elif (( ${avg_diff} < 0 )); then
+elif [[ $(float_cmp ${avg_diff} 0) -eq 2 ]]; then
     println_green "Nice! Seems faster overall!"
-elif (( ${avg_diff} > 10 )); then
-        println_red "This is really bad... D:"
+elif [[ $(float_cmp ${avg_diff} 10) -eq 1 ]]; then
+    println_red "This is really bad... D:"
 else
-    println_red  "It's slower but it could be worse..."
+    println_bright_yellow  "It's slower but it could be worse..."
 fi
 
 rm ${bench_results_file}
