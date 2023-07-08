@@ -53,17 +53,26 @@ function remote__fastpasta__check_all_its_stave {
 }
 export -f remote__fastpasta__check_all_its_stave
 
-hyperfine --style full\
+local_test=local__fastpasta__check_all_its_stave
+
+declare -a mean_timings
+function bench_check_all_its_stave {
+    input_file=$1
+    hyperfine --style full\
         --warmup 10\
         --time-unit millisecond\
         --parameter-list fastpasta local__fastpasta__check_all_its_stave,remote__fastpasta__check_all_its_stave\
-        --shell=bash "{fastpasta} ${tdh_no_data_ihw}" --export-markdown ${bench_results_file}
+        --shell=bash "{fastpasta} ${input_file}" --export-markdown ${bench_results_file}
 
+    timing_res=( $(cat ${bench_results_file} | grep -Po "${re_mean_timings}" | head -n 2) )
+    mean_timings[0]=${timing_res[0]}
+    mean_timings[1]=${timing_res[1]}
+}
 
-timings=( $(cat ${bench_results_file} | grep -Po "${re_mean_timings}" | head -n 2) )
+bench_check_all_its_stave "${tdh_no_data_ihw}"
+local_mean=${mean_timings[0]}
+remote_mean=${mean_timings[1]}
 
-local_mean=${timings[0]}
-remote_mean=${timings[1]}
 echo "Local fastpasta timing (mean): ${local_mean} ms"
 echo "Remote fastpasta timing (mean): ${remote_mean} ms"
 
