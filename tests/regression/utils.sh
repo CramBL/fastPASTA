@@ -14,6 +14,16 @@ function float_cmp() {
     int_a="${float_a%.*}"; frac_a="${float_a#*.}"
     int_b="${float_b%.*}"; frac_b="${float_b#*.}"
 
+    # Check if only one argument has a negative sign
+    if [[ ($float_a == -* && $float_b != -*) || ($float_a != -* && $float_b == -*) ]]; then
+        if [[ $float_a == -* ]]; then
+            echo "2" # b is greater
+        else
+            echo "1" # a is greater
+        fi
+        return
+    fi
+
     # Compare integer parts
     if (( int_a > int_b )); then
         echo "1" # a is greater
