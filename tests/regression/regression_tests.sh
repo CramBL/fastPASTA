@@ -7,6 +7,9 @@
 #### CI Tip: Make shell scripts executable on CI with `git update-index --chmod=+x regression_tests.sh`
 ####
 ###########
+
+# Utility functions
+# shellcheck disable=SC1091
 source ./tests/regression/utils.sh
 
 # Prefix for each command.
@@ -390,9 +393,9 @@ function run_test {
     echo -e "running ${TXT_BRIGHT_MAGENTA}${test_var_name}${TXT_CLEAR}: ${TXT_BRIGHT_YELLOW}${test_case}${TXT_CLEAR}"
     echo -e "Condition is: ${TXT_BLUE}[number of matches] == ${cond}${TXT_CLEAR}, for pattern: ${TXT_BRIGHT_CYAN}${pattern}${TXT_CLEAR}"
     # Run the test, redirecting stderr to stdout, and skipping the first 2 lines (which are the "Finished dev..., Running..." lines)
-    test_out=$(eval ${cmd_prefix}${test_case} 2>&1 | tail -n +3 )
+    test_out=$(eval "${cmd_prefix}${test_case}" 2>&1 | tail -n +3 )
     # Count the number of matches
-    matches=$(echo "${test_out}" | egrep -i -c "${pattern}")
+    matches=$(echo "${test_out}" | grep -E -i -c "${pattern}")
     # Check if the number of matches is the same as the expected number of matches
     if (( "${matches}" == "${cond}" ));
     then
@@ -433,14 +436,14 @@ function how_many_tests_in_test {
 
 total_tests=0
 for test in "${tests_array[@]}"; do
-    how_many_tests_in_test $test
+    how_many_tests_in_test "$test"
     total_tests=$((total_tests + $?))
 done
 echo -e "Running ${TXT_BRIGHT_YELLOW}${total_tests}${TXT_CLEAR} regression tests"
 
 # Run the tests
 for test in "${tests_array[@]}"; do
-    do_tests $test
+    do_tests "$test"
 done
 
 echo
