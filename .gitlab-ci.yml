@@ -170,6 +170,7 @@ test-coverage:
 # Run benchmarks and check for performance regression
 regression-benchmarks:
   stage: test
+  needs: []
   before_script:
     - ls -l tests/regression/
   script:
