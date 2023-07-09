@@ -16,18 +16,6 @@ source ./tests/regression/utils.sh
 ## Run the binary and go to the test-data folder
 readonly CMD_PREFIX="cargo run -- ./tests/test-data/"
 
-# Arrays to store the failed tests
-## The index of each array corresponds to the index of the failed test in the tests_array
-declare -a failed_tests=()
-## The patterns of each failed test
-declare -a failed_patterns=()
-## Expected number of matches of each failed test
-declare -a failed_expected_matches=()
-## The matches of each failed test
-declare -a failed_matches=()
-## The output of each failed test
-declare -a failed_output=()
-
 ### Regex patterns ###
 
 ## Matches the EOF and Exit Successful messages
@@ -36,6 +24,7 @@ readonly REGEX_EOF="(INFO -).*EOF"
 readonly REGEX_EXIT_SUCCESS="(DEBUG -).*Exit success"
 ## Matches the RDHs in the `view rdh` command, by going from the `:` in the memory offset to the version, header size, and data format.
 readonly REGEX_RDHS_IN_RDH_VIEW=": .* (7|6) .* 64 .* (0|2)"
+
 
 # Tests are structured in an array of arrays
 # Each test is an array of at least 3 elements
@@ -381,8 +370,17 @@ declare -a -r test_thrs_cdw_3_links=(
     1
 )
 
-
-
+# Arrays to store the failed tests
+## The index of each array corresponds to the index of the failed test in the tests_array
+declare -a failed_tests=()
+## The patterns of each failed test
+declare -a failed_patterns=()
+## Expected number of matches of each failed test
+declare -a failed_expected_matches=()
+## The matches of each failed test
+declare -a failed_matches=()
+## The output of each failed test
+declare -a failed_output=()
 
 # Run a single test
 function run_test {
