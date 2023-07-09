@@ -14,7 +14,7 @@ source ./tests/regression/utils.sh
 
 # Prefix for each command.
 ## Run the binary and go to the test-data folder
-cmd_prefix="cargo run -- ./tests/test-data/"
+CMD_PREFIX="cargo run -- ./tests/test-data/"
 
 # Arrays to store the failed tests
 ## The index of each array corresponds to the index of the failed test in the tests_array
@@ -26,16 +26,16 @@ failed_expected_matches=()
 ## The matches of each failed test
 failed_matches=()
 ## The output of each failed test
-failed_results=()
+failed_output=()
 
 ### Regex patterns ###
 
 ## Matches the EOF and Exit Successful messages
 ## Needs -v2 to show "INFO -" prints
-re_eof="(INFO -).*EOF"
-re_exit_success="(DEBUG -).*Exit success"
+REGEX_EOF="(INFO -).*EOF"
+REGEX_EXIT_SUCCESS="(DEBUG -).*Exit success"
 ## Matches the RDHs in the `view rdh` command, by going from the `:` in the memory offset to the version, header size, and data format.
-re_rdhs_in_rdh_view=": .* (7|6) .* 64 .* (0|2)"
+REGEX_RDHS_IN_RDH_VIEW=": .* (7|6) .* 64 .* (0|2)"
 
 # Tests are structured in an array of arrays
 # Each test is an array of at least 3 elements
@@ -60,9 +60,9 @@ tests_array=(
 ## Test 1_0: `check sanity` - Check that the program reached EOF and exits successfully
 test_1_0=(
     "readout.superpage.1.raw check sanity -v3"
-    "${re_eof}"
+    "${REGEX_EOF}"
     1
-    "${re_exit_success}"
+    "${REGEX_EXIT_SUCCESS}"
     1
 )
 ## Test 1_1: `check sanity` - Check the right data format is detected
@@ -109,7 +109,7 @@ test_1_4=(
 ## Test 1_7: `view rdh` - Check the right amount of RDHs is shown
 test_1_5=(
     "readout.superpage.1.raw view rdh"
-    "$re_rdhs_in_rdh_view"
+    "$REGEX_RDHS_IN_RDH_VIEW"
     6
 )
 ## Test 1_multi_1 `view hbf`
@@ -133,9 +133,9 @@ test_1_multi_1=(
 ## Test 2_0: sanity check that the program reached EOF and exits successfully
 test_2_0=(
     "10_rdh.raw check sanity -v3"
-    "${re_eof}"
+    "${REGEX_EOF}"
     1
-    "${re_exit_success}"
+    "${REGEX_EXIT_SUCCESS}"
     1
 )
 ## Test 2_multi_0: `check sanity`
@@ -169,7 +169,7 @@ test_2_multi_0=(
 ## Test 2_4: `view rdh` - Check the right number of RDHs is shown
 test_2_1=(
     "10_rdh.raw view rdh"
-    "$re_rdhs_in_rdh_view"
+    "$REGEX_RDHS_IN_RDH_VIEW"
     10
 )
 ## Test 2_multi_1: `view hbf` -
@@ -197,9 +197,9 @@ test_2_multi_1=(
 ## Test 3_0: sanity check that the file is parsed successfully
 test_3_0=(
     "err_not_hbf.raw check sanity -v3"
-    "${re_eof}"
+    "${REGEX_EOF}"
     1
-    "${re_exit_success}"
+    "${REGEX_EXIT_SUCCESS}"
     1
 )
 ## Test 3_1: `check all` - Check the right number of errors are detected
@@ -217,7 +217,7 @@ test_3_2=(
 ## Test 3_3: `view rdh` - Check the right number of RDHs is shown
 test_3_3=(
     "err_not_hbf.raw view rdh"
-    "$re_rdhs_in_rdh_view"
+    "$REGEX_RDHS_IN_RDH_VIEW"
     2
 )
 ## Test 3_multi_0: `view hbf`
@@ -287,9 +287,9 @@ test_bad_tdt_detect_invalid_id=(
 test_bad_cdp_structure=(
     "1_hbf_bad_cdp_structure.raw check sanity its -v3"
     # Check the file is parsed successfully
-    "${re_eof}"
+    "${REGEX_EOF}"
     1
-    "${re_exit_success}"
+    "${REGEX_EXIT_SUCCESS}"
     1
     # Check the error is not detected as this is just a sanity check.
     "error -"
@@ -305,7 +305,7 @@ test_bad_cdp_structure=(
 test_bad_cdp_structure_view_rdh=(
     "1_hbf_bad_cdp_structure.raw view rdh"
     # Check the view contains 2 RDHs
-    "$re_rdhs_in_rdh_view"
+    "$REGEX_RDHS_IN_RDH_VIEW"
     2
 )
 
@@ -326,9 +326,9 @@ test_bad_cdp_structure_detected=(
 test_bad_its_payload=(
     "1_hbf_bad_its_payload.raw check sanity its -v3"
     # Check the file is parsed successfully
-    "${re_eof}"
+    "${REGEX_EOF}"
     1
-    "${re_exit_success}"
+    "${REGEX_EXIT_SUCCESS}"
     1
     # Check the error with 2 IHWs in a row is detected
     "error - 0x50: \[E..\].*ID"
@@ -356,9 +356,9 @@ test_bad_its_payload_errors_detected=(
 test_thrs_cdw_3_links=(
     "thrs_cdw_links.raw check sanity its -v3"
     # Check the file is parsed successfully
-    "${re_eof}"
+    "${REGEX_EOF}"
     1
-    "${re_exit_success}"
+    "${REGEX_EXIT_SUCCESS}"
     1
     # Confirm no error count
     "Total errors.*0"
@@ -390,18 +390,18 @@ function run_test {
     test_case=$2
     pattern=$3
     cond=$4
-    echo -e "running ${TXT_BRIGHT_MAGENTA}${test_var_name}${TXT_CLEAR}: ${TXT_BRIGHT_YELLOW}${test_case}${TXT_CLEAR}"
-    echo -e "Condition is: ${TXT_BLUE}[number of matches] == ${cond}${TXT_CLEAR}, for pattern: ${TXT_BRIGHT_CYAN}${pattern}${TXT_CLEAR}"
+    echo -e "==> running ${TXT_BRIGHT_MAGENTA}${test_var_name}${TXT_CLEAR}: ${TXT_BRIGHT_YELLOW}${test_case}${TXT_CLEAR}"
+    echo -e "\tCondition is: ${TXT_BLUE}[number of matches] == ${cond}${TXT_CLEAR}, for pattern: ${TXT_BRIGHT_CYAN}${pattern}${TXT_CLEAR}"
     # Run the test, redirecting stderr to stdout, and skipping the first 2 lines (which are the "Finished dev..., Running..." lines)
-    test_out=$(eval "${cmd_prefix}${test_case}" 2>&1 | tail -n +3 )
+    test_out=$(eval "${CMD_PREFIX}${test_case}" 2>&1 | tail -n +3 )
     # Count the number of matches
     matches=$(echo "${test_out}" | grep -E -i -c "${pattern}")
     # Check if the number of matches is the same as the expected number of matches
     if (( "${matches}" == "${cond}" ));
     then
-        println_green "Test passed"
+        println_green "Test passed\n"
     else
-        println_red "Test failed"
+        println_red "Test failed\n"
         # Add the test info to the failed tests arrays
         failed_tests+=("${test}")
         failed_patterns+=("${pattern}")
@@ -421,7 +421,7 @@ function do_tests {
     for ((i=1; i<${#test_arr[@]}; i+=2)); do
         pattern=${test_arr[$i]}
         cond=${test_arr[$((i+1))]}
-        run_test $1 "$test_case" "$pattern" "$cond"
+        run_test "$1" "$test_case" "$pattern" "$cond"
     done
 }
 
@@ -439,14 +439,19 @@ for test in "${tests_array[@]}"; do
     how_many_tests_in_test "$test"
     total_tests=$((total_tests + $?))
 done
-echo -e "Running ${TXT_BRIGHT_YELLOW}${total_tests}${TXT_CLEAR} regression tests"
 
+println_magenta "************ REGRESSION TESTS ************"
+println_magenta "***                                    ***"
+printf "%b      Running %b regression tests   %b\n" "${TXT_BRIGHT_MAGENTA}***${TXT_CLEAR}" "${TXT_BRIGHT_YELLOW}${total_tests}${TXT_CLEAR}" "${TXT_BRIGHT_MAGENTA}***${TXT_CLEAR}"
+println_magenta "***                                    ***"
+println_magenta "******************************************\n\n"
 # Run the tests
 for test in "${tests_array[@]}"; do
     do_tests "$test"
 done
 
-echo
+println_magenta "************ END OF REGRESSION TESTS ************\n"
+
 if  (( "${#failed_tests[@]}" == 0 ));
 then
     println_bright_green "ALL ${total_tests} TESTS PASSED! :)"
