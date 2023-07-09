@@ -43,33 +43,26 @@ mkdir ${tmp_file_path}
 benchmark_file_size_mib=50
 println_blue "Growing all test files to approximately ${benchmark_file_size_mib} MiB with binmult\n\n"
 
-# Files used in benchmarks
-file_tdh_no_data_ihw="tdh_no_data_ihw.raw"
-file_10_rdh="10_rdh.raw"
-file_readout_superpage1="readout.superpage.1.raw"
-file_rawtf_epn180_l6_1="rawtf_epn180_l6_1.raw"
 
-# Original files before they are `grown`
+# Files used in benchmarks
+## Original files before they are `grown`
 pre_tests_files_array=(
-    file_10_rdh
-    file_readout_superpage1
-    file_tdh_no_data_ihw
-    file_rawtf_epn180_l6_1
+    "10_rdh.raw"
+    "readout.superpage.1.raw"
+    "tdh_no_data_ihw.raw"
+    "rawtf_epn180_l6_1.raw"
 )
 
 tests_files_array=()
 
 # Prepare more appropriate file sizes:
 for file in "${pre_tests_files_array[@]}"; do
-    # The file is a value, to get the contents we need to use `declare -n`
-    declare -n test_file=$file
 
-    binmult "${file_path}${test_file}" --output "${tmp_file_path}${file}.raw" --size "${benchmark_file_size_mib}"
+    binmult "${file_path}${file}" --output "${tmp_file_path}${file}" --size "${benchmark_file_size_mib}"
 
     tests_files_array+=("${tmp_file_path}${file}")
 
 done
-
 
 
 # Stores output of each test, from which the benchmark result is extracted and evaluated.
@@ -102,6 +95,7 @@ function bench_check_all_its_stave {
         "${local_cmd} --mute-errors" \
         "${remote_cmd} --mute-errors" \
         --warmup 3\
+        --style full\
         --time-unit millisecond\
         --shell=bash\
         --export-markdown ${bench_results_file}
@@ -130,7 +124,7 @@ for file in "${tests_files_array[@]}"; do
 
         println_magenta "\n ==> Benchmarking file ${file} with command: ${current_cmd}\n"
 
-        bench_check_all_its_stave "${local_pre} ${file}.raw ${current_cmd}" "${remote_pre} ${file}.raw ${current_cmd}"
+        bench_check_all_its_stave "${local_pre} ${file} ${current_cmd}" "${remote_pre} ${file} ${current_cmd}"
         local_mean=${mean_timings[0]}; remote_mean=${mean_timings[1]};
         local_minus_remote=$(( local_mean - remote_mean))
         bench_results_local_mean_diff+=("${local_minus_remote}")
