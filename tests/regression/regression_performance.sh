@@ -175,26 +175,26 @@ if [[ $(float_cmp "${avg_diff}" 0) == 0 ]]; then
 
 elif [[ $(float_cmp "${avg_diff}" 0) -eq 2 ]]; then
     printf "Execution time: "
-    println_green "${percent_diff: 0:4} %"
+    println_green "-${percent_diff: 1:4} %"
     println_green "Nice! Seems faster overall!"
     exit 0
 
-elif [[ $(float_cmp "${avg_diff}" 1000) -eq 1 ]]; then
+elif [[ $(float_cmp "${percent_diff}" 10) -eq 1 ]]; then
     printf "Execution time: "
-    println_red "+ ${percent_diff: 0:3} %"
+    println_red "+${percent_diff: 0:4} %"
     println_red "SEVERE PERFORMANCE REGRESSION"
     println_red "High likelihood of frequent unnecessary allocation or even a bug!"
     exit 1
 
-elif [[ $(float_cmp "${avg_diff}" 100) -eq 1 ]]; then
+elif [[ $(float_cmp "${percent_diff}" 5) -eq 1 ]]; then
     printf "Execution time: "
-    println_red "+ ${percent_diff: 0:3} %"
+    println_red "+${percent_diff: 0:4} %"
     println_red "This is really bad... Consider refactoring! :("
     exit 0
 
 else
     printf "Execution time: "
-    println_bright_yellow "+ ${percent_diff: 0:3} %"
+    println_bright_yellow "+${percent_diff: 0:4} %"
     println_bright_yellow  "It seems slower but not significantly"
     exit 0
 fi

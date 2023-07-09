@@ -47,6 +47,7 @@ function println_bright_yellow {
 }
 
 # WARNING: Does not correctly compare between two negative floats. Not relevant for the use case though...
+# WARNING: Also incorrect if the integer parts are equal but the length of the fractional part of A and B are different.
 # Compares two floating points in bash without external dependencies such as `bc` or `awk`
 # Returns `0` if they are equal, `1` if the first argument is greater, `2` if the second argument is.
 ## Very useful for a dystopian world where basic tools like `bc` are not available for an OS
