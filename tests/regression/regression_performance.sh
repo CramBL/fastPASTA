@@ -12,7 +12,7 @@ readonly REGEX_MEAN_TIMINGS="(?<=\` \| )\d*(?=\.)"
 readonly LOCAL_PRE="target/release/fastpasta"
 readonly REMOTE_PRE="fastpasta"
 # This is how much we'll ask `binmult` to "grow" the test files to in MiB
-declare -i -r BENCHMARK_FILE_SIZE_MIB=50
+declare -i -r BENCHMARK_FILE_SIZE_MIB=100
 ## Constant arrays
 declare -a -r test_cmds_array=(
     "check sanity"
