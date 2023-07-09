@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# shellcheck source=./tests/regression/utils.sh
+# shellcheck disable=SC1091
 source ./tests/regression/utils.sh
 
 println_yellow "Building in release mode\n"
@@ -95,7 +95,7 @@ function bench_check_all_its_stave {
         --shell=bash\
         --export-markdown ${BENCH_RESULTS_FILE_PATH}
 
-    timing_res=( $(cat ${BENCH_RESULTS_FILE_PATH} | grep -Po "${REGEX_MEAN_TIMINGS}" | head -n 2) )
+    readarray -t timing_res < <( cat ${BENCH_RESULTS_FILE_PATH} | grep -Po "${REGEX_MEAN_TIMINGS}" | head -n 2 )
     mean_timings[0]=${timing_res[0]}
     mean_timings[1]=${timing_res[1]}
 }
