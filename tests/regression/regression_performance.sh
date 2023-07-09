@@ -1,4 +1,18 @@
 #!/bin/bash
+###########
+#### This script runs benchmarks of the local binary vs. the remote one that is installed with `cargo install fastpasta`
+####
+#### The files used for benchmarking is the same that are used during other system/regression tests.
+####    To get a file size appropriate for benchmarks, the `binmult` binary is installed and used to `grow` the existing
+####    files by copying them and duplicating them by appending them to themselves until they reach the desired size
+###     these files are deleted at the end of the benchmarks.
+####
+#### CI Tip: Make shell scripts executable on CI with `git update-index --chmod=+x regression_tests.sh`
+####
+###########
+
+# This is how much we'll ask `binmult` to "grow" the test files to in MiB
+declare -i -r BENCHMARK_FILE_SIZE_MIB=200
 
 ##### Constants #####
 ## Constant variables (not arrays)
@@ -11,8 +25,7 @@ readonly REGEX_MEAN_TIMINGS="(?<=\` \| )\d*(?=\.)"
 # Prefixes for the running the local binary vs. remote
 readonly LOCAL_PRE="target/release/fastpasta"
 readonly REMOTE_PRE="fastpasta"
-# This is how much we'll ask `binmult` to "grow" the test files to in MiB
-declare -i -r BENCHMARK_FILE_SIZE_MIB=100
+
 ## Constant arrays
 declare -a -r test_cmds_array=(
     "check sanity"
