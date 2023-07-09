@@ -69,8 +69,12 @@ done
 BENCH_RESULTS_FILE_PATH="bench_comp.md"
 # Regex to extract the mean timings for each tested version of fastpasta (works on the markdown output of a `hyperfine` benchmark comparison)
 REGEX_MEAN_TIMINGS="(?<=\` \| )\d*(?=\.)"
-# Stores the mean timings of the local fastpasta vs. the remote (negative values -> the local is faster)
-bench_results_local_mean_diff=()
+
+# Stores the mean absolute timings of the local fastpasta vs. the remote (negative values -> the local is faster)
+bench_results_local_mean_diff_absolute=()
+# Same as above but relative timings
+bench_results_local_mean_diff_relative=()
+
 
 test_cmds_array=(
     "check sanity"
@@ -84,8 +88,10 @@ local_pre="target/release/fastpasta"
 remote_pre="fastpasta"
 
 declare -a mean_timings
-function bench_check_all_its_stave {
-    local_cmd=$1; remote_cmd=$2;
+function bench_two_cmds_return_timings {
+    local local_cmd=$1;
+    local remote_cmd=$2;
+
     hyperfine \
         "${local_cmd} --mute-errors" \
         "${remote_cmd} --mute-errors" \
@@ -96,6 +102,7 @@ function bench_check_all_its_stave {
         --export-markdown ${BENCH_RESULTS_FILE_PATH}
 
     readarray -t timing_res < <( cat ${BENCH_RESULTS_FILE_PATH} | grep -Po "${REGEX_MEAN_TIMINGS}" | head -n 2 )
+
     mean_timings[0]=${timing_res[0]}
     mean_timings[1]=${timing_res[1]}
 }
@@ -117,10 +124,10 @@ for file in "${tests_files_array[@]}"; do
 
         println_magenta "\n ==> Benchmarking file ${file} with command: ${command}\n"
 
-        bench_check_all_its_stave "${local_pre} ${file} ${command}" "${remote_pre} ${file} ${command}"
+        bench_two_cmds_return_timings "${local_pre} ${file} ${command}" "${remote_pre} ${file} ${command}"
         local_mean=${mean_timings[0]}; remote_mean=${mean_timings[1]};
         local_minus_remote=$(( local_mean - remote_mean))
-        bench_results_local_mean_diff+=("${local_minus_remote}")
+        bench_results_local_mean_diff_absolute+=("${local_minus_remote}")
 
         evaluate_benchmark_test_result "$local_mean" "$remote_mean"
 
@@ -131,35 +138,47 @@ for file in "${tests_files_array[@]}"; do
 done
 
 
+# Clean up the temporary files
+## Remove the benchmark output file.
+rm ${BENCH_RESULTS_FILE_PATH}
+## Remove temporary directory with the temporary `grown` raw data files.
+rm -rf ${tmp_file_path}
+
 println_magenta "*********************************************************************************"
 println_magenta "***                  SUMMARY OF PERFORMANCE REGRESSION TESTS                  ***"
 println_magenta "*********************************************************************************\n"
 
 total_diff=0
-for i in "${bench_results_local_mean_diff[@]}"; do
+for i in "${bench_results_local_mean_diff_absolute[@]}"; do
     (( total_diff+=i ))
 done
 
-total_test_count=${#bench_results_local_mean_diff[@]}
 println_magenta "Total timing difference in ${total_test_count} tests: ${total_diff} ms"
 
-avg_diff=$(awk -v sum=$total_diff -v total_tests="${total_test_count}" 'BEGIN { print sum/total_tests }')
+avg_diff=$( calc_average $total_diff $total_test_count )
+
 println_magenta "Average timing difference: ${avg_diff} ms"
 
 println_cyan "\n--- RESULT --- \n"
 
 if [[ $(float_cmp "${avg_diff}" 0) == 0 ]]; then
     println_blue "No difference"
+    exit 0
+
 elif [[ $(float_cmp "${avg_diff}" 0) -eq 2 ]]; then
     println_green "Nice! Seems faster overall!"
+    exit 0
+
+elif [[ $(float_cmp "${avg_diff}" 1000) -eq 1 ]]; then
+    println_red "SEVERE PERFORMANCE REGRESSION"
+    println_red "High likelihood of frequent unnecessary allocation or even a bug!"
+    exit 1
+
 elif [[ $(float_cmp "${avg_diff}" 100) -eq 1 ]]; then
-    println_red "This is really bad... D:"
+    println_red "This is really bad... Consider refactoring! :("
+    exit 0
+
 else
     println_bright_yellow  "It seems slower but not significant"
-fi
 
-# Clean up
-## Remove the benchmark output file.
-rm ${BENCH_RESULTS_FILE_PATH}
-## Remove temporary directory with the temporary `grown` raw data files.
-rm -rf ${tmp_file_path}
+fi

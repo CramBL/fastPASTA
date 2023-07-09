@@ -114,3 +114,10 @@ function evaluate_benchmark_test_result {
         println_blue "\t\t\t-> local and remote are about equally fast"
     fi
 }
+
+function calc_average {
+    local sum=$1
+    local N=$2
+    avg=$(awk -v sum="${sum}" -v total_tests="${N}" 'BEGIN { print sum/total_tests }')
+    echo "$avg"
+}
