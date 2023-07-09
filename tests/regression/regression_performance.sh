@@ -108,9 +108,9 @@ function bench_two_cmds_return_timings {
 }
 
 
-file_count=${#tests_files_array[@]}
-cmd_count=${#test_cmds_array[@]}
-total_test_count=$(( file_count * cmd_count ))
+declare -i -r file_count=${#tests_files_array[@]}
+declare -i -r cmd_count=${#test_cmds_array[@]}
+declare -i -r total_test_count=$(( file_count * cmd_count ))
 declare -i completed_tests=0
 
 
@@ -125,9 +125,9 @@ for file in "${tests_files_array[@]}"; do
         println_magenta "\n ==> Benchmarking file ${file} with command: ${command}\n"
 
         bench_two_cmds_return_timings "${LOCAL_PRE} ${file} ${command}" "${REMOTE_PRE} ${file} ${command}"
-        local_mean=${mean_timings[0]};
-        remote_mean=${mean_timings[1]};
-        local_minus_remote=$(( local_mean - remote_mean))
+        declare -i local_mean=${mean_timings[0]};
+        declare -i remote_mean=${mean_timings[1]};
+        declare -i local_minus_remote=$(( local_mean - remote_mean))
         bench_results_local_mean_diff_absolute+=("${local_minus_remote}")
         bench_results_remote_total_ms=$(( bench_results_remote_total_ms + remote_mean ))
 
