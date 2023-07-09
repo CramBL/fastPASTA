@@ -72,8 +72,8 @@ REGEX_MEAN_TIMINGS="(?<=\` \| )\d*(?=\.)"
 
 # Stores the mean absolute timings of the local fastpasta vs. the remote (negative values -> the local is faster)
 bench_results_local_mean_diff_absolute=()
-# Same as above but relative timings
-bench_results_local_mean_diff_relative=()
+# The accumulated execution time of the remote version of fastpasta
+bench_results_remote_total_ms=0
 
 
 test_cmds_array=(
@@ -125,9 +125,11 @@ for file in "${tests_files_array[@]}"; do
         println_magenta "\n ==> Benchmarking file ${file} with command: ${command}\n"
 
         bench_two_cmds_return_timings "${local_pre} ${file} ${command}" "${remote_pre} ${file} ${command}"
-        local_mean=${mean_timings[0]}; remote_mean=${mean_timings[1]};
+        local_mean=${mean_timings[0]};
+        remote_mean=${mean_timings[1]};
         local_minus_remote=$(( local_mean - remote_mean))
         bench_results_local_mean_diff_absolute+=("${local_minus_remote}")
+        bench_results_remote_total_ms=$(( bench_results_remote_total_ms + remote_mean ))
 
         evaluate_benchmark_test_result "$local_mean" "$remote_mean"
 
@@ -153,11 +155,17 @@ for i in "${bench_results_local_mean_diff_absolute[@]}"; do
     (( total_diff+=i ))
 done
 
-println_magenta "Total timing difference in ${total_test_count} tests: ${total_diff} ms"
+
+println_blue "The remote version of fastpasta took a total of ${bench_results_remote_total_ms} ms [sum of means] across ${total_test_count} benchmarks\n"
+
+println_magenta "Timing difference in ${total_test_count} tests:"
+println_magenta "\tTotal: ${total_diff} ms"
 
 avg_diff=$( calc_average $total_diff $total_test_count )
+frac_diff=$( calc_relative_fraction $total_diff $bench_results_remote_total_ms)
+percent_diff=$( fraction_to_percent "$frac_diff" )
 
-println_magenta "Average timing difference: ${avg_diff} ms"
+println_magenta "\tMean : ${avg_diff} ms"
 
 println_cyan "\n--- RESULT --- \n"
 
@@ -166,19 +174,27 @@ if [[ $(float_cmp "${avg_diff}" 0) == 0 ]]; then
     exit 0
 
 elif [[ $(float_cmp "${avg_diff}" 0) -eq 2 ]]; then
+    printf "Execution time: "
+    println_green "${percent_diff: 0:4} %"
     println_green "Nice! Seems faster overall!"
     exit 0
 
 elif [[ $(float_cmp "${avg_diff}" 1000) -eq 1 ]]; then
+    printf "Execution time: "
+    println_red "+ ${percent_diff: 0:3} %"
     println_red "SEVERE PERFORMANCE REGRESSION"
     println_red "High likelihood of frequent unnecessary allocation or even a bug!"
     exit 1
 
 elif [[ $(float_cmp "${avg_diff}" 100) -eq 1 ]]; then
+    printf "Execution time: "
+    println_red "+ ${percent_diff: 0:3} %"
     println_red "This is really bad... Consider refactoring! :("
     exit 0
 
 else
-    println_bright_yellow  "It seems slower but not significant"
-
+    printf "Execution time: "
+    println_bright_yellow "+ ${percent_diff: 0:3} %"
+    println_bright_yellow  "It seems slower but not significantly"
+    exit 0
 fi
