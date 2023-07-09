@@ -35,18 +35,18 @@ println_magenta "***                                                            
 println_magenta "*********************************************************************************\n"
 
 ## Make a temporary subdirectory for the test data (`binmult` will make+copy the larger files to this directory)
-file_path="tests/test-data/"
-tmp_file_path="${file_path}tmp/"
+FILE_PATH="tests/test-data/"
+tmp_file_path="${FILE_PATH}tmp/"
 mkdir ${tmp_file_path}
 
 # This is how much we'll ask `binmult` to "grow" the test files
-benchmark_file_size_mib=50
-println_blue "Growing all test files to approximately ${benchmark_file_size_mib} MiB with binmult\n\n"
+BENCHMARK_FILE_SIZE_MIB=50
+println_blue "Growing all test files to approximately ${BENCHMARK_FILE_SIZE_MIB} MiB with binmult\n\n"
 
 
 # Files used in benchmarks
-## Original files before they are `grown`
-pre_tests_files_array=(
+## Original files before they are `grown` to a reasonable size for benchmarking
+PRE_TESTS_FILES_ARRAY=(
     "10_rdh.raw"
     "readout.superpage.1.raw"
     "tdh_no_data_ihw.raw"
@@ -56,9 +56,9 @@ pre_tests_files_array=(
 tests_files_array=()
 
 # Prepare more appropriate file sizes:
-for file in "${pre_tests_files_array[@]}"; do
+for file in "${PRE_TESTS_FILES_ARRAY[@]}"; do
 
-    binmult "${file_path}${file}" --output "${tmp_file_path}${file}" --size "${benchmark_file_size_mib}"
+    binmult "${FILE_PATH}${file}" --output "${tmp_file_path}${file}" --size "${BENCHMARK_FILE_SIZE_MIB}"
 
     tests_files_array+=("${tmp_file_path}${file}")
 
@@ -66,24 +66,19 @@ done
 
 
 # Stores output of each test, from which the benchmark result is extracted and evaluated.
-bench_results_file="bench_comp.md"
-# Regex to extract the mean timings for each tested version of fastpasta
-re_mean_timings="(?<=\` \| )\d*(?=\.)"
+BENCH_RESULTS_FILE_PATH="bench_comp.md"
+# Regex to extract the mean timings for each tested version of fastpasta (works on the markdown output of a `hyperfine` benchmark comparison)
+REGEX_MEAN_TIMINGS="(?<=\` \| )\d*(?=\.)"
 # Stores the mean timings of the local fastpasta vs. the remote (negative values -> the local is faster)
 bench_results_local_mean_diff=()
 
-cmd0="check sanity"
-cmd1="check sanity its"
-cmd2="check all"
-cmd3="check all its"
-cmd4="check all its-stave"
-
 test_cmds_array=(
-    cmd0 cmd1 cmd2 cmd3 cmd4
+    "check sanity"
+    "check sanity its"
+    "check all"
+    "check all its"
+    "check all its-stave"
 )
-# Variables that are substituted before each test is started.
-current_cmd=${cmd0}
-current_file_path="${file_path}${file_other}"
 
 local_pre="target/release/fastpasta"
 remote_pre="fastpasta"
@@ -98,9 +93,9 @@ function bench_check_all_its_stave {
         --style full\
         --time-unit millisecond\
         --shell=bash\
-        --export-markdown ${bench_results_file}
+        --export-markdown ${BENCH_RESULTS_FILE_PATH}
 
-    timing_res=( $(cat ${bench_results_file} | grep -Po "${re_mean_timings}" | head -n 2) )
+    timing_res=( $(cat ${BENCH_RESULTS_FILE_PATH} | grep -Po "${REGEX_MEAN_TIMINGS}" | head -n 2) )
     mean_timings[0]=${timing_res[0]}
     mean_timings[1]=${timing_res[1]}
 }
@@ -117,14 +112,12 @@ println_blue "Running ${cmd_count} command on each of ${file_count} files for a 
 for file in "${tests_files_array[@]}"; do
 
     for command in "${test_cmds_array[@]}"; do
-        declare -n test_command=$command
-        current_cmd=${test_command}
 
         println_blue "\n---\nStarting test $(( completed_tests + 1 ))/${total_test_count}"
 
-        println_magenta "\n ==> Benchmarking file ${file} with command: ${current_cmd}\n"
+        println_magenta "\n ==> Benchmarking file ${file} with command: ${command}\n"
 
-        bench_check_all_its_stave "${local_pre} ${file} ${current_cmd}" "${remote_pre} ${file} ${current_cmd}"
+        bench_check_all_its_stave "${local_pre} ${file} ${command}" "${remote_pre} ${file} ${command}"
         local_mean=${mean_timings[0]}; remote_mean=${mean_timings[1]};
         local_minus_remote=$(( local_mean - remote_mean))
         bench_results_local_mean_diff+=("${local_minus_remote}")
@@ -165,5 +158,8 @@ else
     println_bright_yellow  "It seems slower but not significant"
 fi
 
-rm ${bench_results_file}
+# Clean up
+## Remove the benchmark output file.
+rm ${BENCH_RESULTS_FILE_PATH}
+## Remove temporary directory with the temporary `grown` raw data files.
 rm -rf ${tmp_file_path}
