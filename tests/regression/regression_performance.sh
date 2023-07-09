@@ -1,5 +1,38 @@
 #!/bin/bash
 
+##### Constants #####
+## Constant variables (not arrays)
+readonly FILE_PATH="tests/test-data/"
+readonly tmp_file_path="${FILE_PATH}tmp/"
+# Stores output of each test, from which the benchmark result is extracted and evaluated.
+readonly BENCH_RESULTS_FILE_PATH="bench_comp.md"
+# Regex to extract the mean timings for each tested version of fastpasta (works on the markdown output of a `hyperfine` benchmark comparison)
+readonly REGEX_MEAN_TIMINGS="(?<=\` \| )\d*(?=\.)"
+# Prefixes for the running the local binary vs. remote
+readonly LOCAL_PRE="target/release/fastpasta"
+readonly REMOTE_PRE="fastpasta"
+# This is how much we'll ask `binmult` to "grow" the test files to in MiB
+declare -i -r BENCHMARK_FILE_SIZE_MIB=50
+## Constant arrays
+declare -a -r test_cmds_array=(
+    "check sanity"
+    "check sanity its"
+    "check all"
+    "check all its"
+    "check all its-stave"
+)
+# Files used in benchmarks
+## Original files before they are `grown` to a reasonable size for benchmarking
+declare -a -r PRE_TESTS_FILES_ARRAY=(
+    "10_rdh.raw"
+    "readout.superpage.1.raw"
+    "tdh_no_data_ihw.raw"
+    "rawtf_epn180_l6_1.raw"
+)
+
+##### Readonly variables generated from constants above #####
+declare -i -r cmd_count=${#test_cmds_array[@]}
+
 # shellcheck disable=SC1091
 source ./tests/regression/utils.sh
 
@@ -35,26 +68,11 @@ println_magenta "***                                                            
 println_magenta "*********************************************************************************\n"
 
 ## Make a temporary subdirectory for the test data (`binmult` will make+copy the larger files to this directory)
-readonly FILE_PATH="tests/test-data/"
-readonly tmp_file_path="${FILE_PATH}tmp/"
 mkdir ${tmp_file_path}
 
-# This is how much we'll ask `binmult` to "grow" the test files
-declare -i -r BENCHMARK_FILE_SIZE_MIB=50
 println_blue "Growing all test files to approximately ${BENCHMARK_FILE_SIZE_MIB} MiB with binmult\n\n"
 
-
-# Files used in benchmarks
-## Original files before they are `grown` to a reasonable size for benchmarking
-declare -a -r PRE_TESTS_FILES_ARRAY=(
-    "10_rdh.raw"
-    "readout.superpage.1.raw"
-    "tdh_no_data_ihw.raw"
-    "rawtf_epn180_l6_1.raw"
-)
-
 declare -a tests_files_array=()
-
 # Prepare more appropriate file sizes:
 for file in "${PRE_TESTS_FILES_ARRAY[@]}"; do
 
@@ -64,28 +82,14 @@ for file in "${PRE_TESTS_FILES_ARRAY[@]}"; do
 
 done
 
-
-# Stores output of each test, from which the benchmark result is extracted and evaluated.
-readonly BENCH_RESULTS_FILE_PATH="bench_comp.md"
-# Regex to extract the mean timings for each tested version of fastpasta (works on the markdown output of a `hyperfine` benchmark comparison)
-readonly REGEX_MEAN_TIMINGS="(?<=\` \| )\d*(?=\.)"
+declare -i -r file_count=${#tests_files_array[@]}
+declare -i -r total_test_count=$(( file_count * cmd_count ))
 
 # Stores the mean absolute timings of the local fastpasta vs. the remote (negative values -> the local is faster)
 declare -a bench_results_local_mean_diff_absolute=()
 # The accumulated execution time of the remote version of fastpasta
 declare -i bench_results_remote_total_ms=0
 
-
-declare -a -r test_cmds_array=(
-    "check sanity"
-    "check sanity its"
-    "check all"
-    "check all its"
-    "check all its-stave"
-)
-
-readonly LOCAL_PRE="target/release/fastpasta"
-readonly REMOTE_PRE="fastpasta"
 
 declare -a mean_timings
 function bench_two_cmds_return_timings {
@@ -107,12 +111,7 @@ function bench_two_cmds_return_timings {
     mean_timings[1]=${timing_res[1]}
 }
 
-
-declare -i -r file_count=${#tests_files_array[@]}
-declare -i -r cmd_count=${#test_cmds_array[@]}
-declare -i -r total_test_count=$(( file_count * cmd_count ))
 declare -i completed_tests=0
-
 
 println_blue "Running ${cmd_count} command on each of ${file_count} files for a total of ${total_test_count} benchmarks"
 
