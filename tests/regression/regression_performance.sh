@@ -35,25 +35,25 @@ println_magenta "***                                                            
 println_magenta "*********************************************************************************\n"
 
 ## Make a temporary subdirectory for the test data (`binmult` will make+copy the larger files to this directory)
-FILE_PATH="tests/test-data/"
-tmp_file_path="${FILE_PATH}tmp/"
+readonly FILE_PATH="tests/test-data/"
+readonly tmp_file_path="${FILE_PATH}tmp/"
 mkdir ${tmp_file_path}
 
 # This is how much we'll ask `binmult` to "grow" the test files
-BENCHMARK_FILE_SIZE_MIB=50
+declare -i -r BENCHMARK_FILE_SIZE_MIB=50
 println_blue "Growing all test files to approximately ${BENCHMARK_FILE_SIZE_MIB} MiB with binmult\n\n"
 
 
 # Files used in benchmarks
 ## Original files before they are `grown` to a reasonable size for benchmarking
-PRE_TESTS_FILES_ARRAY=(
+declare -a -r PRE_TESTS_FILES_ARRAY=(
     "10_rdh.raw"
     "readout.superpage.1.raw"
     "tdh_no_data_ihw.raw"
     "rawtf_epn180_l6_1.raw"
 )
 
-tests_files_array=()
+declare -a tests_files_array=()
 
 # Prepare more appropriate file sizes:
 for file in "${PRE_TESTS_FILES_ARRAY[@]}"; do
@@ -66,17 +66,17 @@ done
 
 
 # Stores output of each test, from which the benchmark result is extracted and evaluated.
-BENCH_RESULTS_FILE_PATH="bench_comp.md"
+readonly BENCH_RESULTS_FILE_PATH="bench_comp.md"
 # Regex to extract the mean timings for each tested version of fastpasta (works on the markdown output of a `hyperfine` benchmark comparison)
-REGEX_MEAN_TIMINGS="(?<=\` \| )\d*(?=\.)"
+readonly REGEX_MEAN_TIMINGS="(?<=\` \| )\d*(?=\.)"
 
 # Stores the mean absolute timings of the local fastpasta vs. the remote (negative values -> the local is faster)
-bench_results_local_mean_diff_absolute=()
+declare -a bench_results_local_mean_diff_absolute=()
 # The accumulated execution time of the remote version of fastpasta
-bench_results_remote_total_ms=0
+declare -i bench_results_remote_total_ms=0
 
 
-test_cmds_array=(
+declare -a -r test_cmds_array=(
     "check sanity"
     "check sanity its"
     "check all"
@@ -84,8 +84,8 @@ test_cmds_array=(
     "check all its-stave"
 )
 
-local_pre="target/release/fastpasta"
-remote_pre="fastpasta"
+readonly LOCAL_PRE="target/release/fastpasta"
+readonly REMOTE_PRE="fastpasta"
 
 declare -a mean_timings
 function bench_two_cmds_return_timings {
@@ -111,7 +111,7 @@ function bench_two_cmds_return_timings {
 file_count=${#tests_files_array[@]}
 cmd_count=${#test_cmds_array[@]}
 total_test_count=$(( file_count * cmd_count ))
-completed_tests=0
+declare -i completed_tests=0
 
 
 println_blue "Running ${cmd_count} command on each of ${file_count} files for a total of ${total_test_count} benchmarks"
@@ -124,7 +124,7 @@ for file in "${tests_files_array[@]}"; do
 
         println_magenta "\n ==> Benchmarking file ${file} with command: ${command}\n"
 
-        bench_two_cmds_return_timings "${local_pre} ${file} ${command}" "${remote_pre} ${file} ${command}"
+        bench_two_cmds_return_timings "${LOCAL_PRE} ${file} ${command}" "${REMOTE_PRE} ${file} ${command}"
         local_mean=${mean_timings[0]};
         remote_mean=${mean_timings[1]};
         local_minus_remote=$(( local_mean - remote_mean))
@@ -139,7 +139,6 @@ for file in "${tests_files_array[@]}"; do
 
 done
 
-
 # Clean up the temporary files
 ## Remove the benchmark output file.
 rm ${BENCH_RESULTS_FILE_PATH}
@@ -150,7 +149,7 @@ println_magenta "***************************************************************
 println_magenta "***                  SUMMARY OF PERFORMANCE REGRESSION TESTS                  ***"
 println_magenta "*********************************************************************************\n"
 
-total_diff=0
+declare -i total_diff=0
 for i in "${bench_results_local_mean_diff_absolute[@]}"; do
     (( total_diff+=i ))
 done
@@ -162,8 +161,11 @@ println_magenta "Timing difference in ${total_test_count} tests:"
 println_magenta "\tTotal: ${total_diff} ms"
 
 avg_diff=$( calc_average $total_diff $total_test_count )
+readonly avg_diff
 frac_diff=$( calc_relative_fraction $total_diff $bench_results_remote_total_ms)
+readonly frac_diff
 percent_diff=$( fraction_to_percent "$frac_diff" )
+readonly percent_diff
 
 println_magenta "\tMean : ${avg_diff} ms"
 
