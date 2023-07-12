@@ -30,20 +30,17 @@ pub fn check_alpide_data_frame(
 
     let frame_from_layer = alpide_readout_frame.from_layer();
 
-    let valid_chip_order_ob: Option<(&[u8], &[u8])> =
-        if let Some(custom_checks) = custom_checks.custom_checks() {
-            custom_checks.chip_orders_ob()
-        } else {
-            None
-        };
-
     alpide_readout_frame
         .take_lane_data_frames()
         .into_iter()
         .for_each(|lane_data_frame| {
             // Process data for each lane
             // New decoder for each lane
-            let mut analyzer = LaneAlpideFrameAnalyzer::new(frame_from_layer, valid_chip_order_ob);
+            let mut analyzer = LaneAlpideFrameAnalyzer::new(
+                frame_from_layer,
+                custom_checks.chip_orders_ob(),
+                custom_checks.chip_count_ob(),
+            );
             let lane_number = lane_data_frame.lane_number(frame_from_layer);
             log::trace!("Processing lane #{lane_number}");
 

@@ -22,6 +22,7 @@ pub struct LaneAlpideFrameAnalyzer<'a> {
     from_layer: Option<Layer>,
     validated_bc: Option<u8>, // Bunch counter for the frame if the bunch counters match
     valid_chip_order_ob: Option<(&'a [u8], &'a [u8])>, // Valid chip order for Outer Barrel
+    valid_chip_count_ob: Option<u8>, // Valid chip count for Outer Barrel
 }
 
 // impl for core utlity
@@ -31,7 +32,11 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
     const ML_OL_CHIP_COUNT: usize = 7; // Number of chips in a middle/outer layer readout frame
 
     /// Creates a new decoder by specifying the layer the data is from
-    pub fn new(data_origin: Layer, valid_chip_order_ob: Option<(&'a [u8], &'a [u8])>) -> Self {
+    pub fn new(
+        data_origin: Layer,
+        valid_chip_order_ob: Option<(&'a [u8], &'a [u8])>,
+        valid_chip_count_ob: Option<u8>,
+    ) -> Self {
         Self {
             lane_number: 0,
             is_header_seen: false,
@@ -47,6 +52,7 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
             from_layer: Some(data_origin),
             validated_bc: None,
             valid_chip_order_ob,
+            valid_chip_count_ob,
         }
     }
 
