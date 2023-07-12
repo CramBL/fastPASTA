@@ -228,16 +228,17 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
                 ));
             }
         }
-        // Middle or Outer layer
-        else if self.chip_data.len() != Self::ML_OL_CHIP_COUNT {
-            return Err(format!(
-                "{newline_indent}Expected {expected_chip_count} Chip IDs in {layer} but found {id_cnt}: {chip_ids:?}",
-                newline_indent = Self::ERR_MSG_PREFIX,
-                layer = self.from_layer.unwrap(),
-                expected_chip_count = Self::ML_OL_CHIP_COUNT,
-                id_cnt = self.chip_data.len(),
-                chip_ids = self.chip_data.iter().map(|cd| cd.chip_id).collect_vec()
-            ));
+        // Middle or Outer layer (Outer barrel)
+        else if let Some(custom_chip_count_check) = self.valid_chip_count_ob {
+            if self.chip_data.len() != custom_chip_count_check as usize {
+                return Err(format!(
+                    "{newline_indent}Expected {expected_chip_count} Chip ID(s) in OB but found {id_cnt}: {chip_ids:?}",
+                    expected_chip_count = custom_chip_count_check,
+                    newline_indent = Self::ERR_MSG_PREFIX,
+                    id_cnt = self.chip_data.len(),
+                    chip_ids = self.chip_data.iter().map(|cd| cd.chip_id).collect_vec()
+                ));
+            }
         }
         Ok(())
     }
