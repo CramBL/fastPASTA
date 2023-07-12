@@ -17,6 +17,10 @@ pub struct CustomChecks {
     #[example = "[[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]"]
     chip_orders_ob: Option<(Vec<u8>, Vec<u8>)>,
 
+    #[description = "Number of chips expected in the data from Outer Barrel (ML/OL)"]
+    #[example = "7"]
+    chip_count_ob: Option<u8>,
+
     // RDH format specification
     #[description = "The RDH version expected in the data"]
     #[example = "7"]
@@ -32,6 +36,11 @@ impl CustomChecks {
     /// Get the number of sent Triggers expected in the data, if it is set.
     pub fn triggers_pht(&self) -> Option<u32> {
         self.triggers_pht
+    }
+
+    /// Get the number of chips expected in the data from Outer Barrel (ML/OL), if it is set.
+    pub fn chip_count_ob(&self) -> Option<u8> {
+        self.chip_count_ob
     }
 
     /// Get the expected RDH version, if it is set.
@@ -61,6 +70,7 @@ mod tests {
             cdps: Some(10),
             triggers_pht: Some(0),
             chip_orders_ob: Some((vec![0, 1, 2, 3, 4, 5, 6], vec![8, 9, 10, 11, 12, 13, 14])),
+            chip_count_ob: Some(7),
             rdh_version: Some(7),
         };
 
@@ -93,6 +103,10 @@ mod tests {
 # Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of two lists of 7 chip IDs
 # Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 #chip_orders_ob = None [ (Vec < u8 >, Vec < u8 >) ] # (Uncomment and set to enable)
+
+# Number of chips expected in the data from Outer Barrel (ML/OL)
+# Example: 7
+#chip_count_ob = None [ u8 ] # (Uncomment and set to enable)
 
 # The RDH version expected in the data
 # Example: 7
@@ -140,6 +154,8 @@ triggers_pht = 0
 # Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 
+chip_count_ob = 7
+
 rdh_version = 6
 
 "#;
@@ -151,6 +167,7 @@ rdh_version = 6
                 cdps: Some(10),
                 triggers_pht: Some(0),
                 chip_orders_ob: Some((vec![0, 1, 2, 3, 4, 5, 6], vec![8, 9, 10, 11, 12, 13, 14])),
+                chip_count_ob: Some(7),
                 rdh_version: Some(6)
             }
         );
