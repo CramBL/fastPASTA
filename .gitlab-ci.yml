@@ -219,23 +219,6 @@ address-sanitizer:
   dependencies: []
   cache: []
 
-# Job for building docs and publishing to Gitlab Pages
-pages:
-  stage: build
-  script:
-    - cargo doc
-    - rm -rf public
-    - mkdir public
-    - cp -R target/doc/* public
-  artifacts:
-    paths:
-      # The folder that contains the files to be exposed at the Page URL
-      - public
-  rules:
-    # This ensures that only pushes to the default branch will trigger
-    # a pages deploy
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-
 ## For release build
 build-release-latest:
   stage: release

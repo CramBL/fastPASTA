@@ -287,3 +287,73 @@ chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 
     Ok(())
 }
+
+#[test]
+fn check_all_its_stave_custom_chip_count_ob_valid() -> Result<(), Box<dyn std::error::Error>> {
+    // Check that errors are NOT present when a custom check on the chip ID count (outer barrel) is used with the correct count
+    let custom_checks_str = r#"# Number of chips expected in the data from Outer Barrel (ML/OL)
+# Example: 7
+chip_count_ob = 7
+    "#;
+    let custom_checks_file_name = "check_all_its_stave_custom_chip_id_order_errors.toml";
+    let tmp_dir = TempDir::new()?;
+    let tmp_custom_checks_path = tmp_dir.path().join(custom_checks_file_name);
+    create_custom_checks_toml(custom_checks_str, &tmp_custom_checks_path)?;
+
+    const EXPECTED_ALPIDE_ERRORS: u8 = 18;
+
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_RAWTF_EPN180_L6_1)
+        .arg("check")
+        .arg("all")
+        .arg("its-stave")
+        .arg("--checks-toml")
+        .arg(tmp_custom_checks_path);
+
+    cmd.assert().success();
+
+    match_on_out_no_case(
+        &cmd.output()?.stdout,
+        &format!("errors.*{EXPECTED_ALPIDE_ERRORS}"),
+        1,
+    )?;
+
+    match_on_out_no_case(&cmd.output()?.stderr, "chip id count", 0)?;
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_stave_custom_chip_count_ob_error() -> Result<(), Box<dyn std::error::Error>> {
+    // Check that errors are present when a custom check on the chip ID count (outer barrel) is used with the wrong count.
+    let custom_checks_str = r#"# Number of chips expected in the data from Outer Barrel (ML/OL)
+# Example: 7
+chip_count_ob = 6
+    "#;
+    let custom_checks_file_name = "check_all_its_stave_custom_chip_id_order_errors.toml";
+    let tmp_dir = TempDir::new()?;
+    let tmp_custom_checks_path = tmp_dir.path().join(custom_checks_file_name);
+    create_custom_checks_toml(custom_checks_str, &tmp_custom_checks_path)?;
+
+    const EXPECTED_ALPIDE_ERRORS: u8 = 18;
+
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_RAWTF_EPN180_L6_1)
+        .arg("check")
+        .arg("all")
+        .arg("its-stave")
+        .arg("--checks-toml")
+        .arg(tmp_custom_checks_path);
+
+    cmd.assert().success();
+
+    match_on_out_no_case(
+        &cmd.output()?.stdout,
+        &format!("errors.*{EXPECTED_ALPIDE_ERRORS}"),
+        1,
+    )?;
+
+    match_on_out_no_case(&cmd.output()?.stderr, "chip id count", 252)?;
+
+    Ok(())
+}

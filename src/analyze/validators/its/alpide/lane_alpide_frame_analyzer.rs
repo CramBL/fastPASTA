@@ -22,6 +22,7 @@ pub struct LaneAlpideFrameAnalyzer<'a> {
     from_layer: Option<Layer>,
     validated_bc: Option<u8>, // Bunch counter for the frame if the bunch counters match
     valid_chip_order_ob: Option<(&'a [u8], &'a [u8])>, // Valid chip order for Outer Barrel
+    valid_chip_count_ob: Option<u8>, // Valid chip count for Outer Barrel
 }
 
 // impl for core utlity
@@ -31,7 +32,11 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
     const ML_OL_CHIP_COUNT: usize = 7; // Number of chips in a middle/outer layer readout frame
 
     /// Creates a new decoder by specifying the layer the data is from
-    pub fn new(data_origin: Layer, valid_chip_order_ob: Option<(&'a [u8], &'a [u8])>) -> Self {
+    pub fn new(
+        data_origin: Layer,
+        valid_chip_order_ob: Option<(&'a [u8], &'a [u8])>,
+        valid_chip_count_ob: Option<u8>,
+    ) -> Self {
         Self {
             lane_number: 0,
             is_header_seen: false,
@@ -47,6 +52,7 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
             from_layer: Some(data_origin),
             validated_bc: None,
             valid_chip_order_ob,
+            valid_chip_count_ob,
         }
     }
 
@@ -73,7 +79,7 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
             self.errors
                 .as_mut()
                 .unwrap()
-                .push_str(&format!("\n\t\tChip ID count mismatch:{msg}"));
+                .push_str(&format!("\n\t\tChip bunch counter mismatch:{msg}"));
         }
 
         if let Err(msg) = self.check_chip_count() {
@@ -222,16 +228,17 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
                 ));
             }
         }
-        // Middle or Outer layer
-        else if self.chip_data.len() != Self::ML_OL_CHIP_COUNT {
-            return Err(format!(
-                "{newline_indent}Expected {expected_chip_count} Chip IDs in {layer} but found {id_cnt}: {chip_ids:?}",
-                newline_indent = Self::ERR_MSG_PREFIX,
-                layer = self.from_layer.unwrap(),
-                expected_chip_count = Self::ML_OL_CHIP_COUNT,
-                id_cnt = self.chip_data.len(),
-                chip_ids = self.chip_data.iter().map(|cd| cd.chip_id).collect_vec()
-            ));
+        // Middle or Outer layer (Outer barrel)
+        else if let Some(custom_chip_count_check) = self.valid_chip_count_ob {
+            if self.chip_data.len() != custom_chip_count_check as usize {
+                return Err(format!(
+                    "{newline_indent}Expected {expected_chip_count} Chip ID(s) in OB but found {id_cnt}: {chip_ids:?}",
+                    expected_chip_count = custom_chip_count_check,
+                    newline_indent = Self::ERR_MSG_PREFIX,
+                    id_cnt = self.chip_data.len(),
+                    chip_ids = self.chip_data.iter().map(|cd| cd.chip_id).collect_vec()
+                ));
+            }
         }
         Ok(())
     }

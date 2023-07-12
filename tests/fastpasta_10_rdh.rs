@@ -1,7 +1,5 @@
-use assert_fs::TempDir;
-use predicates::str::contains;
-
 use crate::util::*;
+use predicates::str::contains;
 mod util;
 
 // Asserts that the end of processing report summary contains correct information
