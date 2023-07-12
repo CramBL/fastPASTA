@@ -342,6 +342,16 @@ impl CustomChecksOpt for Cfg {
             None
         }
     }
+
+    fn chip_count_ob(&'static self) -> Option<u8> {
+        if self.checks_toml.is_some() {
+            self.custom_checks()
+                .expect("Custom checks are not initialized")
+                .chip_count_ob()
+        } else {
+            None
+        }
+    }
 }
 
 /// Holds the [CheckCommands] subcommands

@@ -43,6 +43,9 @@ pub trait CustomChecksOpt {
     ///
     /// Returns a tuple of two slices, representing the legal chip orders for the Outer Barrel (ML/OL).
     fn chip_orders_ob(&'static self) -> Option<(&'static [u8], &'static [u8])>;
+
+    /// Get the number of chips expected in the data from Outer Barrel (ML/OL), if it is set.
+    fn chip_count_ob(&'static self) -> Option<u8>;
 }
 
 impl<T> CustomChecksOpt for &T
@@ -75,6 +78,10 @@ where
 
     fn chip_orders_ob(&'static self) -> Option<(&'static [u8], &'static [u8])> {
         (*self).chip_orders_ob()
+    }
+
+    fn chip_count_ob(&'static self) -> Option<u8> {
+        (*self).chip_count_ob()
     }
 }
 
@@ -109,6 +116,10 @@ where
     fn chip_orders_ob(&'static self) -> Option<(&'static [u8], &'static [u8])> {
         (**self).chip_orders_ob()
     }
+
+    fn chip_count_ob(&'static self) -> Option<u8> {
+        (**self).chip_count_ob()
+    }
 }
 
 impl<T> CustomChecksOpt for std::sync::Arc<T>
@@ -141,6 +152,10 @@ where
 
     fn chip_orders_ob(&'static self) -> Option<(&'static [u8], &'static [u8])> {
         (**self).chip_orders_ob()
+    }
+
+    fn chip_count_ob(&'static self) -> Option<u8> {
+        (**self).chip_count_ob()
     }
 }
 
