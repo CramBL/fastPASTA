@@ -38,6 +38,11 @@ pub trait CustomChecksOpt {
 
     /// Get the expected RDH version, if it is set.
     fn rdh_version(&'static self) -> Option<u8>;
+
+    /// Get the chip orders expected in the data, if it is set.
+    ///
+    /// Returns a tuple of two slices, representing the legal chip orders for the Outer Barrel (ML/OL).
+    fn chip_orders_ob(&'static self) -> Option<(&'static [u8], &'static [u8])>;
 }
 
 impl<T> CustomChecksOpt for &T
@@ -66,6 +71,10 @@ where
 
     fn rdh_version(&'static self) -> Option<u8> {
         (*self).rdh_version()
+    }
+
+    fn chip_orders_ob(&'static self) -> Option<(&'static [u8], &'static [u8])> {
+        (*self).chip_orders_ob()
     }
 }
 
@@ -96,6 +105,10 @@ where
     fn rdh_version(&'static self) -> Option<u8> {
         (**self).rdh_version()
     }
+
+    fn chip_orders_ob(&'static self) -> Option<(&'static [u8], &'static [u8])> {
+        (**self).chip_orders_ob()
+    }
 }
 
 impl<T> CustomChecksOpt for std::sync::Arc<T>
@@ -124,6 +137,10 @@ where
 
     fn rdh_version(&'static self) -> Option<u8> {
         (**self).rdh_version()
+    }
+
+    fn chip_orders_ob(&'static self) -> Option<(&'static [u8], &'static [u8])> {
+        (**self).chip_orders_ob()
     }
 }
 
