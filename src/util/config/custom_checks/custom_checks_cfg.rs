@@ -1,3 +1,4 @@
+//! Struct definition of the custom checks configuration TOML file.
 use fastpasta_toml_macro::TomlConfig;
 use serde_derive::{Deserialize, Serialize};
 
