@@ -147,7 +147,7 @@ impl ErrorStats {
 
 fn extract_unique_error_codes(error_messages: &[String]) -> Vec<u16> {
     let mut error_codes: Vec<u16> = Vec::new();
-    let re = regex::Regex::new(r"0x.*: \[E(?P<err_code>[0-9]{2,4})\]").unwrap();
+    let re = regex::Regex::new(r"\[E(?P<err_code>[0-9]{2,4})\]").unwrap();
     error_messages.iter().for_each(|err_msg| {
         let err_code_match: regex::Captures = re
             .captures(err_msg)
