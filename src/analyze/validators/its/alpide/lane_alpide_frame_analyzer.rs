@@ -79,14 +79,14 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
             self.errors
                 .as_mut()
                 .unwrap()
-                .push_str(&format!("\n\t\tChip bunch counter mismatch:{msg}"));
+                .push_str(&format!("\n\t\t [E9003] Chip bunch counter mismatch:{msg}"));
         }
 
         if let Err(msg) = self.check_chip_count() {
             self.errors
                 .as_mut()
                 .unwrap()
-                .push_str(&format!("\n\t\tChip ID count mismatch:{msg}"));
+                .push_str(&format!("\n\t\t [E9004] Chip ID count mismatch:{msg}"));
         } else {
             // Only check if the chip count is valid.
             // Check chip ID order
@@ -94,7 +94,7 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
                 self.errors
                     .as_mut()
                     .unwrap()
-                    .push_str(&format!("\n\t\tChip ID order mismatch:{msg}"))
+                    .push_str(&format!("\n\t\t [E9005] Chip ID order mismatch:{msg}"))
             }
         }
 

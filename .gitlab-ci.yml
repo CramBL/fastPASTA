@@ -29,6 +29,8 @@ stages:
 # * lint
 # * format
 # * audit
+# * error-codes
+
 pre-commit:
   image: python:3.9
   stage: code-quality
@@ -75,6 +77,12 @@ audit:
   script:
     - cargo install cargo-audit
     - cargo audit
+
+error-codes:
+  stage: code-quality
+  script:
+    - tests/ci-scripts/unique-error-codes.sh
+
 ### end of stage: code-quality
 
 ### build ###

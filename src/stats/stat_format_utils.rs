@@ -73,7 +73,7 @@ pub(crate) fn format_fee_ids(fee_ids_seen: &[u16]) -> String {
     format_nums_max_lines_width(MAX_LINE_WIDTH as u16, Some(5), &fee_ids_seen)
 }
 
-pub(crate) fn format_error_codes(error_codes: &[u8]) -> String {
+pub(crate) fn format_error_codes(error_codes: &[u16]) -> String {
     error_codes
         .iter()
         .enumerate()

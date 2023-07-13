@@ -8,7 +8,7 @@ pub struct ErrorStats {
     reported_errors: Vec<String>,
     custom_checks_stats_errors: Vec<String>,
     total_errors: u64,
-    unique_error_codes: Option<Vec<u8>>,
+    unique_error_codes: Option<Vec<u16>>,
     // Only applicable if the data is from ITS
     staves_with_errors: Option<Vec<LayerStave>>,
 }
@@ -41,16 +41,18 @@ impl ErrorStats {
             self.unique_error_codes = Some(unique_error_codes);
         }
 
-        // If there's any errors from the custom checks on stats, and the error codes doesn't already contain `E99` then add it.
+        // If there's any errors from the custom checks on stats, find the error codes and add them.
         if !self.custom_checks_stats_errors.is_empty() {
+            let unique_custom_error_codes: Vec<u16> =
+                extract_unique_error_codes(&self.custom_checks_stats_errors);
             if self.unique_error_codes.is_none() {
-                self.unique_error_codes = Some(vec![99]);
-            } else if self
-                .unique_error_codes
-                .as_deref()
-                .is_some_and(|err_codes| !err_codes.contains(&99))
-            {
-                self.unique_error_codes.as_mut().unwrap().push(99);
+                self.unique_error_codes = Some(unique_custom_error_codes);
+            } else {
+                self.unique_error_codes
+                    .as_mut()
+                    .unwrap()
+                    .extend(unique_custom_error_codes);
+                self.unique_error_codes.as_mut().unwrap().dedup();
             }
         }
     }
@@ -108,7 +110,7 @@ impl ErrorStats {
         self.fatal_error.take().expect("No fatal error found!")
     }
 
-    pub(super) fn unique_error_codes_as_slice(&mut self) -> &[u8] {
+    pub(super) fn unique_error_codes_as_slice(&mut self) -> &[u16] {
         if self.unique_error_codes.is_some() {
             return self.unique_error_codes.as_ref().unwrap();
         } else {
@@ -145,18 +147,28 @@ impl ErrorStats {
     }
 }
 
-fn extract_unique_error_codes(error_messages: &[String]) -> Vec<u8> {
-    let mut error_codes: Vec<u8> = Vec::new();
-    let re = regex::Regex::new(r"0x.*: \[E(?P<err_code>[0-9]{2})\]").unwrap();
+fn extract_unique_error_codes(error_messages: &[String]) -> Vec<u16> {
+    let mut error_codes: Vec<u16> = Vec::new();
+    let re = regex::Regex::new(r"\[E(?P<err_code>[0-9]{2,4})\]").unwrap();
     error_messages.iter().for_each(|err_msg| {
-        let err_code_match: regex::Captures = re
-            .captures(err_msg)
-            .unwrap_or_else(|| panic!("Error parsing error code from error msg: {err_msg}"));
+        let err_code_matches: Vec<u16> = re
+            .find_iter(err_msg)
+            .map(|m| {
+                m.as_str()
+                    .strip_prefix("[E")
+                    .unwrap()
+                    .strip_suffix(']')
+                    .unwrap()
+                    .parse::<u16>()
+                    .unwrap()
+            })
+            .collect();
 
-        let err_code = err_code_match["err_code"].parse::<u8>().unwrap();
-        if !error_codes.contains(&err_code) {
-            error_codes.push(err_code);
-        }
+        err_code_matches.into_iter().for_each(|err_code| {
+            if !error_codes.contains(&err_code) {
+                error_codes.push(err_code);
+            }
+        });
     });
     error_codes
 }

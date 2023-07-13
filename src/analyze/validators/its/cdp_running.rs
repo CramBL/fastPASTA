@@ -209,17 +209,17 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             Err(ambigious_word) => match ambigious_word {
                 its_payload_fsm_cont::AmbigiousError::TDH_or_DDW0 => {
                     self.report_error(
-                    "[E99] Unrecognized ID in ITS payload, could be TDH/DDW0 based on current state, attempting to parse as TDH",
+                    "[E990] Unrecognized ID in ITS payload, could be TDH/DDW0 based on current state, attempting to parse as TDH",
                     gbt_word,
                 );
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
                 }
                 its_payload_fsm_cont::AmbigiousError::DW_or_TDT_CDW => {
-                    self.report_error("[E99] Unrecognized ID in ITS payload, could be Data Word/TDT/CDW based on current state, attempting to parse as Data Word", gbt_word);
+                    self.report_error("[E991] Unrecognized ID in ITS payload, could be Data Word/TDT/CDW based on current state, attempting to parse as Data Word", gbt_word);
                     self.process_data_word(gbt_word);
                 }
                 its_payload_fsm_cont::AmbigiousError::DDW0_or_TDH_IHW => {
-                    self.report_error("[E99] Unrecognized ID in ITS payload, could be DDW0/TDH/IHW based on current state, attempting to parse as DDW0", gbt_word);
+                    self.report_error("[E992] Unrecognized ID in ITS payload, could be DDW0/TDH/IHW based on current state, attempting to parse as DDW0", gbt_word);
                     self.process_status_word(StatusWordKind::Ddw0(gbt_word));
                 }
             },
@@ -419,7 +419,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             if previous_tdh.trigger_bc() > self.current_tdh.as_ref().unwrap().trigger_bc() {
                 self.report_error(
                     &format!(
-                        "[E44] TDH trigger_bc is not increasing, previous: {:#X}, current: {:#X}.",
+                        "[E440] TDH trigger_bc is not increasing, previous: {:#X}, current: {:#X}.",
                         previous_tdh.trigger_bc(),
                         self.current_tdh.as_ref().unwrap().trigger_bc()
                     ),
@@ -433,10 +433,10 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     #[inline]
     fn check_rdh_at_ddw0(&mut self, ddw0_slice: &[u8]) {
         if self.current_rdh.as_ref().unwrap().stop_bit() != 1 {
-            self.report_error("[E11] DDW0 observed but RDH stop bit is not 1", ddw0_slice);
+            self.report_error("[E110] DDW0 observed but RDH stop bit is not 1", ddw0_slice);
         }
         if self.current_rdh.as_ref().unwrap().pages_counter() == 0 {
-            self.report_error("[E11] DDW0 observed but RDH page counter is 0", ddw0_slice);
+            self.report_error("[E111] DDW0 observed but RDH page counter is 0", ddw0_slice);
         }
     }
     /// Checks RDH stop_bit and pages_counter when an initial IHW is observed (not IHW during continuation)
@@ -456,13 +456,13 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 
         if let Some(previous_tdh) = self.previous_tdh.as_ref() {
             if previous_tdh.trigger_bc() != self.current_tdh.as_ref().unwrap().trigger_bc() {
-                self.report_error("[E44] TDH trigger_bc is not the same", tdh_slice);
+                self.report_error("[E441] TDH trigger_bc is not the same", tdh_slice);
             }
             if previous_tdh.trigger_orbit != self.current_tdh.as_ref().unwrap().trigger_orbit {
-                self.report_error("[E44] TDH trigger_orbit is not the same", tdh_slice);
+                self.report_error("[E442] TDH trigger_orbit is not the same", tdh_slice);
             }
             if previous_tdh.trigger_type() != self.current_tdh.as_ref().unwrap().trigger_type() {
-                self.report_error("[E44] TDH trigger_type is not the same", tdh_slice);
+                self.report_error("[E443] TDH trigger_type is not the same", tdh_slice);
             }
         }
     }
@@ -482,7 +482,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 
         if current_tdh.trigger_orbit != current_rdh.rdh1().orbit {
             self.report_error(
-                "[E44] TDH trigger_orbit is not equal to RDH orbit",
+                "[E444] TDH trigger_orbit is not equal to RDH orbit",
                 tdh_slice,
             );
         }
@@ -494,7 +494,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             if current_rdh.rdh1().bc() != current_tdh.trigger_bc() {
                 self.report_error(
                     &format!(
-                        "[E44] TDH trigger_bc is not equal to RDH bc, TDH: {:#X}, RDH: {:#X}.",
+                        "[E445] TDH trigger_bc is not equal to RDH bc, TDH: {:#X}, RDH: {:#X}.",
                         current_tdh.trigger_bc(),
                         current_rdh.rdh1().bc()
                     ),
@@ -792,7 +792,7 @@ mod tests {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
                     msg,
-                    "0x4A: [E44] TDH trigger_orbit is not equal to RDH orbit [00 00 00 00 00 00 00 00 01 F2]"
+                    "0x4A: [E444] TDH trigger_orbit is not equal to RDH orbit [00 00 00 00 00 00 00 00 01 F2]"
                 );
                 println!("{msg}");
             }
@@ -803,7 +803,7 @@ mod tests {
                 // Amibiguous error, could be several different data words
                 assert_eq!(
                     msg,
-                    "0x54: [E99] Unrecognized ID in ITS payload, could be Data Word/TDT/CDW based on current state, attempting to parse as Data Word [00 00 00 00 00 00 00 00 01 F3]"
+                    "0x54: [E991] Unrecognized ID in ITS payload, could be Data Word/TDT/CDW based on current state, attempting to parse as Data Word [00 00 00 00 00 00 00 00 01 F3]"
                 );
                 println!("{msg}");
             }

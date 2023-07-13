@@ -40,7 +40,7 @@ To verify or view curated content of the scanned raw binary data from the ALICE 
 - [Error messages](#error-messages)
     - [Messages are formatted as follows:](#messages-are-formatted-as-follows)
     - [Example of failed RDH sanity check](#example-of-failed-rdh-sanity-check)
-    - [Error codes are not unique](#error-codes-are-not-unique)
+    - [Error codes](#error-codes)
   - [Verbosity levels](#verbosity-levels)
   - [Running tests](#running-tests)
 - [License](#license)
@@ -168,9 +168,8 @@ MEMORY_OFFSET: [ERROR_CODE] ERROR_MESSAGE
 0xE450FFD: [E10] RDH sanity check failed: data_format = 255
 ```
 
-### Error codes are not unique
-But they signify categories of errors.
-E.g. all RDH sanity checks have the same error code, but the error message will specify which field failed.
+### Error codes
+Error codes are unique and can between 2 and 4 digits. The first digit signifies a category for the error.
 The following is a list of error codes and their meaning, `x` is a placeholder for any number 0-9.
 * [Ex0] - Sanity check
 * [E1x] - RDH
@@ -180,7 +179,7 @@ The following is a list of error codes and their meaning, `x` is a placeholder f
 * [E6x] - DDW0
 * [E7x] - Data word (Even number: IB, Odd number: OB) E70 is sanity check for both IB/OB.
 * [E8x] - CDW
-* [E99] - Miscellaneous, such as error in ID when 2 or more words could be valid in the current state.
+* [E9xxx] - Errors from [custom checks](#customize-checks)
 
 ## Verbosity levels
 - 0: Errors
@@ -206,25 +205,25 @@ Passively Maintained. There are no plans for new features, but the maintainer in
 # Benchmarks and comparisons
 In the tables below `fastPASTA` is compared with `rawdata-parser` and `decode.py` in typical verification tasks. Hyperfine is used for benchmarking, with `cache warmup`.
 ### Verifying all RDHs of 1.5 GB file with data from 1 GBT link
-| Tool           | Command                                                   |       Mean ± σ [s] | Min [s] | Max [s] |
+| Tool           | Command                                                   |   Mean ± σ [s] | Min [s] | Max [s] |
 | :------------- | :-------------------------------------------------------- | -------------: | ------: | ------: |
 | fastPASTA      | `fastpasta input.raw check all`                           |  0.195 ± 0.002 |   0.191 |   0.198 |
 | rawdata-parser | `./rawdata-parser --skip-packet-counter-checks input.raw` |  1.638 ± 0.066 |   1.575 |   1.810 |
 | decode.py      | `python3 decode.py -i 20522 -f input.raw --skip_data`     | 94.218 ± 0.386 |  93.914 |  94.811 |
 
 ### Verifying all RDHs in 3 GB file with data from 2 different GBT links
-| Tool           | Command                                                  |      Mean ± σ [s] | Min [s] | Max [s] |
+| Tool           | Command                                                  |  Mean ± σ [s] | Min [s] | Max [s] |
 | :------------- | :------------------------------------------------------- | ------------: | ------: | ------: |
 | fastPASTA      | `fastpasta input.raw check all`                          | 0.409 ± 0.004 |   0.402 |   0.417 |
 | rawdata-parser | `rawdata-parser input.raw`                               | 3.068 ± 0.028 |   3.012 |   3.105 |
 | decode.py      | Verifying multiple links simultaneously is not supported |           N/A |     N/A |     N/A |
 
 ### Verifying all RDHs and payloads in 260 MB file with data from 1 GBT link
-| Tool           | Command                                   |       Mean ± σ [s] | Min [s] | Max [s] |
+| Tool           | Command                                   |   Mean ± σ [s] | Min [s] | Max [s] |
 | :------------- | :---------------------------------------- | -------------: | ------: | ------: |
 | fastPASTA      | `fastpasta input.raw check all its`       |  0.106 ± 0.002 |   0.103 |   0.111 |
 | rawdata-parser | Verifying payloads is not supported       |            N/A |     N/A |     N/A |
-| decode.py      | `python3 decode.py -i 20522 -f input.raw` | 55.903 ± 0.571 |  54.561 | 56.837 |
+| decode.py      | `python3 decode.py -i 20522 -f input.raw` | 55.903 ± 0.571 |  54.561 |  56.837 |
 
 
 # Need more performance?
