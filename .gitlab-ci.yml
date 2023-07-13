@@ -194,6 +194,7 @@ regression-benchmarks-extended:
     - ls -l tests/regression/
   script:
     - tests/regression/regression_performance.sh EXTENDED
+  timeout: 3h 30m
   rules:
   # Don't create the job if commit message contains [skip-bench]
   - if: $CI_COMMIT_MESSAGE =~ /\[.*skip-bench.*\]/
