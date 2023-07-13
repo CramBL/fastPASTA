@@ -433,10 +433,10 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     #[inline]
     fn check_rdh_at_ddw0(&mut self, ddw0_slice: &[u8]) {
         if self.current_rdh.as_ref().unwrap().stop_bit() != 1 {
-            self.report_error("[E11] DDW0 observed but RDH stop bit is not 1", ddw0_slice);
+            self.report_error("[E110] DDW0 observed but RDH stop bit is not 1", ddw0_slice);
         }
         if self.current_rdh.as_ref().unwrap().pages_counter() == 0 {
-            self.report_error("[E11] DDW0 observed but RDH page counter is 0", ddw0_slice);
+            self.report_error("[E111] DDW0 observed but RDH page counter is 0", ddw0_slice);
         }
     }
     /// Checks RDH stop_bit and pages_counter when an initial IHW is observed (not IHW during continuation)
