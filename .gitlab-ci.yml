@@ -29,6 +29,8 @@ stages:
 # * lint
 # * format
 # * audit
+# * error-codes
+
 pre-commit:
   image: python:3.9
   stage: code-quality
@@ -75,6 +77,20 @@ audit:
   script:
     - cargo install cargo-audit
     - cargo audit
+
+error-codes:
+  stage: code-quality
+  script:
+   # find: Find all files in `src/` and give them to `sed`.
+   # sed: Read all file content until the string "cfg(test)" (delimits design and test code)
+   # Pipe to grep: Match pattern and output exact match content (error codes)
+   # Pipe to uniq: Output all duplicate lines
+   # Pipe to wc : count the number of lines
+    - duplicates=$( find src/ -type f -exec sed -e "/cfg(test)/,\$d" {} \; | grep -Po "E[0-9]{2,4}" | uniq -d -c | wc -l )
+    - if [[ ${duplicates} == 0 ]]; then
+    - echo -e "Error codes are unique as they should be";
+    - else echo -e "Duplicate error codes found!"; exit 1; fi
+
 ### end of stage: code-quality
 
 ### build ###
