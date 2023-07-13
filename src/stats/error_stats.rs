@@ -41,16 +41,18 @@ impl ErrorStats {
             self.unique_error_codes = Some(unique_error_codes);
         }
 
-        // If there's any errors from the custom checks on stats, and the error codes doesn't already contain `E99` then add it.
+        // If there's any errors from the custom checks on stats, find the error codes and add them.
         if !self.custom_checks_stats_errors.is_empty() {
+            let unique_custom_error_codes: Vec<u16> =
+                extract_unique_error_codes(&self.custom_checks_stats_errors);
             if self.unique_error_codes.is_none() {
-                self.unique_error_codes = Some(vec![99]);
-            } else if self
-                .unique_error_codes
-                .as_deref()
-                .is_some_and(|err_codes| !err_codes.contains(&99))
-            {
-                self.unique_error_codes.as_mut().unwrap().push(99);
+                self.unique_error_codes = Some(unique_custom_error_codes);
+            } else {
+                self.unique_error_codes
+                    .as_mut()
+                    .unwrap()
+                    .extend(unique_custom_error_codes);
+                self.unique_error_codes.as_mut().unwrap().dedup();
             }
         }
     }
