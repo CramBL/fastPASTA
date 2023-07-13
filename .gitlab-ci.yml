@@ -176,7 +176,7 @@ test-coverage:
         path: target/coverage/cobertura.xml
 
 # Run benchmarks and check for performance regression
-regression-benchmarks:
+regression-benchmarks-limited:
   stage: test
   needs: []
   before_script:
@@ -184,6 +184,29 @@ regression-benchmarks:
   script:
     - tests/regression/regression_performance.sh
   dependencies: []
+  cache: []
+
+# Run benchmarks and check for performance regression with bigger and more files than the limited job
+regression-benchmarks-extended:
+  stage: test
+  needs: []
+  before_script:
+    - ls -l tests/regression/
+  script:
+    - tests/regression/regression_performance.sh EXTENDED
+  rules:
+  # Create job for a merge commit to the normal MR target branch of the project ("master").
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    when: on_success
+  # Don't create the job if commit message contains [skip-bench]
+  - if: $CI_COMMIT_MESSAGE =~ /\[.*skip-bench.*\]/
+    when: never
+  # Allow manual creation of job if branch suffix is -bench
+  - if: '$CI_COMMIT_BRANCH =~ /^.*-bench$/'
+    when: manual
+    allow_failure: true
+  dependencies: []
+  interruptible: true
   cache: []
 
 ## Safety
