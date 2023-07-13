@@ -209,17 +209,17 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             Err(ambigious_word) => match ambigious_word {
                 its_payload_fsm_cont::AmbigiousError::TDH_or_DDW0 => {
                     self.report_error(
-                    "[E99] Unrecognized ID in ITS payload, could be TDH/DDW0 based on current state, attempting to parse as TDH",
+                    "[E990] Unrecognized ID in ITS payload, could be TDH/DDW0 based on current state, attempting to parse as TDH",
                     gbt_word,
                 );
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
                 }
                 its_payload_fsm_cont::AmbigiousError::DW_or_TDT_CDW => {
-                    self.report_error("[E99] Unrecognized ID in ITS payload, could be Data Word/TDT/CDW based on current state, attempting to parse as Data Word", gbt_word);
+                    self.report_error("[E991] Unrecognized ID in ITS payload, could be Data Word/TDT/CDW based on current state, attempting to parse as Data Word", gbt_word);
                     self.process_data_word(gbt_word);
                 }
                 its_payload_fsm_cont::AmbigiousError::DDW0_or_TDH_IHW => {
-                    self.report_error("[E99] Unrecognized ID in ITS payload, could be DDW0/TDH/IHW based on current state, attempting to parse as DDW0", gbt_word);
+                    self.report_error("[E992] Unrecognized ID in ITS payload, could be DDW0/TDH/IHW based on current state, attempting to parse as DDW0", gbt_word);
                     self.process_status_word(StatusWordKind::Ddw0(gbt_word));
                 }
             },
@@ -803,7 +803,7 @@ mod tests {
                 // Amibiguous error, could be several different data words
                 assert_eq!(
                     msg,
-                    "0x54: [E99] Unrecognized ID in ITS payload, could be Data Word/TDT/CDW based on current state, attempting to parse as Data Word [00 00 00 00 00 00 00 00 01 F3]"
+                    "0x54: [E991] Unrecognized ID in ITS payload, could be Data Word/TDT/CDW based on current state, attempting to parse as Data Word [00 00 00 00 00 00 00 00 01 F3]"
                 );
                 println!("{msg}");
             }
