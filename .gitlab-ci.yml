@@ -88,8 +88,8 @@ error-codes:
     - error_codes=$( echo "${design_code}" | grep -Po "E[0-9]{2,4}" )
     # Pipe to uniq: Output all duplicate lines
     - unique_error_codes=$( echo "${error_codes}" | uniq -d -c )
-    # Pipe to wc: count the number of lines with unique error codes
-    - unique_error_codes_count=$( echo "${unique_error_codes}" | wc -l )
+    # Pipe to grep: count the number of lines with `E` (there will just be an empty line if there's duplicate error codes)
+    - unique_error_codes_count=$( echo "${unique_error_codes}" | grep E -c)
     - if [[ ${unique_error_codes_count} == 0 ]]; then
     - echo -e "Error codes are unique as they should be";
     - else echo -e "Duplicate error codes found!"; echo "${unique_error_codes}"; exit 1; fi
