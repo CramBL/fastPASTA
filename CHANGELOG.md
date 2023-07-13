@@ -1,3 +1,15 @@
+# v1.12.0 - Unique error codes, custom checks for OB chip count (2023-07-13)
+### Features
+- Custom check for chip count in OB (ML/OL)
+- Error codes are now unique
+
+### Fix
+- Disable spinner when `view` command is used
+
+
+### Code quality
+Add a CI job that performs benchmarks on the local binary vs. the latest published version and fails on >10% performance regression.
+
 # v1.11.0 - Add ability to define custom checks through a TOML file (2023-07-06)
 ### Features
 - Adds the `--generate-checks-toml` flag to generate a TOML file that is a template to configuring customized checks on raw data
