@@ -8,7 +8,7 @@ pub struct ErrorStats {
     reported_errors: Vec<String>,
     custom_checks_stats_errors: Vec<String>,
     total_errors: u64,
-    unique_error_codes: Option<Vec<u8>>,
+    unique_error_codes: Option<Vec<u16>>,
     // Only applicable if the data is from ITS
     staves_with_errors: Option<Vec<LayerStave>>,
 }
@@ -108,7 +108,7 @@ impl ErrorStats {
         self.fatal_error.take().expect("No fatal error found!")
     }
 
-    pub(super) fn unique_error_codes_as_slice(&mut self) -> &[u8] {
+    pub(super) fn unique_error_codes_as_slice(&mut self) -> &[u16] {
         if self.unique_error_codes.is_some() {
             return self.unique_error_codes.as_ref().unwrap();
         } else {
@@ -145,15 +145,15 @@ impl ErrorStats {
     }
 }
 
-fn extract_unique_error_codes(error_messages: &[String]) -> Vec<u8> {
-    let mut error_codes: Vec<u8> = Vec::new();
-    let re = regex::Regex::new(r"0x.*: \[E(?P<err_code>[0-9]{2})\]").unwrap();
+fn extract_unique_error_codes(error_messages: &[String]) -> Vec<u16> {
+    let mut error_codes: Vec<u16> = Vec::new();
+    let re = regex::Regex::new(r"0x.*: \[E(?P<err_code>[0-9]{2,4})\]").unwrap();
     error_messages.iter().for_each(|err_msg| {
         let err_code_match: regex::Captures = re
             .captures(err_msg)
             .unwrap_or_else(|| panic!("Error parsing error code from error msg: {err_msg}"));
 
-        let err_code = err_code_match["err_code"].parse::<u8>().unwrap();
+        let err_code = err_code_match["err_code"].parse::<u16>().unwrap();
         if !error_codes.contains(&err_code) {
             error_codes.push(err_code);
         }
