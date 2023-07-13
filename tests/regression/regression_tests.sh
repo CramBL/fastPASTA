@@ -250,10 +250,10 @@ declare -a -r test_bad_dw_ddw0_detect_invalid_ids=(
     # Check the error is detected in the right position with the right error code and message
     # Should give an unregonized ID errors as it is in an ambigiuous position where several words could be valid
     # Checks that it ends with `01]` as it should print the GBT bytes which would end with the wrong ID (01)
-    "error - 0x80: \[E99\] Unrecognized ID.*01\]"
+    "error - 0x80: \[E991\] Unrecognized ID.*01\]"
     1
     # Same as above but for the DDW0 error
-    "error - 0xE0: \[E99\] Unrecognized ID.*E5\]"
+    "error - 0xE0: \[E992\] Unrecognized ID.*E5\]"
     1
     # Check that 2 Invalid ID errors are also detected in those two positions
     "error - (0x80|0xE0): \[E.0\].*ID" # Just checks its related to a sanity check regarding ID by checking the error code is Ex0
@@ -266,7 +266,7 @@ declare -a -r test_bad_dw_ddw0_detect_invalid_ids=(
 declare -a -r test_bad_tdt_detect_invalid_id=(
     "1_hbf_bad_tdt.raw check sanity its"
     # Check the error is detected in the right position with the right error code and message
-    "error - 0x90: \[E99\].*ID.*f1"
+    "error - 0x90: \[E991\].*ID.*f1"
     1
 )
 
@@ -301,7 +301,7 @@ declare -a -r test_bad_cdp_structure_view_rdh=(
 declare -a -r test_bad_cdp_structure_detected=(
     "1_hbf_bad_cdp_structure.raw check all its"
     # Check the error is detected
-    "error - 0xE0: \[E..\].*RDH.*stop.bit"
+    "error - 0xE0: \[E..0\].*RDH.*stop.bit"
     1
     "Total Errors.*1"
     1
