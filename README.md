@@ -11,11 +11,11 @@ For extensive documentation of source code see [documentation](https://docs.rs/f
 
 For an exhaustive list of the data verification done via the `check` subcommand, see [list of checks](doc/checks_list.md).
 
-Releases and associated changelogs can be found at [releases](https://gitlab.cern.ch/mkonig/fastpasta/-/releases).
+Releases and associated changelogs can be found at [releases](https://gitlab.cern.ch/mkonig/fastpasta/-/releases) or [CHANGELOG.md](CHANGELOG.md).
 
 ## Purpose
 
-To verify or view curated content of the scanned raw binary data from ALICE.
+To verify or view curated content of the scanned raw binary data from the ALICE detector at CERN.
 
 ## Demo
 ![demo-gif](https://gitlab.cern.ch/mkonig/fastpasta/uploads/5a8e27ee535363ea60c466f446f95e06/fastpasta_demo.gif)
