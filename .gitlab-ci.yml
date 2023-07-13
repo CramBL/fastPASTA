@@ -81,25 +81,7 @@ audit:
 error-codes:
   stage: code-quality
   script:
-    # find: Find all files in `src/` and give them to `sed`.
-    # sed: Read all file content until the string "cfg(test)" (delimits design and test code)
-    - design_code=$( find src/ -type f -exec sed -e "/cfg(test)/,\$d" {} \; )
-    # Pipe to grep: Match pattern and output exact match content (error codes)
-    - error_codes=$( echo "${design_code}" | grep -Po "E[0-9]{2,4}" )
-    # Pipe to uniq: Output all duplicate lines
-    - unique_error_codes=$( echo "${error_codes}" | uniq -d -c )
-    - echo ${unique_error_codes}
-    - echo ${unique_error_codes} | grep E -c
-    - echo "test"
-    - echo "test"
-    - echo "test"
-    - sleep 10
-    - echo "test"
-    # Pipe to grep: count the number of lines with `E` (there will just be an empty line if there's duplicate error codes)
-    - unique_error_codes_count=$( echo ${unique_error_codes} | grep E -c)
-    - sleep 10
-    - echo "${unique_error_codes}"
-    - echo "I give up"
+    - tests/ci-scripts/unique-error-codes.sh
 
 ### end of stage: code-quality
 
