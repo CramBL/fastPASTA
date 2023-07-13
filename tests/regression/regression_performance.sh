@@ -12,7 +12,23 @@
 ###########
 
 # This is how much we'll ask `binmult` to "grow" the test files to in MiB
-declare -i -r BENCHMARK_FILE_SIZE_MIB=200
+declare -i BENCHMARK_FILE_SIZE_MIB=200
+
+# Files used in benchmarks
+## Original files before they are `grown` to a reasonable size for benchmarking
+declare -a PRE_TESTS_FILES_ARRAY=(
+    "10_rdh.raw"
+    "readout.superpage.1.raw"
+    "rawtf_epn180_l6_1.raw"
+)
+
+if [[ "$1" == "EXTENDED" ]]; then
+    println_bright_yellow "Running benchmarks in EXTENDED mode\n"
+    BENCHMARK_FILE_SIZE_MIB=$(( BENCHMARK_FILE_SIZE_MIB * 3 ))
+    PRE_TESTS_FILES_ARRAY+=("err_not_hbf.raw")
+    PRE_TESTS_FILES_ARRAY+=("tdh_no_data_ihw.raw")
+    PRE_TESTS_FILES_ARRAY+=("thrs_cdw_links.raw")
+fi
 
 ##### Constants #####
 ## Constant variables (not arrays)
@@ -33,14 +49,6 @@ declare -a -r test_cmds_array=(
     "check all"
     "check all its"
     "check all its-stave"
-)
-# Files used in benchmarks
-## Original files before they are `grown` to a reasonable size for benchmarking
-declare -a -r PRE_TESTS_FILES_ARRAY=(
-    "10_rdh.raw"
-    "readout.superpage.1.raw"
-    "tdh_no_data_ihw.raw"
-    "rawtf_epn180_l6_1.raw"
 )
 
 ##### Readonly variables generated from constants above #####
