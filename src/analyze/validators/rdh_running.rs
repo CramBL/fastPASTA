@@ -45,7 +45,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                 self.second_rdh_cru.as_ref().unwrap().rdh2().pages_counter;
         }
 
-        let mut err_str = String::from("[E11] RDH running check failed: ");
+        let mut err_str = String::new();
         let mut err_cnt: u8 = 0;
 
         if let Err(e) = self.check_stop_bit_and_page_counter(rdh.rdh2()) {
