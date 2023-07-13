@@ -18,7 +18,7 @@ Releases and associated changelogs can be found at [releases](https://gitlab.cer
 To verify or view curated content of the scanned raw binary data from the ALICE detector at CERN.
 
 ## Demo
-![demo-gif](https://gitlab.cern.ch/mkonig/fastpasta/uploads/5a8e27ee535363ea60c466f446f95e06/fastpasta_demo.gif)
+![demo-gif](https://gitlab.cern.ch/mkonig/fastpasta/uploads/353320c2e078be14e1d7b5369853bb70/fastpasta_progress.gif)
 
 # Table of Contents
 - [fastPASTA](#fastpasta)
