@@ -419,7 +419,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             if previous_tdh.trigger_bc() > self.current_tdh.as_ref().unwrap().trigger_bc() {
                 self.report_error(
                     &format!(
-                        "[E44] TDH trigger_bc is not increasing, previous: {:#X}, current: {:#X}.",
+                        "[E440] TDH trigger_bc is not increasing, previous: {:#X}, current: {:#X}.",
                         previous_tdh.trigger_bc(),
                         self.current_tdh.as_ref().unwrap().trigger_bc()
                     ),
@@ -456,13 +456,13 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 
         if let Some(previous_tdh) = self.previous_tdh.as_ref() {
             if previous_tdh.trigger_bc() != self.current_tdh.as_ref().unwrap().trigger_bc() {
-                self.report_error("[E44] TDH trigger_bc is not the same", tdh_slice);
+                self.report_error("[E441] TDH trigger_bc is not the same", tdh_slice);
             }
             if previous_tdh.trigger_orbit != self.current_tdh.as_ref().unwrap().trigger_orbit {
-                self.report_error("[E44] TDH trigger_orbit is not the same", tdh_slice);
+                self.report_error("[E442] TDH trigger_orbit is not the same", tdh_slice);
             }
             if previous_tdh.trigger_type() != self.current_tdh.as_ref().unwrap().trigger_type() {
-                self.report_error("[E44] TDH trigger_type is not the same", tdh_slice);
+                self.report_error("[E443] TDH trigger_type is not the same", tdh_slice);
             }
         }
     }
@@ -482,7 +482,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 
         if current_tdh.trigger_orbit != current_rdh.rdh1().orbit {
             self.report_error(
-                "[E44] TDH trigger_orbit is not equal to RDH orbit",
+                "[E444] TDH trigger_orbit is not equal to RDH orbit",
                 tdh_slice,
             );
         }
@@ -494,7 +494,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             if current_rdh.rdh1().bc() != current_tdh.trigger_bc() {
                 self.report_error(
                     &format!(
-                        "[E44] TDH trigger_bc is not equal to RDH bc, TDH: {:#X}, RDH: {:#X}.",
+                        "[E445] TDH trigger_bc is not equal to RDH bc, TDH: {:#X}, RDH: {:#X}.",
                         current_tdh.trigger_bc(),
                         current_rdh.rdh1().bc()
                     ),
@@ -792,7 +792,7 @@ mod tests {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
                     msg,
-                    "0x4A: [E44] TDH trigger_orbit is not equal to RDH orbit [00 00 00 00 00 00 00 00 01 F2]"
+                    "0x4A: [E444] TDH trigger_orbit is not equal to RDH orbit [00 00 00 00 00 00 00 00 01 F2]"
                 );
                 println!("{msg}");
             }
