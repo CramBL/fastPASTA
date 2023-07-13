@@ -44,7 +44,7 @@ pub struct StatsController<C: Config + 'static> {
     send_stats_channel: Option<flume::Sender<StatType>>,
     end_processing_flag: Arc<AtomicBool>,
     any_errors_flag: Arc<AtomicBool>,
-    spinner: ProgressBar,
+    spinner: Option<ProgressBar>,
     spinner_message: String,
 }
 impl<C: Config + 'static> StatsController<C> {
@@ -64,7 +64,11 @@ impl<C: Config + 'static> StatsController<C> {
             send_stats_channel: Some(send_stats_channel),
             end_processing_flag: Arc::new(AtomicBool::new(false)),
             any_errors_flag: Arc::new(AtomicBool::new(false)),
-            spinner: new_styled_spinner(),
+            spinner: if global_config.view().is_some() {
+                None
+            } else {
+                Some(new_styled_spinner())
+            },
             spinner_message: String::new(),
         }
     }
@@ -169,10 +173,12 @@ impl<C: Config + 'static> StatsController<C> {
             }
             StatType::HBFSeen => {
                 self.rdh_stats.incr_hbf_seen();
-                self.spinner.set_prefix(format!(
-                    "Analyzing {hbfs} HBFs",
-                    hbfs = self.rdh_stats.hbfs_seen()
-                ));
+                if self.spinner.is_some() {
+                    self.spinner.as_mut().unwrap().set_prefix(format!(
+                        "Analyzing {hbfs} HBFs",
+                        hbfs = self.rdh_stats.hbfs_seen()
+                    ))
+                };
             }
             StatType::Fatal(err) => {
                 if self.error_stats.is_fatal_error() {
@@ -279,7 +285,9 @@ impl<C: Config + 'static> StatsController<C> {
         add_detected_attributes_to_report(&mut report, &self.rdh_stats);
 
         self.append_spinner_msg("... completed");
-        self.spinner.abandon();
+        if self.spinner.is_some() {
+            self.spinner.as_mut().unwrap().abandon();
+        }
         report.print();
     }
 
@@ -382,21 +390,33 @@ impl<C: Config + 'static> StatsController<C> {
     /// Replace it with new spinner with an empty message
     /// Set the new spinners prefix message
     fn new_spinner_with_prefix(&mut self, prefix: String) {
-        self.append_spinner_msg("... completed");
-        self.spinner.abandon();
-        self.spinner = new_styled_spinner();
-        self.spinner_message = "".to_string();
-        self.spinner.set_prefix(prefix);
+        if self.spinner.is_some() {
+            self.append_spinner_msg("... completed");
+            self.spinner.as_mut().unwrap().abandon();
+            self.spinner = Some(new_styled_spinner());
+            self.spinner_message = "".to_string();
+            self.spinner.as_mut().unwrap().set_prefix(prefix);
+        }
     }
 
     fn set_spinner_msg(&mut self, new_msg: String) {
-        self.spinner_message = new_msg;
-        self.spinner.set_message(self.spinner_message.clone());
+        if self.spinner.is_some() {
+            self.spinner_message = new_msg;
+            self.spinner
+                .as_mut()
+                .unwrap()
+                .set_message(self.spinner_message.clone());
+        }
     }
 
     fn append_spinner_msg(&mut self, to_append: &str) {
-        self.spinner_message = self.spinner_message.clone() + to_append + " ";
-        self.spinner.set_message(self.spinner_message.clone());
+        if self.spinner.is_some() {
+            self.spinner_message = self.spinner_message.clone() + to_append + " ";
+            self.spinner
+                .as_mut()
+                .unwrap()
+                .set_message(self.spinner_message.clone());
+        }
     }
 }
 
