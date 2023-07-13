@@ -151,14 +151,24 @@ fn extract_unique_error_codes(error_messages: &[String]) -> Vec<u16> {
     let mut error_codes: Vec<u16> = Vec::new();
     let re = regex::Regex::new(r"\[E(?P<err_code>[0-9]{2,4})\]").unwrap();
     error_messages.iter().for_each(|err_msg| {
-        let err_code_match: regex::Captures = re
-            .captures(err_msg)
-            .unwrap_or_else(|| panic!("Error parsing error code from error msg: {err_msg}"));
+        let err_code_matches: Vec<u16> = re
+            .find_iter(err_msg)
+            .map(|m| {
+                m.as_str()
+                    .strip_prefix("[E")
+                    .unwrap()
+                    .strip_suffix(']')
+                    .unwrap()
+                    .parse::<u16>()
+                    .unwrap()
+            })
+            .collect();
 
-        let err_code = err_code_match["err_code"].parse::<u16>().unwrap();
-        if !error_codes.contains(&err_code) {
-            error_codes.push(err_code);
-        }
+        err_code_matches.into_iter().for_each(|err_code| {
+            if !error_codes.contains(&err_code) {
+                error_codes.push(err_code);
+            }
+        });
     });
     error_codes
 }
