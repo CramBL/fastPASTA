@@ -11,16 +11,14 @@ pub(crate) fn display_error(error: &str) {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        stats::{collect_its_stats, collect_system_specific_stats, StatType, SystemId},
-        words::lib::RDH_CRU,
-    };
+    use crate::input::prelude::*;
+    use crate::stats::{collect_its_stats, collect_system_specific_stats, StatType, SystemId};
     use std::sync::OnceLock;
 
     #[test]
     fn test_collect_its_stats() {
         let (stats_sender, stats_receiver) = flume::unbounded::<StatType>();
-        let rdh = crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
+        let rdh = crate::input::prelude::test_data::CORRECT_RDH_CRU_V7;
 
         let expect_layer = crate::words::its::layer_from_feeid(rdh.fee_id());
         let expect_stave = crate::words::its::stave_number_from_feeid(rdh.fee_id());
@@ -43,7 +41,7 @@ mod tests {
         let (stats_sender, stats_receiver) = flume::unbounded::<StatType>();
         let mut system_id = None;
 
-        let rdh = crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
+        let rdh = crate::input::prelude::test_data::CORRECT_RDH_CRU_V6;
         let expect_layer = crate::words::its::layer_from_feeid(rdh.fee_id());
         let expect_stave = crate::words::its::stave_number_from_feeid(rdh.fee_id());
 

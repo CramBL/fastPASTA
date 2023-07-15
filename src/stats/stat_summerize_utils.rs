@@ -3,9 +3,9 @@ use owo_colors::OwoColorize;
 use super::stat_format_utils::format_data_size;
 use super::stat_format_utils::format_layers_and_staves;
 use super::stats_report::report::StatSummary;
+use crate::input::prelude::RDH_CRU_SIZE_BYTES;
 use crate::words::its::layer_from_feeid;
 use crate::words::its::stave_number_from_feeid;
-use crate::words::lib::RDH_CRU_SIZE_BYTES;
 
 /// Helper functions to format the summary of filtered link ID
 pub(crate) fn summerize_filtered_links(link_to_filter: u8, links_observed: &[u8]) -> StatSummary {

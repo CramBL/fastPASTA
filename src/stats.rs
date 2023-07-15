@@ -2,6 +2,7 @@
 //!
 //! Contains the [init_stats_controller] function, which spawns a thread with the [StatsController](stats_controller::StatsController) running, and returns the thread handle, the channel to send stats to, and the stop flag.
 
+use crate::input::prelude::RDH;
 use crate::{config::prelude::Config, words};
 
 mod error_stats;
@@ -193,18 +194,18 @@ pub fn init_stats_controller<C: Config + 'static>(
     )
 }
 
-/// Takes an [RDH](words::lib::RDH) and determines the [SystemId] and collects system specific stats.
+/// Takes an [RDH](RDH) and determines the [SystemId] and collects system specific stats.
 /// Uses the received [`Option<SystemId>`] to check if the system ID has already been determined,
 /// otherwise it will determine the [SystemId] and send it to the [StatsController](stats_controller::StatsController) via the channel [`flume::Sender<StatType>`].
 ///
 /// # Arguments
-/// * `rdh` - The [RDH](words::lib::RDH) to collect stats from.
+/// * `rdh` - The [RDH](RDH) to collect stats from.
 /// * `system_id` - The [`Option<SystemId>`] to check if the system ID has already been determined.
 /// * `stats_sender_channel` - The [`flume::Sender<StatType>`] to send the stats to the [StatsController](stats_controller::StatsController).
 /// # Returns
 /// * `Ok(())` - If the stats were collected successfully.
 /// * `Err(())` - If its the first time the [SystemId] is determined and the [SystemId] is not recognized.
-pub fn collect_system_specific_stats<T: words::lib::RDH + 'static>(
+pub fn collect_system_specific_stats<T: RDH + 'static>(
     rdh: &T,
     system_id: &mut Option<SystemId>,
     stats_sender_channel: &flume::Sender<StatType>,
@@ -239,8 +240,8 @@ pub fn collect_system_specific_stats<T: words::lib::RDH + 'static>(
     Ok(())
 }
 
-/// Collects stats specific to ITS from the given [RDH][words::lib::RDH] and sends them to the [StatsController].
-fn collect_its_stats<T: words::lib::RDH>(rdh: &T, stats_sender_channel: &flume::Sender<StatType>) {
+/// Collects stats specific to ITS from the given [RDH][RDH] and sends them to the [StatsController].
+fn collect_its_stats<T: RDH>(rdh: &T, stats_sender_channel: &flume::Sender<StatType>) {
     let layer = words::its::layer_from_feeid(rdh.fee_id());
     let stave = words::its::stave_number_from_feeid(rdh.fee_id());
     stats_sender_channel

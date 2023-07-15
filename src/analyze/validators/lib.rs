@@ -1,10 +1,9 @@
 //! Contains the [ValidatorDispatcher], that manages [LinkValidator]s and iterates over and consumes a [`CdpChunk<T>`], dispatching the data to the correct thread based on the Link ID running an instance of [LinkValidator].
 use super::link_validator::LinkValidator;
 use crate::config::prelude::*;
-use crate::input::prelude::CdpChunk;
+use crate::input::prelude::{CdpChunk, RDH};
 use crate::stats::StatType;
 
-use crate::words::lib::RDH;
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 /// The [ValidatorDispatcher] is responsible for creating and managing the [LinkValidator] threads.
@@ -205,10 +204,9 @@ fn chunkify_payload<'a>(
 mod tests {
     use crate::config::check::CheckCommands;
     use crate::config::test_util::MockConfig;
+    use crate::input::prelude::test_data::CORRECT_RDH_CRU_V7;
     use crate::input::prelude::*;
     use crate::words::its::test_payloads::*;
-    use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
-    use crate::words::rdh_cru::{RdhCRU, V7};
     use std::sync::OnceLock;
 
     use super::*;
@@ -221,10 +219,10 @@ mod tests {
         cfg.check = Some(CheckCommands::Sanity { system: None });
         CFG_TEST_DISPACTER.set(cfg).unwrap();
 
-        let mut disp: ValidatorDispatcher<RdhCRU<V7>, MockConfig> =
+        let mut disp: ValidatorDispatcher<RdhCru<V7>, MockConfig> =
             ValidatorDispatcher::new(CFG_TEST_DISPACTER.get().unwrap(), flume::unbounded().0);
 
-        let cdp_tuple: CdpTuple<RdhCRU<V7>> = (CORRECT_RDH_CRU_V7, vec![0; 100], 0);
+        let cdp_tuple: CdpTuple<RdhCru<V7>> = (CORRECT_RDH_CRU_V7, vec![0; 100], 0);
 
         let mut cdp_chunk = CdpChunk::new();
         cdp_chunk.push_tuple(cdp_tuple);

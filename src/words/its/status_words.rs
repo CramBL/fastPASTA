@@ -1,8 +1,14 @@
 //! Definitions for status words: [IHW][Ihw], [TDH][Tdh], [TDT][Tdt], [DDW0][Ddw0] & [CDW][Cdw].
 
-use super::super::lib::ByteSlice;
+use crate::input::prelude::macros::load_bytes;
 use byteorder::{ByteOrder, LittleEndian};
 use std::fmt::{Debug, Display};
+
+impl crate::input::prelude::ByteSlice for Ihw {}
+impl crate::input::prelude::ByteSlice for Tdh {}
+impl crate::input::prelude::ByteSlice for Cdw {}
+impl crate::input::prelude::ByteSlice for Tdt {}
+impl crate::input::prelude::ByteSlice for Ddw0 {}
 
 pub mod util {
     //! Functions for generating human readable text from information extracted from status words.
@@ -189,7 +195,9 @@ pub mod util {
 }
 
 /// Trait to implement for all status words
-pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display {
+pub trait StatusWord:
+    std::fmt::Debug + PartialEq + Sized + crate::input::prelude::ByteSlice + Display
+{
     /// Returns the id of the status word
     fn id(&self) -> u8;
     /// Deserializes the status word from a reader and a byte slice
@@ -198,7 +206,7 @@ pub trait StatusWord: std::fmt::Debug + PartialEq + Sized + ByteSlice + Display 
     where
         Self: Sized,
     {
-        let buf = super::super::lib::macros::load_bytes!(10, reader);
+        let buf = load_bytes!(10, reader);
         Self::from_buf(&buf)
     }
     /// Deserializes the GBT word from a byte slice
@@ -583,6 +591,8 @@ impl StatusWord for Cdw {
 
 #[cfg(test)]
 mod tests {
+    use crate::input::prelude::ByteSlice;
+
     use super::{util::*, *};
     use pretty_assertions::assert_eq;
 

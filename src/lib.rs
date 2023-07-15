@@ -49,11 +49,6 @@ use analyze::validators::rdh::Rdh0Validator;
 use config::prelude::*;
 use input::prelude::*;
 use stats::StatType;
-use words::{
-    lib::RdhSubWord,
-    rdh::Rdh0,
-    rdh_cru::{RdhCRU, V6, V7},
-};
 
 pub mod analyze;
 pub mod config;
@@ -93,7 +88,7 @@ pub fn init_processing(
     // Choose the rest of the execution based on the RDH version
     // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
     match rdh_version {
-        6 => match process::<RdhCRU<V6>>(config, loader, stat_send_channel.clone(), stop_flag) {
+        6 => match process::<RdhCru<V6>>(config, loader, stat_send_channel.clone(), stop_flag) {
             Ok(_) => Ok(()),
             Err(e) => {
                 stat_send_channel
@@ -102,7 +97,7 @@ pub fn init_processing(
                 Err(e)
             }
         },
-        7 => match process::<RdhCRU<V7>>(config, loader, stat_send_channel.clone(), stop_flag) {
+        7 => match process::<RdhCru<V7>>(config, loader, stat_send_channel.clone(), stop_flag) {
             Ok(_) => Ok(()),
             Err(e) => {
                 stat_send_channel
@@ -116,7 +111,7 @@ pub fn init_processing(
         //      1. Unlikely there will ever be an RDH version 200+
         //      2. High values decoded from this field (especially 255) is typically a sign that the data is not actually ALICE data so early exit is preferred
         8..=200 => {
-            match process::<RdhCRU<u8>>(config, loader, stat_send_channel.clone(), stop_flag) {
+            match process::<RdhCru<u8>>(config, loader, stat_send_channel.clone(), stop_flag) {
                 Ok(_) => Ok(()),
                 Err(e) => {
                     stat_send_channel
@@ -141,7 +136,7 @@ pub fn init_processing(
 ///     - Validate data by dispatching it to validators with [ValidatorDispatcher][crate::analyze::validators::lib::ValidatorDispatcher].
 ///     - Generate views of data with [analyze::view::lib::generate_view].
 ///     - Write data to `file` or `stdout` with [write::lib::spawn_writer].
-pub fn process<T: words::lib::RDH + 'static>(
+pub fn process<T: RDH + 'static>(
     config: &'static impl Config,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
     send_stats_ch: flume::Sender<StatType>,
@@ -209,8 +204,8 @@ pub fn process<T: words::lib::RDH + 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::input::prelude::test_data::CORRECT_RDH_CRU_V7;
     use crate::input::prelude::CdpChunk;
-    use crate::words::rdh_cru::test_data::*;
     use crate::{input::lib::init_reader, MockConfig};
     use pretty_assertions::assert_eq;
     use std::path::PathBuf;
@@ -283,7 +278,7 @@ mod tests {
             flume::unbounded();
         let (data_sender, data_receiver) = crossbeam_channel::unbounded();
         let stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let mut cdp_chunk: CdpChunk<RdhCRU<V7>> = CdpChunk::default();
+        let mut cdp_chunk: CdpChunk<RdhCru<V7>> = CdpChunk::default();
         cdp_chunk.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);
 
         // Act

@@ -4,12 +4,12 @@
 
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
+use super::rdh::Rdh0;
+use super::rdh::{SerdeRdh, RDH};
 use crate::config::filter::{FilterOpt, FilterTarget};
 use crate::config::inputoutput::InputOutputOpt;
 use crate::stats::{StatType, SystemId};
 use crate::words::its::is_match_feeid_layer_stave;
-use crate::words::lib::{SerdeRdh, RDH};
-use crate::words::rdh::Rdh0;
 use std::io::Read;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
@@ -296,19 +296,19 @@ fn sanity_check_offset_next<T: RDH>(
 }
 
 fn invalid_rdh_offset<T: RDH>(rdh: &T, current_memory_address: u64, offset_to_next: i64) -> String {
-    use crate::words::rdh_cru::{RdhCRU, V7};
+    use super::rdh::{RdhCru, V7};
     let error_string = format!(
         "\n[{current_memory_address:#X}]:\n{rdh_header_text}     {rdh}",
-        rdh_header_text = RdhCRU::<V7>::rdh_header_text_with_indent_to_string(5)
+        rdh_header_text = RdhCru::<V7>::rdh_header_text_with_indent_to_string(5)
     );
     format!("RDH offset to next is {offset_to_next}. {error_string}")
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::rdh::{ByteSlice, RdhCru, V6, V7};
     use crate::config::Cfg;
-    use crate::words::lib::ByteSlice;
-    use crate::words::rdh_cru::{RdhCRU, V6, V7};
+
     use clap::Parser;
     use pretty_assertions::assert_eq;
     use std::io::Write;
@@ -341,8 +341,8 @@ mod tests {
         )
     }
 
+    use super::super::prelude::test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
     use super::*;
-    use crate::words::rdh_cru::test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
     #[test]
     fn test_load_rdhcruv7_test() {
         let test_data = CORRECT_RDH_CRU_V7;
@@ -355,7 +355,7 @@ mod tests {
 
         {
             let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
-            let rdh = scanner.load_rdh_cru::<RdhCRU<V7>>().unwrap();
+            let rdh = scanner.load_rdh_cru::<RdhCru<V7>>().unwrap();
             assert_eq!(test_data, rdh);
         }
 
@@ -376,7 +376,7 @@ mod tests {
 
         {
             let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
-            let rdh = scanner.load_rdh_cru::<RdhCRU<V7>>();
+            let rdh = scanner.load_rdh_cru::<RdhCru<V7>>();
             assert!(rdh.is_err());
             assert_eq!(rdh.unwrap_err().kind(), std::io::ErrorKind::UnexpectedEof);
         }
@@ -398,7 +398,7 @@ mod tests {
 
         {
             let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
-            let rdh = scanner.load_rdh_cru::<RdhCRU<V6>>().unwrap();
+            let rdh = scanner.load_rdh_cru::<RdhCru<V6>>().unwrap();
             assert_eq!(test_data, rdh);
         }
         // delete output file
@@ -418,7 +418,7 @@ mod tests {
 
         {
             let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
-            let rdh = scanner.load_rdh_cru::<RdhCRU<V6>>();
+            let rdh = scanner.load_rdh_cru::<RdhCru<V6>>();
             assert!(rdh.is_err());
             assert_eq!(rdh.unwrap_err().kind(), std::io::ErrorKind::UnexpectedEof);
         }

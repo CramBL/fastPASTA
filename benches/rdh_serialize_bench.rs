@@ -1,8 +1,5 @@
 use criterion::Criterion;
-use fastpasta::words::{
-    lib::{ByteSlice, SerdeRdh, RDH_CRU},
-    rdh_cru::{RdhCRU, V7},
-};
+use fastpasta::input::prelude::*;
 use std::io::Write;
 
 pub struct RelativeOffset(i64);
@@ -22,9 +19,9 @@ fn write_rdh_manual(fileout: &str) {
         .open(filepath)
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
-    let rdhs: Vec<RdhCRU<V7>> = (0..50000)
+    let rdhs: Vec<RdhCru<V7>> = (0..50000)
         .map(|_| {
-            let rdh_tmp = RdhCRU::<V7>::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
+            let rdh_tmp = RdhCru::<V7>::load(&mut buf_reader).expect("Failed to load RdhCruv7");
             let relative_offset =
                 RelativeOffset::new((rdh_tmp.offset_to_next() as u64) - RDH_CRU_SIZE_BYTES);
             buf_reader

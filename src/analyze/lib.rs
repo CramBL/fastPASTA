@@ -8,7 +8,7 @@ use crossbeam_channel::Receiver;
 use input::prelude::*;
 
 /// Analysis thread that performs checks with the [super::validators] module or generate views with the [super::view::lib::generate_view] function.
-pub fn spawn_analysis<T: crate::words::lib::RDH + 'static>(
+pub fn spawn_analysis<T: RDH + 'static>(
     config: &'static impl Config,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
     stats_sender_channel: flume::Sender<StatType>,

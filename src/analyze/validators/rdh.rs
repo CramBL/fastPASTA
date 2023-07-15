@@ -4,8 +4,8 @@
 
 use crate::config::check::{ChecksOpt, System};
 use crate::config::custom_checks::CustomChecksOpt;
-use crate::words::lib::RDH;
-use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3};
+use crate::input::prelude::*;
+use crate::input::rdh::rdh0::FeeId;
 use std::fmt::Write as _;
 
 /// Enum to specialize the checks performed by the [RdhCruSanityValidator] for a specific system.
@@ -402,7 +402,7 @@ impl Rdh3Validator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::words::rdh_cru::test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
+    use crate::input::prelude::test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
 
     #[test]
     fn validate_fee_id() {

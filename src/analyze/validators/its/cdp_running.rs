@@ -12,6 +12,8 @@ use super::{
 };
 use crate::analyze::validators::its::alpide::alpide_readout_frame::AlpideReadoutFrame;
 use crate::config::prelude::*;
+use crate::input::prelude::ByteSlice;
+use crate::input::prelude::RDH;
 use crate::stats::StatType;
 use crate::words::its::data_words::lane_id_to_lane_number;
 use crate::words::its::data_words::ob_data_word_id_to_input_number_connector;
@@ -19,7 +21,6 @@ use crate::words::its::data_words::ob_data_word_id_to_lane;
 use crate::words::its::status_words::is_lane_active;
 use crate::words::its::status_words::{Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt};
 use crate::words::its::{Layer, Stave};
-use crate::words::lib::{ByteSlice, RDH};
 
 #[derive(Debug, Clone, Copy)]
 enum StatusWordKind<'a> {
@@ -601,7 +602,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 mod tests {
     use super::*;
     use crate::config::test_util::MockConfig;
-    use crate::words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7};
+    use crate::input::prelude::{test_data::CORRECT_RDH_CRU_V7, RdhCru, V7};
     use std::sync::OnceLock;
 
     static MOCK_CONFIG_DEFAULT: OnceLock<MockConfig> = OnceLock::new();
@@ -618,7 +619,7 @@ mod tests {
             // Ignore as it just means it was set by another test
         }
 
-        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
+        let mut validator: CdpRunningValidator<RdhCru<V7>, MockConfig> =
             CdpRunningValidator::new(MOCK_CONFIG_DEFAULT.get().unwrap(), send);
         let rdh_mem_pos = 0;
 
@@ -640,7 +641,7 @@ mod tests {
         }
 
         let (send, stats_recv_ch) = flume::unbounded();
-        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
+        let mut validator: CdpRunningValidator<RdhCru<V7>, MockConfig> =
             CdpRunningValidator::new(MOCK_CONFIG_DEFAULT.get().unwrap(), send);
         let rdh_mem_pos = 0x0;
 
@@ -669,7 +670,7 @@ mod tests {
         }
 
         let (send, stats_recv_ch) = flume::unbounded();
-        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
+        let mut validator: CdpRunningValidator<RdhCru<V7>, MockConfig> =
             CdpRunningValidator::new(MOCK_CONFIG_DEFAULT.get().unwrap(), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
@@ -699,7 +700,7 @@ mod tests {
         }
 
         let (send, stats_recv_ch) = flume::unbounded();
-        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
+        let mut validator: CdpRunningValidator<RdhCru<V7>, MockConfig> =
             CdpRunningValidator::new(MOCK_CONFIG_DEFAULT.get().unwrap(), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
@@ -746,7 +747,7 @@ mod tests {
             .set(mock_config)
             .unwrap();
 
-        let mut validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> = CdpRunningValidator::new(
+        let mut validator: CdpRunningValidator<RdhCru<V7>, MockConfig> = CdpRunningValidator::new(
             CFG_TEST_EXPECT_IHW_INVALIDATE_TDH_AND_NEXT_NEXT
                 .get()
                 .unwrap(),

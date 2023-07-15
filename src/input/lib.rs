@@ -7,6 +7,7 @@
 //!
 //! The [CdpChunk] is a wrapper for the data read from the input, it contains the data and the memory address of the first byte of the data.
 
+use super::prelude::RDH;
 use super::{
     bufreader_wrapper::BufferedReaderWrapper,
     data_wrapper::CdpChunk,
@@ -16,8 +17,6 @@ use super::{
 use crate::stats;
 use crate::stats::StatType;
 use crate::stats::SystemId;
-use crate::words;
-use crate::words::lib::RDH;
 use crossbeam_channel::Receiver;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{io::IsTerminal, path::PathBuf};
@@ -133,7 +132,7 @@ pub fn spawn_reader<T: RDH + 'static>(
 /// If an error occurs after one or more CDPs have been read, the CDP chunk is returned with the CDPs read so far
 /// If the error occurs before any CDPs have been read, the error is returned
 #[inline]
-fn get_chunk<T: words::lib::RDH>(
+fn get_chunk<T: RDH>(
     file_scanner: &mut InputScanner<impl BufferedReaderWrapper + ?Sized>,
     chunk_size_cdps: usize,
 ) -> Result<CdpChunk<T>, std::io::Error> {

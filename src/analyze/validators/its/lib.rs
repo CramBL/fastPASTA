@@ -1,8 +1,8 @@
 //! Contains the [do_payload_checks] which is the entry point for the ITS specific CDP validator
 use super::cdp_running::CdpRunningValidator;
 use crate::config::prelude::*;
+use crate::input::prelude::RDH;
 use crate::stats::StatType;
-use crate::words::lib::RDH;
 
 /// # Arguments
 /// * `cdp_chunk_slice` - A tuple containing the RDH, the payload and the RDH memory position
@@ -76,10 +76,8 @@ impl ItsPayloadWord {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        config::test_util::MockConfig,
-        words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, *},
-    };
+    use crate::input::prelude::*;
+    use crate::{config::test_util::MockConfig, input::prelude::test_data::CORRECT_RDH_CRU_V7};
     use std::sync::OnceLock;
 
     static CFG_TEST_DO_PAYLOAD_CHECKS: OnceLock<MockConfig> = OnceLock::new();
@@ -94,7 +92,7 @@ mod tests {
 
         let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
 
-        let mut cdp_validator: CdpRunningValidator<RdhCRU<V7>, MockConfig> =
+        let mut cdp_validator: CdpRunningValidator<RdhCru<V7>, MockConfig> =
             CdpRunningValidator::new(
                 CFG_TEST_DO_PAYLOAD_CHECKS.get().unwrap(),
                 send_stats_ch.clone(),

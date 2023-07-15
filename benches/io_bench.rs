@@ -1,11 +1,6 @@
-use std::{
-    io::{Read, Write},
-    vec,
-};
+use std::{io::Read, vec};
 
 use criterion::{black_box, BenchmarkId, Criterion};
-use fastpasta::words::lib::{ByteSlice, SerdeRdh, RDH_CRU};
-use fastpasta::{words::rdh_cru::RdhCRU, words::rdh_cru::V7};
 pub struct RelativeOffset(i64);
 impl RelativeOffset {
     fn new(byte_offset: u64) -> Self {

@@ -1,9 +1,5 @@
 use criterion::{black_box, BenchmarkId, Criterion};
-use fastpasta::words::{
-    lib::{RdhSubWord, SerdeRdh},
-    rdh::Rdh0,
-    rdh_cru::{RdhCRU, V7},
-};
+use fastpasta::input::prelude::*;
 
 #[inline]
 fn deserialize_rdh_current(filename: &str, iterations: usize) {
@@ -14,8 +10,8 @@ fn deserialize_rdh_current(filename: &str, iterations: usize) {
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
     for _i in 1..iterations {
-        let _rdh_tmp: RdhCRU<V7> =
-            SerdeRdh::load(&mut buf_reader).expect("Failed to load RdhCRUv7");
+        let _rdh_tmp: RdhCru<V7> =
+            SerdeRdh::load(&mut buf_reader).expect("Failed to load RdhCruv7");
     }
 }
 

@@ -1,11 +1,8 @@
-use crate::input::prelude::*;
-use crate::{
-    analyze::{
-        validators::{its::lib::ItsPayloadWord, lib::preprocess_payload},
-        view::lib::format_word_slice,
-    },
-    words::lib::RDH,
+use crate::analyze::{
+    validators::{its::lib::ItsPayloadWord, lib::preprocess_payload},
+    view::lib::format_word_slice,
 };
+use crate::input::prelude::*;
 
 use std::io::Write;
 

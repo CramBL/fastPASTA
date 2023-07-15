@@ -9,7 +9,7 @@ use super::writer::BufferedWriter;
 use super::writer::Writer;
 use crate::config::inputoutput::InputOutputOpt;
 use crate::input::prelude::CdpChunk;
-use crate::words::lib::RDH;
+use crate::input::prelude::RDH;
 
 /// The size of the buffer used by the writer
 ///

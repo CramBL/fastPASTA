@@ -6,7 +6,7 @@
 
 use crate::config::inputoutput::InputOutputOpt;
 use crate::input::prelude::CdpChunk;
-use crate::words::lib::RDH;
+use crate::input::prelude::RDH;
 
 /// Trait for a writer that can write ALICE readout data to file/stdout.
 pub trait Writer<T: RDH> {
@@ -136,8 +136,8 @@ mod tests {
     use crate::config::inputoutput::DataOutputMode;
     use crate::config::test_util::MockConfig;
     use crate::config::Cfg;
-    use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
-    use crate::words::rdh_cru::{RdhCRU, V6, V7};
+    use crate::input::prelude::test_data::CORRECT_RDH_CRU_V7;
+    use crate::input::prelude::{RdhCru, V6, V7};
     use clap::Parser;
 
     use super::*;
@@ -169,7 +169,7 @@ mod tests {
     fn test_buffered_writer() {
         let cfg = build_test_config();
         {
-            let writer = BufferedWriter::<RdhCRU<V6>>::new(&cfg, 10);
+            let writer = BufferedWriter::<RdhCru<V6>>::new(&cfg, 10);
 
             assert!(writer.buf_writer.is_some());
         }
@@ -190,7 +190,7 @@ mod tests {
         let length = rdhs.len();
         println!("length: {}", length);
         {
-            let mut writer = BufferedWriter::<RdhCRU<V7>>::new(&config, 10);
+            let mut writer = BufferedWriter::<RdhCru<V7>>::new(&config, 10);
             writer.push_rdhs(rdhs);
             let buf_size = writer.filtered_rdhs_buffer.len();
             println!("buf_size: {}", buf_size);
@@ -212,7 +212,7 @@ mod tests {
 
         let length = cdp_chunk.len();
         {
-            let mut writer = BufferedWriter::<RdhCRU<V7>>::new(&config, 10);
+            let mut writer = BufferedWriter::<RdhCru<V7>>::new(&config, 10);
             writer.push_cdp_chunk(cdp_chunk);
             let buf_size = writer.filtered_rdhs_buffer.len();
             assert_eq!(buf_size, length);

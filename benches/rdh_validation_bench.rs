@@ -1,8 +1,5 @@
 use criterion::{black_box, BenchmarkId, Criterion};
-use fastpasta::words::{
-    lib::{SerdeRdh, RDH_CRU},
-    rdh_cru::{RdhCRU, V7},
-};
+use fastpasta::input::prelude::*;
 
 pub struct RelativeOffset(i64);
 impl RelativeOffset {
@@ -24,7 +21,7 @@ fn sanity_check_rdhs(rdh_cru_size_bytes: u64, filename: &str, iterations: usize)
     let mut rdhs = 0;
 
     loop {
-        let tmp_rdh = match RdhCRU::<V7>::load(&mut buf_reader) {
+        let tmp_rdh = match RdhCru::<V7>::load(&mut buf_reader) {
             Ok(rdh) => rdh,
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
                 print!("EOF reached! ");

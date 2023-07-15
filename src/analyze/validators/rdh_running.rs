@@ -1,9 +1,9 @@
 //! Performs running (stateful) checks on [RDH]s.
-use crate::words::{
-    lib::RDH,
-    rdh::{Rdh1, Rdh2},
-};
+
 use std::fmt::Write;
+
+use crate::input::prelude::{Rdh1, Rdh2, RDH};
+
 /// Performs running (stateful) checks on [RDH]s.
 pub struct RdhCruRunningChecker<T: RDH> {
     expect_pages_counter: u16,
@@ -205,26 +205,20 @@ impl<T: RDH> RdhCruRunningChecker<T> {
 #[cfg(test)]
 mod tests {
     use super::RdhCruRunningChecker;
-
-    use crate::words::lib::{ByteSlice, SerdeRdh};
-    use crate::words::rdh::{
-        BcReserved, CruidDw, DataformatReserved, FeeId, Rdh0, Rdh1, Rdh2, Rdh3,
-    };
-    use crate::words::rdh_cru::{
-        test_data::{
-            CORRECT_RDH_CRU_V7, CORRECT_RDH_CRU_V7_NEXT, CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP,
-        },
-        RdhCRU, V7,
-    };
+    use crate::input::prelude::test_data::*;
+    use crate::input::prelude::*;
+    use crate::input::rdh::rdh0::FeeId;
+    use crate::input::rdh::rdh1::BcReserved;
+    use crate::input::rdh::rdh_cru::{CruidDw, DataformatReserved};
 
     #[test]
     fn test_valid_rdh_crus() {
-        let mut rdh_cru_checker = RdhCruRunningChecker::<RdhCRU<V7>>::new();
+        let mut rdh_cru_checker = RdhCruRunningChecker::<RdhCru<V7>>::new();
 
-        let rdh_1 = RdhCRU::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
-        let rdh_2 = RdhCRU::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT.to_byte_slice()).unwrap();
+        let rdh_1 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
+        let rdh_2 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT.to_byte_slice()).unwrap();
         let rdh_3_stop =
-            RdhCRU::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP.to_byte_slice()).unwrap();
+            RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP.to_byte_slice()).unwrap();
         let res = rdh_cru_checker.check(&rdh_1);
         assert!(res.is_ok());
         let res = rdh_cru_checker.check(&rdh_2);
@@ -235,10 +229,10 @@ mod tests {
 
     #[test]
     fn test_invalid_first_second_is_same() {
-        let mut rdh_cru_checker = RdhCruRunningChecker::<RdhCRU<V7>>::new();
+        let mut rdh_cru_checker = RdhCruRunningChecker::<RdhCru<V7>>::new();
 
-        let rdh_1 = RdhCRU::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
-        let rdh_2 = RdhCRU::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
+        let rdh_1 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
+        let rdh_2 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
         let res = rdh_cru_checker.check(&rdh_1);
         assert!(res.is_ok());
         let res = rdh_cru_checker.check(&rdh_2);
@@ -248,12 +242,12 @@ mod tests {
 
     #[test]
     fn test_valid_first_second_invalid_stop() {
-        let mut rdh_cru_checker = RdhCruRunningChecker::<RdhCRU<V7>>::new();
+        let mut rdh_cru_checker = RdhCruRunningChecker::<RdhCru<V7>>::new();
 
-        let rdh_1 = RdhCRU::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
-        let rdh_2 = RdhCRU::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT.to_byte_slice()).unwrap();
+        let rdh_1 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
+        let rdh_2 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT.to_byte_slice()).unwrap();
         let rdh_3_stop =
-            RdhCRU::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP.to_byte_slice()).unwrap();
+            RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP.to_byte_slice()).unwrap();
         let res = rdh_cru_checker.check(&rdh_1);
         assert!(res.is_ok());
         let res = rdh_cru_checker.check(&rdh_2);
@@ -267,10 +261,10 @@ mod tests {
 
     #[test]
     fn test_invalid_first_is_stop() {
-        let mut rdh_cru_checker = RdhCruRunningChecker::<RdhCRU<V7>>::new();
+        let mut rdh_cru_checker = RdhCruRunningChecker::<RdhCru<V7>>::new();
 
         let rdh_1 =
-            RdhCRU::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP.to_byte_slice()).unwrap();
+            RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP.to_byte_slice()).unwrap();
         let res = rdh_cru_checker.check(&rdh_1);
         assert!(res.is_err());
         println!("{:?}", res);
@@ -278,12 +272,12 @@ mod tests {
 
     #[test]
     fn test_invalid_orbit_same_after_stop() {
-        let mut rdh_cru_checker = RdhCruRunningChecker::<RdhCRU<V7>>::new();
+        let mut rdh_cru_checker = RdhCruRunningChecker::<RdhCru<V7>>::new();
 
-        let rdh_1 = RdhCRU::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
-        let rdh_2 = RdhCRU::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT.to_byte_slice()).unwrap();
+        let rdh_1 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
+        let rdh_2 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT.to_byte_slice()).unwrap();
         let rdh_3_stop =
-            RdhCRU::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP.to_byte_slice()).unwrap();
+            RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP.to_byte_slice()).unwrap();
         let res = rdh_cru_checker.check(&rdh_1);
         assert!(res.is_ok());
         let res = rdh_cru_checker.check(&rdh_2);
@@ -298,11 +292,11 @@ mod tests {
 
     #[test]
     fn test_invalid_fields_not_same() {
-        let mut rdh_cru_checker = RdhCruRunningChecker::<RdhCRU<V7>>::new();
+        let mut rdh_cru_checker = RdhCruRunningChecker::<RdhCru<V7>>::new();
 
-        let rdh_1 = RdhCRU::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
-        let rdh_2 = RdhCRU::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT.to_byte_slice()).unwrap();
-        let rdh_3_different = RdhCRU::<V7> {
+        let rdh_1 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
+        let rdh_2 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT.to_byte_slice()).unwrap();
+        let rdh_3_different = RdhCru::<V7> {
             rdh0: Rdh0 {
                 header_id: 0x7,
                 header_size: 0x40,

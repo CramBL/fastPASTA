@@ -1,8 +1,18 @@
 //! This module contains all struct definitions for the words that are used in supported data formats.
-use super::{
-    rdh::{Rdh0, Rdh1, Rdh2, Rdh3},
-    rdh_cru::RdhCRU,
-};
+
+pub mod rdh0;
+pub mod rdh1;
+pub mod rdh2;
+pub mod rdh3;
+pub mod rdh_cru;
+pub mod test_data;
+pub use rdh0::Rdh0;
+use rdh1::Rdh1;
+use rdh2::Rdh2;
+use rdh3::Rdh3;
+pub use rdh_cru::RdhCru;
+pub use rdh_cru::V6;
+pub use rdh_cru::V7;
 
 /// The size of a RDH-CRU word in bytes
 pub const RDH_CRU_SIZE_BYTES: u8 = 64;
@@ -12,10 +22,10 @@ pub const RDH_CRU_SIZE_BYTES: u8 = 64;
 /// used for:
 /// * pretty printing to stdout
 /// * deserialize the GBT words from the binary file
-pub trait RdhSubWord: Sized + PartialEq + std::fmt::Debug + std::fmt::Display {
+pub trait RdhSubword: Sized + PartialEq + std::fmt::Debug + std::fmt::Display {
     /// Deserializes the GBT word from a provided reader
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error> {
-        let raw = super::lib::macros::load_bytes!(8, reader);
+        let raw = macros::load_bytes!(8, reader);
         Self::from_buf(&raw)
     }
     /// Deserializes the GBT word from a byte slice
@@ -154,7 +164,7 @@ where
     where
         Self: Sized,
     {
-        let buf = super::lib::macros::load_bytes!(64, reader);
+        let buf = macros::load_bytes!(64, reader);
         Self::from_buf(&buf)
     }
 
@@ -164,7 +174,7 @@ where
         reader: &mut R,
         rdh0: Rdh0,
     ) -> Result<Self, std::io::Error> {
-        let buf = super::lib::macros::load_bytes!(56, reader);
+        let buf = macros::load_bytes!(56, reader);
         Self::from_rdh0_and_buf(rdh0, &buf)
     }
 
@@ -192,12 +202,7 @@ impl<T> ByteSlice for &T where T: ByteSlice {}
 impl<T> ByteSlice for &mut T where T: ByteSlice {}
 
 /// Auto implement [ByteSlice] for the following structs.
-impl<Version> ByteSlice for RdhCRU<Version> {}
-impl ByteSlice for super::its::status_words::Ihw {}
-impl ByteSlice for super::its::status_words::Tdh {}
-impl ByteSlice for super::its::status_words::Cdw {}
-impl ByteSlice for super::its::status_words::Tdt {}
-impl ByteSlice for super::its::status_words::Ddw0 {}
+impl<Version> ByteSlice for RdhCru<Version> {}
 
 /// # Safety
 /// This function can only be used to serialize a struct if it has the #[repr(packed)] attribute

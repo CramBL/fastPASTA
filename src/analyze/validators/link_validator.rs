@@ -15,9 +15,8 @@ pub(crate) use super::{its, rdh::RdhCruSanityValidator, rdh_running::RdhCruRunni
 use crate::config::check::{CheckCommands, ChecksOpt, System};
 use crate::config::custom_checks::CustomChecksOpt;
 use crate::config::filter::FilterOpt;
+use crate::input::prelude::{RdhCru, RDH, V7};
 use crate::stats::StatType;
-use crate::words::lib::RDH;
-use crate::words::rdh_cru::{RdhCRU, V7};
 use ringbuffer::{ConstGenericRingBuffer, RingBufferExt, RingBufferWrite};
 
 /// Main validator that handles all checks on a specific link.
@@ -132,7 +131,7 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
 
     fn report_rdh_error(&mut self, rdh: &T, mut error: String, rdh_mem_pos: u64) {
         error.push('\n');
-        error.push_str(RdhCRU::<V7>::rdh_header_text_with_indent_to_string(13).as_str());
+        error.push_str(RdhCru::<V7>::rdh_header_text_with_indent_to_string(13).as_str());
         self.prev_rdhs.iter().for_each(|prev_rdh| {
             error.push_str(&format!("  previous:  {prev_rdh}\n"));
         });
@@ -151,8 +150,8 @@ mod tests {
     use super::*;
     use crate::config::check::System;
     use crate::config::test_util::MockConfig;
+    use crate::input::prelude::test_data::CORRECT_RDH_CRU_V7;
     use crate::words::its::test_payloads::*;
-    use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
 
     static CFG_TEST_RUN_LINK_VALIDATOR: OnceLock<MockConfig> = OnceLock::new();
 
@@ -343,7 +342,7 @@ mod tests {
         let mut cfg = MockConfig::new();
         cfg.check = Some(CheckCommands::Sanity { system: None });
 
-        type RdhV7 = RdhCRU<V7>;
+        type RdhV7 = RdhCru<V7>;
 
         let (mut _link_validator, _cdp_tuple_send_ch): (
             LinkValidator<RdhV7, MockConfig>,
