@@ -7,7 +7,7 @@ use crossbeam_channel::Receiver;
 
 use super::writer::BufferedWriter;
 use super::writer::Writer;
-use crate::input::data_wrapper::CdpChunk;
+use crate::input::prelude::CdpChunk;
 use crate::util::config::inputoutput::InputOutputOpt;
 use crate::words::lib::RDH;
 

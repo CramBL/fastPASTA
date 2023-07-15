@@ -150,7 +150,7 @@ pub fn process<T: words::lib::RDH + 'static>(
     // 1. Launch reader thread to read data from file or stdin
     let (reader_handle, reader_rcv_channel): (
         std::thread::JoinHandle<()>,
-        crossbeam_channel::Receiver<input::data_wrapper::CdpChunk<T>>,
+        crossbeam_channel::Receiver<CdpChunk<T>>,
     ) = input::lib::spawn_reader(stop_flag.clone(), loader, send_stats_ch.clone());
 
     // 2. Launch analysis thread if an analysis action is set (view or check)
@@ -211,7 +211,7 @@ pub fn process<T: words::lib::RDH + 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::input::data_wrapper::CdpChunk;
+    use crate::input::prelude::CdpChunk;
     use crate::words::rdh_cru::test_data::*;
     use crate::{input::lib::init_reader, util::lib::test_util::MockConfig};
     use pretty_assertions::assert_eq;

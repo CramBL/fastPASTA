@@ -2,13 +2,13 @@ use crate::analyze::validators::its::its_payload_fsm_cont;
 use crate::analyze::validators::its::its_payload_fsm_cont::ItsPayloadFsmContinuous;
 use crate::analyze::validators::its::lib::ItsPayloadWord;
 use crate::analyze::validators::lib::preprocess_payload;
-use crate::input;
+use crate::input::prelude::*;
 use crate::stats::StatType;
 use crate::words::lib::RDH;
 use std::io::Write;
 
 pub(crate) fn hbf_view<T: RDH>(
-    cdp_chunk: input::data_wrapper::CdpChunk<T>,
+    cdp_chunk: CdpChunk<T>,
     send_stats_ch: &flume::Sender<StatType>,
     its_payload_fsm_cont: &mut ItsPayloadFsmContinuous,
 ) -> Result<(), std::io::Error> {

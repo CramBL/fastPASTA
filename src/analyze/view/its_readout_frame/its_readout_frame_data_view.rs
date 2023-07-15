@@ -1,15 +1,16 @@
+use crate::input::prelude::*;
 use crate::{
     analyze::{
         validators::{its::lib::ItsPayloadWord, lib::preprocess_payload},
         view::lib::format_word_slice,
     },
-    input,
     words::lib::RDH,
 };
+
 use std::io::Write;
 
 pub(crate) fn its_readout_frame_data_view<T: RDH>(
-    cdp_chunk: input::data_wrapper::CdpChunk<T>,
+    cdp_chunk: CdpChunk<T>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut stdio_lock = std::io::stdout().lock();
     super::print_start_of_its_readout_frame_header_text(&mut stdio_lock)?;

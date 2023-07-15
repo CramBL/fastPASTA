@@ -4,7 +4,7 @@
 //! write it out to file/stdout.
 //! Implements drop to flush the remaining data to the file once processing is done.
 
-use crate::input::data_wrapper::CdpChunk;
+use crate::input::prelude::CdpChunk;
 use crate::util::config::inputoutput::InputOutputOpt;
 use crate::words::lib::RDH;
 

@@ -1,7 +1,8 @@
+use crate::input::prelude::*;
 use std::io::Write;
 
 pub(crate) fn rdh_view<T: crate::words::lib::RDH>(
-    cdp_chunk: crate::input::data_wrapper::CdpChunk<T>,
+    cdp_chunk: CdpChunk<T>,
 ) -> Result<(), std::io::Error> {
     let header_text = crate::words::rdh_cru::RdhCRU::<T>::rdh_header_text_with_indent_to_string(16);
     let mut stdio_lock = std::io::stdout().lock();

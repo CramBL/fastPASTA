@@ -1,6 +1,6 @@
 //! Contains the [ValidatorDispatcher], that manages [LinkValidator]s and iterates over and comnsumes a [`data_wrapper::CdpChunk<T>`], dispatching the data to the correct thread based on the Link ID running an instance of [LinkValidator].
 use super::link_validator::LinkValidator;
-use crate::input::data_wrapper;
+use crate::input::prelude::CdpChunk;
 use crate::stats::StatType;
 use crate::util;
 use crate::util::config::check::{CheckCommands, System};
@@ -36,7 +36,7 @@ impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C>
     /// Iterates over and consumes a [`data_wrapper::CdpChunk<T>`], dispatching the data to the correct thread running an instance of [LinkValidator].
     ///
     /// If a link validator thread does not exist for the link id of the current rdh, a new one is spawned
-    pub fn dispatch_cdp_chunk(&mut self, cdp_chunk: data_wrapper::CdpChunk<T>) {
+    pub fn dispatch_cdp_chunk(&mut self, cdp_chunk: CdpChunk<T>) {
         // Iterate over the CDP chunk
         cdp_chunk.into_iter().for_each(|(rdh, data, mem_pos)| {
             // Dispatch by FEE ID if system targeted for checks is ITS Stave (gonna be a lot of data to parse for each stave!)
@@ -203,7 +203,7 @@ fn chunkify_payload<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::input::data_wrapper::CdpChunk;
+    use crate::input::prelude::*;
     use crate::util::config::check::CheckCommands;
     use crate::util::lib::test_util::MockConfig;
     use crate::words::its::test_payloads::*;
