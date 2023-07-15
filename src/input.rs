@@ -2,7 +2,7 @@
 
 mod bufreader_wrapper;
 pub mod data_wrapper;
-pub mod input_scanner;
+mod input_scanner;
 pub mod lib;
 mod mem_pos_tracker;
 pub mod prelude;

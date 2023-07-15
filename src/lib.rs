@@ -46,7 +46,6 @@
 //! ```
 
 use analyze::validators::rdh::Rdh0Validator;
-use input::input_scanner::InputScanner;
 use input::prelude::*;
 use stats::StatType;
 use util::lib::{Config, DataOutputMode};
