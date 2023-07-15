@@ -228,7 +228,7 @@ mod tests {
         CFG_TEST_INIT_PROCESSING.set(mock_config).unwrap();
 
         // Setup a reader
-        let reader = init_reader(CFG_TEST_INIT_PROCESSING.get().unwrap()).unwrap();
+        let reader = init_reader(CFG_TEST_INIT_PROCESSING.get().unwrap().input_file()).unwrap();
 
         let (sender, receiver): (flume::Sender<StatType>, flume::Receiver<StatType>) =
             flume::unbounded();

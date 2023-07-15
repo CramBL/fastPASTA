@@ -26,7 +26,7 @@ pub fn main() -> std::process::ExitCode {
     // Handles SIGINT, SIGTERM and SIGHUP (as the `termination` feature is  enabled)
     fastpasta::util::lib::init_ctrlc_handler(stop_flag.clone());
 
-    let exit_code: u8 = match init_reader(Cfg::global()) {
+    let exit_code: u8 = match init_reader(Cfg::global().input_file()) {
         Ok(readable) => {
             match fastpasta::init_processing(Cfg::global(), readable, stat_send_channel, stop_flag)
             {

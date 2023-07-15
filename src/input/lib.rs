@@ -13,15 +13,14 @@ use super::{
     input_scanner::{InputScanner, ScanCDP},
     stdin_reader::StdInReaderSeeker,
 };
-use crate::config::inputoutput::InputOutputOpt;
 use crate::stats;
 use crate::stats::StatType;
 use crate::stats::SystemId;
 use crate::words;
 use crate::words::lib::RDH;
 use crossbeam_channel::Receiver;
-use std::io::IsTerminal;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::{io::IsTerminal, path::PathBuf};
 
 /// Depth of the FIFO where the CDP chunks inserted as they are read
 const CHANNEL_CDP_CHUNK_CAPACITY: usize = 100;
@@ -31,10 +30,10 @@ const READER_BUFFER_SIZE: usize = 1024 * 50; // 50KB
 ///
 /// The input mode is determined by the presence of the input file path in the config
 #[inline]
-pub fn init_reader<C: InputOutputOpt>(
-    config: &C,
+pub fn init_reader(
+    input_file: &Option<PathBuf>,
 ) -> Result<Box<dyn BufferedReaderWrapper>, std::io::Error> {
-    if let Some(path) = config.input_file() {
+    if let Some(path) = input_file {
         log::trace!("Reading from file: {:?}", &path);
         let f = std::fs::OpenOptions::new().read(true).open(path)?;
         Ok(Box::new(std::io::BufReader::with_capacity(
