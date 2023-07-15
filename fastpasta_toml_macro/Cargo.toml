@@ -1,17 +1,17 @@
 [package]
 name = "fastpasta_toml_macro"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 readme = "README.md"
 repository = "https://gitlab.cern.ch/mkonig/fastpasta"
 license = "MIT OR Apache-2.0"
 keywords = ["procedural-macro", "derive-macro", "toml-macro"]
-description = "Convenience crate with a trait definition for use with the procedural derive macro fastpasta_toml_macro_derive."
+description = "DEPRECATED. Development continues at: https://crates.io/crates/descriptive_toml_derive. Convenience crate with a trait definition for use with the procedural derive macro fastpasta_toml_macro_derive."
 categories = ["rust-patterns", "development-tools"]
 authors = ["Marc Beck König <mbkj@tutamail.com>"]
 
 [badges]
-maintenance = { status = "passively-maintained" }
+maintenance = { status = "deprecated" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
