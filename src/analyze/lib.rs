@@ -3,7 +3,9 @@ use super::validators::its::its_payload_fsm_cont::ItsPayloadFsmContinuous;
 use super::validators::lib::ValidatorDispatcher;
 use crate::config::lib::Config;
 use crate::input;
+use crate::stats;
 use crate::stats::StatType;
+use crate::stats::SystemId;
 use crossbeam_channel::Receiver;
 use input::prelude::*;
 
@@ -15,7 +17,7 @@ pub fn spawn_analysis<T: RDH + 'static>(
     data_channel: Receiver<CdpChunk<T>>,
 ) -> std::thread::JoinHandle<()> {
     let analysis_thread = std::thread::Builder::new().name("Analysis".to_string());
-
+    let mut system_id: Option<SystemId> = None; // System ID is only set once
     analysis_thread
         .spawn({
             move || {
@@ -34,6 +36,26 @@ pub fn spawn_analysis<T: RDH + 'static>(
                             break;
                         }
                     };
+
+                    // Collect global stats
+                    // Send HBF seen if stop bit is 1
+                    for rdh in cdp_chunk.rdh_slice().iter() {
+                        if rdh.stop_bit() == 1 {
+                            stats_sender_channel.send(StatType::HBFSeen).unwrap();
+                        }
+                        stats_sender_channel
+                            .send(StatType::TriggerType(rdh.trigger_type()))
+                            .unwrap();
+                        if let Err(e) = stats::collect_system_specific_stats(
+                            rdh,
+                            &mut system_id,
+                            &stats_sender_channel,
+                        ) {
+                            // Send error and break, stop processing
+                            stats_sender_channel.send(StatType::Fatal(e)).unwrap();
+                            break; // Fatal error
+                        }
+                    }
 
                     // Do checks or view
                     if config.check().is_some() {

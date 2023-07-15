@@ -146,7 +146,7 @@ pub fn process<T: RDH + 'static>(
     let (reader_handle, reader_rcv_channel): (
         std::thread::JoinHandle<()>,
         crossbeam_channel::Receiver<CdpChunk<T>>,
-    ) = input::lib::spawn_reader(stop_flag.clone(), loader, send_stats_ch.clone());
+    ) = input::lib::spawn_reader(stop_flag.clone(), loader);
 
     // 2. Launch analysis thread if an analysis action is set (view or check)
     let analysis_handle = if config.check().is_some() || config.view().is_some() {
@@ -207,7 +207,7 @@ mod tests {
     use crate::input::prelude::test_data::CORRECT_RDH_CRU_V7;
     use crate::input::prelude::CdpChunk;
     use crate::{input::lib::init_reader, MockConfig};
-    use pretty_assertions::assert_eq;
+    use pretty_assertions::{assert_eq, assert_ne};
     use std::path::PathBuf;
     use std::sync::OnceLock;
 
@@ -300,7 +300,11 @@ mod tests {
             stats.push(stat);
         }
 
-        // No stats should have been sent
-        assert_eq!(stats.len(), 0);
+        // Some stats should have been sent
+        assert_ne!(
+            stats.len(),
+            0,
+            "Expected some stats received, got: {stats:?}"
+        );
     }
 }

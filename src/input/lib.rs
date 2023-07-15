@@ -14,9 +14,7 @@ use super::{
     input_scanner::{InputScanner, ScanCDP},
     stdin_reader::StdInReaderSeeker,
 };
-use crate::stats;
-use crate::stats::StatType;
-use crate::stats::SystemId;
+
 use crossbeam_channel::Receiver;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{io::IsTerminal, path::PathBuf};
@@ -60,12 +58,10 @@ pub fn init_reader(
 pub fn spawn_reader<T: RDH + 'static>(
     stop_flag: std::sync::Arc<AtomicBool>,
     input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
-    stats_sender_channel: flume::Sender<StatType>,
 ) -> (std::thread::JoinHandle<()>, Receiver<CdpChunk<T>>) {
     let reader_thread = std::thread::Builder::new().name("Reader".to_string());
     let (send_channel, rcv_channel) = crossbeam_channel::bounded(CHANNEL_CDP_CHUNK_CAPACITY);
     let mut local_stop_on_non_full_chunk = false;
-    let mut system_id: Option<SystemId> = None; // System ID is only set once
     const CDP_CHUNK_SIZE: usize = 100;
     let thread_handle = reader_thread
         .spawn({
@@ -92,26 +88,6 @@ pub fn spawn_reader<T: RDH + 'static>(
                             }
                         }
                     };
-
-                    // Collect global stats
-                    // Send HBF seen if stop bit is 1
-                    for rdh in cdps.rdh_slice().iter() {
-                        if rdh.stop_bit() == 1 {
-                            stats_sender_channel.send(StatType::HBFSeen).unwrap();
-                        }
-                        stats_sender_channel
-                            .send(StatType::TriggerType(rdh.trigger_type()))
-                            .unwrap();
-                        if let Err(e) = stats::collect_system_specific_stats(
-                            rdh,
-                            &mut system_id,
-                            &stats_sender_channel,
-                        ) {
-                            // Send error and break, stop processing
-                            stats_sender_channel.send(StatType::Fatal(e)).unwrap();
-                            break; // Fatal error
-                        }
-                    }
 
                     // Send a chunk to the checker
                     if let Err(e) = send_channel.send(cdps) {
