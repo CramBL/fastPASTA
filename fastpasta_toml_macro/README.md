@@ -1,3 +1,5 @@
+# DEPRECATED - MOVED TO https://crates.io/crates/descriptive_toml_derive
+
 # Description
 Convenience crate with a trait definition for use with the procedural derive macro `fastpasta_toml_macro_derive`.
 

@@ -1,3 +1,5 @@
+# DEPRECATED - MOVED TO https://crates.io/crates/descriptive_toml_derive
+
 # Description
 Procedural derive macro for serializing a struct into a TOML template with field descriptions that is easily edited and deserialized.
 
@@ -7,6 +9,7 @@ Nested structs are not currently supported.
 Make it easy to write a struct that defines a `TOML` template for optional configuration of an executable. Once the struct is deserialized with the derive macro implemented `to_string_pretty_toml()` function, it can be written to a (TOML) file, the file should be understandable without knowing any details of the binary. Deserializing the produced TOML file with no edits produceses the original struct with all optional fields `None`. Editing the produced TOML file will then deserialize into the original struct with those edited values.
 
 # Table of Contents
+- [DEPRECATED - MOVED TO https://crates.io/crates/descriptive\_toml\_derive](#deprecated---moved-to-httpscratesiocratesdescriptive_toml_derive)
 - [Description](#description)
 - [Purpose](#purpose)
 - [Table of Contents](#table-of-contents)
