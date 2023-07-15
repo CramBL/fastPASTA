@@ -12,7 +12,6 @@ use super::{
     data_wrapper::CdpChunk,
     input_scanner::{InputScanner, ScanCDP},
     stdin_reader::StdInReaderSeeker,
-    util::buf_reader_with_capacity,
 };
 use crate::stats;
 use crate::stats::StatType;
@@ -38,7 +37,10 @@ pub fn init_reader<C: InputOutputOpt>(
     if let Some(path) = config.input_file() {
         log::trace!("Reading from file: {:?}", &path);
         let f = std::fs::OpenOptions::new().read(true).open(path)?;
-        Ok(Box::new(buf_reader_with_capacity(f, READER_BUFFER_SIZE)))
+        Ok(Box::new(std::io::BufReader::with_capacity(
+            READER_BUFFER_SIZE,
+            f,
+        )))
     } else {
         log::trace!("Reading from stdin");
         if !std::io::stdin().is_terminal() {

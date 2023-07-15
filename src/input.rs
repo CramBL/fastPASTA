@@ -6,4 +6,3 @@ pub mod input_scanner;
 pub mod lib;
 pub mod mem_pos_tracker;
 pub mod stdin_reader;
-mod util;
