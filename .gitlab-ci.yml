@@ -102,18 +102,6 @@ rust-nightly-build:
     expire_in: 50 mins
   cache: []
 
-# build latest rust with instrument coverage for the test coverage job
-rust-latest-build:
-  stage: build
-  script:
-    - cargo build --verbose
-  artifacts:
-    paths:
-      - $CI_PROJECT_DIR/target/
-    untracked: true
-    when: on_success
-    expire_in: 50 mins
-
 ## Regression tests
 regression-tests:
   stage: build
@@ -122,8 +110,6 @@ regression-tests:
   script:
     - cargo build --release
     - tests/regression/regression_tests.sh
-  dependencies:
-    - rust-latest-build
 
 ### Tests and safety ###
 # Run unit tests with nightly build
