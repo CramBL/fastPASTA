@@ -1,4 +1,2 @@
-//! Definition of the Config trait, and an implementation of it on struct created by parsing CL arguments.
-
-pub mod config;
+//! Miscellaneous utility functions
 pub mod lib;

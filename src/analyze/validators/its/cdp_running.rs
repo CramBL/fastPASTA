@@ -10,11 +10,9 @@ use super::{
     lib::ItsPayloadWord,
     status_words::STATUS_WORD_SANITY_CHECKER,
 };
+use crate::analyze::validators::its::alpide::alpide_readout_frame::AlpideReadoutFrame;
+use crate::config::prelude::*;
 use crate::stats::StatType;
-use crate::util::config::{
-    check::{CheckCommands, ChecksOpt, System},
-    filter::FilterOpt,
-};
 use crate::words::its::data_words::lane_id_to_lane_number;
 use crate::words::its::data_words::ob_data_word_id_to_input_number_connector;
 use crate::words::its::data_words::ob_data_word_id_to_lane;
@@ -22,10 +20,6 @@ use crate::words::its::status_words::is_lane_active;
 use crate::words::its::status_words::{Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt};
 use crate::words::its::{Layer, Stave};
 use crate::words::lib::{ByteSlice, RDH};
-use crate::{
-    analyze::validators::its::alpide::alpide_readout_frame::AlpideReadoutFrame,
-    util::config::custom_checks::CustomChecksOpt,
-};
 
 #[derive(Debug, Clone, Copy)]
 enum StatusWordKind<'a> {
@@ -606,11 +600,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::lib::test_util::MockConfig;
-    use crate::{
-        util::config::check::CheckCommands,
-        words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7},
-    };
+    use crate::config::test_util::MockConfig;
+    use crate::words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, RdhCRU, V7};
     use std::sync::OnceLock;
 
     static MOCK_CONFIG_DEFAULT: OnceLock<MockConfig> = OnceLock::new();

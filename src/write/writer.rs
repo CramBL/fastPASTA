@@ -4,8 +4,8 @@
 //! write it out to file/stdout.
 //! Implements drop to flush the remaining data to the file once processing is done.
 
+use crate::config::inputoutput::InputOutputOpt;
 use crate::input::prelude::CdpChunk;
-use crate::util::config::inputoutput::InputOutputOpt;
 use crate::words::lib::RDH;
 
 /// Trait for a writer that can write ALICE readout data to file/stdout.
@@ -132,10 +132,10 @@ impl<T: RDH> Drop for BufferedWriter<T> {
 mod tests {
     use std::vec;
 
-    use crate::util::config::check::CheckCommands;
-    use crate::util::config::inputoutput::DataOutputMode;
-    use crate::util::config::Cfg;
-    use crate::util::lib::test_util::MockConfig;
+    use crate::config::check::CheckCommands;
+    use crate::config::inputoutput::DataOutputMode;
+    use crate::config::test_util::MockConfig;
+    use crate::config::Cfg;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
     use clap::Parser;

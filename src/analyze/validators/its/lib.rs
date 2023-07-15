@@ -1,8 +1,7 @@
 //! Contains the [do_payload_checks] which is the entry point for the ITS specific CDP validator
 use super::cdp_running::CdpRunningValidator;
+use crate::config::prelude::*;
 use crate::stats::StatType;
-use crate::util::config::custom_checks::CustomChecksOpt;
-use crate::util::config::{check::ChecksOpt, filter::FilterOpt};
 use crate::words::lib::RDH;
 
 /// # Arguments
@@ -76,15 +75,12 @@ impl ItsPayloadWord {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::OnceLock;
-
+    use super::*;
     use crate::{
-        util::lib::test_util::MockConfig,
-        util::lib::{CheckCommands, System},
+        config::test_util::MockConfig,
         words::rdh_cru::{test_data::CORRECT_RDH_CRU_V7, *},
     };
-
-    use super::*;
+    use std::sync::OnceLock;
 
     static CFG_TEST_DO_PAYLOAD_CHECKS: OnceLock<MockConfig> = OnceLock::new();
 

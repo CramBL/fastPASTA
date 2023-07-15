@@ -9,7 +9,7 @@ use alpide_readout_frame::AlpideReadoutFrame;
 use itertools::Itertools;
 use lane_alpide_frame_analyzer::LaneAlpideFrameAnalyzer;
 
-use crate::util::config::custom_checks::CustomChecksOpt;
+use crate::config::custom_checks::CustomChecksOpt;
 
 // Helper struct to group lanes and bunch counters, used for comparing bunch counters between lanes
 struct ValidatedLane {

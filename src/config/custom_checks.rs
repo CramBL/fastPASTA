@@ -166,7 +166,7 @@ mod tests {
     #[test]
     fn test_write_toml_to_file_trait() {
         let mock_file_name = "mock_test_custom_checks.toml";
-        let mock_config = crate::util::lib::test_util::MockConfig::default();
+        let mock_config = super::super::test_util::MockConfig::default();
         mock_config.generate_custom_checks_toml(mock_file_name);
         // Cleanup
         std::fs::remove_file(mock_file_name).unwrap();

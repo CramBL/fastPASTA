@@ -2,8 +2,8 @@
 
 /// Displays an error message if the config doesn't have the mute error flag set.
 pub(crate) fn display_error(error: &str) {
-    use crate::util::{config::CONFIG, lib::UtilOpt};
-    let is_muting_errors = CONFIG.get().unwrap().mute_errors();
+    use crate::config::prelude::*;
+    let is_muting_errors = crate::config::CONFIG.get().unwrap().mute_errors();
     if !is_muting_errors {
         log::error!("{error}");
     }
@@ -68,7 +68,7 @@ mod tests {
         assert_eq!(as_string, "ITS");
     }
 
-    use crate::util::lib::test_util::MockConfig;
+    use crate::config::test_util::MockConfig;
     static CONFIG_TEST_INIT_STATS_CONTROLLER: OnceLock<MockConfig> = OnceLock::new();
     #[test]
     fn test_init_stats_controller() {

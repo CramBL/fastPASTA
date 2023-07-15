@@ -2,8 +2,8 @@
 //!
 //! The [RdhCruSanityValidator] is composed of multiple subvalidators, each checking an [RDH] subword.
 
-use crate::util::config::check::{ChecksOpt, System};
-use crate::util::config::custom_checks::CustomChecksOpt;
+use crate::config::check::{ChecksOpt, System};
+use crate::config::custom_checks::CustomChecksOpt;
 use crate::words::lib::RDH;
 use crate::words::rdh::{FeeId, Rdh0, Rdh1, Rdh2, Rdh3};
 use std::fmt::Write as _;

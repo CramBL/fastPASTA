@@ -4,9 +4,9 @@
 
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::mem_pos_tracker::MemPosTracker;
+use crate::config::filter::{FilterOpt, FilterTarget};
+use crate::config::inputoutput::InputOutputOpt;
 use crate::stats::{StatType, SystemId};
-use crate::util::config::filter::{FilterOpt, FilterTarget};
-use crate::util::lib::InputOutputOpt;
 use crate::words::its::is_match_feeid_layer_stave;
 use crate::words::lib::{SerdeRdh, RDH};
 use crate::words::rdh::Rdh0;
@@ -307,7 +307,7 @@ fn invalid_rdh_offset<T: RDH>(rdh: &T, current_memory_address: u64, offset_to_ne
 
 #[cfg(test)]
 mod tests {
-    use crate::util::config::Cfg;
+    use crate::config::Cfg;
     use crate::words::lib::ByteSlice;
     use crate::words::rdh_cru::{RdhCRU, V6, V7};
     use clap::Parser;

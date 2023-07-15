@@ -46,9 +46,9 @@
 //! ```
 
 use analyze::validators::rdh::Rdh0Validator;
+use config::prelude::*;
 use input::prelude::*;
 use stats::StatType;
-use util::lib::{Config, DataOutputMode};
 use words::{
     lib::RdhSubWord,
     rdh::Rdh0,
@@ -56,6 +56,7 @@ use words::{
 };
 
 pub mod analyze;
+pub mod config;
 pub mod input;
 pub mod stats;
 pub mod util;
@@ -154,9 +155,7 @@ pub fn process<T: words::lib::RDH + 'static>(
 
     // 2. Launch analysis thread if an analysis action is set (view or check)
     let analysis_handle = if config.check().is_some() || config.view().is_some() {
-        debug_assert!(
-            config.output_mode() == util::lib::DataOutputMode::None || config.filter_enabled(),
-        );
+        debug_assert!(config.output_mode() == DataOutputMode::None || config.filter_enabled(),);
         let handle = analyze::lib::spawn_analysis(
             config,
             stop_flag.clone(),
@@ -212,7 +211,7 @@ mod tests {
     use super::*;
     use crate::input::prelude::CdpChunk;
     use crate::words::rdh_cru::test_data::*;
-    use crate::{input::lib::init_reader, util::lib::test_util::MockConfig};
+    use crate::{input::lib::init_reader, MockConfig};
     use pretty_assertions::assert_eq;
     use std::path::PathBuf;
     use std::sync::OnceLock;

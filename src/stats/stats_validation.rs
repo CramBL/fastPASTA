@@ -1,5 +1,5 @@
 use super::rdh_stats::RdhStats;
-use crate::util::config::custom_checks::CustomChecksOpt;
+use crate::config::custom_checks::CustomChecksOpt;
 
 pub fn validate_custom_stats(
     custom_checks: &'static impl CustomChecksOpt,

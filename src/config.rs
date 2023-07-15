@@ -10,10 +10,10 @@ use self::{
     custom_checks::{CustomChecks, CustomChecksOpt},
     filter::FilterOpt,
     inputoutput::{DataOutputMode, InputOutputOpt},
+    prelude::Config,
     util::UtilOpt,
     view::{ViewCommands, ViewOpt},
 };
-use super::lib::Config;
 use crate::words::its::layer_stave_string_to_feeid;
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
@@ -23,6 +23,9 @@ pub mod check;
 pub mod custom_checks;
 pub mod filter;
 pub mod inputoutput;
+pub mod lib;
+pub mod prelude;
+pub mod test_util;
 pub mod util;
 pub mod view;
 /// The [CONFIG] static variable is used to store the [Cfg] created from the parsed command line arguments
@@ -390,4 +393,13 @@ impl CheckCommands {
             CheckCommands::Sanity { system: sys } => *sys,
         }
     }
+}
+
+/// Get the [config][super::config::Cfg] from the command line arguments and set the static [CONFIG][crate::util::config::CONFIG] variable.
+pub fn init_config() -> Result<(), String> {
+    let cfg = <super::config::Cfg as clap::Parser>::parse();
+    cfg.validate_args()?;
+    cfg.handle_custom_checks();
+    crate::config::CONFIG.set(cfg).unwrap();
+    Ok(())
 }

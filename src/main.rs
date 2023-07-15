@@ -1,11 +1,12 @@
+use fastpasta::config::init_config;
+use fastpasta::config::prelude::*;
+use fastpasta::config::Cfg;
 use fastpasta::input::lib::init_reader;
 use fastpasta::stats::init_stats_controller;
 use fastpasta::stats::StatType;
-use fastpasta::util::config::Cfg;
-use fastpasta::util::lib::CustomChecksOpt;
 
 pub fn main() -> std::process::ExitCode {
-    if let Err(e) = fastpasta::util::lib::init_config() {
+    if let Err(e) = init_config() {
         eprintln!("{e}");
         return std::process::ExitCode::from(1);
     };

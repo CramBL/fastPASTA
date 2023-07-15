@@ -12,10 +12,10 @@
 //! The new system should be added to the match statement, along with how to delegate the payload to the new validator.
 
 pub(crate) use super::{its, rdh::RdhCruSanityValidator, rdh_running::RdhCruRunningChecker};
+use crate::config::check::{CheckCommands, ChecksOpt, System};
+use crate::config::custom_checks::CustomChecksOpt;
+use crate::config::filter::FilterOpt;
 use crate::stats::StatType;
-use crate::util::config::check::{CheckCommands, ChecksOpt, System};
-use crate::util::config::custom_checks::CustomChecksOpt;
-use crate::util::config::filter::FilterOpt;
 use crate::words::lib::RDH;
 use crate::words::rdh_cru::{RdhCRU, V7};
 use ringbuffer::{ConstGenericRingBuffer, RingBufferExt, RingBufferWrite};
@@ -149,8 +149,8 @@ mod tests {
     use std::sync::OnceLock;
 
     use super::*;
-    use crate::util::config::check::System;
-    use crate::util::lib::test_util::MockConfig;
+    use crate::config::check::System;
+    use crate::config::test_util::MockConfig;
     use crate::words::its::test_payloads::*;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
 

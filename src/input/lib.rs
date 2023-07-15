@@ -13,10 +13,10 @@ use super::{
     input_scanner::{InputScanner, ScanCDP},
     stdin_reader::StdInReaderSeeker,
 };
+use crate::config::inputoutput::InputOutputOpt;
 use crate::stats;
 use crate::stats::StatType;
 use crate::stats::SystemId;
-use crate::util::config::inputoutput::InputOutputOpt;
 use crate::words;
 use crate::words::lib::RDH;
 use crossbeam_channel::Receiver;

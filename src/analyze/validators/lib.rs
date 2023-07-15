@@ -1,16 +1,16 @@
 //! Contains the [ValidatorDispatcher], that manages [LinkValidator]s and iterates over and comnsumes a [`data_wrapper::CdpChunk<T>`], dispatching the data to the correct thread based on the Link ID running an instance of [LinkValidator].
 use super::link_validator::LinkValidator;
+use crate::config::prelude::*;
 use crate::input::prelude::CdpChunk;
 use crate::stats::StatType;
-use crate::util;
-use crate::util::config::check::{CheckCommands, System};
+
 use crate::words::lib::RDH;
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 /// The [ValidatorDispatcher] is responsible for creating and managing the [LinkValidator] threads.
 ///
 /// It receives a [`data_wrapper::CdpChunk<T>`] and dispatches the data to the correct thread running an instance of [LinkValidator].
-pub struct ValidatorDispatcher<T: RDH, C: util::lib::Config + 'static> {
+pub struct ValidatorDispatcher<T: RDH, C: Config + 'static> {
     processors: Vec<DispatchId>,
     process_channels: Vec<crossbeam_channel::Sender<CdpTuple<T>>>,
     validator_thread_handles: Vec<std::thread::JoinHandle<()>>,
@@ -21,7 +21,7 @@ pub struct ValidatorDispatcher<T: RDH, C: util::lib::Config + 'static> {
 #[derive(PartialEq, Clone, Copy)]
 struct DispatchId(u16);
 
-impl<T: RDH + 'static, C: util::lib::Config + 'static> ValidatorDispatcher<T, C> {
+impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
     /// Create a new ValidatorDispatcher from a Config and a stats sender channel
     pub fn new(global_config: &'static C, stats_sender: flume::Sender<StatType>) -> Self {
         Self {
@@ -203,9 +203,9 @@ fn chunkify_payload<'a>(
 
 #[cfg(test)]
 mod tests {
+    use crate::config::check::CheckCommands;
+    use crate::config::test_util::MockConfig;
     use crate::input::prelude::*;
-    use crate::util::config::check::CheckCommands;
-    use crate::util::lib::test_util::MockConfig;
     use crate::words::its::test_payloads::*;
     use crate::words::rdh_cru::test_data::CORRECT_RDH_CRU_V7;
     use crate::words::rdh_cru::{RdhCRU, V7};

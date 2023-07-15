@@ -2,7 +2,7 @@
 //!
 //! Contains the [init_stats_controller] function, which spawns a thread with the [StatsController](stats_controller::StatsController) running, and returns the thread handle, the channel to send stats to, and the stop flag.
 
-use crate::words;
+use crate::{config::prelude::Config, words};
 
 mod error_stats;
 pub mod its_stats;
@@ -165,7 +165,7 @@ impl std::fmt::Display for SystemId {
 }
 
 /// Spawns a thread with the [StatsController](stats_controller::StatsController) running, and returns the thread handle, the channel to send stats to, and the stop flag.
-pub fn init_stats_controller<C: crate::util::lib::Config + 'static>(
+pub fn init_stats_controller<C: Config + 'static>(
     config: &'static C,
 ) -> (
     std::thread::JoinHandle<()>,

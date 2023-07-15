@@ -2,18 +2,17 @@
 use crate::analyze::validators::its::its_payload_fsm_cont::ItsPayloadFsmContinuous;
 use crate::input::prelude::*;
 use crate::stats::StatType;
-use crate::util;
 use crate::words::lib::RDH;
 
 /// Calls a specific view generator based on the [View][util::config::view::ViewCommands] type.
 #[inline]
 pub fn generate_view<T: RDH>(
-    view: crate::util::config::view::ViewCommands,
+    view: crate::config::view::ViewCommands,
     cdp_chunk: CdpChunk<T>,
     send_stats_ch: &flume::Sender<StatType>,
     its_payload_fsm_cont: &mut ItsPayloadFsmContinuous,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    use util::config::view::ViewCommands;
+    use crate::config::view::ViewCommands;
     match view {
         ViewCommands::Rdh => super::rdh_view::rdh_view(cdp_chunk)?,
         ViewCommands::Hbf => {
