@@ -182,6 +182,9 @@ regression-benchmarks-extended:
     - tests/regression/regression_performance.sh EXTENDED
   timeout: 3h 30m
   rules:
+  # Run this job when a tag is created
+  - if: $CI_COMMIT_TAG
+    when: always
   # Don't create the job if commit message contains [skip-bench]
   - if: $CI_COMMIT_MESSAGE =~ /\[.*skip-bench.*\]/
     when: never
@@ -236,14 +239,3 @@ address-sanitizer:
   allow_failure: true
   dependencies: []
   cache: []
-
-## For release build
-build-release-latest:
-  stage: release
-  rules:
-    - if: $CI_COMMIT_TAG  # Run this job when a tag is created
-  script:
-    - echo "Running release job"
-    - echo "Testing release build profile"
-    - cargo build -r --verbose
-    - echo "Publishing has to be done manually :)"
