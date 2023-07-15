@@ -395,7 +395,7 @@ impl CheckCommands {
     }
 }
 
-/// Get the [config][super::config::Cfg] from the command line arguments and set the static [CONFIG][crate::util::config::CONFIG] variable.
+/// Get the [config][super::config::Cfg] from the command line arguments and set the static [CONFIG] variable.
 pub fn init_config() -> Result<(), String> {
     let cfg = <super::config::Cfg as clap::Parser>::parse();
     cfg.validate_args()?;

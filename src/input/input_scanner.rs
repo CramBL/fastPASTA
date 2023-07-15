@@ -60,16 +60,15 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
 }
 
 impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
-    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper], [MemPosTracker] and a producer channel for [StatType].
+    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper], and a producer channel for [StatType].
     pub fn new(
         config: &(impl FilterOpt + InputOutputOpt),
         reader: Box<R>,
-        tracker: MemPosTracker,
         stats_controller_sender_ch: flume::Sender<StatType>,
     ) -> Self {
         InputScanner {
             reader,
-            tracker,
+            tracker: MemPosTracker::new(),
             stats_controller_sender_ch,
             filter_target: config.filter_target(),
             skip_payload: config.skip_payload(),
@@ -78,7 +77,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             initial_rdh0: None,
         }
     }
-    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper], [MemPosTracker], a producer channel for [StatType] and an initial [Rdh0].
+    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper],  a producer channel for [StatType] and an initial [Rdh0].
     ///
     /// The [Rdh0] is used to determine the RDH version before instantiating the [InputScanner].
     pub fn new_from_rdh0(
@@ -336,12 +335,7 @@ mod tests {
         let bufreader = std::io::BufReader::new(reader);
 
         (
-            InputScanner::new(
-                &cfg,
-                Box::new(bufreader),
-                MemPosTracker::new(),
-                send_stats_controller_channel,
-            ),
+            InputScanner::new(&cfg, Box::new(bufreader), send_stats_controller_channel),
             // Has to be returned so it lives long enough for the test. Otherwise it will be dropped, and inputscanner will panic when trying to report stats.
             recv_stats_controller_channel,
         )

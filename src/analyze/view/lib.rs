@@ -4,7 +4,7 @@ use crate::input::prelude::*;
 use crate::stats::StatType;
 use crate::words::lib::RDH;
 
-/// Calls a specific view generator based on the [View][util::config::view::ViewCommands] type.
+/// Calls a specific view generator based on the [View][crate::config::view::ViewCommands] type.
 #[inline]
 pub fn generate_view<T: RDH>(
     view: crate::config::view::ViewCommands,

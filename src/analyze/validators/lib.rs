@@ -1,4 +1,4 @@
-//! Contains the [ValidatorDispatcher], that manages [LinkValidator]s and iterates over and comnsumes a [`data_wrapper::CdpChunk<T>`], dispatching the data to the correct thread based on the Link ID running an instance of [LinkValidator].
+//! Contains the [ValidatorDispatcher], that manages [LinkValidator]s and iterates over and consumes a [`CdpChunk<T>`], dispatching the data to the correct thread based on the Link ID running an instance of [LinkValidator].
 use super::link_validator::LinkValidator;
 use crate::config::prelude::*;
 use crate::input::prelude::CdpChunk;
@@ -9,7 +9,7 @@ type CdpTuple<T> = (T, Vec<u8>, u64);
 
 /// The [ValidatorDispatcher] is responsible for creating and managing the [LinkValidator] threads.
 ///
-/// It receives a [`data_wrapper::CdpChunk<T>`] and dispatches the data to the correct thread running an instance of [LinkValidator].
+/// It receives a [`CdpChunk<T>`] and dispatches the data to the correct thread running an instance of [LinkValidator].
 pub struct ValidatorDispatcher<T: RDH, C: Config + 'static> {
     processors: Vec<DispatchId>,
     process_channels: Vec<crossbeam_channel::Sender<CdpTuple<T>>>,
@@ -33,7 +33,7 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
         }
     }
 
-    /// Iterates over and consumes a [`data_wrapper::CdpChunk<T>`], dispatching the data to the correct thread running an instance of [LinkValidator].
+    /// Iterates over and consumes a [`CdpChunk<T>`], dispatching the data to the correct thread running an instance of [LinkValidator].
     ///
     /// If a link validator thread does not exist for the link id of the current rdh, a new one is spawned
     pub fn dispatch_cdp_chunk(&mut self, cdp_chunk: CdpChunk<T>) {
