@@ -1,3 +1,4 @@
+//! Struct definition of the `RDH` subword `RDH1`
 use super::RdhSubword;
 use byteorder::{ByteOrder, LittleEndian};
 use std::fmt;
