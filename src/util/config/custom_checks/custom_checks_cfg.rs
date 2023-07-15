@@ -1,5 +1,5 @@
 //! Struct definition of the custom checks configuration TOML file.
-use fastpasta_toml_macro::TomlConfig;
+use descriptive_toml_derive::TomlConfig;
 use serde_derive::{Deserialize, Serialize};
 
 /// Struct for the configuration of various expected counters in the data.

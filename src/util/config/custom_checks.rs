@@ -26,7 +26,7 @@ pub trait CustomChecksOpt {
     /// Write a [CustomChecks] instance to a TOML file in the current directory.
     fn generate_custom_checks_toml(&self, file_name: &str) {
         let toml =
-            fastpasta_toml_macro::TomlConfig::to_string_pretty_toml(&CustomChecks::default());
+            descriptive_toml_derive::TomlConfig::to_string_pretty_toml(&CustomChecks::default());
         std::fs::write(file_name, toml).expect("Failed to write TOML file");
     }
 
