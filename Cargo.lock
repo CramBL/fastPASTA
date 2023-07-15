@@ -433,6 +433,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "descriptive_toml_derive"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfe884133e478ee4c8392a9f3fdfef8a8dc3fcae58bcea2d188ebc957d002bc5"
+dependencies = [
+ "descriptive_toml_derive_macro",
+]
+
+[[package]]
+name = "descriptive_toml_derive_macro"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3838fae41750d7388cc7a30016e2057d65943d175669274e8f7abd602dc097e1"
+dependencies = [
+ "quote 1.0.29",
+ "syn 2.0.23",
+]
+
+[[package]]
 name = "diff"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -510,8 +529,8 @@ dependencies = [
  "criterion",
  "crossbeam-channel",
  "ctrlc",
+ "descriptive_toml_derive",
  "fancy-regex",
- "fastpasta_toml_macro",
  "flume",
  "fmt",
  "gag",
@@ -530,21 +549,6 @@ dependencies = [
  "tabled",
  "temp-dir",
  "toml",
-]
-
-[[package]]
-name = "fastpasta_toml_macro"
-version = "0.1.0"
-dependencies = [
- "fastpasta_toml_macro_derive",
-]
-
-[[package]]
-name = "fastpasta_toml_macro_derive"
-version = "0.1.0"
-dependencies = [
- "quote 1.0.29",
- "syn 2.0.23",
 ]
 
 [[package]]
