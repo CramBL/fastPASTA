@@ -8,8 +8,8 @@ use crossbeam_channel::Receiver;
 use super::writer::BufferedWriter;
 use super::writer::Writer;
 use crate::config::inputoutput::InputOutputOpt;
-use crate::input::prelude::CdpChunk;
-use crate::input::prelude::RDH;
+use alice_daq_protocol_reader::prelude::CdpChunk;
+use alice_daq_protocol_reader::prelude::RDH;
 
 /// The size of the buffer used by the writer
 ///

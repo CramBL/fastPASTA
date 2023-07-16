@@ -58,6 +58,38 @@ impl<Version> Display for RdhCru<Version> {
 }
 
 impl<Version> RdhCru<Version> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        rdh0: Rdh0,
+        offset_new_packet: u16,
+        memory_size: u16,
+        link_id: u8,
+        packet_counter: u8,
+        cruid_dw: CruidDw,
+        rdh1: Rdh1,
+        dataformat_reserved0: DataformatReserved,
+        rdh2: Rdh2,
+        reserved1: u64,
+        rdh3: Rdh3,
+        reserved2: u64,
+    ) -> Self {
+        RdhCru {
+            rdh0,
+            offset_new_packet,
+            memory_size,
+            link_id,
+            packet_counter,
+            cruid_dw,
+            rdh1,
+            dataformat_reserved0,
+            rdh2,
+            reserved1,
+            rdh3,
+            reserved2,
+            version: PhantomData,
+        }
+    }
+
     /// Formats a [String] containing 2 lines that serve as a header, describing columns of key values for an [RDH CRU][RdhCru].
     ///
     /// Can be used to print a header for a table of [RDH CRU][RdhCru]s.
@@ -97,6 +129,19 @@ impl<Version> RdhCru<Version> {
     pub fn reserved0(&self) -> u64 {
         // Get the reserved0 present in the 56 MSB
         (self.dataformat_reserved0.0 & 0xFFFFFFFFFFFFFF00) >> 8
+    }
+
+    /// Returns the value of the reserved1 field.
+    #[inline]
+    pub fn reserved1(&self) -> u64 {
+        self.reserved1
+    }
+
+    /// Returns the value of the reserved2 field.
+    #[inline]
+    pub fn reserved2(&self) -> u64 {
+        // Get the reserved0 present in the 56 MSB
+        self.reserved2
     }
 }
 

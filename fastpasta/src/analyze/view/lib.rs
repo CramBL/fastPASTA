@@ -1,7 +1,7 @@
 //! Contains the entry point and dispatcher function [generate_view()] for generating data views.
 use crate::analyze::validators::its::its_payload_fsm_cont::ItsPayloadFsmContinuous;
-use crate::input::prelude::*;
 use crate::stats::StatType;
+use alice_daq_protocol_reader::prelude::*;
 
 /// Calls a specific view generator based on the [View][crate::config::view::ViewCommands] type.
 #[inline]

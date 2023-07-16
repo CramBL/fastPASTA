@@ -8,7 +8,7 @@ use super::{
     prelude::{InputOutputOpt, ViewOpt},
     util::UtilOpt,
 };
-use crate::input::prelude::FilterOpt;
+use alice_daq_protocol_reader::prelude::FilterOpt;
 
 /// Super trait for all the traits that needed to be implemented by the config struct
 // Generic traits that are required by the config struct

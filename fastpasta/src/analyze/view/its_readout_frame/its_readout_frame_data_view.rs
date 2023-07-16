@@ -2,7 +2,7 @@ use crate::analyze::{
     validators::{its::lib::ItsPayloadWord, lib::preprocess_payload},
     view::lib::format_word_slice,
 };
-use crate::input::prelude::*;
+use alice_daq_protocol_reader::prelude::*;
 
 use std::io::Write;
 

@@ -1,8 +1,8 @@
 //! Contains the [ValidatorDispatcher], that manages [LinkValidator]s and iterates over and consumes a [`CdpChunk<T>`], dispatching the data to the correct thread based on the Link ID running an instance of [LinkValidator].
 use super::link_validator::LinkValidator;
 use crate::config::prelude::*;
-use crate::input::prelude::{CdpChunk, RDH};
 use crate::stats::StatType;
+use alice_daq_protocol_reader::prelude::{CdpChunk, RDH};
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
@@ -204,9 +204,9 @@ fn chunkify_payload<'a>(
 mod tests {
     use crate::config::check::CheckCommands;
     use crate::config::test_util::MockConfig;
-    use crate::input::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use crate::input::prelude::*;
     use crate::words::its::test_payloads::*;
+    use alice_daq_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
+    use alice_daq_protocol_reader::prelude::*;
     use std::sync::OnceLock;
 
     use super::*;

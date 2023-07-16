@@ -1,14 +1,14 @@
 //! Definitions for status words: [IHW][Ihw], [TDH][Tdh], [TDT][Tdt], [DDW0][Ddw0] & [CDW][Cdw].
 
-use crate::input::prelude::macros::load_bytes;
+use alice_daq_protocol_reader::prelude::macros::load_bytes;
 use byteorder::{ByteOrder, LittleEndian};
 use std::fmt::{Debug, Display};
 
-impl crate::input::prelude::ByteSlice for Ihw {}
-impl crate::input::prelude::ByteSlice for Tdh {}
-impl crate::input::prelude::ByteSlice for Cdw {}
-impl crate::input::prelude::ByteSlice for Tdt {}
-impl crate::input::prelude::ByteSlice for Ddw0 {}
+impl alice_daq_protocol_reader::prelude::ByteSlice for Ihw {}
+impl alice_daq_protocol_reader::prelude::ByteSlice for Tdh {}
+impl alice_daq_protocol_reader::prelude::ByteSlice for Cdw {}
+impl alice_daq_protocol_reader::prelude::ByteSlice for Tdt {}
+impl alice_daq_protocol_reader::prelude::ByteSlice for Ddw0 {}
 
 pub mod util {
     //! Functions for generating human readable text from information extracted from status words.
@@ -196,7 +196,7 @@ pub mod util {
 
 /// Trait to implement for all status words
 pub trait StatusWord:
-    std::fmt::Debug + PartialEq + Sized + crate::input::prelude::ByteSlice + Display
+    std::fmt::Debug + PartialEq + Sized + alice_daq_protocol_reader::prelude::ByteSlice + Display
 {
     /// Returns the id of the status word
     fn id(&self) -> u8;
@@ -591,7 +591,7 @@ impl StatusWord for Cdw {
 
 #[cfg(test)]
 mod tests {
-    use crate::input::prelude::ByteSlice;
+    use alice_daq_protocol_reader::prelude::ByteSlice;
 
     use super::{util::*, *};
     use pretty_assertions::assert_eq;

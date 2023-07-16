@@ -1,5 +1,5 @@
+use alice_daq_protocol_reader::prelude::*;
 use criterion::Criterion;
-use fastpasta::input::prelude::*;
 use std::io::Write;
 
 pub struct RelativeOffset(i64);

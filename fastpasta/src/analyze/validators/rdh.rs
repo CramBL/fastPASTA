@@ -4,8 +4,8 @@
 
 use crate::config::check::{ChecksOpt, System};
 use crate::config::custom_checks::CustomChecksOpt;
-use crate::input::prelude::*;
-use crate::input::rdh::rdh0::FeeId;
+use alice_daq_protocol_reader::prelude::*;
+
 use std::fmt::Write as _;
 
 /// Enum to specialize the checks performed by the [RdhCruSanityValidator] for a specific system.
@@ -35,7 +35,7 @@ impl<T: RDH> Default for RdhCruSanityValidator<T> {
 
 /// Const values used by the RdhCrusanityValidator
 const RDH1_VALIDATOR: Rdh1Validator = Rdh1Validator {
-    valid_rdh1: Rdh1::test_new(0, 0, 0),
+    valid_rdh1: Rdh1::const_default(),
 };
 const RDH2_VALIDATOR: Rdh2Validator = Rdh2Validator {};
 const RDH3_VALIDATOR: Rdh3Validator = Rdh3Validator {};
@@ -286,7 +286,7 @@ impl Rdh0Validator {
             err_cnt += 1;
             write!(err_str, "Header size = {:#x} ", rdh0.header_size).unwrap();
         }
-        if let Err(e) = self.fee_id.sanity_check(rdh0.fee_id) {
+        if let Err(e) = self.fee_id.sanity_check(FeeId(rdh0.fee_id())) {
             err_cnt += 1;
             write!(err_str, "FEE ID = [{}] ", e).unwrap();
         }
@@ -402,7 +402,12 @@ impl Rdh3Validator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::input::prelude::test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
+    use alice_daq_protocol_reader::prelude::test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
+
+    const _CORRECT_RDH0: Rdh0 = Rdh0::new(7, Rdh0::HEADER_SIZE, FeeId(20522), 0, ITS_SYSTEM_ID, 0);
+    const CORRECT_RDH1: Rdh1 = Rdh1::new(BcReserved(0), 0);
+    const CORRECT_RDH2: Rdh2 = Rdh2::new(27139, 0, 0, 0);
+    const CORRECT_RDH3: Rdh3 = Rdh3::new(0, 0, 0);
 
     #[test]
     fn validate_fee_id() {
@@ -448,22 +453,9 @@ mod tests {
     #[test]
     fn validate_rdh0() {
         let mut validator = Rdh0Validator::default();
-        let rdh0 = Rdh0 {
-            header_id: 7,
-            header_size: Rdh0::HEADER_SIZE,
-            fee_id: FeeId(0x502A),
-            priority_bit: 0,
-            system_id: ITS_SYSTEM_ID,
-            reserved0: 0,
-        };
-        let rdh0_2 = Rdh0 {
-            header_id: 7,
-            header_size: Rdh0::HEADER_SIZE,
-            fee_id: FeeId(0x502A),
-            priority_bit: 0,
-            system_id: ITS_SYSTEM_ID,
-            reserved0: 0,
-        };
+        let rdh0 = Rdh0::new(7, Rdh0::HEADER_SIZE, FeeId(0x502A), 0, ITS_SYSTEM_ID, 0);
+        let rdh0_2 = Rdh0::new(7, Rdh0::HEADER_SIZE, FeeId(0x502A), 0, ITS_SYSTEM_ID, 0);
+
         let res = validator.sanity_check(&rdh0);
         assert!(res.is_ok());
         let res = validator.sanity_check(&rdh0_2);
@@ -471,31 +463,33 @@ mod tests {
     }
     #[test]
     fn invalidate_rdh0_bad_header_id() {
-        let mut validator = Rdh0Validator::default();
-        let mut rdh0 = Rdh0 {
-            header_id: 0x7,
-            header_size: Rdh0::HEADER_SIZE,
-            fee_id: FeeId(0x502A),
-            priority_bit: 0,
-            system_id: ITS_SYSTEM_ID,
-            reserved0: 0,
-        };
+        let mut validator = Rdh0Validator::new(
+            Some(7),
+            0x40,
+            FeeIdSanityValidator {
+                layer_min_max: (0, 7),
+                stave_number_min_max: (0, 47),
+            },
+            0,
+            Some(ITS_SYSTEM_ID),
+        );
+        let rdh0 = Rdh0::new(0x7, 0x40, FeeId(0x502A), 0, ITS_SYSTEM_ID, 0);
+
         let res = validator.sanity_check(&rdh0);
-        assert!(res.is_ok());
-        rdh0.header_id = 0x8; // Change to different header_id
+        assert!(
+            res.is_ok(),
+            "Invalidated a correct RDH0: {}",
+            res.unwrap_err()
+        );
+        // Change to different header_id
+        let rdh0 = Rdh0::new(0x8, 0x40, FeeId(0x502A), 0, ITS_SYSTEM_ID, 0);
+
         assert!(validator.sanity_check(&rdh0).is_err());
     }
     #[test]
     fn invalidate_rdh0_bad_header_size() {
         let mut validator = Rdh0Validator::default();
-        let rdh0 = Rdh0 {
-            header_id: 7,
-            header_size: 0x3,
-            fee_id: FeeId(0x502A),
-            priority_bit: 0,
-            system_id: ITS_SYSTEM_ID,
-            reserved0: 0,
-        };
+        let rdh0 = Rdh0::new(7, 3, FeeId(0x502A), 0, ITS_SYSTEM_ID, 0);
         let res = validator.sanity_check(&rdh0);
         println!("{res:?}");
         assert!(res.is_err());
@@ -504,14 +498,15 @@ mod tests {
     fn invalidate_rdh0_bad_fee_id() {
         let mut validator = Rdh0Validator::default();
         let fee_id_bad_stave_number_is_48 = FeeId(0x30);
-        let rdh0 = Rdh0 {
-            header_id: 7,
-            header_size: Rdh0::HEADER_SIZE,
-            fee_id: fee_id_bad_stave_number_is_48,
-            priority_bit: 0,
-            system_id: ITS_SYSTEM_ID,
-            reserved0: 0,
-        };
+        let rdh0 = Rdh0::new(
+            7,
+            Rdh0::HEADER_SIZE,
+            fee_id_bad_stave_number_is_48,
+            0,
+            ITS_SYSTEM_ID,
+            0,
+        );
+
         let res = validator.sanity_check(&rdh0);
         println!("{res:?}");
         assert!(res.is_err());
@@ -525,14 +520,8 @@ mod tests {
             0,
             Some(ITS_SYSTEM_ID),
         );
-        let rdh0 = Rdh0 {
-            header_id: 7,
-            header_size: Rdh0::HEADER_SIZE,
-            fee_id: FeeId(0x502A),
-            priority_bit: 0,
-            system_id: 0x3,
-            reserved0: 0,
-        };
+        let rdh0 = Rdh0::new(7, Rdh0::HEADER_SIZE, FeeId(0x502A), 0, 3, 0);
+
         let res = validator.sanity_check(&rdh0);
         println!("{res:?}");
         assert!(res.is_err());
@@ -542,14 +531,9 @@ mod tests {
     fn validate_rdh0_non_its_system_id() {
         let mut validator =
             Rdh0Validator::new(None, Rdh0::HEADER_SIZE, FEE_ID_SANITY_VALIDATOR, 0, None);
-        let rdh0 = Rdh0 {
-            header_id: 7,
-            header_size: Rdh0::HEADER_SIZE,
-            fee_id: FeeId(0x502A),
-            priority_bit: 0,
-            system_id: 0x99,
-            reserved0: 0,
-        };
+
+        let rdh0 = Rdh0::new(7, Rdh0::HEADER_SIZE, FeeId(0x502A), 0, 0x99, 0);
+
         let res = validator.sanity_check(&rdh0);
         println!("{res:?}");
         assert!(res.is_ok());
@@ -564,14 +548,8 @@ mod tests {
             0,
             Some(ITS_SYSTEM_ID),
         );
-        let rdh0 = Rdh0 {
-            header_id: 7,
-            header_size: Rdh0::HEADER_SIZE,
-            fee_id: FeeId(0x502A),
-            priority_bit: 0,
-            system_id: ITS_SYSTEM_ID,
-            reserved0: 0x3,
-        };
+        let rdh0 = Rdh0::new(7, Rdh0::HEADER_SIZE, FeeId(0x502A), 0, ITS_SYSTEM_ID, 0x3);
+
         let res = validator.sanity_check(&rdh0);
         println!("{res:?}");
         assert!(res.is_err());
@@ -581,14 +559,15 @@ mod tests {
     #[test]
     fn validate_rdh1() {
         let validator = RDH1_VALIDATOR;
-        let rdh1 = Rdh1::test_new(0, 0, 0);
+        let rdh1 = Rdh1::new(BcReserved(0), 0);
         let res = validator.sanity_check(&rdh1);
         assert!(res.is_ok());
     }
     #[test]
     fn invalidate_rdh1_bad_reserved0() {
         let validator = RDH1_VALIDATOR;
-        let rdh1 = Rdh1::test_new(0, 0, 1);
+        let rdh1 = Rdh1::new(BcReserved(1 << 12), 0);
+
         let res = validator.sanity_check(&rdh1);
         println!("{res:?}");
         assert!(res.is_err());
@@ -696,35 +675,80 @@ mod tests {
     #[test]
     fn invalidate_rdh_cru_v7_bad_header_id() {
         let mut validator = RdhCruSanityValidator::default();
-        let mut rdh_cru = CORRECT_RDH_CRU_V7;
+        let rdh0 = CORRECT_RDH_CRU_V7.rdh0();
+        let rdh_cru: RdhCru<u8> = RdhCru::new(
+            rdh0.clone(),
+            CORRECT_RDH_CRU_V7.offset_to_next(),
+            CORRECT_RDH_CRU_V7.payload_size(),
+            CORRECT_RDH_CRU_V7.link_id(),
+            CORRECT_RDH_CRU_V7.packet_counter(),
+            CruidDw(CORRECT_RDH_CRU_V7.cru_id()),
+            CORRECT_RDH1,
+            DataformatReserved(2),
+            CORRECT_RDH2,
+            CORRECT_RDH_CRU_V7.reserved1(),
+            CORRECT_RDH3,
+            CORRECT_RDH_CRU_V7.reserved2(),
+        );
         assert!(validator.sanity_check(&rdh_cru).is_ok());
-        rdh_cru.rdh0.header_id = 0x0;
-        let res = validator.sanity_check(&rdh_cru);
+        let rdh_cru_bad_header: RdhCru<u8> = RdhCru::new(
+            Rdh0::new(0, 0, FeeId(9), 0, 20, 0),
+            CORRECT_RDH_CRU_V7.offset_to_next(),
+            CORRECT_RDH_CRU_V7.payload_size(),
+            CORRECT_RDH_CRU_V7.link_id(),
+            CORRECT_RDH_CRU_V7.packet_counter(),
+            CruidDw(CORRECT_RDH_CRU_V7.cru_id()),
+            CORRECT_RDH1,
+            DataformatReserved(2),
+            CORRECT_RDH2,
+            CORRECT_RDH_CRU_V7.reserved1(),
+            CORRECT_RDH3,
+            CORRECT_RDH_CRU_V7.reserved2(),
+        );
+        let res = validator.sanity_check(&rdh_cru_bad_header);
         println!("{res:?}");
         assert!(res.is_err());
     }
     #[test]
     fn invalidate_rdh_cru_v7_multiple_errors() {
         let mut validator = RdhCruSanityValidator::default();
-        let mut rdh_cru = CORRECT_RDH_CRU_V7;
-        rdh_cru.rdh0.header_size = 0x0;
-        rdh_cru.rdh2.reserved0 = 0x1;
-        rdh_cru.rdh3.detector_field = 0x5;
-        rdh_cru.rdh3.reserved0 = 0x1;
-        rdh_cru.reserved1 = 0x1;
-        rdh_cru.reserved2 = 0x1;
-        let fee_id_invalid_layer_is_7 = FeeId(0b0111_0000_0000_0000);
-        rdh_cru.rdh0.fee_id = fee_id_invalid_layer_is_7;
-        let res = validator.sanity_check(&rdh_cru);
+        let rdh_cru_bad_fields: RdhCru<u8> = RdhCru::new(
+            Rdh0::new(0, 0, FeeId(9), 0, 20, 0),
+            CORRECT_RDH_CRU_V7.offset_to_next(),
+            CORRECT_RDH_CRU_V7.payload_size(),
+            CORRECT_RDH_CRU_V7.link_id(),
+            CORRECT_RDH_CRU_V7.packet_counter(),
+            CruidDw(CORRECT_RDH_CRU_V7.cru_id()),
+            Rdh1::new(BcReserved(1), 10),
+            DataformatReserved(2),
+            CORRECT_RDH2,
+            CORRECT_RDH_CRU_V7.reserved1(),
+            Rdh3::new(5, 5, 5),
+            CORRECT_RDH_CRU_V7.reserved2(),
+        );
+        let res = validator.sanity_check(&rdh_cru_bad_fields);
         println!("{res:?}");
-        assert!(res.is_err());
+        assert!(res.is_err(), "{rdh_cru_bad_fields}");
     }
 
     #[test]
     fn allow_rdh_cru_v7_non_its_system_id() {
         let mut validator = RdhCruSanityValidator::default();
-        let mut rdh_cru = CORRECT_RDH_CRU_V7;
-        rdh_cru.rdh0.system_id = 0x99;
+        let non_its_system_id = 0x99;
+        let rdh_cru: RdhCru<u8> = RdhCru::new(
+            Rdh0::new(7, 0x40, FeeId(0), 0, non_its_system_id, 0),
+            CORRECT_RDH_CRU_V7.offset_to_next(),
+            CORRECT_RDH_CRU_V7.payload_size(),
+            CORRECT_RDH_CRU_V7.link_id(),
+            CORRECT_RDH_CRU_V7.packet_counter(),
+            CruidDw(CORRECT_RDH_CRU_V7.cru_id()),
+            CORRECT_RDH1,
+            DataformatReserved(2),
+            CORRECT_RDH2,
+            CORRECT_RDH_CRU_V7.reserved1(),
+            CORRECT_RDH3,
+            CORRECT_RDH_CRU_V7.reserved2(),
+        );
 
         let res = validator.sanity_check(&rdh_cru);
         println!("{res:?}");
@@ -735,8 +759,21 @@ mod tests {
     fn invalidate_rdh_cru_v7_its_specialized_bad_system_id() {
         let mut validator = RdhCruSanityValidator::default();
         validator.specialize(SpecializeChecks::ITS);
-        let mut rdh_cru = CORRECT_RDH_CRU_V7;
-        rdh_cru.rdh0.system_id = 0x99;
+        let non_its_system_id = 0x99;
+        let rdh_cru: RdhCru<u8> = RdhCru::new(
+            Rdh0::new(7, 0x40, FeeId(0), 0, non_its_system_id, 0),
+            CORRECT_RDH_CRU_V7.offset_to_next(),
+            CORRECT_RDH_CRU_V7.payload_size(),
+            CORRECT_RDH_CRU_V7.link_id(),
+            CORRECT_RDH_CRU_V7.packet_counter(),
+            CruidDw(CORRECT_RDH_CRU_V7.cru_id()),
+            CORRECT_RDH1,
+            DataformatReserved(2),
+            CORRECT_RDH2,
+            CORRECT_RDH_CRU_V7.reserved1(),
+            CORRECT_RDH3,
+            CORRECT_RDH_CRU_V7.reserved2(),
+        );
 
         let res = validator.sanity_check(&rdh_cru);
         println!("{res:?}");
@@ -752,26 +789,58 @@ mod tests {
     #[test]
     fn invalidate_rdh_cru_v6_bad_header_id() {
         let mut validator = RdhCruSanityValidator::default();
-        let mut rdh_cru = CORRECT_RDH_CRU_V6;
+        let non_its_system_id = 0x90;
+        let rdh_cru: RdhCru<u8> = RdhCru::new(
+            Rdh0::new(6, 0x40, FeeId(0), 0, non_its_system_id, 0),
+            CORRECT_RDH_CRU_V7.offset_to_next(),
+            CORRECT_RDH_CRU_V7.payload_size(),
+            CORRECT_RDH_CRU_V7.link_id(),
+            CORRECT_RDH_CRU_V7.packet_counter(),
+            CruidDw(CORRECT_RDH_CRU_V7.cru_id()),
+            CORRECT_RDH1,
+            DataformatReserved(2),
+            CORRECT_RDH2,
+            CORRECT_RDH_CRU_V7.reserved1(),
+            CORRECT_RDH3,
+            CORRECT_RDH_CRU_V7.reserved2(),
+        );
         let res = validator.sanity_check(&rdh_cru);
         println!("{res:?}");
         assert!(res.is_ok());
-        rdh_cru.rdh0.header_id = 0x0;
-        let res = validator.sanity_check(&rdh_cru);
-        assert!(res.is_err());
+        let rdh_cru_bad_header_id: RdhCru<u8> = RdhCru::new(
+            Rdh0::new(1, 0x40, FeeId(0), 0, non_its_system_id, 0),
+            CORRECT_RDH_CRU_V7.offset_to_next(),
+            CORRECT_RDH_CRU_V7.payload_size(),
+            CORRECT_RDH_CRU_V7.link_id(),
+            CORRECT_RDH_CRU_V7.packet_counter(),
+            CruidDw(CORRECT_RDH_CRU_V7.cru_id()),
+            CORRECT_RDH1,
+            DataformatReserved(2),
+            CORRECT_RDH2,
+            CORRECT_RDH_CRU_V7.reserved1(),
+            CORRECT_RDH3,
+            CORRECT_RDH_CRU_V7.reserved2(),
+        );
+        let res = validator.sanity_check(&rdh_cru_bad_header_id);
+        assert!(res.is_err(), "{rdh_cru_bad_header_id}");
     }
     #[test]
     fn invalidate_rdh_cru_v6_multiple_errors() {
         let mut validator = RdhCruSanityValidator::default();
-        let mut rdh_cru = CORRECT_RDH_CRU_V6;
-        rdh_cru.rdh0.header_size = 0x0;
-        rdh_cru.rdh2.reserved0 = 0x1;
-        rdh_cru.rdh3.detector_field = 0x5;
-        rdh_cru.rdh3.reserved0 = 0x1;
-        rdh_cru.reserved1 = 0x1;
-        rdh_cru.reserved2 = 0x1;
-        let fee_id_invalid_layer_is_7 = FeeId(0b0111_0000_0000_0000);
-        rdh_cru.rdh0.fee_id = fee_id_invalid_layer_is_7;
+        let rdh_cru: RdhCru<u8> = RdhCru::new(
+            Rdh0::new(6, 0, FeeId(0), 0, 0, 0),
+            CORRECT_RDH_CRU_V7.offset_to_next(),
+            CORRECT_RDH_CRU_V7.payload_size(),
+            CORRECT_RDH_CRU_V7.link_id(),
+            CORRECT_RDH_CRU_V7.packet_counter(),
+            CruidDw(CORRECT_RDH_CRU_V7.cru_id()),
+            CORRECT_RDH1,
+            DataformatReserved(2),
+            CORRECT_RDH2,
+            1,
+            Rdh3::new(5, 99, 9),
+            1,
+        );
         let res = validator.sanity_check(&rdh_cru);
         println!("{res:?}");
         assert!(res.is_err());

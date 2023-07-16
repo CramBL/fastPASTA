@@ -14,9 +14,9 @@
 pub(crate) use super::{its, rdh::RdhCruSanityValidator, rdh_running::RdhCruRunningChecker};
 use crate::config::check::{CheckCommands, ChecksOpt, System};
 use crate::config::custom_checks::CustomChecksOpt;
-use crate::input::prelude::FilterOpt;
-use crate::input::prelude::{RdhCru, RDH, V7};
 use crate::stats::StatType;
+use alice_daq_protocol_reader::prelude::FilterOpt;
+use alice_daq_protocol_reader::prelude::{RdhCru, RDH, V7};
 use ringbuffer::{ConstGenericRingBuffer, RingBufferExt, RingBufferWrite};
 
 /// Main validator that handles all checks on a specific link.
@@ -150,8 +150,8 @@ mod tests {
     use super::*;
     use crate::config::check::System;
     use crate::config::test_util::MockConfig;
-    use crate::input::prelude::test_data::CORRECT_RDH_CRU_V7;
     use crate::words::its::test_payloads::*;
+    use alice_daq_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
 
     static CFG_TEST_RUN_LINK_VALIDATOR: OnceLock<MockConfig> = OnceLock::new();
 

@@ -12,9 +12,6 @@ use super::{
 };
 use crate::analyze::validators::its::alpide::alpide_readout_frame::AlpideReadoutFrame;
 use crate::config::prelude::*;
-use crate::input::prelude::ByteSlice;
-use crate::input::prelude::FilterOpt;
-use crate::input::prelude::RDH;
 use crate::stats::StatType;
 use crate::words::its::data_words::lane_id_to_lane_number;
 use crate::words::its::data_words::ob_data_word_id_to_input_number_connector;
@@ -22,6 +19,9 @@ use crate::words::its::data_words::ob_data_word_id_to_lane;
 use crate::words::its::status_words::is_lane_active;
 use crate::words::its::status_words::{Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt};
 use crate::words::its::{Layer, Stave};
+use alice_daq_protocol_reader::prelude::ByteSlice;
+use alice_daq_protocol_reader::prelude::FilterOpt;
+use alice_daq_protocol_reader::prelude::RDH;
 
 #[derive(Debug, Clone, Copy)]
 enum StatusWordKind<'a> {
@@ -603,7 +603,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 mod tests {
     use super::*;
     use crate::config::test_util::MockConfig;
-    use crate::input::prelude::{test_data::CORRECT_RDH_CRU_V7, RdhCru, V7};
+    use alice_daq_protocol_reader::prelude::{test_data::CORRECT_RDH_CRU_V7, RdhCru, V7};
     use std::sync::OnceLock;
 
     static MOCK_CONFIG_DEFAULT: OnceLock<MockConfig> = OnceLock::new();

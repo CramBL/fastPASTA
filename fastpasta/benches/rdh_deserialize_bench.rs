@@ -1,5 +1,5 @@
+use alice_daq_protocol_reader::prelude::*;
 use criterion::{black_box, BenchmarkId, Criterion};
-use fastpasta::input::prelude::*;
 
 #[inline]
 fn deserialize_rdh_current(filename: &str, iterations: usize) {

@@ -2,12 +2,11 @@
 use super::validators::its::its_payload_fsm_cont::ItsPayloadFsmContinuous;
 use super::validators::lib::ValidatorDispatcher;
 use crate::config::lib::Config;
-use crate::input;
 use crate::stats;
 use crate::stats::StatType;
 use crate::stats::SystemId;
+use alice_daq_protocol_reader::prelude::*;
 use crossbeam_channel::Receiver;
-use input::prelude::*;
 
 /// Analysis thread that performs checks with the [super::validators] module or generate views with the [super::view::lib::generate_view] function.
 pub fn spawn_analysis<T: RDH + 'static>(

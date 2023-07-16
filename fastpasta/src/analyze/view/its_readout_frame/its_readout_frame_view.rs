@@ -1,8 +1,8 @@
-use crate::input::prelude::*;
 use crate::{
     analyze::validators::{its::lib::ItsPayloadWord, lib::preprocess_payload},
     analyze::view::lib::format_word_slice,
 };
+use alice_daq_protocol_reader::prelude::*;
 use std::io::Write;
 
 pub(crate) fn its_readout_frame_view<T: RDH>(

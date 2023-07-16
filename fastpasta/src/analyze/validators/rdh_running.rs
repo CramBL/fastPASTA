@@ -2,7 +2,7 @@
 
 use std::fmt::Write;
 
-use crate::input::prelude::{Rdh1, Rdh2, RDH};
+use alice_daq_protocol_reader::prelude::{Rdh1, Rdh2, RDH};
 
 /// Performs running (stateful) checks on [RDH]s.
 pub struct RdhCruRunningChecker<T: RDH> {
@@ -182,10 +182,10 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                     )
                     .unwrap()
                 }
-                if rdh_cru.rdh0().fee_id != last_rdh_cru.rdh0().fee_id {
+                if rdh_cru.fee_id() != last_rdh_cru.fee_id() {
                     err_cnt += 1;
-                    let tmp_current_fee_id = rdh_cru.rdh0().fee_id.0;
-                    let tmp_last_fee_id = last_rdh_cru.rdh0().fee_id.0;
+                    let tmp_current_fee_id = rdh_cru.fee_id();
+                    let tmp_last_fee_id = last_rdh_cru.fee_id();
                     write!(
                         err_str,
                         "FeeId changed from {tmp_last_fee_id:#X} to {tmp_current_fee_id:#X}."
@@ -205,11 +205,8 @@ impl<T: RDH> RdhCruRunningChecker<T> {
 #[cfg(test)]
 mod tests {
     use super::RdhCruRunningChecker;
-    use crate::input::prelude::test_data::*;
-    use crate::input::prelude::*;
-    use crate::input::rdh::rdh0::FeeId;
-    use crate::input::rdh::rdh1::BcReserved;
-    use crate::input::rdh::rdh_cru::{CruidDw, DataformatReserved};
+    use alice_daq_protocol_reader::prelude::test_data::*;
+    use alice_daq_protocol_reader::prelude::*;
 
     #[test]
     fn test_valid_rdh_crus() {
@@ -296,40 +293,21 @@ mod tests {
 
         let rdh_1 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
         let rdh_2 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT.to_byte_slice()).unwrap();
-        let rdh_3_different = RdhCru::<V7> {
-            rdh0: Rdh0 {
-                header_id: 0x7,
-                header_size: 0x40,
-                fee_id: FeeId(0xeffe),
-                priority_bit: 0x0,
-                system_id: 0x20,
-                reserved0: 0,
-            },
-            offset_new_packet: 0x13E0,
-            memory_size: 0x13E0,
-            link_id: 0x0,
-            packet_counter: 0x5,
-            cruid_dw: CruidDw(0x0018),
-            rdh1: Rdh1 {
-                bc_reserved0: BcReserved(0x0),
-                orbit: 0xcafebabe,
-            },
-            dataformat_reserved0: DataformatReserved(0x2),
-            rdh2: Rdh2 {
-                trigger_type: 0xbeef,
-                pages_counter: 0x2,
-                stop_bit: 0x0,
-                reserved0: 0x0,
-            },
-            reserved1: 0x0,
-            rdh3: Rdh3 {
-                detector_field: 0xdead,
-                par_bit: 0x0,
-                reserved0: 0x0,
-            },
-            reserved2: 0x0,
-            version: std::marker::PhantomData,
-        };
+
+        let rdh_3_different = RdhCru::<V7>::new(
+            Rdh0::new(7, 0x40, FeeId(0xeffe), 0, 0x20, 0),
+            0x13E0,
+            0x13E0,
+            0,
+            5,
+            CruidDw(0x18),
+            Rdh1::new(BcReserved(0), 0xcafebabe),
+            DataformatReserved(2),
+            Rdh2::new(0xbeef, 2, 0, 0),
+            0,
+            Rdh3::new(0xdead, 0, 0),
+            0,
+        );
         let res = rdh_cru_checker.check(&rdh_1);
         assert!(res.is_ok());
         let res = rdh_cru_checker.check(&rdh_2);

@@ -1,7 +1,7 @@
+use alice_daq_protocol_reader::init_reader;
 use fastpasta::config::init_config;
 use fastpasta::config::prelude::*;
 use fastpasta::config::Cfg;
-use fastpasta::input::lib::init_reader;
 use fastpasta::stats::init_stats_controller;
 use fastpasta::stats::StatType;
 

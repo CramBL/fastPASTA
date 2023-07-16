@@ -1,6 +1,5 @@
+use alice_daq_protocol_reader::prelude::*;
 use criterion::{black_box, BenchmarkId, Criterion};
-use fastpasta::input::prelude::*;
-
 pub struct RelativeOffset(i64);
 impl RelativeOffset {
     fn new(byte_offset: u64) -> Self {
