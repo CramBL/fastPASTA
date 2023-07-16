@@ -91,7 +91,7 @@ mod tests {
             .unwrap();
 
         // Send rdh seen stat
-        send_ch.send(StatType::RDHSeen).unwrap();
+        send_ch.send(StatType::RDHSeen(1)).unwrap();
 
         // Send a fatal error that should cause the stop flag to be set
         send_ch
@@ -133,8 +133,8 @@ mod tests {
         let error = StatType::Error("Test error".to_string());
         let run_trig_type = StatType::RunTriggerType((1, "Test run trigger type".to_string()));
         let sys_id = StatType::SystemId(SystemId::ITS);
-        let rdh_seen = StatType::RDHSeen;
-        let rdh_filtered = StatType::RDHFiltered;
+        let rdh_seen = StatType::RDHSeen(1);
+        let rdh_filtered = StatType::RDHFiltered(1);
         let layer_stave_seen = StatType::LayerStaveSeen { layer: 1, stave: 1 };
         let mut stat_type_vec = vec![
             fatal,

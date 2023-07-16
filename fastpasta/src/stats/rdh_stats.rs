@@ -175,16 +175,26 @@ impl RdhStats {
         self.hbfs_seen += 1;
     }
 
+    #[allow(dead_code)]
     pub(super) fn incr_rdhs_seen(&mut self) {
         self.rdhs_seen += 1;
+    }
+
+    pub(super) fn add_rdhs_seen(&mut self, rdhs_seen: u16) {
+        self.rdhs_seen += rdhs_seen as u64;
     }
 
     pub(super) fn rdhs_seen(&self) -> u64 {
         self.rdhs_seen
     }
 
+    #[allow(dead_code)]
     pub(super) fn incr_rdhs_filtered(&mut self) {
         self.rdhs_filtered += 1;
+    }
+
+    pub(super) fn add_rdhs_filtered(&mut self, rdhs_filtered: u16) {
+        self.rdhs_filtered += rdhs_filtered as u64;
     }
 
     pub(super) fn rdhs_filtered(&self) -> u64 {

@@ -221,8 +221,10 @@ fn forward_input_stats_to_stats_collector(
                 send_stats_ch.send(StatType::LinksObserved(val)).unwrap()
             }
             InputStatType::FeeId(val) => send_stats_ch.send(StatType::FeeId(val)).unwrap(),
-            InputStatType::RDHSeen => send_stats_ch.send(StatType::RDHSeen).unwrap(),
-            InputStatType::RDHFiltered => send_stats_ch.send(StatType::RDHFiltered).unwrap(),
+            InputStatType::RDHSeen(val) => send_stats_ch.send(StatType::RDHSeen(val)).unwrap(),
+            InputStatType::RDHFiltered(val) => {
+                send_stats_ch.send(StatType::RDHFiltered(val)).unwrap()
+            }
             InputStatType::PayloadSize(val) => {
                 send_stats_ch.send(StatType::PayloadSize(val)).unwrap()
             }
@@ -298,7 +300,7 @@ mod tests {
         for stat in stats {
             match stat {
                 StatType::RdhVersion(7) => is_rdh_version_detected_7 = true,
-                StatType::RDHSeen => how_many_rdh_seen += 1,
+                StatType::RDHSeen(val) => how_many_rdh_seen += val,
                 StatType::Error(e) | StatType::Fatal(e) => {
                     panic!("Error or Fatal: {}", e)
                 }

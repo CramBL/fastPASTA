@@ -162,8 +162,8 @@ impl<C: Config + 'static> StatsController<C> {
                     }
                 }
             }
-            StatType::RDHSeen => self.rdh_stats.incr_rdhs_seen(),
-            StatType::RDHFiltered => self.rdh_stats.incr_rdhs_filtered(),
+            StatType::RDHSeen(val) => self.rdh_stats.add_rdhs_seen(val),
+            StatType::RDHFiltered(val) => self.rdh_stats.add_rdhs_filtered(val),
             StatType::PayloadSize(size) => self.rdh_stats.add_payload_size(size as u64),
             StatType::LinksObserved(val) => self.rdh_stats.record_link(val),
             StatType::RdhVersion(version) => self.rdh_stats.record_rdh_version(version),

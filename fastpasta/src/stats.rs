@@ -33,9 +33,9 @@ pub enum StatType {
     /// The first system ID observed is the basis for the rest of processing
     SystemId(SystemId),
     /// Increment the total RDHs seen.
-    RDHSeen,
+    RDHSeen(u16),
     /// Increment the total RDHs filtered.
-    RDHFiltered,
+    RDHFiltered(u16),
     /// Increment the total payload size.
     PayloadSize(u32),
     /// Add a link to the list of links observed.
@@ -66,8 +66,8 @@ impl std::fmt::Display for StatType {
                 write!(f, "Run trigger type: {val}: {description}")
             }
             StatType::SystemId(s_id) => write!(f, "System ID: {s_id}"),
-            StatType::RDHSeen => write!(f, "RDHs seen increment"),
-            StatType::RDHFiltered => write!(f, "RDHs filtered increment"),
+            StatType::RDHSeen(val) => write!(f, "{val} RDHs seen"),
+            StatType::RDHFiltered(val) => write!(f, "{val} RDHs filtered"),
             StatType::PayloadSize(bytes) => write!(f, "Payload size: {bytes}"),
             StatType::LinksObserved(id) => write!(f, "Link observed: {id}"),
             StatType::RdhVersion(v) => write!(f, "RDH version: {v}"),
