@@ -82,13 +82,23 @@ pub fn init_processing(
         .send(StatType::RdhVersion(rdh_version))
         .unwrap();
 
+    let (input_stats_send, input_stats_recv): (
+        flume::Sender<InputStatType>,
+        flume::Receiver<InputStatType>,
+    ) = flume::unbounded();
     // Create input scanner from the already read RDH0 (to avoid seeking back and reading it twice, which would also break with stdin piping)
-    let loader = InputScanner::new_from_rdh0(config, reader, Some(stat_send_channel.clone()), rdh0);
+    let loader = InputScanner::new_from_rdh0(config, reader, Some(input_stats_send), rdh0);
 
     // Choose the rest of the execution based on the RDH version
     // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
     match rdh_version {
-        6 => match process::<RdhCru<V6>>(config, loader, stat_send_channel.clone(), stop_flag) {
+        6 => match process::<RdhCru<V6>>(
+            config,
+            loader,
+            Some(input_stats_recv),
+            stat_send_channel.clone(),
+            stop_flag,
+        ) {
             Ok(_) => Ok(()),
             Err(e) => {
                 stat_send_channel
@@ -97,7 +107,13 @@ pub fn init_processing(
                 Err(e)
             }
         },
-        7 => match process::<RdhCru<V7>>(config, loader, stat_send_channel.clone(), stop_flag) {
+        7 => match process::<RdhCru<V7>>(
+            config,
+            loader,
+            Some(input_stats_recv),
+            stat_send_channel.clone(),
+            stop_flag,
+        ) {
             Ok(_) => Ok(()),
             Err(e) => {
                 stat_send_channel
@@ -111,7 +127,13 @@ pub fn init_processing(
         //      1. Unlikely there will ever be an RDH version 200+
         //      2. High values decoded from this field (especially 255) is typically a sign that the data is not actually ALICE data so early exit is preferred
         8..=200 => {
-            match process::<RdhCru<u8>>(config, loader, stat_send_channel.clone(), stop_flag) {
+            match process::<RdhCru<u8>>(
+                config,
+                loader,
+                Some(input_stats_recv),
+                stat_send_channel.clone(),
+                stop_flag,
+            ) {
                 Ok(_) => Ok(()),
                 Err(e) => {
                     stat_send_channel
@@ -139,6 +161,7 @@ pub fn init_processing(
 pub fn process<T: RDH + 'static>(
     config: &'static impl Config,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
+    recv_input_stats: Option<flume::Receiver<InputStatType>>,
     send_stats_ch: flume::Sender<StatType>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
@@ -154,7 +177,7 @@ pub fn process<T: RDH + 'static>(
         let handle = analyze::lib::spawn_analysis(
             config,
             stop_flag.clone(),
-            send_stats_ch,
+            send_stats_ch.clone(),
             reader_rcv_channel.clone(),
         );
         Some(handle)
@@ -188,6 +211,10 @@ pub fn process<T: RDH + 'static>(
         }
     };
 
+    // While loop breaks when an error is received from the channel, which means the channel is disconnected
+    if let Some(recv_input_stats) = recv_input_stats.as_ref() {
+        forward_input_stats_to_stats_collector(recv_input_stats, send_stats_ch);
+    }
     reader_handle.join().expect("Error joining reader thread");
 
     if let Some(handle) = analysis_handle {
@@ -199,6 +226,52 @@ pub fn process<T: RDH + 'static>(
         output.join().expect("Could not join writer thread");
     }
     Ok(())
+}
+
+// This is basically a "glue" function that takes the stats types that the reader sends
+// handles the transformation needed to send them in the format the the stats collector expects
+// and sends them
+fn forward_input_stats_to_stats_collector(
+    recv_input_stats: &flume::Receiver<InputStatType>,
+    send_stats_ch: flume::Sender<StatType>,
+) {
+    while let Ok(input_stat) = recv_input_stats.recv() {
+        match input_stat {
+            InputStatType::Fatal(e) => send_stats_ch.send(StatType::Fatal(e)).unwrap(),
+            InputStatType::RunTriggerType(val) => send_stats_ch
+                .send(StatType::RunTriggerType((
+                    val,
+                    crate::analyze::view::lib::trigger_type_string_from_int(val),
+                )))
+                .unwrap(),
+            InputStatType::DataFormat(val) => {
+                send_stats_ch.send(StatType::DataFormat(val)).unwrap()
+            }
+            InputStatType::LinksObserved(val) => {
+                send_stats_ch.send(StatType::LinksObserved(val)).unwrap()
+            }
+            InputStatType::FeeId(val) => send_stats_ch.send(StatType::FeeId(val)).unwrap(),
+            InputStatType::RDHSeen => send_stats_ch.send(StatType::RDHSeen).unwrap(),
+            InputStatType::RDHFiltered => send_stats_ch.send(StatType::RDHFiltered).unwrap(),
+            InputStatType::PayloadSize(val) => {
+                send_stats_ch.send(StatType::PayloadSize(val)).unwrap()
+            }
+            InputStatType::SystemId(sys_id) => {
+                match stats::SystemId::from_system_id(sys_id) {
+                    Ok(id) => {
+                        log::info!("{id} detected");
+                        send_stats_ch.send(StatType::SystemId(id)).unwrap()
+                    }
+                    Err(e) => {
+                        log::error!("Failed to parse system ID: {e}");
+                        send_stats_ch
+                            .send(StatType::Fatal("Failed to parse system ID".to_string()))
+                            .unwrap();
+                    }
+                };
+            }
+        }
+    }
 }
 
 #[cfg(test)]

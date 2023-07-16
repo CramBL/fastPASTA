@@ -3,12 +3,12 @@
 //! The [InputScanner] implements the [ScanCDP] trait.
 
 use super::bufreader_wrapper::BufferedReaderWrapper;
+use super::lib::InputStatType;
 use super::mem_pos_tracker::MemPosTracker;
 use super::rdh::Rdh0;
 use super::rdh::{SerdeRdh, RDH};
 use crate::config::filter::{FilterOpt, FilterTarget};
 use crate::config::inputoutput::InputOutputOpt;
-use crate::stats::{StatType, SystemId};
 use crate::words::its::is_match_feeid_layer_stave;
 use std::io::Read;
 
@@ -44,14 +44,14 @@ pub trait ScanCDP {
     fn current_mem_pos(&self) -> u64;
 }
 
-/// Scans data read through a [BufferedReaderWrapper], tracks the position in memory and sends [StatType] through the [`flume::Sender<StatType>`] channel.
+/// Scans data read through a [BufferedReaderWrapper], tracks the position in memory and sends [InputStatType] through the [`flume::Sender<InputStatType>`] channel.
 ///
 /// Uses [FilterOpt] to filter for user specified links.
 /// Implements [ScanCDP] for a [BufferedReaderWrapper].
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     reader: Box<R>,
     tracker: MemPosTracker,
-    stats_controller_sender_ch: Option<flume::Sender<StatType>>,
+    stats_controller_sender_ch: Option<flume::Sender<InputStatType>>,
     filter_target: Option<FilterTarget>,
     skip_payload: bool,
     unique_links_observed: Vec<u8>,
@@ -60,11 +60,11 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
 }
 
 impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
-    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper], and a producer channel for [StatType].
+    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper], and a producer channel for [InputStatType].
     pub fn new(
         config: &(impl FilterOpt + InputOutputOpt),
         reader: Box<R>,
-        stats_controller_sender_ch: Option<flume::Sender<StatType>>,
+        stats_controller_sender_ch: Option<flume::Sender<InputStatType>>,
     ) -> Self {
         InputScanner {
             reader,
@@ -77,13 +77,13 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             initial_rdh0: None,
         }
     }
-    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper],  a producer channel for [StatType] and an initial [Rdh0].
+    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper],  a producer channel for [InputStatType] and an initial [Rdh0].
     ///
     /// The [Rdh0] is used to determine the RDH version before instantiating the [InputScanner].
     pub fn new_from_rdh0(
         config: &(impl FilterOpt + InputOutputOpt),
         reader: Box<R>,
-        stats_controller_sender_ch: Option<flume::Sender<StatType>>,
+        stats_controller_sender_ch: Option<flume::Sender<InputStatType>>,
         rdh0: Rdh0,
     ) -> Self {
         InputScanner {
@@ -98,7 +98,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         }
     }
 
-    fn report(&self, stat: StatType) {
+    fn report(&self, stat: InputStatType) {
         if let Some(stats_sender) = self.stats_controller_sender_ch.as_ref() {
             stats_sender
                 .send(stat)
@@ -107,44 +107,29 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     }
     fn report_run_trigger_type<T: RDH>(&self, rdh: &T) {
         let raw_trigger_type = rdh.trigger_type();
-        let run_trigger_type_str = crate::analyze::view::lib::rdh_trigger_type_as_string(rdh);
-        self.report(StatType::RunTriggerType((
-            raw_trigger_type,
-            run_trigger_type_str,
-        )));
+        self.report(InputStatType::RunTriggerType(raw_trigger_type));
     }
     fn collect_rdh_seen_stats(&mut self, rdh: &impl RDH) {
         // Set the link ID and report another RDH seen
         let current_link_id = rdh.link_id();
-        self.report(StatType::RDHSeen);
+        self.report(InputStatType::RDHSeen);
 
         // If we haven't seen this link before, report it and add it to the list of unique links
         if !self.unique_links_observed.contains(&current_link_id) {
             self.unique_links_observed.push(current_link_id);
-            self.report(StatType::LinksObserved(current_link_id));
+            self.report(InputStatType::LinksObserved(current_link_id));
         }
         // If the FEE ID has not been seen before, report it and add it to the list of unique FEE IDs
         if !self.unique_feeids_observed.contains(&rdh.fee_id()) {
             self.unique_feeids_observed.push(rdh.fee_id());
-            self.report(StatType::FeeId(rdh.fee_id()));
+            self.report(InputStatType::FeeId(rdh.fee_id()));
         }
     }
     fn initial_collect_stats(&mut self, rdh: &impl RDH) -> Result<(), std::io::Error> {
         // Report the trigger type as the RunTriggerType describing the type of run the data is from
         self.report_run_trigger_type(rdh);
-        self.report(StatType::DataFormat(rdh.data_format()));
-        let observed_sys_id = match SystemId::from_system_id(rdh.rdh0().system_id) {
-            Ok(id) => id,
-            Err(e) => {
-                log::error!("Failed to parse system ID: {e}");
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "Failed to parse system ID",
-                ));
-            }
-        };
-        log::info!("{observed_sys_id} detected");
-        self.report(StatType::SystemId(observed_sys_id));
+        self.report(InputStatType::DataFormat(rdh.data_format()));
+        self.report(InputStatType::SystemId(rdh.rdh0().system_id));
         Ok(())
     }
 }
@@ -187,7 +172,7 @@ where
         // If a filter is set, check if the RDH matches the filter
         let rdh = if let Some(target) = self.filter_target {
             if is_rdh_filter_target(&rdh, target) {
-                self.report(StatType::RDHFiltered);
+                self.report(InputStatType::RDHFiltered);
 
                 Ok(rdh)
             } else {
@@ -201,7 +186,7 @@ where
         };
 
         if let Ok(rdh) = &rdh {
-            self.report(StatType::PayloadSize(rdh.payload_size() as u32));
+            self.report(InputStatType::PayloadSize(rdh.payload_size() as u32));
         }
         rdh
     }
@@ -255,7 +240,7 @@ where
             self.collect_rdh_seen_stats(&rdh);
 
             if is_rdh_filter_target(&rdh, filter_target) {
-                self.report(StatType::RDHFiltered);
+                self.report(InputStatType::RDHFiltered);
                 return Ok(rdh);
             }
             self.reader
@@ -281,20 +266,21 @@ fn is_rdh_filter_target(rdh: &impl RDH, target: FilterTarget) -> bool {
 fn sanity_check_offset_next<T: RDH>(
     rdh: &T,
     current_memory_address: u64,
-    stats_ch: &Option<flume::Sender<StatType>>,
+    stats_ch: &Option<flume::Sender<InputStatType>>,
 ) -> Result<(), std::io::Error> {
     let next_rdh_memory_location = rdh.offset_to_next() as i64 - 64;
     // If the offset is not between 0 and 10 KB it is invalid
     if !(0..=10_000).contains(&next_rdh_memory_location) {
         // Invalid offset: Negative or very high
         let fatal_err = invalid_rdh_offset(rdh, current_memory_address, next_rdh_memory_location);
+
         if let Some(stats_ch) = stats_ch.as_ref() {
-            stats_ch.send(StatType::Error(fatal_err.clone())).unwrap();
+            stats_ch
+                .send(InputStatType::Fatal(fatal_err.clone()))
+                .unwrap();
         }
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            fatal_err,
-        ));
+        let fatal_io_error = std::io::Error::new(std::io::ErrorKind::InvalidData, fatal_err);
+        return Err(fatal_io_error);
     }
     Ok(())
 }
@@ -322,13 +308,13 @@ mod tests {
         path: &str,
     ) -> (
         InputScanner<BufReader<std::fs::File>>,
-        flume::Receiver<StatType>,
+        flume::Receiver<InputStatType>,
     ) {
         use super::*;
         let config: Cfg = <Cfg>::parse_from(["fastpasta", path, "-f", "0", "check", "sanity"]);
         let (send_stats_controller_channel, recv_stats_controller_channel): (
-            flume::Sender<StatType>,
-            flume::Receiver<StatType>,
+            flume::Sender<InputStatType>,
+            flume::Receiver<InputStatType>,
         ) = flume::unbounded();
 
         let cfg = config;
