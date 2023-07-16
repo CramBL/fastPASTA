@@ -98,7 +98,7 @@ impl<Version> RdhCru<Version> {
     ///
     /// Can be used to print a header for a table of [RDH CRU][RdhCru]s.
     /// Takes an [usize] as an argument, which is the number of spaces to indent the 2 lines by.
-    #[inline]
+    #[inline(always)]
     pub fn rdh_header_text_with_indent_to_string(indent: usize) -> String {
         let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop";
         let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit";
@@ -111,38 +111,38 @@ impl<Version> RdhCru<Version> {
         )
     }
     /// Returns the value of the CRU ID field.
-    #[inline]
+    #[inline(always)]
     pub fn cru_id(&self) -> u16 {
         // Get the cru_id present in the 12 LSB
         self.cruid_dw.0 & 0x0FFF
     }
     /// Returns the value of the DW field.
-    #[inline]
+    #[inline(always)]
     pub fn dw(&self) -> u8 {
         // Get the dw present in the 4 MSB
         ((self.cruid_dw.0 & 0xF000) >> 12) as u8
     }
     /// Returns the value of the data format field.
-    #[inline]
+    #[inline(always)]
     pub fn data_format(&self) -> u8 {
         // Get the data_format present in the 8 LSB
         (self.dataformat_reserved0.0 & 0x00000000000000FF) as u8
     }
     /// Returns the value of the reserved0 field.
-    #[inline]
+    #[inline(always)]
     pub fn reserved0(&self) -> u64 {
         // Get the reserved0 present in the 56 MSB
         (self.dataformat_reserved0.0 & 0xFFFFFFFFFFFFFF00) >> 8
     }
 
     /// Returns the value of the reserved1 field.
-    #[inline]
+    #[inline(always)]
     pub fn reserved1(&self) -> u64 {
         self.reserved1
     }
 
     /// Returns the value of the reserved2 field.
-    #[inline]
+    #[inline(always)]
     pub fn reserved2(&self) -> u64 {
         // Get the reserved0 present in the 56 MSB
         self.reserved2
@@ -150,7 +150,7 @@ impl<Version> RdhCru<Version> {
 }
 
 impl<Version> PartialEq for RdhCru<Version> {
-    #[inline]
+    #[inline(always)]
     fn eq(&self, other: &Self) -> bool {
         self.to_byte_slice() == other.to_byte_slice()
     }
@@ -174,74 +174,74 @@ impl<Version> Debug for RdhCru<Version> {
 impl<Version: Send + Sync> RDH for RdhCru<Version> {}
 
 impl<Version: Send + Sync> RDH_CRU for RdhCru<Version> {
-    #[inline]
+    #[inline(always)]
     fn link_id(&self) -> u8 {
         self.link_id
     }
-    #[inline]
+    #[inline(always)]
     fn payload_size(&self) -> u16 {
         self.memory_size - 64 // 64 bytes are the RDH size. Payload size is the memory size minus the RDH size.
     }
-    #[inline]
+    #[inline(always)]
     fn offset_to_next(&self) -> u16 {
         self.offset_new_packet
     }
-    #[inline]
+    #[inline(always)]
     fn stop_bit(&self) -> u8 {
         self.rdh2.stop_bit
     }
-    #[inline]
+    #[inline(always)]
     fn pages_counter(&self) -> u16 {
         self.rdh2.pages_counter
     }
-    #[inline]
+    #[inline(always)]
     fn data_format(&self) -> u8 {
         self.data_format()
     }
-    #[inline]
+    #[inline(always)]
     fn trigger_type(&self) -> u32 {
         self.rdh2.trigger_type
     }
-    #[inline]
+    #[inline(always)]
     fn fee_id(&self) -> u16 {
         self.rdh0.fee_id.0
     }
-    #[inline]
+    #[inline(always)]
     fn version(&self) -> u8 {
         self.rdh0.header_id
     }
-    #[inline]
+    #[inline(always)]
     fn rdh0(&self) -> &Rdh0 {
         &self.rdh0
     }
-    #[inline]
+    #[inline(always)]
     fn rdh1(&self) -> &Rdh1 {
         &self.rdh1
     }
-    #[inline]
+    #[inline(always)]
     fn rdh2(&self) -> &Rdh2 {
         &self.rdh2
     }
-    #[inline]
+    #[inline(always)]
     fn rdh3(&self) -> &Rdh3 {
         &self.rdh3
     }
-    #[inline]
+    #[inline(always)]
     fn cru_id(&self) -> u16 {
         self.cru_id()
     }
-    #[inline]
+    #[inline(always)]
     fn dw(&self) -> u8 {
         self.dw()
     }
-    #[inline]
+    #[inline(always)]
     fn packet_counter(&self) -> u8 {
         self.packet_counter
     }
 }
 
 impl<Version: Send + Sync> SerdeRdh for RdhCru<Version> {
-    #[inline]
+    #[inline(always)]
     fn from_rdh0_and_buf(rdh0: Rdh0, buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(RdhCru {
             rdh0,

@@ -29,6 +29,7 @@ impl MemPosTracker {
     ///
     /// The offset is relative to the current RDH, and uses the RDH size as a base.
     /// Takes the offset of the next RDH in bytes.
+    #[inline]
     pub fn next(&mut self, rdh_offset: u64) -> i64 {
         debug_assert!(
             rdh_offset >= self.rdh_cru_size_bytes,
@@ -41,6 +42,7 @@ impl MemPosTracker {
     }
 
     /// Get the memory address of the current RDH
+    #[inline]
     pub fn current_mem_address(&self) -> u64 {
         self.memory_address_bytes
     }
@@ -48,6 +50,7 @@ impl MemPosTracker {
     /// Update memory address with a byte count
     ///
     /// Useful when skipping a payload, but still need to track memory position
+    #[inline]
     pub fn update_mem_address(&mut self, mem_offset: u64) {
         self.memory_address_bytes += mem_offset
     }

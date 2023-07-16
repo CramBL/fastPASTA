@@ -11,6 +11,7 @@ pub trait BufferedReaderWrapper: io::Read + io::Seek + Send {
 }
 
 impl BufferedReaderWrapper for io::BufReader<File> {
+    #[inline(always)]
     fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
         self.seek_relative(offset)
     }

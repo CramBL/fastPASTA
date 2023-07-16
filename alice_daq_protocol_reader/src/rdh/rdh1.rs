@@ -12,7 +12,7 @@ pub struct BcReserved(pub u32); // 12 bit bc, 20 bit reserved
 ///
 /// The RDH1 is 64 bit long.
 #[repr(packed)]
-#[derive(PartialEq, Default, Debug, Clone, Copy)]
+#[derive(PartialEq, Default, Debug, Clone)]
 pub struct Rdh1 {
     /// RDH bunch counter 12 bit + reserved 20 bit
     pub(crate) bc_reserved0: BcReserved,
@@ -22,10 +22,12 @@ pub struct Rdh1 {
 
 impl Rdh1 {
     /// Returns the bunch counter.
+    #[inline(always)]
     pub fn bc(&self) -> u16 {
         (self.bc_reserved0.0 & 0x0FFF) as u16
     }
     /// Returns the reserved bits.
+    #[inline(always)]
     pub fn reserved0(&self) -> u32 {
         self.bc_reserved0.0 >> 12
     }
@@ -50,6 +52,7 @@ impl Rdh1 {
 }
 
 impl RdhSubword for Rdh1 {
+    #[inline(always)]
     fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh1 {
             bc_reserved0: BcReserved(LittleEndian::read_u32(&buf[0..=3])),

@@ -53,7 +53,7 @@ impl Rdh0 {
     }
 
     /// Gets the `FEE ID`
-    #[inline]
+    #[inline(always)]
     pub fn fee_id(&self) -> u16 {
         self.fee_id.0
     }
@@ -71,6 +71,7 @@ impl Display for Rdh0 {
 }
 
 impl RdhSubword for Rdh0 {
+    #[inline(always)]
     fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh0 {
             header_id: buf[0],

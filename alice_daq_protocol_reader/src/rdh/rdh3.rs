@@ -5,7 +5,7 @@ use std::fmt::{self, Debug, Display};
 
 /// Represents the RDH3 subword of the [RDH](super::RdhCru).
 #[repr(packed)]
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Rdh3 {
     /// RDH detector field 32 bit, but 23:4 are reserved bits.
     pub detector_field: u32,
@@ -27,6 +27,7 @@ impl Rdh3 {
 }
 
 impl RdhSubword for Rdh3 {
+    #[inline]
     fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh3 {
             detector_field: LittleEndian::read_u32(&buf[0..=3]),
@@ -62,7 +63,7 @@ mod tests {
             reserved0: 0x0000,
         };
         println!("{:?}", rdh3);
-        let rdh3_2 = rdh3;
+        let rdh3_2 = rdh3.clone();
 
         assert_eq!(rdh3, rdh3_2);
     }

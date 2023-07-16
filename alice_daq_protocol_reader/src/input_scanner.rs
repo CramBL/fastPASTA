@@ -25,6 +25,7 @@ pub trait ScanCDP {
     fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error>;
 
     /// Loads the next CDP ([RDH] and payload) from the input and returns it as a ([RDH], [`Vec<u8>`], [u64]) tuple.
+    #[inline(always)]
     fn load_cdp<T: RDH>(&mut self) -> Result<CdpTuple<T>, std::io::Error> {
         let rdh: T = self.load_rdh_cru()?;
         let payload = self.load_payload_raw(rdh.payload_size() as usize)?;
@@ -98,6 +99,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         }
     }
 
+    #[inline(always)]
     fn report(&self, stat: InputStatType) {
         if let Some(stats_sender) = self.stats_controller_sender_ch.as_ref() {
             stats_sender
@@ -105,10 +107,12 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
                 .expect("Failed to send stats, receiver was dropped")
         }
     }
+    #[inline(always)]
     fn report_run_trigger_type<T: RDH>(&self, rdh: &T) {
         let raw_trigger_type = rdh.trigger_type();
         self.report(InputStatType::RunTriggerType(raw_trigger_type));
     }
+    #[inline(always)]
     fn collect_rdh_seen_stats(&mut self, rdh: &impl RDH) {
         // Set the link ID and report another RDH seen
         let current_link_id = rdh.link_id();
@@ -125,6 +129,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             self.report(InputStatType::FeeId(rdh.fee_id()));
         }
     }
+    #[inline(always)]
     fn initial_collect_stats(&mut self, rdh: &impl RDH) -> Result<(), std::io::Error> {
         // Report the trigger type as the RunTriggerType describing the type of run the data is from
         self.report_run_trigger_type(rdh);
@@ -142,7 +147,7 @@ where
     /// If a link filter is set, it checks if the RDH matches the chosen link and returns it if it does.
     /// If it doesn't match, it jumps to the next RDH and tries again.
     /// If no link filter is set, it simply returns the RDH.
-    #[inline]
+    #[inline(always)]
     fn load_rdh_cru<T: RDH>(&mut self) -> Result<T, std::io::Error> {
         // If it is the first time we get an RDH, we would already have loaded the initial RDH0
         //  from the input. If so, we use it to create the first RDH, and record some stats
@@ -187,14 +192,14 @@ where
     }
 
     /// Reads the next payload from file, using the payload size from the RDH
-    #[inline]
+    #[inline(always)]
     fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error> {
         let mut payload = vec![0; payload_size];
         Read::read_exact(&mut self.reader, &mut payload)?;
         Ok(payload)
     }
     /// Reads the next CDP from file
-    #[inline]
+    #[inline(always)]
     fn load_cdp<T: RDH>(&mut self) -> Result<CdpTuple<T>, std::io::Error> {
         let loading_at_memory_offset = self.tracker.current_mem_address();
         let rdh: T = self.load_rdh_cru()?;
@@ -217,6 +222,7 @@ where
         Ok((rdh, payload, loading_at_memory_offset))
     }
 
+    #[inline]
     fn load_next_rdh_to_filter<T: RDH>(
         &mut self,
         offset_to_next: u16,
@@ -248,6 +254,7 @@ where
 }
 
 // Check if the RDH matches the filter target
+#[inline(always)]
 fn is_rdh_filter_target(rdh: &impl RDH, target: FilterTarget) -> bool {
     match target {
         FilterTarget::Link(id) => rdh.link_id() == id,
@@ -256,12 +263,14 @@ fn is_rdh_filter_target(rdh: &impl RDH, target: FilterTarget) -> bool {
     }
 }
 
+#[inline(always)]
 fn is_match_feeid_layer_stave(a_fee_id: u16, b_fee_id: u16) -> bool {
     let layer_stave_mask: u16 = 0b0111_0000_0011_1111;
     (a_fee_id & layer_stave_mask) == (b_fee_id & layer_stave_mask)
 }
 
 // The error is fatal to the input scanner, so parsing input is stopped, but the previously read data is still forwarded for checking etc.
+#[inline(always)]
 fn sanity_check_offset_next<T: RDH>(
     rdh: &T,
     current_memory_address: u64,
@@ -284,6 +293,7 @@ fn sanity_check_offset_next<T: RDH>(
     Ok(())
 }
 
+#[inline(always)]
 fn invalid_rdh_offset<T: RDH>(rdh: &T, current_memory_address: u64, offset_to_next: i64) -> String {
     use super::rdh::{RdhCru, V7};
     let error_string = format!(

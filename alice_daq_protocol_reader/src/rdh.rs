@@ -24,6 +24,7 @@ pub const RDH_CRU_SIZE_BYTES: u8 = 64;
 /// * deserialize the GBT words from the binary file
 pub trait RdhSubword: Sized + PartialEq + std::fmt::Debug + std::fmt::Display {
     /// Deserializes the GBT word from a provided reader
+    #[inline]
     fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error> {
         let raw = macros::load_bytes!(8, reader);
         Self::from_buf(&raw)
@@ -88,66 +89,82 @@ impl<T> RDH_CRU for &T
 where
     T: RDH_CRU,
 {
+    #[inline]
     fn version(&self) -> u8 {
         (*self).version()
     }
 
+    #[inline]
     fn rdh0(&self) -> &Rdh0 {
         (*self).rdh0()
     }
 
+    #[inline]
     fn rdh1(&self) -> &Rdh1 {
         (*self).rdh1()
     }
 
+    #[inline]
     fn rdh2(&self) -> &Rdh2 {
         (*self).rdh2()
     }
 
+    #[inline]
     fn rdh3(&self) -> &Rdh3 {
         (*self).rdh3()
     }
 
+    #[inline]
     fn link_id(&self) -> u8 {
         (*self).link_id()
     }
 
+    #[inline]
     fn payload_size(&self) -> u16 {
         (*self).payload_size()
     }
 
+    #[inline]
     fn offset_to_next(&self) -> u16 {
         (*self).offset_to_next()
     }
 
+    #[inline]
     fn stop_bit(&self) -> u8 {
         (*self).stop_bit()
     }
 
+    #[inline]
     fn pages_counter(&self) -> u16 {
         (*self).pages_counter()
     }
 
+    #[inline]
     fn data_format(&self) -> u8 {
         (*self).data_format()
     }
 
+    #[inline]
     fn trigger_type(&self) -> u32 {
         (*self).trigger_type()
     }
 
+    #[inline]
     fn fee_id(&self) -> u16 {
         (*self).fee_id()
     }
 
+    #[inline]
     fn cru_id(&self) -> u16 {
         (*self).cru_id()
     }
 
+    #[inline]
     fn dw(&self) -> u8 {
         (*self).dw()
     }
 
+    #[inline]
     fn packet_counter(&self) -> u8 {
         (*self).packet_counter()
     }

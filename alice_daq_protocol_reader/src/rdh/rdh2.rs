@@ -5,7 +5,7 @@ use std::fmt::{self, Debug, Display};
 
 /// Represents the `RDH2` subword of the [RDH](super::RdhCru).
 #[repr(packed)]
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Rdh2 {
     /// RDH trigger type 32 bit.
     pub trigger_type: u32,
@@ -36,6 +36,7 @@ impl Rdh2 {
 }
 
 impl RdhSubword for Rdh2 {
+    #[inline(always)]
     fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh2 {
             trigger_type: LittleEndian::read_u32(&buf[0..=3]),
@@ -72,7 +73,7 @@ mod tests {
             stop_bit: 0x00,
             reserved0: 0x00,
         };
-        let rdh2_2 = rdh2;
+        let rdh2_2 = rdh2.clone();
 
         assert_eq!(rdh2, rdh2_2);
     }
