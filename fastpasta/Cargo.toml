@@ -2,14 +2,14 @@
 name = "fastpasta"
 edition = "2021"
 documentation = "https://docs.rs/fastpasta"
-repository = "https://gitlab.cern.ch/mkonig/fastpasta"
-license = "MIT OR Apache-2.0"
 keywords = ["CLI", "parse", "Verification"]
 description = "CLI for verifying or examining readout data from the ALICE detector."
 categories = ["command-line-utilities"]
 readme.workspace = true
 version.workspace = true
 authors.workspace = true
+license.workspace = true
+repository.workspace = true
 
 
 [badges]
