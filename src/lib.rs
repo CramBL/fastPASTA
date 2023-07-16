@@ -92,41 +92,11 @@ pub fn init_processing(
     // Choose the rest of the execution based on the RDH version
     // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
     match rdh_version {
-        6 => match process::<RdhCru<V6>>(
-            config,
-            loader,
-            Some(input_stats_recv),
-            stat_send_channel.clone(),
-            stop_flag,
-        ) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                stat_send_channel
-                    .send(StatType::Fatal(e.to_string()))
-                    .unwrap();
-                Err(e)
-            }
-        },
-        7 => match process::<RdhCru<V7>>(
-            config,
-            loader,
-            Some(input_stats_recv),
-            stat_send_channel.clone(),
-            stop_flag,
-        ) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                stat_send_channel
-                    .send(StatType::Fatal(e.to_string()))
-                    .unwrap();
-                Err(e)
-            }
-        },
-        // No tag to go by for `version > 7`, use `u8` and hope it goes well.
-        // Upper limit is 200 and not just max of u8 (255) because:
-        //      1. Unlikely there will ever be an RDH version 200+
+        // Attempt to parse RDHs with version field in the range 3-100
+        // Upper limit is 100 and not just max of u8 (255) because:
+        //      1. Unlikely there will ever be an RDH version higher than that
         //      2. High values decoded from this field (especially 255) is typically a sign that the data is not actually ALICE data so early exit is preferred
-        8..=200 => {
+        3..=100 => {
             match process::<RdhCru<u8>>(
                 config,
                 loader,
