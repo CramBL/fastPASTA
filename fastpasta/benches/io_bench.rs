@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::{io::Read, vec};
 
 use criterion::{black_box, BenchmarkId, Criterion};
