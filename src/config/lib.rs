@@ -5,10 +5,10 @@
 use super::{
     check::{CheckCommands, ChecksOpt, System},
     custom_checks::CustomChecksOpt,
-    filter::FilterOpt,
     prelude::{InputOutputOpt, ViewOpt},
     util::UtilOpt,
 };
+use crate::input::prelude::FilterOpt;
 
 /// Super trait for all the traits that needed to be implemented by the config struct
 // Generic traits that are required by the config struct

@@ -1,5 +1,16 @@
 //! Contains the Trait [FilterOpt] for all filter options, and the [FilterTarget] enum for the filter target
 
+#[derive(Debug, Clone, Copy)]
+/// The target of an optional filter on the input data
+pub enum FilterTarget {
+    /// Filter on the link ID
+    Link(u8),
+    /// Filter on the FEE ID
+    Fee(u16),
+    /// Filter on the ITS layer and stave
+    ItsLayerStave(u16),
+}
+
 /// Trait for all filter options set by the user
 pub trait FilterOpt {
     /// Link ID to filter by
@@ -72,15 +83,4 @@ where
     fn filter_its_stave(&self) -> Option<u16> {
         (**self).filter_its_stave()
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-/// The target of an optional filter on the input data
-pub enum FilterTarget {
-    /// Filter on the link ID
-    Link(u8),
-    /// Filter on the FEE ID
-    Fee(u16),
-    /// Filter on the ITS layer and stave
-    ItsLayerStave(u16),
 }

@@ -2,6 +2,7 @@
 
 use super::custom_checks::CustomChecks;
 use super::prelude::*;
+use crate::input::prelude::FilterOpt;
 
 #[derive(Debug, Clone)]
 /// Complete configurable Mock config for testing

@@ -3,11 +3,11 @@
 //! The [InputScanner] implements the [ScanCDP] trait.
 
 use super::bufreader_wrapper::BufferedReaderWrapper;
+use super::config::filter::{FilterOpt, FilterTarget};
 use super::lib::InputStatType;
 use super::mem_pos_tracker::MemPosTracker;
 use super::rdh::Rdh0;
 use super::rdh::{SerdeRdh, RDH};
-use crate::config::filter::{FilterOpt, FilterTarget};
 use crate::config::inputoutput::InputOutputOpt;
 use crate::words::its::is_match_feeid_layer_stave;
 use std::io::Read;

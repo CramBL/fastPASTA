@@ -18,6 +18,7 @@ use super::stat_summerize_utils::summerize_layers_staves_seen;
 use super::stats_validation::validate_custom_stats;
 use super::SystemId;
 use crate::config::prelude::*;
+use crate::input::prelude::FilterTarget;
 use crate::stats::stats_report::report::Report;
 use crate::stats::stats_report::report::StatSummary;
 use indicatif::{ProgressBar, ProgressStyle};

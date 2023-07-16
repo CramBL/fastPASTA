@@ -22,3 +22,6 @@ pub use super::rdh::RDH_CRU;
 pub use super::rdh::RDH_CRU_SIZE_BYTES;
 pub use super::rdh::V6;
 pub use super::rdh::V7;
+// Filter configuration/options
+pub use super::config::filter::FilterOpt;
+pub use super::config::filter::FilterTarget;

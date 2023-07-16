@@ -14,7 +14,7 @@
 pub(crate) use super::{its, rdh::RdhCruSanityValidator, rdh_running::RdhCruRunningChecker};
 use crate::config::check::{CheckCommands, ChecksOpt, System};
 use crate::config::custom_checks::CustomChecksOpt;
-use crate::config::filter::FilterOpt;
+use crate::input::prelude::FilterOpt;
 use crate::input::prelude::{RdhCru, RDH, V7};
 use crate::stats::StatType;
 use ringbuffer::{ConstGenericRingBuffer, RingBufferExt, RingBufferWrite};

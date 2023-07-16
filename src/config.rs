@@ -8,12 +8,12 @@
 use self::{
     check::{CheckCommands, ChecksOpt},
     custom_checks::{CustomChecks, CustomChecksOpt},
-    filter::FilterOpt,
     inputoutput::{DataOutputMode, InputOutputOpt},
     prelude::Config,
     util::UtilOpt,
     view::{ViewCommands, ViewOpt},
 };
+use crate::input::prelude::FilterOpt;
 use crate::words::its::layer_stave_string_to_feeid;
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
@@ -21,7 +21,6 @@ use std::sync::OnceLock;
 
 pub mod check;
 pub mod custom_checks;
-pub mod filter;
 pub mod inputoutput;
 pub mod lib;
 pub mod prelude;

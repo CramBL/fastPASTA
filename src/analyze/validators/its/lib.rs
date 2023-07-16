@@ -1,6 +1,7 @@
 //! Contains the [do_payload_checks] which is the entry point for the ITS specific CDP validator
 use super::cdp_running::CdpRunningValidator;
 use crate::config::prelude::*;
+use crate::input::prelude::FilterOpt;
 use crate::input::prelude::RDH;
 use crate::stats::StatType;
 

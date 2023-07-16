@@ -13,6 +13,7 @@ use super::{
 use crate::analyze::validators::its::alpide::alpide_readout_frame::AlpideReadoutFrame;
 use crate::config::prelude::*;
 use crate::input::prelude::ByteSlice;
+use crate::input::prelude::FilterOpt;
 use crate::input::prelude::RDH;
 use crate::stats::StatType;
 use crate::words::its::data_words::lane_id_to_lane_number;
