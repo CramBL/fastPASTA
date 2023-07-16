@@ -4,3 +4,8 @@ members = [ "fastpasta", "alice_daq_protocol_reader" ]
 [profile.release]
 lto = true
 codegen-units = 1
+
+[workspace.package]
+version = "1.12.1" # the current version, obeying semver
+readme = "README.md"
+authors = ["Marc Beck König <mbkj@tutamail.com>"]
