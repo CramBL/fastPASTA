@@ -1,6 +1,6 @@
 [package]
-name = "fastpasta_processing"
-version = "1.0.0" # the current version, obeying semver
+name = "fastpasta"
+version = "1.12.1" # the current version, obeying semver
 edition = "2021"
 readme = "README.md"
 documentation = "https://docs.rs/fastpasta"

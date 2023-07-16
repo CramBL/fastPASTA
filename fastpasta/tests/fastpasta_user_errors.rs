@@ -5,7 +5,7 @@ mod util;
 fn bad_file_input_check_sanity_its() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
-    cmd.arg("LICENSE")
+    cmd.arg("../LICENSE")
         .arg("check")
         .arg("sanity")
         .arg("its")
@@ -24,7 +24,7 @@ fn bad_file_input_check_sanity_its() -> Result<(), Box<dyn std::error::Error>> {
 fn bad_file_input_view_its_readout_frames() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
-    cmd.arg("LICENSE")
+    cmd.arg("../LICENSE")
         .arg("view")
         .arg("its-readout-frames")
         .arg("-v4");

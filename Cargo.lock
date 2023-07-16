@@ -515,21 +515,6 @@ version = "1.12.1"
 dependencies = [
  "assert_cmd",
  "assert_fs",
- "criterion",
- "fancy-regex",
- "gag",
- "log",
- "predicates",
- "pretty_assertions",
- "temp-dir",
-]
-
-[[package]]
-name = "fastpasta_processing"
-version = "1.0.0"
-dependencies = [
- "assert_cmd",
- "assert_fs",
  "byteorder",
  "clap",
  "criterion",

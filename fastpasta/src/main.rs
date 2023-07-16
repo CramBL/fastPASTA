@@ -1,9 +1,9 @@
-use fastpasta_processing::config::init_config;
-use fastpasta_processing::config::prelude::*;
-use fastpasta_processing::config::Cfg;
-use fastpasta_processing::input::lib::init_reader;
-use fastpasta_processing::stats::init_stats_controller;
-use fastpasta_processing::stats::StatType;
+use fastpasta::config::init_config;
+use fastpasta::config::prelude::*;
+use fastpasta::config::Cfg;
+use fastpasta::input::lib::init_reader;
+use fastpasta::stats::init_stats_controller;
+use fastpasta::stats::StatType;
 
 pub fn main() -> std::process::ExitCode {
     if let Err(e) = init_config() {
@@ -11,7 +11,7 @@ pub fn main() -> std::process::ExitCode {
         return std::process::ExitCode::from(1);
     };
 
-    fastpasta_processing::util::lib::init_error_logger(Cfg::global());
+    fastpasta::util::lib::init_error_logger(Cfg::global());
 
     if Cfg::global().generate_custom_checks_toml_enabled() {
         log::info!("'custom_checks.toml' file generated in current directory. Use it to customize checks. Exiting...");
@@ -24,16 +24,12 @@ pub fn main() -> std::process::ExitCode {
         init_stats_controller(Cfg::global());
 
     // Handles SIGINT, SIGTERM and SIGHUP (as the `termination` feature is  enabled)
-    fastpasta_processing::util::lib::init_ctrlc_handler(stop_flag.clone());
+    fastpasta::util::lib::init_ctrlc_handler(stop_flag.clone());
 
     let exit_code: u8 = match init_reader(Cfg::global().input_file()) {
         Ok(readable) => {
-            match fastpasta_processing::init_processing(
-                Cfg::global(),
-                readable,
-                stat_send_channel,
-                stop_flag,
-            ) {
+            match fastpasta::init_processing(Cfg::global(), readable, stat_send_channel, stop_flag)
+            {
                 Ok(_) => 0,
                 Err(e) => {
                     log::error!("Init processing failed: {e}");
@@ -52,5 +48,5 @@ pub fn main() -> std::process::ExitCode {
 
     stat_controller.join().expect("Failed to join stats thread");
 
-    fastpasta_processing::util::lib::exit(exit_code, any_errors_flag)
+    fastpasta::util::lib::exit(exit_code, any_errors_flag)
 }

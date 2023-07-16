@@ -1,5 +1,5 @@
 use criterion::Criterion;
-use fastpasta_processing::input::prelude::*;
+use fastpasta::input::prelude::*;
 use std::io::Write;
 
 pub struct RelativeOffset(i64);

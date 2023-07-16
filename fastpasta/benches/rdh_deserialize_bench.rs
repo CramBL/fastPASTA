@@ -1,5 +1,5 @@
 use criterion::{black_box, BenchmarkId, Criterion};
-use fastpasta_processing::input::prelude::*;
+use fastpasta::input::prelude::*;
 
 #[inline]
 fn deserialize_rdh_current(filename: &str, iterations: usize) {
