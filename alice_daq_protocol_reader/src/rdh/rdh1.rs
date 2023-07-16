@@ -11,7 +11,7 @@ pub struct BcReserved(pub u32); // 12 bit bc, 20 bit reserved
 ///
 /// The RDH1 is 64 bit long.
 #[repr(packed)]
-#[derive(PartialEq, Default, Debug)]
+#[derive(PartialEq, Default, Debug, Clone, Copy)]
 pub struct Rdh1 {
     /// RDH bunch counter 12 bit + reserved 20 bit
     pub(crate) bc_reserved0: BcReserved,
@@ -27,6 +27,24 @@ impl Rdh1 {
     /// Returns the reserved bits.
     pub fn reserved0(&self) -> u32 {
         self.bc_reserved0.0 >> 12
+    }
+
+    /// Valid generic values of a [Rdh1] that can be initialized at constant time
+    #[inline]
+    pub const fn const_default() -> Self {
+        Self {
+            bc_reserved0: BcReserved(0),
+            orbit: 0,
+        }
+    }
+
+    /// Make a [Rdh1]
+    #[inline]
+    pub const fn new(bc_reserved0: BcReserved, orbit: u32) -> Self {
+        Self {
+            bc_reserved0,
+            orbit,
+        }
     }
 }
 

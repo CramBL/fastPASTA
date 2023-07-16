@@ -12,7 +12,7 @@ pub struct FeeId(pub u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fib
 ///
 /// The RDH0 is 64 bit long.
 #[repr(packed)]
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Rdh0 {
     /// RDH header ID
     pub header_id: u8,
@@ -31,6 +31,29 @@ pub struct Rdh0 {
 impl Rdh0 {
     /// The side of a [Rdh0] word
     pub const HEADER_SIZE: u8 = 0x40;
+
+    pub const fn new(
+        header_id: u8,
+        header_size: u8,
+        fee_id: FeeId,
+        priority_bit: u8,
+        system_id: u8,
+        reserved0: u16,
+    ) -> Self {
+        Self {
+            header_id,
+            header_size,
+            fee_id,
+            priority_bit,
+            system_id,
+            reserved0,
+        }
+    }
+
+    #[inline]
+    pub fn fee_id(&self) -> u16 {
+        self.fee_id.0
+    }
 }
 
 impl Display for Rdh0 {

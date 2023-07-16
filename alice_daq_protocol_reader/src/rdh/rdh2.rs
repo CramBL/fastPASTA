@@ -23,6 +23,15 @@ impl Rdh2 {
     pub fn is_pht_trigger(&self) -> bool {
         self.trigger_type >> 4 & 0x1 == 1
     }
+
+    pub const fn new(trigger_type: u32, pages_counter: u16, stop_bit: u8, reserved0: u8) -> Self {
+        Self {
+            trigger_type,
+            pages_counter,
+            stop_bit,
+            reserved0,
+        }
+    }
 }
 
 impl RdhSubword for Rdh2 {

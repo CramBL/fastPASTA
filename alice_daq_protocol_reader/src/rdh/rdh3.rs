@@ -14,6 +14,17 @@ pub struct Rdh3 {
     /// RDH reserved 16 bit.
     pub reserved0: u16,
 }
+
+impl Rdh3 {
+    pub const fn new(detector_field: u32, par_bit: u16, reserved0: u16) -> Self {
+        Self {
+            detector_field,
+            par_bit,
+            reserved0,
+        }
+    }
+}
+
 impl RdhSubword for Rdh3 {
     fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh3 {
