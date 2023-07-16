@@ -9,3 +9,5 @@ codegen-units = 1
 version = "1.12.1" # the current version, obeying semver
 readme = "README.md"
 authors = ["Marc Beck König <mbkj@tutamail.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://gitlab.cern.ch/mkonig/fastpasta"
