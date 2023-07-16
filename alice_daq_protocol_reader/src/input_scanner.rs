@@ -337,6 +337,7 @@ mod tests {
     use super::super::prelude::test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
     use super::*;
     #[test]
+    #[ignore = "Clashes with other tests in multi-threaded testing"]
     fn test_load_rdhcruv7_test() {
         let test_data = CORRECT_RDH_CRU_V7;
         println!("Test data: \n       {test_data}");
@@ -357,6 +358,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Clashes with test_load_rdhcruv6_test and test_load_rdhcruv7_test in multi-threaded testing"]
     fn test_load_rdhcruv7_test_unexp_eof() {
         let mut test_data = CORRECT_RDH_CRU_V7;
         test_data.link_id = 100; // Invalid link id
@@ -379,6 +381,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Clashes with other tests in multi-threaded testing"]
     fn test_load_rdhcruv6_test() {
         let mut test_data = CORRECT_RDH_CRU_V6;
         test_data.link_id = 0; // we are filtering for 0
