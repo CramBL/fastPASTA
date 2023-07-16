@@ -262,7 +262,7 @@ mod tests {
         // Setup Mock Config
         let mut mock_config = MockConfig::new();
         // Set input file from one of the files used for regression testing
-        mock_config.input_file = Some(PathBuf::from("tests/test-data/10_rdh.raw"));
+        mock_config.input_file = Some(PathBuf::from("../tests/test-data/10_rdh.raw"));
 
         CFG_TEST_INIT_PROCESSING.set(mock_config).unwrap();
 

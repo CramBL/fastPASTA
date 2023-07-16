@@ -1,5 +1,5 @@
 use criterion::{black_box, BenchmarkId, Criterion};
-use fastpasta::input::prelude::*;
+use fastpasta_processing::input::prelude::*;
 
 pub struct RelativeOffset(i64);
 impl RelativeOffset {
@@ -17,7 +17,8 @@ fn sanity_check_rdhs(rdh_cru_size_bytes: u64, filename: &str, iterations: usize)
         .open(&filepath)
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
-    let mut rdh_validator = fastpasta::analyze::validators::rdh::RdhCruSanityValidator::default();
+    let mut rdh_validator =
+        fastpasta_processing::analyze::validators::rdh::RdhCruSanityValidator::default();
     let mut rdhs = 0;
 
     loop {
