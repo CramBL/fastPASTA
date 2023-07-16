@@ -3,6 +3,7 @@ use super::RdhSubword;
 use byteorder::{ByteOrder, LittleEndian};
 use std::fmt::{self, Debug, Display};
 
+/// Represents the composite `FEE ID` fields. Using a newtype because the sub-fields are packed in 16 bits, and extracting the values requires some work.
 #[repr(packed)]
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub struct FeeId(pub u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
@@ -32,6 +33,7 @@ impl Rdh0 {
     /// The side of a [Rdh0] word
     pub const HEADER_SIZE: u8 = 0x40;
 
+    /// Creates a new [RDH0](Rdh0). Subword of the [RDH](super::RdhCru).
     pub const fn new(
         header_id: u8,
         header_size: u8,
@@ -50,6 +52,7 @@ impl Rdh0 {
         }
     }
 
+    /// Gets the `FEE ID`
     #[inline]
     pub fn fee_id(&self) -> u16 {
         self.fee_id.0

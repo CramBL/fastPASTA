@@ -3,7 +3,7 @@ use super::RdhSubword;
 use byteorder::{ByteOrder, LittleEndian};
 use std::fmt::{self, Debug, Display};
 
-/// Represents the RDH3 subword of the RDH.
+/// Represents the RDH3 subword of the [RDH](super::RdhCru).
 #[repr(packed)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Rdh3 {
@@ -16,6 +16,7 @@ pub struct Rdh3 {
 }
 
 impl Rdh3 {
+    /// Creates a new [RDH3](Rdh3). Subword of the [RDH](super::RdhCru).
     pub const fn new(detector_field: u32, par_bit: u16, reserved0: u16) -> Self {
         Self {
             detector_field,

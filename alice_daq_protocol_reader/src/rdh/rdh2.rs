@@ -3,7 +3,7 @@ use super::RdhSubword;
 use byteorder::{ByteOrder, LittleEndian};
 use std::fmt::{self, Debug, Display};
 
-/// Represents the RDH2 subword of the RDH.
+/// Represents the `RDH2` subword of the [RDH](super::RdhCru).
 #[repr(packed)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Rdh2 {
@@ -24,6 +24,7 @@ impl Rdh2 {
         self.trigger_type >> 4 & 0x1 == 1
     }
 
+    /// Creates a new [RDH2](Rdh2). Subword of the [RDH](super::RdhCru).
     pub const fn new(trigger_type: u32, pages_counter: u16, stop_bit: u8, reserved0: u8) -> Self {
         Self {
             trigger_type,

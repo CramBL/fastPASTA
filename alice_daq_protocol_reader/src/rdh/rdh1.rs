@@ -3,6 +3,7 @@ use super::RdhSubword;
 use byteorder::{ByteOrder, LittleEndian};
 use std::fmt;
 
+/// Represents the `BC` and `reserved` fields. Using a newtype because the fields are packed in 32 bits, and extracting the values requires some work.
 #[repr(packed)]
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub struct BcReserved(pub u32); // 12 bit bc, 20 bit reserved

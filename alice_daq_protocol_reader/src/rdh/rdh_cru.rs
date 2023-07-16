@@ -8,9 +8,12 @@ use byteorder::{ByteOrder, LittleEndian};
 use std::fmt::{self, Display};
 use std::{fmt::Debug, marker::PhantomData};
 
+/// Represents the `Data format` and `reserved` fields. Using a newtype because the fields are packed in 64 bits, and extracting the values requires some work.
 #[repr(packed)]
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub struct DataformatReserved(pub u64); // 8 bit data_format, 56 bit reserved0
+
+/// Represents the `CRU ID` and `DW` fields. Using a newtype because the fields are packed in 16 bits, and extracting the values requires some work.
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 #[repr(packed)]
 pub struct CruidDw(pub u16); // 12 bit cru_id, 4 bit dw
@@ -58,6 +61,7 @@ impl<Version> Display for RdhCru<Version> {
 }
 
 impl<Version> RdhCru<Version> {
+    /// Creates a new [RDH](RdhCru).
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         rdh0: Rdh0,
