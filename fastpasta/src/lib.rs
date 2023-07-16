@@ -52,7 +52,6 @@ use stats::StatType;
 
 pub mod analyze;
 pub mod config;
-pub mod input;
 pub mod stats;
 pub mod util;
 pub mod words;
