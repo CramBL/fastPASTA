@@ -298,11 +298,11 @@ mod tests {
     use super::super::config::mock_config::MockConfig;
     use super::super::rdh::{ByteSlice, RdhCru, V6, V7};
     use pretty_assertions::assert_eq;
-    use std::io::Write;
-    use std::{fs::File, io::BufReader, path::PathBuf};
+    use std::{io::BufReader, path::PathBuf};
+    use temp_dir::TempDir;
 
     fn setup_scanner_for_file(
-        path: &str,
+        path: &PathBuf,
     ) -> (
         InputScanner<BufReader<std::fs::File>>,
         flume::Receiver<InputStatType>,
@@ -337,68 +337,54 @@ mod tests {
     use super::super::prelude::test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
     use super::*;
     #[test]
-    #[ignore = "Clashes with other tests in multi-threaded testing"]
     fn test_load_rdhcruv7_test() {
+        let tmp_d = TempDir::new().unwrap();
+        let test_file = tmp_d.child("test.raw");
         let test_data = CORRECT_RDH_CRU_V7;
         println!("Test data: \n       {test_data}");
-        let file_name = "test.raw";
-        let filepath = PathBuf::from(file_name);
-        let mut file = File::create(&filepath).unwrap();
         // Write to file for testing
-        file.write_all(test_data.to_byte_slice()).unwrap();
+        std::fs::write(&test_file, test_data.to_byte_slice()).unwrap();
 
         {
-            let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
+            let (mut scanner, _rcv_channel) = setup_scanner_for_file(&test_file);
             let rdh = scanner.load_rdh_cru::<RdhCru<V7>>().unwrap();
             assert_eq!(test_data, rdh);
         }
-
-        // delete output file
-        std::fs::remove_file(filepath).unwrap();
     }
 
     #[test]
-    #[ignore = "Clashes with test_load_rdhcruv6_test and test_load_rdhcruv7_test in multi-threaded testing"]
     fn test_load_rdhcruv7_test_unexp_eof() {
         let mut test_data = CORRECT_RDH_CRU_V7;
         test_data.link_id = 100; // Invalid link id
         println!("Test data: \n       {test_data}");
-        let file_name = "test.raw";
-        let filepath = PathBuf::from(file_name);
-        let mut file = File::create(&filepath).unwrap();
-        // Write to file for testing
-        file.write_all(test_data.to_byte_slice()).unwrap();
+
+        let tmp_d = TempDir::new().unwrap();
+        let test_file = tmp_d.child("test.raw");
+        std::fs::write(&test_file, test_data.to_byte_slice()).unwrap();
 
         {
-            let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
+            let (mut scanner, _rcv_channel) = setup_scanner_for_file(&test_file);
             let rdh = scanner.load_rdh_cru::<RdhCru<V7>>();
             assert!(rdh.is_err());
             assert_eq!(rdh.unwrap_err().kind(), std::io::ErrorKind::UnexpectedEof);
         }
-
-        // delete output file
-        std::fs::remove_file(filepath).unwrap();
     }
 
     #[test]
-    #[ignore = "Clashes with other tests in multi-threaded testing"]
     fn test_load_rdhcruv6_test() {
         let mut test_data = CORRECT_RDH_CRU_V6;
         test_data.link_id = 0; // we are filtering for 0
         println!("Test data: \n       {test_data}");
-        let file_name = "test.raw";
-        let filepath = PathBuf::from(file_name);
-        let mut file = File::create(&filepath).unwrap();
-        // Write to file for testing
-        file.write_all(test_data.to_byte_slice()).unwrap();
+
+        let tmp_d = TempDir::new().unwrap();
+        let test_file = tmp_d.child("test.raw");
+        std::fs::write(&test_file, test_data.to_byte_slice()).unwrap();
 
         {
-            let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
+            let (mut scanner, _rcv_channel) = setup_scanner_for_file(&test_file);
             let rdh = scanner.load_rdh_cru::<RdhCru<V6>>().unwrap();
             assert_eq!(test_data, rdh);
         }
-        // delete output file
-        std::fs::remove_file(filepath).unwrap();
     }
 
     #[test]
@@ -406,14 +392,13 @@ mod tests {
         let mut test_data = CORRECT_RDH_CRU_V6;
         test_data.link_id = 100; // Invalid link id
         println!("Test data: \n       {test_data}");
-        let file_name = "test.raw";
-        let filepath = PathBuf::from(file_name);
-        let mut file = File::create(filepath).unwrap();
-        // Write to file for testing
-        file.write_all(test_data.to_byte_slice()).unwrap();
+
+        let tmp_d = TempDir::new().unwrap();
+        let test_file = tmp_d.child("test.raw");
+        std::fs::write(&test_file, test_data.to_byte_slice()).unwrap();
 
         {
-            let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
+            let (mut scanner, _rcv_channel) = setup_scanner_for_file(&test_file);
             let rdh = scanner.load_rdh_cru::<RdhCru<V6>>();
             assert!(rdh.is_err());
             assert_eq!(rdh.unwrap_err().kind(), std::io::ErrorKind::UnexpectedEof);
