@@ -82,6 +82,7 @@ pub fn init_processing(
         .send(StatType::RdhVersion(rdh_version))
         .unwrap();
 
+    // Create a receiver/sender channel for the stats that the InputScanner sends.
     let (input_stats_send, input_stats_recv): (
         flume::Sender<InputStatType>,
         flume::Receiver<InputStatType>,
