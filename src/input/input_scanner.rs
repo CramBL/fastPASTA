@@ -8,7 +8,6 @@ use super::lib::InputStatType;
 use super::mem_pos_tracker::MemPosTracker;
 use super::rdh::Rdh0;
 use super::rdh::{SerdeRdh, RDH};
-use crate::words::its::is_match_feeid_layer_stave;
 use std::io::Read;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
@@ -259,6 +258,11 @@ fn is_rdh_filter_target(rdh: &impl RDH, target: FilterTarget) -> bool {
         FilterTarget::Fee(id) => rdh.fee_id() == id,
         FilterTarget::ItsLayerStave(fee_id) => is_match_feeid_layer_stave(rdh.fee_id(), fee_id),
     }
+}
+
+fn is_match_feeid_layer_stave(a_fee_id: u16, b_fee_id: u16) -> bool {
+    let layer_stave_mask: u16 = 0b0111_0000_0011_1111;
+    (a_fee_id & layer_stave_mask) == (b_fee_id & layer_stave_mask)
 }
 
 // The error is fatal to the input scanner, so parsing input is stopped, but the previously read data is still forwarded for checking etc.
