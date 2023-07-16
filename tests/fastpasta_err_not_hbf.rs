@@ -94,7 +94,7 @@ fn check_sanity_debug_verbosity() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output()?.stderr, "loaded.*rdh", 2)?;
+    match_on_out_no_case(&cmd.output()?.stderr, "run.*type.*SOC", 1)?;
 
     Ok(())
 }
