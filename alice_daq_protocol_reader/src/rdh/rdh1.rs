@@ -5,7 +5,7 @@ use std::fmt;
 
 #[repr(packed)]
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
-pub(crate) struct BcReserved(pub(crate) u32); // 12 bit bc, 20 bit reserved
+pub struct BcReserved(pub u32); // 12 bit bc, 20 bit reserved
 
 /// Represents the RDH1 subword of the RDH.
 ///

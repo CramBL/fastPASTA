@@ -8,10 +8,14 @@ pub use super::stdin_reader::StdInReaderSeeker;
 pub use crate::InputStatType;
 // RDH related
 pub use super::rdh::macros;
+pub use super::rdh::rdh0::FeeId;
 pub use super::rdh::rdh0::Rdh0;
+pub use super::rdh::rdh1::BcReserved;
 pub use super::rdh::rdh1::Rdh1;
 pub use super::rdh::rdh2::Rdh2;
 pub use super::rdh::rdh3::Rdh3;
+pub use super::rdh::rdh_cru::CruidDw;
+pub use super::rdh::rdh_cru::DataformatReserved;
 pub use super::rdh::test_data;
 pub use super::rdh::ByteSlice;
 pub use super::rdh::RdhCru;

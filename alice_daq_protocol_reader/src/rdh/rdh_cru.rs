@@ -10,10 +10,10 @@ use std::{fmt::Debug, marker::PhantomData};
 
 #[repr(packed)]
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
-pub(crate) struct DataformatReserved(pub(crate) u64); // 8 bit data_format, 56 bit reserved0
+pub struct DataformatReserved(pub u64); // 8 bit data_format, 56 bit reserved0
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 #[repr(packed)]
-pub(crate) struct CruidDw(pub(crate) u16); // 12 bit cru_id, 4 bit dw
+pub struct CruidDw(pub u16); // 12 bit cru_id, 4 bit dw
 /// Unit struct to mark a [RdhCru] as version 6.
 pub struct V6;
 /// Unit struct to mark a [RdhCru] as version 7.

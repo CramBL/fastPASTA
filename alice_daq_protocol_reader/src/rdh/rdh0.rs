@@ -5,8 +5,8 @@ use std::fmt::{self, Debug, Display};
 
 #[repr(packed)]
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
-pub(crate) struct FeeId(pub(crate) u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
-                                         // Example: L4_12 -> Layer 4 stave 12 = 0b0100_00XX_0000_1100
+pub struct FeeId(pub u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
+                           // Example: L4_12 -> Layer 4 stave 12 = 0b0100_00XX_0000_1100
 
 /// Represents the RDH0 subword of the RDH.
 ///
