@@ -55,8 +55,7 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     stats_controller_sender_ch: Option<flume::Sender<InputStatType>>,
     filter_target: Option<FilterTarget>,
     skip_payload: bool,
-    unique_links_observed: Vec<u8>,
-    unique_feeids_observed: Vec<u16>,
+    stats: Option<Stats>,
     initial_rdh0: Option<Rdh0>,
 }
 
@@ -70,11 +69,10 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         InputScanner {
             reader,
             tracker: MemPosTracker::new(),
-            stats_controller_sender_ch,
+            stats_controller_sender_ch: stats_controller_sender_ch.clone(),
             filter_target: config.filter_target(),
             skip_payload: config.skip_payload(),
-            unique_links_observed: vec![],
-            unique_feeids_observed: vec![],
+            stats: stats_controller_sender_ch.map(Stats::new),
             initial_rdh0: None,
         }
     }
@@ -91,10 +89,9 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             reader,
             tracker: MemPosTracker::new(),
             filter_target: config.filter_target(),
-            stats_controller_sender_ch,
+            stats_controller_sender_ch: stats_controller_sender_ch.clone(),
             skip_payload: config.skip_payload(),
-            unique_links_observed: vec![],
-            unique_feeids_observed: vec![],
+            stats: stats_controller_sender_ch.map(Stats::new),
             initial_rdh0: Some(rdh0),
         }
     }
@@ -116,17 +113,19 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     fn collect_rdh_seen_stats(&mut self, rdh: &impl RDH) {
         // Set the link ID and report another RDH seen
         let current_link_id = rdh.link_id();
-        self.report(InputStatType::RDHSeen);
+
+        if let Some(stat_tracker) = self.stats.as_mut() {
+            stat_tracker.rdh_seen();
+        }
 
         // If we haven't seen this link before, report it and add it to the list of unique links
-        if !self.unique_links_observed.contains(&current_link_id) {
-            self.unique_links_observed.push(current_link_id);
-            self.report(InputStatType::LinksObserved(current_link_id));
+        if let Some(stat_tracker) = self.stats.as_mut() {
+            stat_tracker.try_add_link(current_link_id);
         }
+
         // If the FEE ID has not been seen before, report it and add it to the list of unique FEE IDs
-        if !self.unique_feeids_observed.contains(&rdh.fee_id()) {
-            self.unique_feeids_observed.push(rdh.fee_id());
-            self.report(InputStatType::FeeId(rdh.fee_id()));
+        if let Some(stat_tracker) = self.stats.as_mut() {
+            stat_tracker.try_add_fee_id(rdh.fee_id());
         }
     }
     #[inline(always)]
@@ -173,7 +172,9 @@ where
         // If a filter is set, check if the RDH matches the filter
         let rdh = if let Some(target) = self.filter_target {
             if is_rdh_filter_target(&rdh, target) {
-                self.report(InputStatType::RDHFiltered);
+                if let Some(stat_tracker) = self.stats.as_mut() {
+                    stat_tracker.rdh_filtered();
+                }
 
                 Ok(rdh)
             } else {
@@ -186,7 +187,9 @@ where
         };
 
         if let Ok(rdh) = &rdh {
-            self.report(InputStatType::PayloadSize(rdh.payload_size() as u32));
+            if let Some(stat_tracker) = self.stats.as_mut() {
+                stat_tracker.add_payload_size(rdh.payload_size());
+            }
         }
         rdh
     }
@@ -240,7 +243,9 @@ where
             self.collect_rdh_seen_stats(&rdh);
 
             if is_rdh_filter_target(&rdh, filter_target) {
-                self.report(InputStatType::RDHFiltered);
+                if let Some(stat_tracker) = self.stats.as_mut() {
+                    stat_tracker.rdh_filtered();
+                }
                 return Ok(rdh);
             }
             self.reader
@@ -250,6 +255,17 @@ where
 
     fn current_mem_pos(&self) -> u64 {
         self.tracker.current_mem_address()
+    }
+}
+
+impl<R> Drop for InputScanner<R>
+where
+    R: ?Sized + BufferedReaderWrapper,
+{
+    fn drop(&mut self) {
+        if let Some(mut stat_tracker) = self.stats.take() {
+            stat_tracker.flush_stats();
+        }
     }
 }
 
@@ -303,10 +319,90 @@ fn invalid_rdh_offset<T: RDH>(rdh: &T, current_memory_address: u64, offset_to_ne
     format!("RDH offset to next is {offset_to_next}. {error_string}")
 }
 
+struct Stats {
+    reporter: flume::Sender<InputStatType>,
+    rdhs_seen: u16,
+    rdhs_filtered: u16,
+    payload_size_seen: u32,
+    unique_links_observed: Vec<u8>,
+    unique_feeids_observed: Vec<u16>,
+}
+
+impl Stats {
+    fn new(reporter: flume::Sender<InputStatType>) -> Self {
+        Self {
+            reporter,
+            rdhs_seen: 0,
+            rdhs_filtered: 0,
+            payload_size_seen: 0,
+            unique_links_observed: Vec::new(),
+            unique_feeids_observed: Vec::new(),
+        }
+    }
+
+    fn try_add_link(&mut self, link: u8) {
+        if !self.unique_links_observed.contains(&link) {
+            self.unique_links_observed.push(link);
+            self.reporter
+                .send(InputStatType::LinksObserved(link))
+                .unwrap();
+        }
+    }
+
+    fn try_add_fee_id(&mut self, fee_id: u16) {
+        if !self.unique_feeids_observed.contains(&fee_id) {
+            self.unique_feeids_observed.push(fee_id);
+            self.reporter.send(InputStatType::FeeId(fee_id)).unwrap();
+        }
+    }
+
+    fn rdh_seen(&mut self) {
+        self.rdhs_seen += 1;
+        if self.rdhs_seen == 1000 {
+            self.reporter.send(InputStatType::RDHSeen(1000)).unwrap();
+            self.rdhs_seen = 0;
+        }
+    }
+
+    fn rdh_filtered(&mut self) {
+        self.rdhs_filtered += 1;
+        if self.rdhs_filtered == 1000 {
+            self.reporter
+                .send(InputStatType::RDHFiltered(1000))
+                .unwrap();
+            self.rdhs_filtered = 0;
+        }
+    }
+
+    fn add_payload_size(&mut self, payload_size: u16) {
+        self.payload_size_seen += payload_size as u32;
+        // 10 MB
+        if self.payload_size_seen > (10 * 1048576) {
+            self.reporter
+                .send(InputStatType::PayloadSize(self.payload_size_seen))
+                .unwrap();
+            self.payload_size_seen = 0;
+        }
+    }
+
+    fn flush_stats(&mut self) {
+        self.reporter
+            .send(InputStatType::RDHSeen(self.rdhs_seen))
+            .unwrap();
+        self.reporter
+            .send(InputStatType::RDHFiltered(self.rdhs_filtered))
+            .unwrap();
+        self.reporter
+            .send(InputStatType::PayloadSize(self.payload_size_seen))
+            .unwrap();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::config::mock_config::MockConfig;
     use super::super::rdh::{ByteSlice, RdhCru, V6, V7};
+    use flume::Receiver;
     use pretty_assertions::assert_eq;
     use std::{io::BufReader, path::PathBuf};
     use temp_dir::TempDir;
@@ -355,11 +451,13 @@ mod tests {
         // Write to file for testing
         std::fs::write(&test_file, test_data.to_byte_slice()).unwrap();
 
-        {
-            let (mut scanner, _rcv_channel) = setup_scanner_for_file(&test_file);
+        let rcv_stats: Receiver<InputStatType> = {
+            let (mut scanner, rcv_channel) = setup_scanner_for_file(&test_file);
             let rdh = scanner.load_rdh_cru::<RdhCru<V7>>().unwrap();
             assert_eq!(test_data, rdh);
-        }
+            rcv_channel
+        };
+        assert!(!rcv_stats.is_empty(), "rcv_stats was empty!");
     }
 
     #[test]
@@ -372,12 +470,14 @@ mod tests {
         let test_file = tmp_d.child("test.raw");
         std::fs::write(&test_file, test_data.to_byte_slice()).unwrap();
 
-        {
-            let (mut scanner, _rcv_channel) = setup_scanner_for_file(&test_file);
+        let rcv_stats: Receiver<InputStatType> = {
+            let (mut scanner, rcv_channel) = setup_scanner_for_file(&test_file);
             let rdh = scanner.load_rdh_cru::<RdhCru<V7>>();
             assert!(rdh.is_err());
             assert_eq!(rdh.unwrap_err().kind(), std::io::ErrorKind::UnexpectedEof);
-        }
+            rcv_channel
+        };
+        assert!(!rcv_stats.is_empty(), "rcv_stats was empty!");
     }
 
     #[test]
@@ -390,11 +490,13 @@ mod tests {
         let test_file = tmp_d.child("test.raw");
         std::fs::write(&test_file, test_data.to_byte_slice()).unwrap();
 
-        {
-            let (mut scanner, _rcv_channel) = setup_scanner_for_file(&test_file);
+        let rcv_stats: Receiver<InputStatType> = {
+            let (mut scanner, rcv_channel) = setup_scanner_for_file(&test_file);
             let rdh = scanner.load_rdh_cru::<RdhCru<V6>>().unwrap();
             assert_eq!(test_data, rdh);
-        }
+            rcv_channel
+        };
+        assert!(!rcv_stats.is_empty(), "rcv_stats was empty!");
     }
 
     #[test]
@@ -407,11 +509,14 @@ mod tests {
         let test_file = tmp_d.child("test.raw");
         std::fs::write(&test_file, test_data.to_byte_slice()).unwrap();
 
-        {
-            let (mut scanner, _rcv_channel) = setup_scanner_for_file(&test_file);
+        let rcv_stats: Receiver<InputStatType> = {
+            let (mut scanner, rcv_channel) = setup_scanner_for_file(&test_file);
+
             let rdh = scanner.load_rdh_cru::<RdhCru<V6>>();
             assert!(rdh.is_err());
             assert_eq!(rdh.unwrap_err().kind(), std::io::ErrorKind::UnexpectedEof);
-        }
+            rcv_channel
+        };
+        assert!(!rcv_stats.is_empty(), "rcv_stats was empty!");
     }
 }

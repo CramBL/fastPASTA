@@ -146,9 +146,9 @@ pub enum InputStatType {
     /// Record the generic FEE ID
     FeeId(u16),
     /// Increment the total RDHs seen.
-    RDHSeen,
+    RDHSeen(u16),
     /// Increment the total RDHs filtered.
-    RDHFiltered,
+    RDHFiltered(u16),
     /// Increment the total payload size.
     PayloadSize(u32),
     /// The first system ID observed is the basis for the rest of processing
