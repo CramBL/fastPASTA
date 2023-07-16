@@ -1,5 +1,5 @@
 [workspace]
-members = [ "fastpasta" ]
+members = [ "fastpasta", "alice_daq_protocol_reader" ]
 
 [profile.release]
 lto = true

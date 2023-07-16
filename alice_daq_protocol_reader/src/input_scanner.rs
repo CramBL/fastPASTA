@@ -2,12 +2,14 @@
 //!
 //! The [InputScanner] implements the [ScanCDP] trait.
 
+use crate::InputStatType;
+
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::config::filter::{FilterOpt, FilterTarget};
-use super::lib::InputStatType;
 use super::mem_pos_tracker::MemPosTracker;
 use super::rdh::Rdh0;
 use super::rdh::{SerdeRdh, RDH};
+
 use std::io::Read;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
@@ -296,11 +298,11 @@ mod tests {
     use super::super::config::mock_config::MockConfig;
     use super::super::rdh::{ByteSlice, RdhCru, V6, V7};
     use pretty_assertions::assert_eq;
-    use std::{io::BufReader, path::PathBuf};
-    use temp_dir::TempDir;
+    use std::io::Write;
+    use std::{fs::File, io::BufReader, path::PathBuf};
 
     fn setup_scanner_for_file(
-        path: &PathBuf,
+        path: &str,
     ) -> (
         InputScanner<BufReader<std::fs::File>>,
         flume::Receiver<InputStatType>,
@@ -336,74 +338,79 @@ mod tests {
     use super::*;
     #[test]
     fn test_load_rdhcruv7_test() {
-        let tmp_dir = TempDir::new().unwrap();
-        let file_name = "test_v7.raw";
-        let tmp_file = tmp_dir.child(file_name);
-
         let test_data = CORRECT_RDH_CRU_V7;
         println!("Test data: \n       {test_data}");
-
-        std::fs::write(&tmp_file, test_data.to_byte_slice()).unwrap();
+        let file_name = "test.raw";
+        let filepath = PathBuf::from(file_name);
+        let mut file = File::create(&filepath).unwrap();
+        // Write to file for testing
+        file.write_all(test_data.to_byte_slice()).unwrap();
 
         {
-            let (mut scanner, _rcv_channel) = setup_scanner_for_file(&tmp_file);
+            let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
             let rdh = scanner.load_rdh_cru::<RdhCru<V7>>().unwrap();
             assert_eq!(test_data, rdh);
         }
+
+        // delete output file
+        std::fs::remove_file(filepath).unwrap();
     }
 
     #[test]
-    fn test_load_rdhcruv7_and_test_unexp_eof() {
+    fn test_load_rdhcruv7_test_unexp_eof() {
         let mut test_data = CORRECT_RDH_CRU_V7;
         test_data.link_id = 100; // Invalid link id
         println!("Test data: \n       {test_data}");
-
-        let tmp_dir = TempDir::new().unwrap();
-        let file_name = "test_v7_2.raw";
-        let tmp_file = tmp_dir.child(file_name);
-        std::fs::write(&tmp_file, test_data.to_byte_slice()).unwrap();
+        let file_name = "test.raw";
+        let filepath = PathBuf::from(file_name);
+        let mut file = File::create(&filepath).unwrap();
+        // Write to file for testing
+        file.write_all(test_data.to_byte_slice()).unwrap();
 
         {
-            let (mut scanner, _rcv_channel) = setup_scanner_for_file(&tmp_file);
+            let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
             let rdh = scanner.load_rdh_cru::<RdhCru<V7>>();
             assert!(rdh.is_err());
             assert_eq!(rdh.unwrap_err().kind(), std::io::ErrorKind::UnexpectedEof);
         }
+
+        // delete output file
+        std::fs::remove_file(filepath).unwrap();
     }
 
     #[test]
-    #[ignore]
     fn test_load_rdhcruv6_test() {
         let mut test_data = CORRECT_RDH_CRU_V6;
         test_data.link_id = 0; // we are filtering for 0
         println!("Test data: \n       {test_data}");
-
-        let file_name = "test_v6.raw";
-        let tmp_dir = TempDir::new().unwrap();
-        let tmp_file = tmp_dir.child(file_name);
-        std::fs::write(&tmp_file, test_data.to_byte_slice()).unwrap();
+        let file_name = "test.raw";
+        let filepath = PathBuf::from(file_name);
+        let mut file = File::create(&filepath).unwrap();
+        // Write to file for testing
+        file.write_all(test_data.to_byte_slice()).unwrap();
 
         {
-            let (mut scanner, _rcv_channel) = setup_scanner_for_file(&tmp_file);
+            let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
             let rdh = scanner.load_rdh_cru::<RdhCru<V6>>().unwrap();
             assert_eq!(test_data, rdh);
         }
+        // delete output file
+        std::fs::remove_file(filepath).unwrap();
     }
 
     #[test]
-    #[ignore = "In multi-threaded testing, this test clashes with test_load_rdhcruv7_test"]
     fn test_load_rdhcruv6_test_unexp_eof() {
         let mut test_data = CORRECT_RDH_CRU_V6;
         test_data.link_id = 100; // Invalid link id
         println!("Test data: \n       {test_data}");
-
         let file_name = "test.raw";
-        let tmp_dir = TempDir::new().unwrap();
-        let tmp_file = tmp_dir.child(file_name);
-        std::fs::write(&tmp_file, test_data.to_byte_slice()).unwrap();
+        let filepath = PathBuf::from(file_name);
+        let mut file = File::create(filepath).unwrap();
+        // Write to file for testing
+        file.write_all(test_data.to_byte_slice()).unwrap();
 
         {
-            let (mut scanner, _rcv_channel) = setup_scanner_for_file(&tmp_file);
+            let (mut scanner, _rcv_channel) = setup_scanner_for_file("test.raw");
             let rdh = scanner.load_rdh_cru::<RdhCru<V6>>();
             assert!(rdh.is_err());
             assert_eq!(rdh.unwrap_err().kind(), std::io::ErrorKind::UnexpectedEof);

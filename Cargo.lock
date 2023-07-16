@@ -12,6 +12,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "alice_daq_protocol_reader"
+version = "0.9.0"
+dependencies = [
+ "byteorder",
+ "crossbeam-channel",
+ "flume",
+ "pretty_assertions",
+ "temp-dir",
+]
+
+[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

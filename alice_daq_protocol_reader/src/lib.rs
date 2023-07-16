@@ -7,13 +7,20 @@
 //!
 //! The [CdpChunk] is a wrapper for the data read from the input, it contains the data and the memory address of the first byte of the data.
 
+pub mod bufreader_wrapper;
+pub mod config;
+pub mod data_wrapper;
+pub mod input_scanner;
+pub mod mem_pos_tracker;
+pub mod prelude;
+pub mod rdh;
+pub mod stdin_reader;
+
 use crossbeam_channel::Receiver;
+use prelude::{BufferedReaderWrapper, CdpChunk, InputScanner, ScanCDP, RDH};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{io::IsTerminal, path::PathBuf};
-
-use crate::input::prelude::StdInReaderSeeker;
-
-use super::prelude::{BufferedReaderWrapper, CdpChunk, InputScanner, ScanCDP, RDH};
+use stdin_reader::StdInReaderSeeker;
 
 /// Depth of the FIFO where the CDP chunks inserted as they are read
 const CHANNEL_CDP_CHUNK_CAPACITY: usize = 100;
@@ -27,24 +34,20 @@ pub fn init_reader(
     input_file: &Option<PathBuf>,
 ) -> Result<Box<dyn BufferedReaderWrapper>, std::io::Error> {
     if let Some(path) = input_file {
-        log::trace!("Reading from file: {:?}", &path);
         let f = std::fs::OpenOptions::new().read(true).open(path)?;
         Ok(Box::new(std::io::BufReader::with_capacity(
             READER_BUFFER_SIZE,
             f,
         )))
+    } else if !std::io::stdin().is_terminal() {
+        Ok(Box::new(StdInReaderSeeker {
+            reader: std::io::stdin(),
+        }))
     } else {
-        log::trace!("Reading from stdin");
-        if !std::io::stdin().is_terminal() {
-            Ok(Box::new(StdInReaderSeeker {
-                reader: std::io::stdin(),
-            }))
-        } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "stdin not redirected!",
-            ))
-        }
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "stdin not redirected!",
+        ))
     }
 }
 
@@ -70,27 +73,17 @@ pub fn spawn_reader<T: RDH + 'static>(
                         Ok(cdp) => {
                             if cdp.len() < CDP_CHUNK_SIZE {
                                 local_stop_on_non_full_chunk = true; // Stop on non-full chunk, could be InvalidData
-                                log::trace!("Stopping reader thread on non-full chunk");
                             }
                             cdp
                         }
-                        Err(e) => {
-                            if e.kind() == std::io::ErrorKind::UnexpectedEof {
-                                log::trace!("Stopping reader thread on EOF");
-                                break;
-                            } else {
-                                log::error!("Unexpected Error reading CDP chunks: {e}");
-                                break;
-                            }
+                        Err(_) => {
+                            break;
                         }
                     };
 
                     // Send a chunk to the checker
-                    if let Err(e) = send_channel.send(cdps) {
-                        if !stop_flag.load(Ordering::SeqCst) {
-                            log::trace!("Unexpected error while sending data to checker: {e}");
-                            break;
-                        }
+                    if send_channel.send(cdps).is_err() {
+                        break;
                     }
                 }
             }
@@ -114,11 +107,9 @@ fn get_chunk<T: RDH>(
         let cdp_tuple = match file_scanner.load_cdp() {
             Ok(cdp) => cdp,
             Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
-                log::trace!("Invalid data found, returning all CDPs found so far");
                 break;
             }
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                log::info!("EOF reached! ");
                 break;
             }
             Err(e) => return Err(e),
