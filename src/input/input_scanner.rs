@@ -51,7 +51,7 @@ pub trait ScanCDP {
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     reader: Box<R>,
     tracker: MemPosTracker,
-    stats_controller_sender_ch: flume::Sender<StatType>,
+    stats_controller_sender_ch: Option<flume::Sender<StatType>>,
     filter_target: Option<FilterTarget>,
     skip_payload: bool,
     unique_links_observed: Vec<u8>,
@@ -64,7 +64,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     pub fn new(
         config: &(impl FilterOpt + InputOutputOpt),
         reader: Box<R>,
-        stats_controller_sender_ch: flume::Sender<StatType>,
+        stats_controller_sender_ch: Option<flume::Sender<StatType>>,
     ) -> Self {
         InputScanner {
             reader,
@@ -83,7 +83,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     pub fn new_from_rdh0(
         config: &(impl FilterOpt + InputOutputOpt),
         reader: Box<R>,
-        stats_controller_sender_ch: flume::Sender<StatType>,
+        stats_controller_sender_ch: Option<flume::Sender<StatType>>,
         rdh0: Rdh0,
     ) -> Self {
         InputScanner {
@@ -99,9 +99,11 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     }
 
     fn report(&self, stat: StatType) {
-        self.stats_controller_sender_ch
-            .send(stat)
-            .expect("Failed to send stats, receiver was dropped")
+        if let Some(stats_sender) = self.stats_controller_sender_ch.as_ref() {
+            stats_sender
+                .send(stat)
+                .expect("Failed to send stats, receiver was dropped")
+        }
     }
     fn report_run_trigger_type<T: RDH>(&self, rdh: &T) {
         let raw_trigger_type = rdh.trigger_type();
@@ -279,14 +281,16 @@ fn is_rdh_filter_target(rdh: &impl RDH, target: FilterTarget) -> bool {
 fn sanity_check_offset_next<T: RDH>(
     rdh: &T,
     current_memory_address: u64,
-    stats_ch: &flume::Sender<StatType>,
+    stats_ch: &Option<flume::Sender<StatType>>,
 ) -> Result<(), std::io::Error> {
     let next_rdh_memory_location = rdh.offset_to_next() as i64 - 64;
     // If the offset is not between 0 and 10 KB it is invalid
     if !(0..=10_000).contains(&next_rdh_memory_location) {
         // Invalid offset: Negative or very high
         let fatal_err = invalid_rdh_offset(rdh, current_memory_address, next_rdh_memory_location);
-        stats_ch.send(StatType::Error(fatal_err.clone())).unwrap();
+        if let Some(stats_ch) = stats_ch.as_ref() {
+            stats_ch.send(StatType::Error(fatal_err.clone())).unwrap();
+        }
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             fatal_err,
@@ -335,7 +339,11 @@ mod tests {
         let bufreader = std::io::BufReader::new(reader);
 
         (
-            InputScanner::new(&cfg, Box::new(bufreader), send_stats_controller_channel),
+            InputScanner::new(
+                &cfg,
+                Box::new(bufreader),
+                Some(send_stats_controller_channel),
+            ),
             // Has to be returned so it lives long enough for the test. Otherwise it will be dropped, and inputscanner will panic when trying to report stats.
             recv_stats_controller_channel,
         )

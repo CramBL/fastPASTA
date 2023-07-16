@@ -2,8 +2,9 @@
 //!
 //! Contains the [init_stats_controller] function, which spawns a thread with the [StatsController](stats_controller::StatsController) running, and returns the thread handle, the channel to send stats to, and the stop flag.
 
+use crate::config::prelude::Config;
 use crate::input::prelude::RDH;
-use crate::{config::prelude::Config, words};
+use crate::words;
 
 mod error_stats;
 pub mod its_stats;

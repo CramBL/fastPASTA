@@ -83,7 +83,7 @@ pub fn init_processing(
         .unwrap();
 
     // Create input scanner from the already read RDH0 (to avoid seeking back and reading it twice, which would also break with stdin piping)
-    let loader = InputScanner::new_from_rdh0(config, reader, stat_send_channel.clone(), rdh0);
+    let loader = InputScanner::new_from_rdh0(config, reader, Some(stat_send_channel.clone()), rdh0);
 
     // Choose the rest of the execution based on the RDH version
     // Necessary to prevent heap allocation and allow static dispatch as the type cannot be known at compile time
