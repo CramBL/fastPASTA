@@ -154,10 +154,6 @@ where
         } else {
             SerdeRdh::load(&mut self.reader)?
         };
-        log::debug!(
-            "Loaded RDH at [{mem_pos:#X}]: \n       {rdh}",
-            mem_pos = self.tracker.current_mem_address()
-        );
 
         // Collect stats
         self.collect_rdh_seen_stats(&rdh);
@@ -175,7 +171,6 @@ where
                 Ok(rdh)
             } else {
                 // If it doesn't match: Set tracker to jump to next RDH and try until we find a matching link or EOF
-                log::debug!("Loaded RDH offset to next: {}", rdh.offset_to_next());
                 self.load_next_rdh_to_filter(rdh.offset_to_next(), target)
             }
         } else {
@@ -199,7 +194,6 @@ where
     /// Reads the next CDP from file
     #[inline]
     fn load_cdp<T: RDH>(&mut self) -> Result<CdpTuple<T>, std::io::Error> {
-        log::trace!("Attempting to load CDP - 1. loading RDH");
         let loading_at_memory_offset = self.tracker.current_mem_address();
         let rdh: T = self.load_rdh_cru()?;
 
@@ -299,10 +293,8 @@ fn invalid_rdh_offset<T: RDH>(rdh: &T, current_memory_address: u64, offset_to_ne
 
 #[cfg(test)]
 mod tests {
+    use super::super::config::mock_config::MockConfig;
     use super::super::rdh::{ByteSlice, RdhCru, V6, V7};
-    use crate::config::Cfg;
-
-    use clap::Parser;
     use pretty_assertions::assert_eq;
     use std::io::Write;
     use std::{fs::File, io::BufReader, path::PathBuf};
@@ -314,13 +306,15 @@ mod tests {
         flume::Receiver<InputStatType>,
     ) {
         use super::*;
-        let config: Cfg = <Cfg>::parse_from(["fastpasta", path, "-f", "0", "check", "sanity"]);
+        let config = MockConfig {
+            filter_link: Some(0),
+            ..Default::default()
+        };
         let (send_stats_controller_channel, recv_stats_controller_channel): (
             flume::Sender<InputStatType>,
             flume::Receiver<InputStatType>,
         ) = flume::unbounded();
 
-        let cfg = config;
         let reader = std::fs::OpenOptions::new()
             .read(true)
             .open(path)
@@ -329,7 +323,7 @@ mod tests {
 
         (
             InputScanner::new(
-                &cfg,
+                &config,
                 Box::new(bufreader),
                 Some(send_stats_controller_channel),
             ),
