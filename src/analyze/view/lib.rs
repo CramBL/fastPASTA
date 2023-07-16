@@ -34,11 +34,16 @@ const SOC_BIT_MASK: u32 = 0b10_0000_0000;
 const SOT_BIT_MASK: u32 = 0b1000_0000;
 const HB_BIT_MASK: u32 = 0b10;
 /// Takes in an RDH and returns a human readable description of the trigger type
+pub fn rdh_trigger_type_as_string<T: RDH>(rdh: &T) -> String {
+    let trigger_type = rdh.trigger_type();
+    trigger_type_string_from_int(trigger_type)
+}
+
+/// Takes in a [u32] and returns a human readable description of the trigger type
 ///
 /// A trigger can be a combination of different types of triggers, so the description is
 /// prioritized in terms of what triggers are more significant to understand the trigger type
-pub fn rdh_trigger_type_as_string<T: RDH>(rdh: &T) -> String {
-    let trigger_type = rdh.trigger_type();
+pub fn trigger_type_string_from_int(trigger_type: u32) -> String {
     // Priorities describing the trigger as follows:
     // 1. SOC
     // 2. SOT
