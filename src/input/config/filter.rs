@@ -13,6 +13,9 @@ pub enum FilterTarget {
 
 /// Trait for all filter options set by the user
 pub trait FilterOpt {
+    /// Determine from args if payload should be skipped at input
+    fn skip_payload(&self) -> bool;
+
     /// Link ID to filter by
     fn filter_link(&self) -> Option<u8>;
     /// FEE ID to filter by
@@ -55,6 +58,10 @@ where
     fn filter_its_stave(&self) -> Option<u16> {
         (*self).filter_its_stave()
     }
+
+    fn skip_payload(&self) -> bool {
+        (*self).skip_payload()
+    }
 }
 impl<T> FilterOpt for Box<T>
 where
@@ -69,6 +76,9 @@ where
     fn filter_its_stave(&self) -> Option<u16> {
         (**self).filter_its_stave()
     }
+    fn skip_payload(&self) -> bool {
+        (**self).skip_payload()
+    }
 }
 impl<T> FilterOpt for std::sync::Arc<T>
 where
@@ -82,5 +92,8 @@ where
     }
     fn filter_its_stave(&self) -> Option<u16> {
         (**self).filter_its_stave()
+    }
+    fn skip_payload(&self) -> bool {
+        (**self).skip_payload()
     }
 }

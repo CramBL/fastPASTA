@@ -180,6 +180,21 @@ impl ViewOpt for Cfg {
 }
 
 impl FilterOpt for Cfg {
+    fn skip_payload(&self) -> bool {
+        match (self.view(), self.check(), self.output_mode()) {
+            // Skip payload in these cases
+            (Some(ViewCommands::Rdh), _, _) => true,
+            (_, Some(CheckCommands::All { system: sys }), _)
+            | (_, Some(CheckCommands::Sanity { system: sys }), _)
+                if sys.is_none() =>
+            {
+                true
+            }
+            // Don't skip payload in all other cases than above
+            (_, _, _) => false,
+        }
+    }
+
     #[inline]
     fn filter_link(&self) -> Option<u8> {
         self.filter_link
@@ -254,21 +269,6 @@ impl InputOutputOpt for Cfg {
         // if output is not set and no checks are enabled, output to stdout
         else {
             DataOutputMode::Stdout
-        }
-    }
-
-    fn skip_payload(&self) -> bool {
-        match (self.view(), self.check(), self.output_mode()) {
-            // Skip payload in these cases
-            (Some(ViewCommands::Rdh), _, _) => true,
-            (_, Some(CheckCommands::All { system: sys }), _)
-            | (_, Some(CheckCommands::Sanity { system: sys }), _)
-                if sys.is_none() =>
-            {
-                true
-            }
-            // Don't skip payload in all other cases than above
-            (_, _, _) => false,
         }
     }
 }

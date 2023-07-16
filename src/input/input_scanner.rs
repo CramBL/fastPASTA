@@ -8,7 +8,6 @@ use super::lib::InputStatType;
 use super::mem_pos_tracker::MemPosTracker;
 use super::rdh::Rdh0;
 use super::rdh::{SerdeRdh, RDH};
-use crate::config::inputoutput::InputOutputOpt;
 use crate::words::its::is_match_feeid_layer_stave;
 use std::io::Read;
 
@@ -62,7 +61,7 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
 impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper], and a producer channel for [InputStatType].
     pub fn new(
-        config: &(impl FilterOpt + InputOutputOpt),
+        config: &impl FilterOpt,
         reader: Box<R>,
         stats_controller_sender_ch: Option<flume::Sender<InputStatType>>,
     ) -> Self {
@@ -81,7 +80,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     ///
     /// The [Rdh0] is used to determine the RDH version before instantiating the [InputScanner].
     pub fn new_from_rdh0(
-        config: &(impl FilterOpt + InputOutputOpt),
+        config: &impl FilterOpt,
         reader: Box<R>,
         stats_controller_sender_ch: Option<flume::Sender<InputStatType>>,
         rdh0: Rdh0,
@@ -320,7 +319,7 @@ mod tests {
         let cfg = config;
         let reader = std::fs::OpenOptions::new()
             .read(true)
-            .open(cfg.input_file().to_owned().unwrap())
+            .open(path)
             .expect("File not found");
         let bufreader = std::io::BufReader::new(reader);
 

@@ -70,6 +70,10 @@ impl ViewOpt for MockConfig {
     }
 }
 impl FilterOpt for MockConfig {
+    fn skip_payload(&self) -> bool {
+        self.skip_payload
+    }
+
     fn filter_link(&self) -> Option<u8> {
         self.filter_link
     }
@@ -115,10 +119,6 @@ impl UtilOpt for MockConfig {
 impl InputOutputOpt for MockConfig {
     fn input_file(&self) -> &Option<std::path::PathBuf> {
         &self.input_file
-    }
-
-    fn skip_payload(&self) -> bool {
-        self.skip_payload
     }
 
     fn output(&self) -> &Option<std::path::PathBuf> {

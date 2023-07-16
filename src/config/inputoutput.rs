@@ -6,8 +6,6 @@ use std::path::PathBuf;
 pub trait InputOutputOpt {
     /// Input file to read from.
     fn input_file(&self) -> &Option<PathBuf>;
-    /// Determine from args if payload should be skipped at input
-    fn skip_payload(&self) -> bool;
     /// Output file to write to.
     fn output(&self) -> &Option<PathBuf>;
     /// Output mode of the data writing (file, stdout, none)
@@ -20,9 +18,6 @@ where
 {
     fn input_file(&self) -> &Option<PathBuf> {
         (*self).input_file()
-    }
-    fn skip_payload(&self) -> bool {
-        (*self).skip_payload()
     }
     fn output(&self) -> &Option<PathBuf> {
         (*self).output()
@@ -39,9 +34,6 @@ where
     fn input_file(&self) -> &Option<PathBuf> {
         (**self).input_file()
     }
-    fn skip_payload(&self) -> bool {
-        (**self).skip_payload()
-    }
     fn output(&self) -> &Option<PathBuf> {
         (**self).output()
     }
@@ -55,9 +47,6 @@ where
 {
     fn input_file(&self) -> &Option<PathBuf> {
         (**self).input_file()
-    }
-    fn skip_payload(&self) -> bool {
-        (**self).skip_payload()
     }
     fn output(&self) -> &Option<PathBuf> {
         (**self).output()
