@@ -143,7 +143,7 @@ test-coverage:
     # Rust-based tests
     - RUSTFLAGS="-Cinstrument-coverage" LLVM_PROFILE_FILE="target/coverage/%p-%m.profraw" cargo test -- --test-threads=1 --nocapture
     - ls -l target/coverage
-    - grcov target/coverage --binary-path target/debug -s . --output-types html,cobertura --branch --ignore-not-existing --ignore '../*' --ignore "/*" --ignore "$HOME/.cargo/**" --ignore "*cargo*" -o target/coverage --keep-only 'src/*'
+    - grcov target/coverage --binary-path target/debug -s . --output-types html,cobertura --branch --ignore-not-existing --ignore '../*' --ignore "/*" --ignore "$HOME/.cargo/**" --ignore "*cargo*" -o target/coverage --keep-only 'fastpasta/src/*'
     - echo "Coverage files generated"
     - ls -l target/coverage
     # Extract just the top-level coverage number from the XML report.
