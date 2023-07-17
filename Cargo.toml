@@ -1,5 +1,6 @@
 [workspace]
 members = [ "fastpasta", "alice_daq_protocol_reader" ]
+resolver = "2"
 
 [profile.release]
 lto = true
