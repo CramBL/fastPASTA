@@ -148,8 +148,8 @@ test-coverage:
     # Rust-based tests
     - cargo +nightly test -- --test-threads=1 --nocapture
     - ls -l -h target/coverage
-    # Trying to remove this:  --ignore '../*' --ignore "/*" --ignore "*cargo*" --keep-only 'fastpasta/src/*'
-    - grcov . -s . --binary-path ./target/debug/ --output-types html,cobertura --branch --ignore-not-existing --ignore "$HOME/.cargo/**" -o target/coverage/
+    # Trying to remove this:  --ignore '../*' --ignore "/*" --ignore "*cargo*"
+    - grcov . -s . --binary-path ./target/debug/ --output-types html,cobertura --branch --ignore-not-existing --ignore "$HOME/.cargo/**" -o target/coverage/ --keep-only 'fastpasta/src/*'
     - echo "Coverage files generated"
     - ls -l -h target/coverage
     # Extract just the top-level coverage number from the XML report.
