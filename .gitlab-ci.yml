@@ -126,27 +126,32 @@ rust-nightly-test:
 # Run tests and calculate code coverage
 test-coverage:
   stage: test
+  image: rustlang/rust:nightly
   variables:
     RUST_BACKTRACE: "FULL"
-    RUSTFLAGS: "-C instrument-coverage"
+    CARGO_INCREMENTAL: "0"
+    RUSTFLAGS: "-Cinstrument-coverage -Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort"
+    RUSTDOCFLAGS: "-Cpanic=abort"
     LLVM_PROFILE_FILE: "target/coverage/%p-%m.profraw"
   script:
     - echo "${LLVM_PROFILE_FILE}"
     - echo "${RUSTFLAGS}"
+    - echo "${CARGO_INCREMENTAL}"
+    - echo "${RUSTDOCFLAGS}"
     - rustup component add llvm-tools-preview
     - cargo install grcov
     - apt-get update && apt-get install -y libxml2-utils
-    # Might already exist from the cache
     - cargo clean
     - mkdir -p target/coverage
-    - ls -l target/coverage
+    - ls -l -h target/coverage
+    - cargo +nightly build
     # Rust-based tests
-    - RUSTFLAGS="-Cinstrument-coverage" LLVM_PROFILE_FILE="target/coverage/%p-%m.profraw" cargo test -- --test-threads=1 --nocapture
-    - ls -l target/coverage
+    - cargo +nightly test -- --test-threads=1 --nocapture
+    - ls -l -h target/coverage
     # Trying to remove this:  --ignore '../*' --ignore "/*" --ignore "*cargo*" --keep-only 'fastpasta/src/*'
-    - grcov target/coverage --binary-path target/debug -s . --output-types html,cobertura --branch --ignore-not-existing --ignore "$HOME/.cargo/**" -o target/coverage
+    - grcov . -s . --binary-path ./target/debug/ --output-types html,cobertura --branch --ignore-not-existing --ignore "$HOME/.cargo/**" -o target/coverage/
     - echo "Coverage files generated"
-    - ls -l target/coverage
+    - ls -l -h target/coverage
     # Extract just the top-level coverage number from the XML report.
     - |
       xmllint --xpath "concat('Coverage: ', 100 * string(//coverage/@line-rate), '%')" target/coverage/cobertura.xml
