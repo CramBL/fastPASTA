@@ -51,7 +51,7 @@ stderrlog = "0.5.4"
 tabled = { version = "0.12.2", features = ["color"]}
 toml = "0.7.6"
 descriptive_toml_derive = "0.1.0"
-alice_daq_protocol_reader = { version = "0.9.0", path = "../alice_daq_protocol_reader"}
+alice_protocol_reader = { version = "0.9.0", path = "../alice_protocol_reader"}
 
 [[bench]]
 name = "benchmarks"

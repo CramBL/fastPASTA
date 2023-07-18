@@ -2,7 +2,7 @@
 use super::link_validator::LinkValidator;
 use crate::config::prelude::*;
 use crate::stats::StatType;
-use alice_daq_protocol_reader::prelude::{CdpChunk, RDH};
+use alice_protocol_reader::prelude::{CdpChunk, RDH};
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
@@ -205,8 +205,8 @@ mod tests {
     use crate::config::check::CheckCommands;
     use crate::config::test_util::MockConfig;
     use crate::words::its::test_payloads::*;
-    use alice_daq_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use alice_daq_protocol_reader::prelude::*;
+    use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
+    use alice_protocol_reader::prelude::*;
     use std::sync::OnceLock;
 
     use super::*;

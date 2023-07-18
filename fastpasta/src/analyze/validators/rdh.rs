@@ -4,7 +4,7 @@
 
 use crate::config::check::{ChecksOpt, System};
 use crate::config::custom_checks::CustomChecksOpt;
-use alice_daq_protocol_reader::prelude::*;
+use alice_protocol_reader::prelude::*;
 
 use std::fmt::Write as _;
 
@@ -402,7 +402,7 @@ impl Rdh3Validator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alice_daq_protocol_reader::prelude::test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
+    use alice_protocol_reader::prelude::test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
 
     const _CORRECT_RDH0: Rdh0 = Rdh0::new(7, Rdh0::HEADER_SIZE, FeeId(20522), 0, ITS_SYSTEM_ID, 0);
     const CORRECT_RDH1: Rdh1 = Rdh1::new(BcReserved(0), 0);

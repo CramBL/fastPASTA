@@ -5,7 +5,7 @@ use crate::config::lib::Config;
 use crate::stats;
 use crate::stats::StatType;
 use crate::stats::SystemId;
-use alice_daq_protocol_reader::prelude::*;
+use alice_protocol_reader::prelude::*;
 use crossbeam_channel::Receiver;
 
 /// Analysis thread that performs checks with the [super::validators] module or generate views with the [super::view::lib::generate_view] function.

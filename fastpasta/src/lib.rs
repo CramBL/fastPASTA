@@ -45,7 +45,7 @@
 //! $ fastpasta <input_file> view rdh
 //! ```
 
-use alice_daq_protocol_reader::prelude::*;
+use alice_protocol_reader::prelude::*;
 use analyze::validators::rdh::Rdh0Validator;
 use config::prelude::*;
 use stats::StatType;
@@ -139,7 +139,7 @@ pub fn process<T: RDH + 'static>(
     let (reader_handle, reader_rcv_channel): (
         std::thread::JoinHandle<()>,
         crossbeam_channel::Receiver<CdpChunk<T>>,
-    ) = alice_daq_protocol_reader::spawn_reader(stop_flag.clone(), loader);
+    ) = alice_protocol_reader::spawn_reader(stop_flag.clone(), loader);
 
     // 2. Launch analysis thread if an analysis action is set (view or check)
     let analysis_handle = if config.check().is_some() || config.view().is_some() {
@@ -250,9 +250,9 @@ fn forward_input_stats_to_stats_collector(
 mod tests {
     use super::*;
     use crate::MockConfig;
-    use alice_daq_protocol_reader::init_reader;
-    use alice_daq_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use alice_daq_protocol_reader::prelude::CdpChunk;
+    use alice_protocol_reader::init_reader;
+    use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
+    use alice_protocol_reader::prelude::CdpChunk;
     use pretty_assertions::{assert_eq, assert_ne};
     use std::path::PathBuf;
     use std::sync::OnceLock;

@@ -14,7 +14,7 @@ use self::{
     view::{ViewCommands, ViewOpt},
 };
 use crate::words::its::layer_stave_string_to_feeid;
-use alice_daq_protocol_reader::prelude::FilterOpt;
+use alice_protocol_reader::prelude::FilterOpt;
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 use std::sync::OnceLock;

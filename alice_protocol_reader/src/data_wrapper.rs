@@ -5,9 +5,9 @@
 //!  # Examples
 //!
 //! ```
-//! # use alice_daq_protocol_reader::data_wrapper::CdpChunk;
-//! # use alice_daq_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-//! # use alice_daq_protocol_reader::prelude::{RdhCru, V7};
+//! # use alice_protocol_reader::data_wrapper::CdpChunk;
+//! # use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
+//! # use alice_protocol_reader::prelude::{RdhCru, V7};
 //! let mut chunk = CdpChunk::<RdhCru<V7>>::new();
 //! let cdp_tup = (CORRECT_RDH_CRU_V7, vec![0; 10], 0);
 //!
@@ -77,9 +77,9 @@ impl<T: RDH> CdpChunk<T> {
     ///
     /// # Examples
     /// ```
-    /// # use alice_daq_protocol_reader::data_wrapper::CdpChunk;
-    /// # use alice_daq_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    /// # use alice_daq_protocol_reader::prelude::{RdhCru, V7};
+    /// # use alice_protocol_reader::data_wrapper::CdpChunk;
+    /// # use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
+    /// # use alice_protocol_reader::prelude::{RdhCru, V7};
     /// let mut chunk = CdpChunk::<RdhCru<V7>>::with_capacity(10);
     /// assert!(chunk.len() == 0);
     /// ```

@@ -1,5 +1,5 @@
 use crate::words::its::Stave;
-use alice_daq_protocol_reader::prelude::RDH;
+use alice_protocol_reader::prelude::RDH;
 use std::io::Write;
 
 pub mod its_readout_frame_data_view;

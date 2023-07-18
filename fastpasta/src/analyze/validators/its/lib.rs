@@ -2,8 +2,8 @@
 use super::cdp_running::CdpRunningValidator;
 use crate::config::prelude::*;
 use crate::stats::StatType;
-use alice_daq_protocol_reader::prelude::FilterOpt;
-use alice_daq_protocol_reader::prelude::RDH;
+use alice_protocol_reader::prelude::FilterOpt;
+use alice_protocol_reader::prelude::RDH;
 
 /// # Arguments
 /// * `cdp_chunk_slice` - A tuple containing the RDH, the payload and the RDH memory position
@@ -78,8 +78,8 @@ impl ItsPayloadWord {
 mod tests {
     use super::*;
     use crate::config::test_util::MockConfig;
-    use alice_daq_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use alice_daq_protocol_reader::prelude::*;
+    use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
+    use alice_protocol_reader::prelude::*;
     use std::sync::OnceLock;
 
     static CFG_TEST_DO_PAYLOAD_CHECKS: OnceLock<MockConfig> = OnceLock::new();

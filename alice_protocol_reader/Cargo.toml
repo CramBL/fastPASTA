@@ -1,5 +1,5 @@
 [package]
-name = "alice_daq_protocol_reader"
+name = "alice_protocol_reader"
 version = "0.9.0"
 edition = "2021"
 description = "Reader library for reading raw binary data from the ALICE detector into a convenient structure for implementing analysis."

@@ -1,4 +1,4 @@
-use alice_daq_protocol_reader::init_reader;
+use alice_protocol_reader::init_reader;
 use fastpasta::config::init_config;
 use fastpasta::config::prelude::*;
 use fastpasta::config::Cfg;

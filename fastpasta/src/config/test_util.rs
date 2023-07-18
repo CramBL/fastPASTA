@@ -2,7 +2,7 @@
 
 use super::custom_checks::CustomChecks;
 use super::prelude::*;
-use alice_daq_protocol_reader::prelude::FilterOpt;
+use alice_protocol_reader::prelude::FilterOpt;
 
 #[derive(Debug, Clone)]
 /// Complete configurable Mock config for testing

@@ -20,7 +20,7 @@ use super::SystemId;
 use crate::config::prelude::*;
 use crate::stats::stats_report::report::Report;
 use crate::stats::stats_report::report::StatSummary;
-use alice_daq_protocol_reader::prelude::FilterTarget;
+use alice_protocol_reader::prelude::FilterTarget;
 use indicatif::{ProgressBar, ProgressStyle};
 use owo_colors::OwoColorize;
 use std::sync::atomic::AtomicBool;

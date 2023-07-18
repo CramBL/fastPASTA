@@ -3,7 +3,7 @@ use crate::analyze::validators::its::its_payload_fsm_cont::ItsPayloadFsmContinuo
 use crate::analyze::validators::its::lib::ItsPayloadWord;
 use crate::analyze::validators::lib::preprocess_payload;
 use crate::stats::StatType;
-use alice_daq_protocol_reader::prelude::*;
+use alice_protocol_reader::prelude::*;
 use std::io::Write;
 
 pub(crate) fn hbf_view<T: RDH>(

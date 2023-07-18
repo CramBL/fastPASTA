@@ -1,4 +1,4 @@
-use alice_daq_protocol_reader::prelude::*;
+use alice_protocol_reader::prelude::*;
 use criterion::{black_box, BenchmarkId, Criterion};
 pub struct RelativeOffset(i64);
 impl RelativeOffset {

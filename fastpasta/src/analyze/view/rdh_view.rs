@@ -1,4 +1,4 @@
-use alice_daq_protocol_reader::prelude::*;
+use alice_protocol_reader::prelude::*;
 use std::io::Write;
 
 pub(crate) fn rdh_view<T: RDH>(cdp_chunk: CdpChunk<T>) -> Result<(), std::io::Error> {

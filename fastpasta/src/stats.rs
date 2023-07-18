@@ -4,7 +4,7 @@
 
 use crate::config::prelude::Config;
 use crate::words;
-use alice_daq_protocol_reader::prelude::RDH;
+use alice_protocol_reader::prelude::RDH;
 
 mod error_stats;
 pub mod its_stats;

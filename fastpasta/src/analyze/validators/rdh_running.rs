@@ -2,7 +2,7 @@
 
 use std::fmt::Write;
 
-use alice_daq_protocol_reader::prelude::{Rdh1, Rdh2, RDH};
+use alice_protocol_reader::prelude::{Rdh1, Rdh2, RDH};
 
 /// Performs running (stateful) checks on [RDH]s.
 pub struct RdhCruRunningChecker<T: RDH> {
@@ -205,8 +205,8 @@ impl<T: RDH> RdhCruRunningChecker<T> {
 #[cfg(test)]
 mod tests {
     use super::RdhCruRunningChecker;
-    use alice_daq_protocol_reader::prelude::test_data::*;
-    use alice_daq_protocol_reader::prelude::*;
+    use alice_protocol_reader::prelude::test_data::*;
+    use alice_protocol_reader::prelude::*;
 
     #[test]
     fn test_valid_rdh_crus() {

@@ -5,8 +5,8 @@
 //! Implements drop to flush the remaining data to the file once processing is done.
 
 use crate::config::inputoutput::InputOutputOpt;
-use alice_daq_protocol_reader::prelude::CdpChunk;
-use alice_daq_protocol_reader::prelude::RDH;
+use alice_protocol_reader::prelude::CdpChunk;
+use alice_protocol_reader::prelude::RDH;
 
 /// Trait for a writer that can write ALICE readout data to file/stdout.
 pub trait Writer<T: RDH> {
@@ -136,8 +136,8 @@ mod tests {
     use crate::config::inputoutput::DataOutputMode;
     use crate::config::test_util::MockConfig;
     use crate::config::Cfg;
-    use alice_daq_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use alice_daq_protocol_reader::prelude::{RdhCru, V6, V7};
+    use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
+    use alice_protocol_reader::prelude::{RdhCru, V6, V7};
     use clap::Parser;
 
     use super::*;
