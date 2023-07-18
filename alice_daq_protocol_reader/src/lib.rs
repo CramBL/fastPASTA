@@ -104,7 +104,7 @@ fn get_chunk<T: RDH>(
     file_scanner: &mut InputScanner<impl BufferedReaderWrapper + ?Sized>,
     chunk_size_cdps: usize,
 ) -> Result<CdpChunk<T>, std::io::Error> {
-    let mut cdp_chunk = CdpChunk::new();
+    let mut cdp_chunk = CdpChunk::with_capacity(chunk_size_cdps);
 
     for _ in 0..chunk_size_cdps {
         let cdp_tuple = match file_scanner.load_cdp() {
