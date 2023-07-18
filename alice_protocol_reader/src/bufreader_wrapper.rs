@@ -31,6 +31,6 @@ where
     T: BufferedReaderWrapper + std::marker::Sync,
 {
     fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
-        (*self).seek_relative(offset)
+        (**self).seek_relative(offset)
     }
 }
