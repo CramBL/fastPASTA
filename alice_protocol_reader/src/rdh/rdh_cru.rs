@@ -162,11 +162,12 @@ impl<Version> Debug for RdhCru<Version> {
         let tmp_memory = self.memory_size;
         let tmp_res1 = self.reserved1;
         let tmp_res2 = self.reserved2;
-
+        let tmp_cruid_dw = self.cruid_dw.0;
+        let tmp_dataformat_reserved0 = self.dataformat_reserved0.0;
         write!(
             f,
-            "RdhCru\n\t{:?}\n\toffset_new_packet: {tmp_offset:?}\n\tmemory_size: {tmp_memory:?}\n\tlink_id: {:?}\n\tpacket_counter: {:?}\n\tcruid_dw: {:?}\n\t{:?}\n\tdataformat_reserved0: {:?}\n\t{:?}\n\treserved1: {tmp_res1:?}\n\t{:?}\n\treserved2: {tmp_res2:?}\n\tversion: {:?}",
-            self.rdh0 ,self.link_id, self.packet_counter, self.cruid_dw, self.rdh1, self.dataformat_reserved0, self.rdh2, self.rdh3, self.version
+            "RdhCru\n\t{rdh0:?}\n\toffset_new_packet: {tmp_offset:?}\n\tmemory_size: {tmp_memory:?}\n\tlink_id: {link_id:?}\n\tpacket_counter: {packet_counter:?}\n\tcruid_dw: {cruid_dw:?}\n\t{rdh1:?}\n\tdataformat_reserved0: {dataformat_reserved0:?}\n\t{rdh2:?}\n\treserved1: {tmp_res1:?}\n\t{rdh3:?}\n\treserved2: {tmp_res2:?}",
+            rdh0 = self.rdh0 , link_id = self.link_id, packet_counter = self.packet_counter, cruid_dw = tmp_cruid_dw, rdh1 = self.rdh1, dataformat_reserved0 = tmp_dataformat_reserved0, rdh2 = self.rdh2, rdh3 = self.rdh3
         )
     }
 }

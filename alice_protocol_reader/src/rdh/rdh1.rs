@@ -1,12 +1,19 @@
 //! Struct definition of the `RDH` subword `RDH1`
 use super::RdhSubword;
 use byteorder::{ByteOrder, LittleEndian};
-use std::fmt;
+use std::fmt::{self, Debug};
 
 /// Represents the `BC` and `reserved` fields. Using a newtype because the fields are packed in 32 bits, and extracting the values requires some work.
 #[repr(packed)]
-#[derive(Debug, PartialEq, Clone, Copy, Default)]
+#[derive(PartialEq, Clone, Copy, Default)]
 pub struct BcReserved(pub u32); // 12 bit bc, 20 bit reserved
+
+impl Debug for BcReserved {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let tmp_val = self.0;
+        write!(f, "{tmp_val}")
+    }
+}
 
 /// Represents the RDH1 subword of the RDH.
 ///
