@@ -96,6 +96,21 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         }
     }
 
+    /// Creates a new [InputScanner] with minimal functionality from a [BufferedReaderWrapper].
+    ///
+    /// Every feature is disabled but the [InputScanner] can still load `CDP`s.
+    pub fn minimal(reader: Box<R>) -> Self {
+        Self {
+            reader,
+            tracker: Default::default(),
+            stats_controller_sender_ch: Default::default(),
+            filter_target: Default::default(),
+            skip_payload: Default::default(),
+            stats: Default::default(),
+            initial_rdh0: Default::default(),
+        }
+    }
+
     #[inline(always)]
     fn report(&self, stat: InputStatType) {
         if let Some(stats_sender) = self.stats_controller_sender_ch.as_ref() {
