@@ -154,3 +154,78 @@ pub enum InputStatType {
     /// The first system ID observed is the basis for the rest of processing
     SystemId(u8),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rdh::test_data::CORRECT_RDH_CRU_V7;
+    use rdh::test_data::CORRECT_RDH_CRU_V7_NEXT;
+    use rdh::test_data::CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP;
+    use rdh::ByteSlice;
+    use temp_dir::TempDir;
+
+    #[test]
+    fn test_minimal() {
+        let tmp_d = TempDir::new().unwrap();
+        let test_file_path = tmp_d.child("test.raw");
+        let test_data = CORRECT_RDH_CRU_V7;
+        println!("Test data: \n{test_data:?}");
+        // Write to file for testing
+        std::fs::write(&test_file_path, CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
+
+        use input_scanner::InputScanner;
+        use rdh::RdhCru;
+        let reader = init_reader(&Some(test_file_path)).unwrap();
+
+        let mut input_scanner = InputScanner::minimal(reader);
+
+        let rdh = input_scanner.load_rdh_cru::<RdhCru<u8>>().unwrap();
+
+        println!("{rdh:?}");
+    }
+
+    use config::filter::FilterOpt;
+
+    struct MyCfg;
+
+    impl FilterOpt for MyCfg {
+        fn skip_payload(&self) -> bool {
+            false
+        }
+
+        fn filter_link(&self) -> Option<u8> {
+            None
+        }
+
+        fn filter_fee(&self) -> Option<u16> {
+            None
+        }
+
+        fn filter_its_stave(&self) -> Option<u16> {
+            None
+        }
+    }
+
+    #[test]
+    fn test_with_custom_config() {
+        let tmp_d = TempDir::new().unwrap();
+        let test_file_path = tmp_d.child("test.raw");
+        let test_data = CORRECT_RDH_CRU_V7;
+        println!("Test data: \n{test_data:?}");
+        // Write to file for testing
+        std::fs::write(&test_file_path, CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
+
+        use rdh::RdhCru;
+
+        let reader = init_reader(&Some(test_file_path)).unwrap();
+
+        let mut input_scanner = input_scanner::InputScanner::new(&MyCfg, reader, None);
+
+        let rdh = input_scanner.load_rdh_cru::<RdhCru<u8>>();
+
+        match rdh {
+            Ok(rdh) => println!("{rdh:?}"),
+            Err(e) => eprintln!("{e}"),
+        }
+    }
+}
