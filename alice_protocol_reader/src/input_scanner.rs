@@ -60,7 +60,7 @@ pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
 }
 
 impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
-    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper], and a producer channel for [InputStatType].
+    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt], [BufferedReaderWrapper], and a producer channel for [InputStatType].
     pub fn new(
         config: &impl FilterOpt,
         reader: Box<R>,
@@ -76,7 +76,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
             initial_rdh0: None,
         }
     }
-    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt] & [InputOutputOpt], [BufferedReaderWrapper],  a producer channel for [InputStatType] and an initial [Rdh0].
+    /// Creates a new [InputScanner] from a config that implemenents [FilterOpt], [BufferedReaderWrapper],  a producer channel for [InputStatType] and an initial [Rdh0].
     ///
     /// The [Rdh0] is used to determine the RDH version before instantiating the [InputScanner].
     pub fn new_from_rdh0(

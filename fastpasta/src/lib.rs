@@ -123,7 +123,7 @@ pub fn init_processing(
 /// Entry point for scanning the input and delegating to checkers, view generators and/or writers depending on [Config]
 ///
 /// Follows these steps:
-/// 1. Setup reading (`file` or `stdin`) using [input::lib::spawn_reader].
+/// 1. Setup reading (`file` or `stdin`) using [alice_protocol_reader::spawn_reader].
 /// 2. Depending on [Config] do one of:
 ///     - Validate data by dispatching it to validators with [ValidatorDispatcher][crate::analyze::validators::lib::ValidatorDispatcher].
 ///     - Generate views of data with [analyze::view::lib::generate_view].
