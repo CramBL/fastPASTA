@@ -16,3 +16,21 @@ impl BufferedReaderWrapper for io::BufReader<File> {
         self.seek_relative(offset)
     }
 }
+
+impl<T> BufferedReaderWrapper for &mut T
+where
+    T: BufferedReaderWrapper + std::marker::Sync,
+{
+    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
+        (*self).seek_relative(offset)
+    }
+}
+
+impl<T> BufferedReaderWrapper for Box<T>
+where
+    T: BufferedReaderWrapper + std::marker::Sync,
+{
+    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
+        (*self).seek_relative(offset)
+    }
+}
