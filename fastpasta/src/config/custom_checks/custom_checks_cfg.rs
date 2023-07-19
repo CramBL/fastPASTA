@@ -193,9 +193,9 @@ rdh_version = 6
         let tmp_dir = TempDir::new().unwrap();
         let toml_file = tmp_dir.child("counters.toml");
         std::fs::write(&toml_file, &toml).unwrap();
-        let toml = std::fs::read_to_string(toml_file).expect("Failed to read TOML file");
+        let toml_deserde = std::fs::read_to_string(toml_file).expect("Failed to read TOML file");
         let custom_checks_from_toml: CustomChecks =
-            toml::from_str(&toml).expect("Failed to parse TOML");
+            toml::from_str(&toml_deserde).expect("Failed to parse TOML");
 
         println!("Struct from toml file: {:?}", custom_checks_from_toml);
         assert_eq!(custom_checks_from_toml.cdps(), None);

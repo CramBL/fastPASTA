@@ -294,7 +294,7 @@ mod tests {
         const RESERVED0: u8 = 0x00;
         const TRANSMISSION_TO_LANE_STARTS_VIOLATION_SET: u8 = 0x0A;
 
-        let raw_data_ddw0 = [
+        let raw_data_ddw0_new = [
             LANE_0_AND_3_IN_WARNING,
             LANE_4_TO_7_IN_FATAL,
             LANE_8_TO_11_IN_WARNING,
@@ -307,9 +307,9 @@ mod tests {
             VALID_ID,
         ];
 
-        let ddw0 = Ddw0::load(&mut raw_data_ddw0.as_slice()).unwrap();
+        let ddw0_new = Ddw0::load(&mut raw_data_ddw0_new.as_slice()).unwrap();
         println!("{ddw0:#?}");
-        assert!(DDW0_VALIDATOR.sanity_check(&ddw0).is_ok());
+        assert!(DDW0_VALIDATOR.sanity_check(&ddw0_new).is_ok());
     }
 
     #[test]
