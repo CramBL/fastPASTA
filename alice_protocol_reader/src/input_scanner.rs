@@ -187,10 +187,17 @@ where
     fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error> {
         let mut payload = Vec::with_capacity(payload_size);
 
+        // The read into raw memory through the raw pointer is safe because we just allocated the capacity
         unsafe {
-            payload.set_len(payload_size);
+            let ptr = payload.as_mut_ptr();
+            let slice = std::slice::from_raw_parts_mut(ptr, payload_size);
+
+            Read::read_exact(&mut self.reader, slice)?;
+
+            // Safe because we just read into all this memory that we now have initialized to valid data
+            payload.set_len(payload_size)
         }
-        Read::read_exact(&mut self.reader, &mut payload)?;
+
         Ok(payload)
     }
     /// Reads the next CDP from file
