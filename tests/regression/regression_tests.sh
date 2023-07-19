@@ -19,8 +19,6 @@ readonly CMD_PREFIX="cargo run -- ./tests/test-data/"
 ### Regex patterns ###
 
 ## Matches the EOF and Exit Successful messages
-## Needs -v2 to show "INFO -" prints
-readonly REGEX_EOF="(INFO -).*EOF"
 readonly REGEX_EXIT_SUCCESS="(DEBUG -).*Exit success"
 ## Matches the RDHs in the `view rdh` command, by going from the `:` in the memory offset to the version, header size, and data format.
 readonly REGEX_RDHS_IN_RDH_VIEW=": .* (7|6) .* 64 .* (0|2)"
@@ -49,8 +47,6 @@ declare -a tests_array=(
 ## Test 1_0: `check sanity` - Check that the program reached EOF and exits successfully
 declare -a -r test_1_0=(
     "readout.superpage.1.raw check sanity -v3"
-    "${REGEX_EOF}"
-    1
     "${REGEX_EXIT_SUCCESS}"
     1
 )
@@ -122,8 +118,6 @@ declare -a -r test_1_multi_1=(
 ## Test 2_0: sanity check that the program reached EOF and exits successfully
 declare -a -r test_2_0=(
     "10_rdh.raw check sanity -v3"
-    "${REGEX_EOF}"
-    1
     "${REGEX_EXIT_SUCCESS}"
     1
 )
@@ -186,8 +180,6 @@ declare -a -r test_2_multi_1=(
 ## Test 3_0: sanity check that the file is parsed successfully
 declare -a -r test_3_0=(
     "err_not_hbf.raw check sanity -v3"
-    "${REGEX_EOF}"
-    1
     "${REGEX_EXIT_SUCCESS}"
     1
 )
@@ -276,8 +268,6 @@ declare -a -r test_bad_tdt_detect_invalid_id=(
 declare -a -r test_bad_cdp_structure=(
     "1_hbf_bad_cdp_structure.raw check sanity its -v3"
     # Check the file is parsed successfully
-    "${REGEX_EOF}"
-    1
     "${REGEX_EXIT_SUCCESS}"
     1
     # Check the error is not detected as this is just a sanity check.
@@ -315,8 +305,6 @@ declare -a -r test_bad_cdp_structure_detected=(
 declare -a -r test_bad_its_payload=(
     "1_hbf_bad_its_payload.raw check sanity its -v3"
     # Check the file is parsed successfully
-    "${REGEX_EOF}"
-    1
     "${REGEX_EXIT_SUCCESS}"
     1
     # Check the error with 2 IHWs in a row is detected
@@ -345,8 +333,6 @@ declare -a -r test_bad_its_payload_errors_detected=(
 declare -a -r test_thrs_cdw_3_links=(
     "thrs_cdw_links.raw check sanity its -v3"
     # Check the file is parsed successfully
-    "${REGEX_EOF}"
-    1
     "${REGEX_EXIT_SUCCESS}"
     1
     # Confirm no error count

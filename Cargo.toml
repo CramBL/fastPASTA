@@ -1,60 +1,15 @@
-[package]
-name = "fastpasta"
-version = "1.12.1" # the current version, obeying semver
-edition = "2021"
-readme = "README.md"
-documentation = "https://docs.rs/fastpasta"
-repository = "https://gitlab.cern.ch/mkonig/fastpasta"
-license = "MIT OR Apache-2.0"
-keywords = ["CLI", "parse", "Verification"]
-description = "CLI for verifying or examining readout data from the ALICE detector."
-categories = ["command-line-utilities"]
-authors = ["Marc Beck König <mbkj@tutamail.com>"]
-
-[badges]
-maintenance = { status = "passively-maintained" }
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[lib]
-bench = false
-
-[dev-dependencies]
-assert_cmd = "2.0.11"
-predicates = "3.0.3"
-gag = "1.0.0"
-pretty_assertions = "1.4.0"
-criterion = "0.5.1"
-assert_fs = "1.0.13"
-fancy-regex = "0.11.0"
-temp-dir = "0.1.11"
-
-
-[dependencies]
-byteorder = "1.4.3"
-clap = { version = "4.3.11", features = ["derive"] }
-crossbeam-channel = "0.5.8"
-ctrlc = { version = "3.4.0", features = ["termination"] }
-flume = "0.10.14"
-fmt = "0.1.0"
-indicatif = "0.17.5"
-itertools = "0.11.0"
-log = "0.4.19"
-owo-colors = "3.5.0"
-regex = "1.9.0"
-ringbuffer = "0.14.1"
-serde = { version = "1.0.166", features = ["serde_derive"]}
-serde_derive = "1.0.166"
-sm = "0.9.0"
-stderrlog = "0.5.4"
-tabled = { version = "0.12.2", features = ["color"]}
-toml = "0.7.6"
-descriptive_toml_derive = "0.1.0"
-
-[[bench]]
-name = "benchmarks"
-harness = false
+[workspace]
+members = [ "fastpasta", "alice_protocol_reader" ]
+resolver = "2"
 
 [profile.release]
 lto = true
 codegen-units = 1
+panic = 'abort'
+
+[workspace.package]
+version = "1.12.1" # the current version, obeying semver
+readme = "README.md"
+authors = ["Marc Beck König <mbkj@tutamail.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://gitlab.cern.ch/mkonig/fastpasta"

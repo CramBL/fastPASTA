@@ -12,7 +12,7 @@ source ./tests/regression/utils.sh
 
 # find: Find all files in `src/` and give them to `sed`.
 # sed: Read all file content until the string "cfg(test)" (delimits design and test code)
-design_code=$( find src/ -type f -exec sed -e "/cfg(test)/,\$d" {} \; )
+design_code=$( find fastpasta/src/ -type f -exec sed -e "/cfg(test)/,\$d" {} \; )
 # Pipe to grep: Match pattern and output exact match content (error codes)
 error_codes=$( echo "${design_code}" | grep -Po "E[0-9]{2,4}" )
 # Pipe to uniq: Output all duplicate lines
