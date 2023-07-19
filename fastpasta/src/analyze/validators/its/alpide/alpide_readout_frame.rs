@@ -76,7 +76,7 @@ impl AlpideReadoutFrame {
                 .iter()
                 .map(|lane_data_frame| ib_data_word_id_to_lane(lane_data_frame.lane_id))
                 .collect::<Vec<u8>>();
-            lane_ids.sort();
+            lane_ids.sort_unstable();
             match lane_ids.as_slice() {
                 &[0, 1, 2] | &[3, 4, 5] | &[6, 7, 8] => return Ok(()),
                 _ => return Err("Invalid lane grouping".to_string()),

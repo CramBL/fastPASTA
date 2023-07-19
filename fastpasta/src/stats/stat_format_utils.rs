@@ -34,8 +34,8 @@ pub(crate) fn format_layers_and_staves(
     if layers_staves_seen.is_empty() {
         return "none".red().to_string();
     }
-    layers_staves_seen.sort();
-    layers_stave_with_errors.sort();
+    layers_staves_seen.sort_unstable();
+    layers_stave_with_errors.sort_unstable();
 
     let mut line_width = 0;
     layers_staves_seen
@@ -69,7 +69,7 @@ pub(crate) fn format_fee_ids(fee_ids_seen: &[u16]) -> String {
         return "none".red().to_string();
     }
     let mut fee_ids_seen = fee_ids_seen.to_owned();
-    fee_ids_seen.sort();
+    fee_ids_seen.sort_unstable();
     format_nums_max_lines_width(MAX_LINE_WIDTH as u16, Some(5), &fee_ids_seen)
 }
 

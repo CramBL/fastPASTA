@@ -310,7 +310,7 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
     pub fn print_chip_bunch_counters(&self) {
         self.chip_data
             .iter()
-            .sorted_by(|a, b| Ord::cmp(&a.chip_id, &b.chip_id))
+            .sorted_unstable_by(|a, b| Ord::cmp(&a.chip_id, &b.chip_id))
             .for_each(|cd| {
                 println!(
                     "Chip ID: {:>2} | Bunch counter: {:?}",
