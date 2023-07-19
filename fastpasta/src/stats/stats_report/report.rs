@@ -112,18 +112,18 @@ impl Report {
                 global_stats_table,
                 tabled::row![detected_attributes_table, filter_stats_table]
             ];
-            multi_table.with(tabled::settings::Style::rounded());
-            self.report_table = Some(format_super_table(&multi_table, self.processing_time));
+            let multi_table = multi_table.with(tabled::settings::Style::rounded());
+            self.report_table = Some(format_super_table(multi_table, self.processing_time));
         } else {
             let mut multi_table =
                 tabled::col![global_stats_table, tabled::row![detected_attributes_table]];
-            multi_table.with(tabled::settings::Style::rounded());
-            self.report_table = Some(format_super_table(&multi_table, self.processing_time));
+            let multi_table = multi_table.with(tabled::settings::Style::rounded());
+            self.report_table = Some(format_super_table(multi_table, self.processing_time));
         }
 
         if self.fatal_error.is_some() {
             let mut error_table = self.report_table.clone().unwrap();
-            error_table
+            let _ = error_table
                 .with(Panel::header("FATAL ERROR - EARLY TERMINATION"))
                 .with(Modify::new(Rows::single(0)).with(Alignment::center()).with(
                     Format::content(|x| {
@@ -154,7 +154,7 @@ mod tests {
             $test;
 
             let mut output = String::new();
-            buf.read_to_string(&mut output).unwrap();
+            let _ = buf.read_to_string(&mut output).unwrap();
             drop(buf);
 
             assert!(output.contains($expected));
