@@ -334,7 +334,7 @@ mod tests {
         cdp_chunk.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);
 
         // Act
-        analyze::lib::spawn_analysis(
+        let handle = analyze::lib::spawn_analysis(
             CFG_TEST_SPAWN_ANALYSIS.get().unwrap(),
             stop_flag.clone(),
             stat_sender,
@@ -358,5 +358,6 @@ mod tests {
             0,
             "Expected some stats received, got: {stats:?}"
         );
+        handle.join().unwrap();
     }
 }
