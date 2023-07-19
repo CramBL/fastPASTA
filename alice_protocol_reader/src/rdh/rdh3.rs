@@ -5,7 +5,7 @@ use std::fmt::{self, Debug, Display};
 
 /// Represents the RDH3 subword of the [RDH](super::RdhCru).
 #[repr(packed)]
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Copy)]
 pub struct Rdh3 {
     /// RDH detector field 32 bit, but 23:4 are reserved bits.
     pub detector_field: u32,

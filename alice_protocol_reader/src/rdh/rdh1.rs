@@ -19,7 +19,7 @@ impl Debug for BcReserved {
 ///
 /// The RDH1 is 64 bit long.
 #[repr(packed)]
-#[derive(PartialEq, Default, Debug, Clone)]
+#[derive(PartialEq, Default, Debug, Clone, Copy)]
 pub struct Rdh1 {
     /// RDH bunch counter 12 bit + reserved 20 bit
     pub(crate) bc_reserved0: BcReserved,

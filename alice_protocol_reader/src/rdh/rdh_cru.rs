@@ -18,10 +18,10 @@ pub struct DataformatReserved(pub u64); // 8 bit data_format, 56 bit reserved0
 #[repr(packed)]
 pub struct CruidDw(pub u16); // 12 bit cru_id, 4 bit dw
 /// Unit struct to mark a [RdhCru] as version 6.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct V6;
 /// Unit struct to mark a [RdhCru] as version 7.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct V7;
 
 /// The struct definition of the [RDH CRU][RdhCru].

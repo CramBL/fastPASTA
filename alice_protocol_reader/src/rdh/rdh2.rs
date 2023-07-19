@@ -5,7 +5,7 @@ use std::fmt::{self, Debug, Display};
 
 /// Represents the `RDH2` subword of the [RDH](super::RdhCru).
 #[repr(packed)]
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Copy)]
 pub struct Rdh2 {
     /// RDH trigger type 32 bit.
     pub trigger_type: u32,
