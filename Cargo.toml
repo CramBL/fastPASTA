@@ -5,6 +5,7 @@ resolver = "2"
 [profile.release]
 lto = true
 codegen-units = 1
+panic = 'abort'
 
 [workspace.package]
 version = "1.12.1" # the current version, obeying semver
