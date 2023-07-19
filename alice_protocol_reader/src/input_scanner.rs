@@ -204,10 +204,10 @@ where
         }
 
         // If we want the payload, read it, otherwise return a vector that cannot allocate
-        let payload = if !self.skip_payload {
-            self.load_payload_raw(rdh.payload_size() as usize)?
-        } else {
+        let payload = if self.skip_payload {
             Vec::with_capacity(0)
+        } else {
+            self.load_payload_raw(rdh.payload_size() as usize)?
         };
 
         Ok((rdh, payload, loading_at_memory_offset))
