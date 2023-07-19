@@ -185,7 +185,11 @@ where
     /// Reads the next payload from file, using the payload size from the RDH
     #[inline(always)]
     fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error> {
-        let mut payload = vec![0; payload_size];
+        let mut payload = Vec::with_capacity(payload_size);
+
+        unsafe {
+            payload.set_len(payload_size);
+        }
         Read::read_exact(&mut self.reader, &mut payload)?;
         Ok(payload)
     }
