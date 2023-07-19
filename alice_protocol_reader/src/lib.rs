@@ -20,6 +20,7 @@ pub mod prelude;
 pub mod rdh;
 pub mod stdin_reader;
 pub mod scan_cdp;
+pub mod stats;
 
 use crossbeam_channel::Receiver;
 use prelude::{BufferedReaderWrapper, CdpChunk, InputScanner, ScanCDP, RDH};
@@ -133,30 +134,6 @@ fn get_chunk<T: RDH>(
     Ok(cdp_chunk)
 }
 
-#[derive(Debug, Clone, PartialEq)]
-/// Possible stats that can be sent to the StatsController.
-pub enum InputStatType {
-    /// Fatal error, stop processing.
-    Fatal(String),
-    /// The first trigger type observed is the type of run the data comes from
-    ///
-    /// Contains the raw value and the string description summarizing the trigger type
-    RunTriggerType(u32),
-    /// Record the data format detected.
-    DataFormat(u8),
-    /// Add a link to the list of links observed.
-    LinksObserved(u8),
-    /// Record the generic FEE ID
-    FeeId(u16),
-    /// Increment the total RDHs seen.
-    RDHSeen(u16),
-    /// Increment the total RDHs filtered.
-    RDHFiltered(u16),
-    /// Increment the total payload size.
-    PayloadSize(u32),
-    /// The first system ID observed is the basis for the rest of processing
-    SystemId(u8),
-}
 
 #[cfg(test)]
 mod tests {

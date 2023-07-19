@@ -4,13 +4,14 @@
 
 
 use std::io::Read;
-use crate::InputStatType;
+use super::stats::InputStatType;
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::config::filter::{FilterOpt, FilterTarget};
 use super::mem_pos_tracker::MemPosTracker;
 use super::rdh::Rdh0;
 use super::rdh::{SerdeRdh, RDH};
 use super::scan_cdp::ScanCDP;
+use super::stats::Stats;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
@@ -308,85 +309,6 @@ fn invalid_rdh_offset<T: RDH>(rdh: &T, current_memory_address: u64, offset_to_ne
     format!("RDH offset to next is {offset_to_next}. {error_string}")
 }
 
-#[derive(Debug)]
-struct Stats {
-    reporter: flume::Sender<InputStatType>,
-    rdhs_seen: u16,
-    rdhs_filtered: u16,
-    payload_size_seen: u32,
-    unique_links_observed: Vec<u8>,
-    unique_feeids_observed: Vec<u16>,
-}
-
-impl Stats {
-    fn new(reporter: flume::Sender<InputStatType>) -> Self {
-        Self {
-            reporter,
-            rdhs_seen: 0,
-            rdhs_filtered: 0,
-            payload_size_seen: 0,
-            unique_links_observed: Vec::new(),
-            unique_feeids_observed: Vec::new(),
-        }
-    }
-
-    fn try_add_link(&mut self, link: u8) {
-        if !self.unique_links_observed.contains(&link) {
-            self.unique_links_observed.push(link);
-            self.reporter
-                .send(InputStatType::LinksObserved(link))
-                .unwrap();
-        }
-    }
-
-    fn try_add_fee_id(&mut self, fee_id: u16) {
-        if !self.unique_feeids_observed.contains(&fee_id) {
-            self.unique_feeids_observed.push(fee_id);
-            self.reporter.send(InputStatType::FeeId(fee_id)).unwrap();
-        }
-    }
-
-    fn rdh_seen(&mut self) {
-        self.rdhs_seen += 1;
-        if self.rdhs_seen == 1000 {
-            self.reporter.send(InputStatType::RDHSeen(1000)).unwrap();
-            self.rdhs_seen = 0;
-        }
-    }
-
-    fn rdh_filtered(&mut self) {
-        self.rdhs_filtered += 1;
-        if self.rdhs_filtered == 1000 {
-            self.reporter
-                .send(InputStatType::RDHFiltered(1000))
-                .unwrap();
-            self.rdhs_filtered = 0;
-        }
-    }
-
-    fn add_payload_size(&mut self, payload_size: u16) {
-        self.payload_size_seen += payload_size as u32;
-        // 10 MB
-        if self.payload_size_seen > (10 * 1048576) {
-            self.reporter
-                .send(InputStatType::PayloadSize(self.payload_size_seen))
-                .unwrap();
-            self.payload_size_seen = 0;
-        }
-    }
-
-    fn flush_stats(&mut self) {
-        self.reporter
-            .send(InputStatType::RDHSeen(self.rdhs_seen))
-            .unwrap();
-        self.reporter
-            .send(InputStatType::RDHFiltered(self.rdhs_filtered))
-            .unwrap();
-        self.reporter
-            .send(InputStatType::PayloadSize(self.payload_size_seen))
-            .unwrap();
-    }
-}
 
 #[cfg(test)]
 mod tests {
