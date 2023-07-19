@@ -5,6 +5,20 @@
 #![warn(trivial_casts, trivial_numeric_casts)]
 #![warn(unused_results)]
 #![warn(unused_import_braces)]
+#![warn(
+    clippy::option_filter_map,
+    clippy::manual_filter_map,
+    clippy::if_not_else,
+    clippy::nonminimal_bool
+)]
+// Performance lints
+#![warn(
+    clippy::needless_pass_by_value,
+    clippy::unnecessary_wraps,
+    clippy::mutex_integer,
+    clippy::mem_forget,
+    clippy::maybe_infinite_iter
+)]
 
 //! This module contains mainly the [InputScanner] that reads the input data, and the [CdpChunk] data structure that wraps the data read from the input.
 //! Additionally it contains a helper function [spawn_reader] that spawns a thread that reads input and sents it to a channel that is returned from the function.
