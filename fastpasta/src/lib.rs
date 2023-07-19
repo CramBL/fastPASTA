@@ -1,5 +1,9 @@
+#![warn(unused_extern_crates)]
 #![warn(missing_docs)]
 #![warn(trivial_casts, trivial_numeric_casts)]
+#![warn(missing_copy_implementations)]
+#![warn(unused_results)]
+#![warn(unused_import_braces)]
 
 //! fast Protocol Analysis Scanner Tool for ALICE (fastPASTA), for reading and checking raw binary data from ALICE detectors
 //!
