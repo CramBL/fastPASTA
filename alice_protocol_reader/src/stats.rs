@@ -25,7 +25,6 @@ pub enum InputStatType {
     SystemId(u8),
 }
 
-
 /// Struct for tracking and reporting statistics about the input data.
 #[derive(Debug)]
 pub struct Stats {
@@ -38,7 +37,6 @@ pub struct Stats {
 }
 
 impl Stats {
-
     /// Create a new [Stats] instance.
     pub fn new(reporter: flume::Sender<InputStatType>) -> Self {
         Self {

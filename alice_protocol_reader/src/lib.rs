@@ -19,9 +19,9 @@ pub mod input_scanner;
 pub mod mem_pos_tracker;
 pub mod prelude;
 pub mod rdh;
-pub mod stdin_reader;
 pub mod scan_cdp;
 pub mod stats;
+pub mod stdin_reader;
 
 use crossbeam_channel::Receiver;
 use prelude::{BufferedReaderWrapper, CdpChunk, InputScanner, ScanCDP, RDH};
@@ -134,7 +134,6 @@ fn get_chunk<T: RDH>(
 
     Ok(cdp_chunk)
 }
-
 
 #[cfg(test)]
 mod tests {

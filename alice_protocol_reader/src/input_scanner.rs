@@ -2,19 +2,17 @@
 //!
 //! The [InputScanner] implements the [ScanCDP] trait.
 
-
-use std::io::Read;
-use super::stats::InputStatType;
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::config::filter::{FilterOpt, FilterTarget};
 use super::mem_pos_tracker::MemPosTracker;
 use super::rdh::Rdh0;
 use super::rdh::{SerdeRdh, RDH};
 use super::scan_cdp::ScanCDP;
+use super::stats::InputStatType;
 use super::stats::Stats;
+use std::io::Read;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
-
 
 /// Scans data read through a [BufferedReaderWrapper], tracks the position in memory and sends [InputStatType] through the [`flume::Sender<InputStatType>`] channel.
 ///
@@ -308,7 +306,6 @@ fn invalid_rdh_offset<T: RDH>(rdh: &T, current_memory_address: u64, offset_to_ne
     );
     format!("RDH offset to next is {offset_to_next}. {error_string}")
 }
-
 
 #[cfg(test)]
 mod tests {
