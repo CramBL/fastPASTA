@@ -88,10 +88,11 @@ pub mod words;
 pub mod write;
 
 /// Does the initial setup for input data processing
+#[allow(clippy::needless_pass_by_value)] // We need to pass the reader by value to avoid lifetime issues (thread just spins) unless user drops the sender after calling which is not intuitive
 pub fn init_processing(
     config: &'static impl Config,
     mut reader: Box<dyn BufferedReaderWrapper>,
-    stat_send_channel: &flume::Sender<StatType>,
+    stat_send_channel: flume::Sender<StatType>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
     // Load the first few bytes that should contain RDH0 and do a basic sanity check before continuing.
@@ -131,7 +132,7 @@ pub fn init_processing(
                 config,
                 loader,
                 &Some(input_stats_recv),
-                stat_send_channel,
+                &stat_send_channel,
                 stop_flag,
             ) {
                 Ok(_) => Ok(()),
