@@ -1,7 +1,6 @@
 #![warn(missing_docs)]
 #![warn(trivial_casts, trivial_numeric_casts)]
 
-
 //! fast Protocol Analysis Scanner Tool for ALICE (fastPASTA), for reading and checking raw binary data from ALICE detectors
 //!
 //! # Usage

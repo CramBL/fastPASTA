@@ -1,14 +1,11 @@
 //! Contains the [ScanCDP] trait for reading CDPs from a file or stdin (readable instance)
-use crate::rdh::RDH;
 use crate::config::filter::FilterTarget;
+use crate::rdh::RDH;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
-
-
 /// Trait for a scanner that reads CDPs from a file or stdin
 pub trait ScanCDP {
-
     /// Loads the next [RDH] from the input and returns it
     fn load_rdh_cru<T: RDH>(&mut self) -> Result<T, std::io::Error>;
 
