@@ -59,9 +59,9 @@ pub fn spawn_analysis<T: RDH + 'static>(
                     // Do checks or view
                     if config.check().is_some() {
                         validator_dispatcher.dispatch_cdp_chunk(cdp_chunk);
-                    } else if config.view().is_some() {
+                    } else if let Some(view) = config.view() {
                         if let Err(e) = super::view::lib::generate_view(
-                            config.view().unwrap(),
+                            view,
                             cdp_chunk,
                             &stats_sender_channel,
                             &mut its_payload_fsm_cont,
