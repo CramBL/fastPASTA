@@ -5,6 +5,7 @@
 #![warn(trivial_casts, trivial_numeric_casts)]
 #![warn(unused_results)]
 #![warn(unused_import_braces)]
+#![warn(variant_size_differences)]
 #![warn(
     clippy::option_filter_map,
     clippy::manual_filter_map,
