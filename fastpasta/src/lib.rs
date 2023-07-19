@@ -4,6 +4,12 @@
 #![warn(missing_copy_implementations)]
 #![warn(unused_results)]
 #![warn(unused_import_braces)]
+#![warn(
+    clippy::option_filter_map,
+    clippy::manual_filter_map,
+    clippy::if_not_else,
+    clippy::nonminimal_bool
+)]
 
 //! fast Protocol Analysis Scanner Tool for ALICE (fastPASTA), for reading and checking raw binary data from ALICE detectors
 //!

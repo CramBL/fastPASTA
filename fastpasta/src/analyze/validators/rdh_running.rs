@@ -194,10 +194,10 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                 }
             }
         }
-        if err_cnt != 0 {
-            Err(err_str)
-        } else {
+        if err_cnt == 0 {
             Ok(())
+        } else {
+            Err(err_str)
         }
     }
 }
