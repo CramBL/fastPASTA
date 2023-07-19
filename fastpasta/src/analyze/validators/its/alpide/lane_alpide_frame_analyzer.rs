@@ -183,9 +183,9 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
         if unique_bcs.len() > 1 {
             // Count which bunch counters are found for which chip IDs
             let mut bc_to_chip_ids: Vec<(u8, Vec<u8>)> = Vec::new();
-            unique_bcs.iter().for_each(|cd| {
+            unique_bcs.iter().for_each(|chip| {
                 // Iterate through each unique bunch counter
-                if let Some(bc) = cd.bunch_counter {
+                if let Some(bc) = chip.bunch_counter {
                     // Collect all chip IDs that have the same bunch counter
                     let mut bc_to_chip_id: (u8, Vec<u8>) = (bc, Vec::new());
                     // Iterate through each chip ID and compare the bunch counter
