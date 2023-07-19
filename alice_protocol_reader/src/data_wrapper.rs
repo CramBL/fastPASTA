@@ -48,6 +48,7 @@ use super::rdh::RDH;
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 /// The vector-like wrapper struct for CDPs
+#[derive(Debug, Clone, PartialEq)]
 pub struct CdpChunk<T: RDH> {
     rdhs: Vec<T>,
     payloads: Vec<Vec<u8>>,
@@ -168,6 +169,7 @@ impl<T: RDH> IntoIterator for CdpChunk<T> {
     }
 }
 /// Helper struct for the implementation of a consuming iterator
+#[derive(Debug)]
 pub struct IntoIterHelper<T: RDH> {
     iter: std::vec::IntoIter<CdpTuple<T>>,
 }
@@ -197,6 +199,7 @@ impl<'a, T: RDH> IntoIterator for &'a CdpChunk<T> {
 }
 
 /// Helper struct for the implementation of a non-consuming iterator
+#[derive(Debug)]
 pub struct CdpChunkIter<'a, T: RDH> {
     cdp_chunk: &'a CdpChunk<T>,
     index: usize,

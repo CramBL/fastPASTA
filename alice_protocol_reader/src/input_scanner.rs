@@ -2,53 +2,23 @@
 //!
 //! The [InputScanner] implements the [ScanCDP] trait.
 
-use crate::InputStatType;
-
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::config::filter::{FilterOpt, FilterTarget};
 use super::mem_pos_tracker::MemPosTracker;
 use super::rdh::Rdh0;
 use super::rdh::{SerdeRdh, RDH};
-
+use super::scan_cdp::ScanCDP;
+use super::stats::InputStatType;
+use super::stats::Stats;
 use std::io::Read;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
-
-/// Trait for a scanner that reads CDPs from a file or stdin
-pub trait ScanCDP {
-    /// Loads the next [RDH] from the input and returns it
-    fn load_rdh_cru<T: RDH>(&mut self) -> Result<T, std::io::Error>;
-
-    /// Loads the payload in the form of raw bytes from the input and returns it
-    ///
-    /// The size of the payload is given as an argument.
-    fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error>;
-
-    /// Loads the next CDP ([RDH] and payload) from the input and returns it as a ([RDH], [`Vec<u8>`], [u64]) tuple.
-    #[inline(always)]
-    fn load_cdp<T: RDH>(&mut self) -> Result<CdpTuple<T>, std::io::Error> {
-        let rdh: T = self.load_rdh_cru()?;
-        let payload = self.load_payload_raw(rdh.payload_size() as usize)?;
-        let mem_pos = self.current_mem_pos();
-
-        Ok((rdh, payload, mem_pos))
-    }
-
-    /// Loads the next [RDH] that matches the user specified filter target from the input and returns it
-    fn load_next_rdh_to_filter<T: RDH>(
-        &mut self,
-        offset_to_next: u16,
-        target: FilterTarget,
-    ) -> Result<T, std::io::Error>;
-
-    /// Convenience function to return the current memory position in the input stream
-    fn current_mem_pos(&self) -> u64;
-}
 
 /// Scans data read through a [BufferedReaderWrapper], tracks the position in memory and sends [InputStatType] through the [`flume::Sender<InputStatType>`] channel.
 ///
 /// Uses [FilterOpt] to filter for user specified links.
 /// Implements [ScanCDP] for a [BufferedReaderWrapper].
+#[derive(Debug)]
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     reader: Box<R>,
     tracker: MemPosTracker,
@@ -335,85 +305,6 @@ fn invalid_rdh_offset<T: RDH>(rdh: &T, current_memory_address: u64, offset_to_ne
         rdh_header_text = RdhCru::<V7>::rdh_header_text_with_indent_to_string(5)
     );
     format!("RDH offset to next is {offset_to_next}. {error_string}")
-}
-
-struct Stats {
-    reporter: flume::Sender<InputStatType>,
-    rdhs_seen: u16,
-    rdhs_filtered: u16,
-    payload_size_seen: u32,
-    unique_links_observed: Vec<u8>,
-    unique_feeids_observed: Vec<u16>,
-}
-
-impl Stats {
-    fn new(reporter: flume::Sender<InputStatType>) -> Self {
-        Self {
-            reporter,
-            rdhs_seen: 0,
-            rdhs_filtered: 0,
-            payload_size_seen: 0,
-            unique_links_observed: Vec::new(),
-            unique_feeids_observed: Vec::new(),
-        }
-    }
-
-    fn try_add_link(&mut self, link: u8) {
-        if !self.unique_links_observed.contains(&link) {
-            self.unique_links_observed.push(link);
-            self.reporter
-                .send(InputStatType::LinksObserved(link))
-                .unwrap();
-        }
-    }
-
-    fn try_add_fee_id(&mut self, fee_id: u16) {
-        if !self.unique_feeids_observed.contains(&fee_id) {
-            self.unique_feeids_observed.push(fee_id);
-            self.reporter.send(InputStatType::FeeId(fee_id)).unwrap();
-        }
-    }
-
-    fn rdh_seen(&mut self) {
-        self.rdhs_seen += 1;
-        if self.rdhs_seen == 1000 {
-            self.reporter.send(InputStatType::RDHSeen(1000)).unwrap();
-            self.rdhs_seen = 0;
-        }
-    }
-
-    fn rdh_filtered(&mut self) {
-        self.rdhs_filtered += 1;
-        if self.rdhs_filtered == 1000 {
-            self.reporter
-                .send(InputStatType::RDHFiltered(1000))
-                .unwrap();
-            self.rdhs_filtered = 0;
-        }
-    }
-
-    fn add_payload_size(&mut self, payload_size: u16) {
-        self.payload_size_seen += payload_size as u32;
-        // 10 MB
-        if self.payload_size_seen > (10 * 1048576) {
-            self.reporter
-                .send(InputStatType::PayloadSize(self.payload_size_seen))
-                .unwrap();
-            self.payload_size_seen = 0;
-        }
-    }
-
-    fn flush_stats(&mut self) {
-        self.reporter
-            .send(InputStatType::RDHSeen(self.rdhs_seen))
-            .unwrap();
-        self.reporter
-            .send(InputStatType::RDHFiltered(self.rdhs_filtered))
-            .unwrap();
-        self.reporter
-            .send(InputStatType::PayloadSize(self.payload_size_seen))
-            .unwrap();
-    }
 }
 
 #[cfg(test)]

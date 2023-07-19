@@ -1,4 +1,7 @@
-#![warn(missing_docs)]
+#![deny(missing_docs)]
+#![warn(missing_debug_implementations)]
+#![warn(missing_copy_implementations)]
+#![warn(trivial_casts, trivial_numeric_casts)]
 
 //! This module contains mainly the [InputScanner] that reads the input data, and the [CdpChunk] data structure that wraps the data read from the input.
 //! Additionally it contains a helper function [spawn_reader] that spawns a thread that reads input and sents it to a channel that is returned from the function.
@@ -16,6 +19,8 @@ pub mod input_scanner;
 pub mod mem_pos_tracker;
 pub mod prelude;
 pub mod rdh;
+pub mod scan_cdp;
+pub mod stats;
 pub mod stdin_reader;
 
 use crossbeam_channel::Receiver;
@@ -128,31 +133,6 @@ fn get_chunk<T: RDH>(
     }
 
     Ok(cdp_chunk)
-}
-
-#[derive(Debug, Clone, PartialEq)]
-/// Possible stats that can be sent to the StatsController.
-pub enum InputStatType {
-    /// Fatal error, stop processing.
-    Fatal(String),
-    /// The first trigger type observed is the type of run the data comes from
-    ///
-    /// Contains the raw value and the string description summarizing the trigger type
-    RunTriggerType(u32),
-    /// Record the data format detected.
-    DataFormat(u8),
-    /// Add a link to the list of links observed.
-    LinksObserved(u8),
-    /// Record the generic FEE ID
-    FeeId(u16),
-    /// Increment the total RDHs seen.
-    RDHSeen(u16),
-    /// Increment the total RDHs filtered.
-    RDHFiltered(u16),
-    /// Increment the total payload size.
-    PayloadSize(u32),
-    /// The first system ID observed is the basis for the rest of processing
-    SystemId(u8),
 }
 
 #[cfg(test)]

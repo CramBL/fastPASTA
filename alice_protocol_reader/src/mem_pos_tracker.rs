@@ -1,6 +1,7 @@
 //! Contains the MemPosTracker struct that aids in tracking the memory position in the input data.
 
 /// Tracks the position by the value of RDH offsets received in the next() function.
+#[derive(Debug, Clone, Copy)]
 pub struct MemPosTracker {
     /// The memory address in bytes of the current RDH.
     memory_address_bytes: u64,

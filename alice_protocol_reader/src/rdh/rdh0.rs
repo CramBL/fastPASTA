@@ -5,7 +5,7 @@ use std::fmt::{self, Debug, Display};
 
 /// Represents the composite `FEE ID` fields. Using a newtype because the sub-fields are packed in 16 bits, and extracting the values requires some work.
 #[repr(packed)]
-#[derive(PartialEq, Clone, Copy, Default)]
+#[derive(PartialEq, Default, Clone, Copy)]
 pub struct FeeId(pub u16); // [0]reserved0, [2:0]layer, [1:0]reserved1, [1:0]fiber_uplink, [1:0]reserved2, [5:0]stave_number
                            // Example: L4_12 -> Layer 4 stave 12 = 0b0100_00XX_0000_1100
 
@@ -20,7 +20,7 @@ impl Debug for FeeId {
 ///
 /// The RDH0 is 64 bit long.
 #[repr(packed)]
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub struct Rdh0 {
     /// RDH header ID
     pub header_id: u8,

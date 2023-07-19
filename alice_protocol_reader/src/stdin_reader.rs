@@ -7,6 +7,7 @@ use super::bufreader_wrapper::BufferedReaderWrapper;
 use std::io::{self, Read, SeekFrom};
 
 /// Wrapper for a reader where input data can be read from, implements [BufferedReaderWrapper].
+#[derive(Debug)]
 pub struct StdInReaderSeeker<R> {
     /// Generic reader that is wrapped
     pub reader: R,
