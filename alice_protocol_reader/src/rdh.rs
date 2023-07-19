@@ -228,8 +228,8 @@ impl<Version> ByteSlice for RdhCru<Version> {}
 unsafe fn any_as_u8_slice<T: Sized>(packed: &T) -> &[u8] {
     use core::{mem::size_of, slice::from_raw_parts};
     // Create read-only reference to T as a byte slice, safe as long as no padding bytes are read
-    #[allow(trivial_casts)]
-    from_raw_parts((packed as *const T) as *const u8, size_of::<T>())
+    let ptr_to_packed_data: *const T = packed;
+    from_raw_parts(ptr_to_packed_data as *const u8, size_of::<T>())
 }
 
 /// Module containing macros related to protocol words.
