@@ -19,6 +19,7 @@
     clippy::shadow_unrelated
 )]
 // Performance lints
+#![warn(variant_size_differences)]
 #![warn(
     clippy::needless_pass_by_value,
     clippy::unnecessary_wraps,
