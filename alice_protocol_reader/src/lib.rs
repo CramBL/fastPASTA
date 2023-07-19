@@ -1,5 +1,6 @@
-#![warn(missing_docs)]
+#![deny(missing_docs)]
 #![warn(missing_debug_implementations)]
+#![warn(missing_copy_implementations)]
 
 //! This module contains mainly the [InputScanner] that reads the input data, and the [CdpChunk] data structure that wraps the data read from the input.
 //! Additionally it contains a helper function [spawn_reader] that spawns a thread that reads input and sents it to a channel that is returned from the function.
@@ -18,6 +19,7 @@ pub mod mem_pos_tracker;
 pub mod prelude;
 pub mod rdh;
 pub mod stdin_reader;
+pub mod scan_cdp;
 
 use crossbeam_channel::Receiver;
 use prelude::{BufferedReaderWrapper, CdpChunk, InputScanner, ScanCDP, RDH};
