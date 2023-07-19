@@ -4,13 +4,30 @@
 #![warn(missing_copy_implementations)]
 #![warn(unused_results)]
 #![warn(unused_import_braces)]
+// Readability lints
 #![warn(
     clippy::option_filter_map,
     clippy::manual_filter_map,
     clippy::if_not_else,
     clippy::nonminimal_bool,
-    clippy::single_match_else
+    clippy::single_match_else,
+    clippy::range_plus_one,
+    clippy::int_plus_one,
+    clippy::needless_range_loop,
+    clippy::needless_continue,
+    clippy::shadow_same,
+    clippy::shadow_unrelated
 )]
+// Performance lints
+#![warn(
+    clippy::needless_pass_by_value,
+    clippy::unnecessary_wraps,
+    clippy::mutex_integer,
+    clippy::mem_forget,
+    clippy::maybe_infinite_iter
+)]
+// Unhandled results (allow unwrap and expect as there are many cases where the unwrap is totally safe)
+#![warn(clippy::map_unwrap_or)]
 
 //! fast Protocol Analysis Scanner Tool for ALICE (fastPASTA), for reading and checking raw binary data from ALICE detectors
 //!
@@ -74,7 +91,7 @@ pub mod write;
 pub fn init_processing(
     config: &'static impl Config,
     mut reader: Box<dyn BufferedReaderWrapper>,
-    stat_send_channel: flume::Sender<StatType>,
+    stat_send_channel: &flume::Sender<StatType>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
     // Load the first few bytes that should contain RDH0 and do a basic sanity check before continuing.
@@ -113,8 +130,8 @@ pub fn init_processing(
             match process::<RdhCru<u8>>(
                 config,
                 loader,
-                Some(input_stats_recv),
-                stat_send_channel.clone(),
+                &Some(input_stats_recv),
+                stat_send_channel,
                 stop_flag,
             ) {
                 Ok(_) => Ok(()),
@@ -144,8 +161,8 @@ pub fn init_processing(
 pub fn process<T: RDH + 'static>(
     config: &'static impl Config,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
-    recv_input_stats: Option<flume::Receiver<InputStatType>>,
-    send_stats_ch: flume::Sender<StatType>,
+    recv_input_stats: &Option<flume::Receiver<InputStatType>>,
+    send_stats_ch: &flume::Sender<StatType>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
     // 1. Launch reader thread to read data from file or stdin
@@ -216,7 +233,7 @@ pub fn process<T: RDH + 'static>(
 // and sends them
 fn forward_input_stats_to_stats_collector(
     recv_input_stats: &flume::Receiver<InputStatType>,
-    send_stats_ch: flume::Sender<StatType>,
+    send_stats_ch: &flume::Sender<StatType>,
 ) {
     while let Ok(input_stat) = recv_input_stats.recv() {
         match input_stat {

@@ -53,7 +53,7 @@ pub(crate) fn hbf_view<T: RDH>(
                 generate_hbf_word_view(
                     current_word_type,
                     gbt_word_slice,
-                    mem_pos_str,
+                    &mem_pos_str,
                     &mut stdio_lock,
                 )?;
             }
@@ -97,7 +97,7 @@ fn print_rdh_hbf_view<T: RDH>(
 fn generate_hbf_word_view(
     word_type: crate::analyze::validators::its::lib::ItsPayloadWord,
     gbt_word_slice: &[u8],
-    mem_pos_str: String,
+    mem_pos_str: &str,
     stdio_lock: &mut std::io::StdoutLock,
 ) -> Result<(), std::io::Error> {
     use crate::words::its::status_words::util::*;

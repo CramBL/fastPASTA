@@ -16,7 +16,7 @@ pub(crate) fn its_readout_frame_view<T: RDH>(
         for (idx, gbt_word) in gbt_word_chunks.enumerate() {
             let word = &gbt_word[..10];
             let mem_pos_str = super::mem_pos_calc_to_string(idx, rdh.data_format(), rdh_mem_pos);
-            generate_status_word_view(word, mem_pos_str, &mut stdio_lock)?;
+            generate_status_word_view(word, &mem_pos_str, &mut stdio_lock)?;
         }
     }
     Ok(())
@@ -24,7 +24,7 @@ pub(crate) fn its_readout_frame_view<T: RDH>(
 
 fn generate_status_word_view(
     word: &[u8],
-    mem_pos_str: String,
+    mem_pos_str: &str,
     stdio_lock: &mut std::io::StdoutLock,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match ItsPayloadWord::from_id(word[9]) {
@@ -53,7 +53,7 @@ fn generate_status_word_view(
 fn generate_its_readout_frame_word_view(
     word_type: crate::analyze::validators::its::lib::ItsPayloadWord,
     gbt_word_slice: &[u8],
-    mem_pos_str: String,
+    mem_pos_str: &str,
     stdio_lock: &mut std::io::StdoutLock,
 ) -> Result<(), std::io::Error> {
     use crate::words::its::status_words::util::*;

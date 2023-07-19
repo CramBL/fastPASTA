@@ -28,7 +28,7 @@ pub fn main() -> std::process::ExitCode {
 
     let exit_code: u8 = match init_reader(Cfg::global().input_file()) {
         Ok(readable) => {
-            match fastpasta::init_processing(Cfg::global(), readable, stat_send_channel, stop_flag)
+            match fastpasta::init_processing(Cfg::global(), readable, &stat_send_channel, stop_flag)
             {
                 Ok(_) => 0,
                 Err(e) => {
@@ -48,5 +48,5 @@ pub fn main() -> std::process::ExitCode {
 
     stat_controller.join().expect("Failed to join stats thread");
 
-    fastpasta::util::lib::exit(exit_code, any_errors_flag)
+    fastpasta::util::lib::exit(exit_code, &any_errors_flag)
 }
