@@ -130,7 +130,7 @@ pub fn preprocess_payload(payload: &[u8]) -> Result<impl Iterator<Item = &[u8]>,
     // Determine if padding is flavor 0 (6 bytes of 0x00 padding following GBT words) or flavor 1 (no padding)
     let detected_data_format = detect_payload_data_format(payload);
 
-    let gbt_word_chunks = chunkify_payload(payload, detected_data_format, ff_padding);
+    let gbt_word_chunks = chunkify_payload(payload, detected_data_format, &ff_padding);
     Ok(gbt_word_chunks)
 }
 
@@ -172,7 +172,7 @@ fn detect_payload_data_format(payload: &[u8]) -> u8 {
 fn chunkify_payload<'a>(
     payload: &'a [u8],
     data_format: u8,
-    ff_padding: Vec<&'a u8>,
+    ff_padding: &[&'a u8],
 ) -> std::slice::ChunksExact<'a, u8> {
     match data_format {
         0 => {
