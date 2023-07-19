@@ -101,11 +101,11 @@ pub const VALID_OL_CONNECT3_ID: RangeInclusive<u8> = 0x58..=0x5E;
 
 /// Newtype for the inner barrel, to avoid comparing lanes from different barrels (zero cost abstraction)
 #[repr(transparent)]
-#[derive(PartialEq, PartialOrd)]
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct IbLane(u8);
 /// Newtype for the outer barrel, to avoid comparing lanes from different barrels (zero cost abstraction)
 #[repr(transparent)]
-#[derive(PartialEq, PartialOrd)]
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct ObLane(u8);
 
 #[cfg(test)]

@@ -60,7 +60,7 @@ pub enum CheckCommands {
 }
 
 /// Target system for checks
-#[derive(Args, Debug, Clone)]
+#[derive(Args, Debug, Clone, Copy, PartialEq)]
 pub struct Target {
     /// Target system for checks
     pub system: Option<System>,
