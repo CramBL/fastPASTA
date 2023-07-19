@@ -80,7 +80,7 @@ impl RdhStats {
 
     /// Sorts the vector containing the observed links
     pub fn sort_links_observed(&mut self) {
-        self.links.sort();
+        self.links.sort_unstable();
     }
 
     /// Returns a borrowed slice of the vector with the observed links

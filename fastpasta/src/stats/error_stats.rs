@@ -25,7 +25,7 @@ impl ErrorStats {
         let re = regex::Regex::new(r"0x(?P<mem_pos>[0-9a-fA-F]+):").unwrap();
         // Sort the errors by memory address
         if !self.reported_errors.is_empty() {
-            self.reported_errors.sort_by_key(|e| {
+            self.reported_errors.sort_unstable_by_key(|e| {
                 let addr = re
                     .captures(e)
                     .unwrap_or_else(|| panic!("Error parsing memory address from error msg: {e}"));
