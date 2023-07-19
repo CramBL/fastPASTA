@@ -1,9 +1,6 @@
 #![warn(unused_extern_crates)]
 #![warn(missing_docs)]
-#![warn(trivial_casts, trivial_numeric_casts)]
 #![warn(missing_copy_implementations)]
-#![warn(unused_results)]
-#![warn(unused_import_braces)]
 // Readability lints
 #![warn(
     clippy::option_filter_map,
@@ -27,6 +24,10 @@
     clippy::mem_forget,
     clippy::maybe_infinite_iter
 )]
+// Safety lints
+#![warn(unused_results)]
+#![warn(unused_import_braces)]
+#![warn(trivial_casts, trivial_numeric_casts)]
 // Unhandled results (allow unwrap and expect as there are many cases where the unwrap is totally safe)
 #![warn(clippy::map_unwrap_or)]
 
