@@ -22,9 +22,10 @@ pub fn do_payload_checks<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt>(
         }),
         Err(e) => {
             send_stats_channel
-                .send(StatType::Error(format!(
-                    "{rdh_mem_pos:#X}: Payload error following RDH at this location: {e}"
-                )))
+                .send(StatType::Error(
+                    format!("{rdh_mem_pos:#X}: Payload error following RDH at this location: {e}")
+                        .into(),
+                ))
                 .unwrap();
             cdp_validator.reset_fsm();
         }

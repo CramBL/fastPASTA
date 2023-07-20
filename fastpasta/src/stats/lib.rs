@@ -87,7 +87,7 @@ mod tests {
 
         // Send Run Trigger Type
         send_ch
-            .send(StatType::RunTriggerType((0xBEEF, "BEEF".to_owned())))
+            .send(StatType::RunTriggerType((0xBEEF, "BEEF".to_owned().into())))
             .unwrap();
 
         // Send rdh seen stat
@@ -95,7 +95,7 @@ mod tests {
 
         // Send a fatal error that should cause the stop flag to be set
         send_ch
-            .send(StatType::Fatal("Test fatal error".to_string()))
+            .send(StatType::Fatal("Test fatal error".to_string().into()))
             .unwrap();
 
         // Stop the controller by dropping the sender channel
@@ -129,9 +129,10 @@ mod tests {
 
     #[test]
     fn test_all_stattype_enums() {
-        let fatal = StatType::Fatal("Test fatal error".to_string());
-        let error = StatType::Error("Test error".to_string());
-        let run_trig_type = StatType::RunTriggerType((1, "Test run trigger type".to_string()));
+        let fatal = StatType::Fatal("Test fatal error".to_string().into());
+        let error = StatType::Error("Test error".to_string().into());
+        let run_trig_type =
+            StatType::RunTriggerType((1, "Test run trigger type".to_string().into()));
         let sys_id = StatType::SystemId(SystemId::ITS);
         let rdh_seen = StatType::RDHSeen(1);
         let rdh_filtered = StatType::RDHFiltered(1);

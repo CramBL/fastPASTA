@@ -298,7 +298,7 @@ fn sanity_check_offset_next<T: RDH>(
 
         if let Some(stats_ch) = stats_ch.as_ref() {
             stats_ch
-                .send(InputStatType::Fatal(fatal_err.clone()))
+                .send(InputStatType::Fatal(fatal_err.clone().into_boxed_str()))
                 .unwrap();
         }
         let fatal_io_error = std::io::Error::new(std::io::ErrorKind::InvalidData, fatal_err);

@@ -140,7 +140,7 @@ pub fn init_processing(
                 Ok(_) => Ok(()),
                 Err(e) => {
                     stat_send_channel
-                        .send(StatType::Fatal(e.to_string()))
+                        .send(StatType::Fatal(e.to_string().into()))
                         .unwrap();
                     Err(e)
                 }
@@ -270,7 +270,7 @@ fn forward_input_stats_to_stats_collector(
                     Err(e) => {
                         log::error!("Failed to parse system ID: {e}");
                         send_stats_ch
-                            .send(StatType::Fatal("Failed to parse system ID".to_string()))
+                            .send(StatType::Fatal("Failed to parse system ID".into()))
                             .unwrap();
                     }
                 };

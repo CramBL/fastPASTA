@@ -51,7 +51,9 @@ pub fn spawn_analysis<T: RDH + 'static>(
                             &stats_sender_channel,
                         ) {
                             // Send error and break, stop processing
-                            stats_sender_channel.send(StatType::Fatal(e)).unwrap();
+                            stats_sender_channel
+                                .send(StatType::Fatal(e.into()))
+                                .unwrap();
                             break; // Fatal error
                         }
                     }
@@ -67,7 +69,7 @@ pub fn spawn_analysis<T: RDH + 'static>(
                             &mut its_payload_fsm_cont,
                         ) {
                             stats_sender_channel
-                                .send(StatType::Fatal(e.to_string()))
+                                .send(StatType::Fatal(e.to_string().into()))
                                 .expect("Couldn't send to StatsController");
                         }
                     }

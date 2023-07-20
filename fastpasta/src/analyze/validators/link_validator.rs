@@ -138,7 +138,7 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
         error.push_str(&format!("  current :  {rdh} <--- Error detected here\n"));
 
         self.send_stats_ch
-            .send(StatType::Error(format!("{rdh_mem_pos:#X}: {error}")))
+            .send(StatType::Error(format!("{rdh_mem_pos:#X}: {error}").into()))
             .unwrap();
     }
 }

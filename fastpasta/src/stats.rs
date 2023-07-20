@@ -21,13 +21,13 @@ mod trigger_stats;
 /// Possible stats that can be sent to the StatsController.
 pub enum StatType {
     /// Fatal error, stop processing.
-    Fatal(String),
+    Fatal(Box<str>),
     /// Non-fatal error, reported but processing continues.
-    Error(String),
+    Error(Box<str>),
     /// The first trigger type observed is the type of run the data comes from
     ///
     /// Contains the raw value and the string description summarizing the trigger type
-    RunTriggerType((u32, String)),
+    RunTriggerType((u32, Box<str>)),
     /// The trigger_type field observed in the `RDH`
     TriggerType(u32),
     /// The first system ID observed is the basis for the rest of processing

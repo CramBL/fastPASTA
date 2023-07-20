@@ -249,7 +249,7 @@ impl<C: Config + 'static> StatsController<C> {
         let mut report = Report::new(self.processing_time.elapsed());
         // Add fatal error if any
         if self.error_stats.is_fatal_error() {
-            report.add_fatal_error(self.error_stats.take_fatal_error());
+            report.add_fatal_error(self.error_stats.take_fatal_error().into_string());
         }
         // Add global stats
         self.add_global_stats_to_report(&mut report);
@@ -311,7 +311,7 @@ impl<C: Config + 'static> StatsController<C> {
         report.add_stat(StatSummary {
             statistic: "Run Trigger Type".to_string(),
             value: format!("{trigger_type_raw:#02X}"),
-            notes: trigger_type_str,
+            notes: trigger_type_str.into_string(),
         });
         report.add_stat(StatSummary::new(
             "Total RDHs".to_string(),
