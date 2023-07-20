@@ -56,7 +56,7 @@ pub struct CdpChunk<T: RDH> {
 }
 
 impl<T: RDH> Default for CdpChunk<T> {
-    #[inline(always)]
+    #[inline]
     fn default() -> Self {
         Self::new()
     }
@@ -64,7 +64,7 @@ impl<T: RDH> Default for CdpChunk<T> {
 
 impl<T: RDH> CdpChunk<T> {
     /// Construct a new, empty `CdpChunk<T: RDH>`.
-    #[inline(always)]
+    #[inline]
     pub fn new() -> Self {
         Self {
             rdhs: Vec::new(),
@@ -85,7 +85,7 @@ impl<T: RDH> CdpChunk<T> {
     /// assert!(chunk.len() == 0);
     /// ```
     ///
-    #[inline(always)]
+    #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             rdhs: Vec::with_capacity(capacity),
@@ -95,7 +95,7 @@ impl<T: RDH> CdpChunk<T> {
     }
 
     /// Appends an [RDH], payload, and memory position to the back of the CdpChunk
-    #[inline(always)]
+    #[inline]
     pub fn push(&mut self, rdh: T, payload: Vec<u8>, mem_pos: u64) {
         self.rdhs.push(rdh);
         self.payloads.push(payload);
@@ -105,7 +105,7 @@ impl<T: RDH> CdpChunk<T> {
     /// Convenience method to push a tuple of (RDH, payload, mem_pos)
     ///
     /// Removes the need to destructure the tuple before pushing
-    #[inline(always)]
+    #[inline]
     pub fn push_tuple(&mut self, cdp_tuple: CdpTuple<T>) {
         self.rdhs.push(cdp_tuple.0);
         self.payloads.push(cdp_tuple.1);
@@ -113,7 +113,7 @@ impl<T: RDH> CdpChunk<T> {
     }
 
     /// Get the length of the CdpChunk, corresponding to the number of CDPs
-    #[inline(always)]
+    #[inline]
     pub fn len(&self) -> usize {
         debug_assert!(self.rdhs.len() == self.payloads.len());
         debug_assert!(self.rdhs.len() == self.rdh_mem_pos.len());
@@ -121,7 +121,7 @@ impl<T: RDH> CdpChunk<T> {
     }
 
     /// Check if the CdpChunk is empty
-    #[inline(always)]
+    #[inline]
     pub fn is_empty(&self) -> bool {
         debug_assert!(self.rdhs.len() == self.payloads.len());
         debug_assert!(self.rdhs.len() == self.rdh_mem_pos.len());
@@ -129,7 +129,7 @@ impl<T: RDH> CdpChunk<T> {
     }
 
     /// Clear the CdpChunk, removing all elements.
-    #[inline(always)]
+    #[inline]
     pub fn clear(&mut self) {
         self.rdhs.clear();
         self.payloads.clear();
@@ -137,13 +137,13 @@ impl<T: RDH> CdpChunk<T> {
     }
 
     /// Get a borrowed slice of the [RDH]s
-    #[inline(always)]
+    #[inline]
     pub fn rdh_slice(&self) -> &[T] {
         &self.rdhs
     }
 
     /// Get a borrowed slice of the memory positions
-    #[inline(always)]
+    #[inline]
     pub fn rdh_mem_pos_slice(&self) -> &[u64] {
         &self.rdh_mem_pos
     }
@@ -154,7 +154,7 @@ impl<T: RDH> IntoIterator for CdpChunk<T> {
     type Item = CdpTuple<T>; // (RDH, payload, mem_pos)
     type IntoIter = IntoIterHelper<T>;
 
-    #[inline(always)]
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         IntoIterHelper {
             iter: self
@@ -177,7 +177,7 @@ pub struct IntoIterHelper<T: RDH> {
 impl<T: RDH> Iterator for IntoIterHelper<T> {
     type Item = CdpTuple<T>;
 
-    #[inline(always)]
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
     }
@@ -189,7 +189,7 @@ impl<'a, T: RDH> IntoIterator for &'a CdpChunk<T> {
     type Item = RefCdpTuple<'a, T>;
     type IntoIter = CdpChunkIter<'a, T>;
 
-    #[inline(always)]
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         CdpChunkIter {
             cdp_chunk: self,
@@ -208,7 +208,7 @@ pub struct CdpChunkIter<'a, T: RDH> {
 impl<'a, T: RDH> Iterator for CdpChunkIter<'a, T> {
     type Item = RefCdpTuple<'a, T>;
 
-    #[inline(always)]
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.cdp_chunk.rdhs.len() {
             let item = Some((

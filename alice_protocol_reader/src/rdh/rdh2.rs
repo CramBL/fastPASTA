@@ -36,7 +36,7 @@ impl Rdh2 {
 }
 
 impl RdhSubword for Rdh2 {
-    #[inline(always)]
+    #[inline]
     fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh2 {
             trigger_type: LittleEndian::read_u32(&buf[0..=3]),

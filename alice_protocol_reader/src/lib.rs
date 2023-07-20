@@ -122,7 +122,7 @@ pub fn spawn_reader<T: RDH + 'static>(
 ///
 /// If an error occurs after one or more CDPs have been read, the CDP chunk is returned with the CDPs read so far
 /// If the error occurs before any CDPs have been read, the error is returned
-#[inline(always)]
+#[inline]
 fn get_chunk<T: RDH>(
     file_scanner: &mut InputScanner<impl BufferedReaderWrapper + ?Sized>,
     chunk_size_cdps: usize,
