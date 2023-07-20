@@ -247,7 +247,7 @@ pub fn is_lane_active(lane: u8, active_lanes: u32) -> bool {
 }
 /// Struct to represent the IHW status word
 #[repr(packed)]
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Ihw {
     // Total of 80 bits
     // ID: 0xE0
@@ -295,7 +295,7 @@ impl StatusWord for Ihw {
 
 /// Struct to represent the TDH status word
 #[repr(packed)]
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Tdh {
     // 11:0 trigger_type
     // 12: internal_trigger, 13: no_data, 14: continuation, 15: reserved
@@ -388,7 +388,7 @@ impl StatusWord for Tdh {
 
 /// Struct representing the TDT
 #[repr(packed)]
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Tdt {
     // 55:0 lane_status
     lane_status_15_0: u32,
@@ -482,7 +482,7 @@ impl StatusWord for Tdt {
 
 /// Struct representing the DDW0.
 #[repr(packed)]
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Ddw0 {
     // 64:56 reserved0, 55:0 lane_status
     res3_lane_status: u64,
@@ -545,7 +545,7 @@ impl StatusWord for Ddw0 {
 
 /// Struct representing the CDW.
 #[repr(packed)]
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Cdw {
     calibration_word_index_lsb_calibration_user_fields: u64, // 63:48 calibration_word_index_LSB 47:0 calibration_user_fields
     calibration_word_index_msb: u8,                          // 71:64 calibration_word_index_MSB

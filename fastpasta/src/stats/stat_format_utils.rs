@@ -93,7 +93,7 @@ pub fn format_nums_max_lines_width(max_width: u16, max_lines: Option<u16>, nums:
     let mut num_chars = 0;
     let mut line_count = 0;
     for (i, id) in nums.iter().enumerate() {
-        if max_lines.is_some_and(|max_lines| line_count >= max_lines) {
+        if max_lines.is_some_and(|max_lines_count| line_count >= max_lines_count) {
             result.push_str(&format!("... {} more", nums.len() - i).yellow().to_string());
             break;
         }

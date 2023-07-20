@@ -114,12 +114,11 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         }
     }
     #[inline(always)]
-    fn initial_collect_stats(&mut self, rdh: &impl RDH) -> Result<(), std::io::Error> {
+    fn initial_collect_stats(&mut self, rdh: &impl RDH) {
         // Report the trigger type as the RunTriggerType describing the type of run the data is from
         self.report_run_trigger_type(rdh);
         self.report(InputStatType::DataFormat(rdh.data_format()));
         self.report(InputStatType::SystemId(rdh.rdh0().system_id));
-        Ok(())
     }
 }
 
@@ -146,7 +145,7 @@ where
 
         if self.current_mem_pos() == 0 {
             // Report general initial stats assumed to be the same for the rest of the data
-            self.initial_collect_stats(&rdh)?;
+            self.initial_collect_stats(&rdh);
         }
 
         // Collect stats
@@ -215,10 +214,10 @@ where
         }
 
         // If we want the payload, read it, otherwise return a vector that cannot allocate
-        let payload = if !self.skip_payload {
-            self.load_payload_raw(rdh.payload_size() as usize)?
-        } else {
+        let payload = if self.skip_payload {
             Vec::with_capacity(0)
+        } else {
+            self.load_payload_raw(rdh.payload_size() as usize)?
         };
 
         Ok((rdh, payload, loading_at_memory_offset))

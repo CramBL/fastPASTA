@@ -5,7 +5,8 @@ use std::fmt::Write;
 /// Convenience const struct to avoid having to instantiate the struct elsewhere
 pub const DATA_WORD_SANITY_CHECKER: DataWordSanityChecker = DataWordSanityChecker {};
 /// Performs sanity checks on data words
-pub struct DataWordSanityChecker {}
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DataWordSanityChecker;
 
 impl DataWordSanityChecker {
     /// Checks is a valid IL/ML/OL data word

@@ -13,7 +13,7 @@ pub fn generate_view<T: RDH>(
 ) -> Result<(), Box<dyn std::error::Error>> {
     use crate::config::view::ViewCommands;
     match view {
-        ViewCommands::Rdh => super::rdh_view::rdh_view(cdp_chunk)?,
+        ViewCommands::Rdh => super::rdh_view::rdh_view(&cdp_chunk)?,
         ViewCommands::Hbf => {
             super::hbf_view::hbf_view(cdp_chunk, send_stats_ch, its_payload_fsm_cont)?
         }

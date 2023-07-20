@@ -21,14 +21,14 @@ pub(crate) fn format_super_table(
 ) -> Table {
     let mut modded_table = super_table.clone();
 
-    modded_table.with(Panel::header("Report")).with(
+    let _ = modded_table.with(Panel::header("Report")).with(
         Modify::new(Rows::single(0))
             .with(Alignment::center())
             .with(Format::content(|x| x.to_uppercase().green().to_string())),
     );
 
     let row_count = modded_table.count_rows();
-    modded_table
+    let _ = modded_table
         .with(Panel::footer(format!(
             "Processed in {processing_time:.02?}"
         )))
@@ -54,7 +54,7 @@ pub(crate) fn format_global_stats_sub_table(global_stats_table: &mut Table) {
         .main(Some('═'))
         .intersection(None)]);
 
-    global_stats_table
+    let _ = global_stats_table
         .with(style.clone())
         .with(Modify::new(Rows::single(0)).with(Format::content(|x| x.to_uppercase())))
         .with(
@@ -73,7 +73,7 @@ pub(crate) fn format_global_stats_sub_table(global_stats_table: &mut Table) {
                     x.bright_yellow().to_string()
                 })),
         );
-    global_stats_table
+    let _ = global_stats_table
         .with(style)
         .with(Modify::new(Columns::single(1)).with(Format::content(|s| s.green().to_string())))
         .with(Modify::new(Rows::single(1)).with(Format::content(|s| s.red().to_string())));
@@ -95,8 +95,8 @@ pub(crate) fn format_sub_table(subtable: Table, header: String, color: SubtableC
         )
         .main(Some('═'))
         .intersection(None)]);
-    modded_subtable.with(style);
-    modded_subtable.with(Panel::header(header)).with(
+    let _ = modded_subtable.with(style);
+    let _ = modded_subtable.with(Panel::header(header)).with(
         Modify::new(Rows::single(0))
             .with(Alignment::center())
             .with(Format::content(|x| {
@@ -111,16 +111,16 @@ pub(crate) fn format_sub_table(subtable: Table, header: String, color: SubtableC
                 }
             })),
     );
-    modded_subtable.with(
-        Modify::new(Rows::single(1)).with(Format::content(|x| match color {
+    let _ = modded_subtable.with(Modify::new(Rows::single(1)).with(Format::content(
+        |x| match color {
             SubtableColor::Purple => x.bright_purple().to_string(),
             SubtableColor::Green => x.green().to_string(),
             SubtableColor::Blue => x.blue().to_string(),
             SubtableColor::BrightBlue => x.bright_blue().to_string(),
             SubtableColor::Yellow => x.yellow().to_string(),
             SubtableColor::Red => x.red().to_string(),
-        })),
-    );
+        },
+    )));
 
     modded_subtable
 }

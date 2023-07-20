@@ -106,8 +106,8 @@ impl<C: Config + 'static> StatsController<C> {
 
         if self.config.custom_checks_enabled() {
             if let Err(e) = validate_custom_stats(self.config, &self.rdh_stats) {
-                e.into_iter().for_each(|e| {
-                    self.error_stats.add_custom_check_error(e);
+                e.into_iter().for_each(|error_msg| {
+                    self.error_stats.add_custom_check_error(error_msg);
                 });
             }
         }
@@ -254,7 +254,10 @@ impl<C: Config + 'static> StatsController<C> {
         // Add global stats
         self.add_global_stats_to_report(&mut report);
 
-        if !self.config.filter_enabled() {
+        if self.config.filter_enabled() {
+            let filtered_stats: Vec<StatSummary> = self.add_filtered_stats();
+            report.add_filter_stats(tabled::Table::new(filtered_stats));
+        } else {
             // Check if the observed system ID is ITS
             if matches!(self.rdh_stats.system_id(), Some(SystemId::ITS)) {
                 // If no filtering, the layers and staves seen is from the total RDHs
@@ -275,9 +278,6 @@ impl<C: Config + 'static> StatsController<C> {
                 self.rdh_stats.rdhs_seen(),
                 self.rdh_stats.payload_size(),
             ));
-        } else {
-            let filtered_stats: Vec<StatSummary> = self.add_filtered_stats();
-            report.add_filter_stats(tabled::Table::new(filtered_stats));
         }
 
         // Add detected attributes

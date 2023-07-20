@@ -46,7 +46,7 @@ pub fn init_ctrlc_handler(stop_flag: Arc<AtomicBool>) {
 }
 
 /// Exits the program with the appropriate exit code
-pub fn exit(exit_code: u8, any_errors_flag: Arc<AtomicBool>) -> std::process::ExitCode {
+pub fn exit(exit_code: u8, any_errors_flag: &AtomicBool) -> std::process::ExitCode {
     if exit_code == 0 {
         log::debug!("Exit successful from data processing");
         if Cfg::global().any_errors_exit_code().is_some()

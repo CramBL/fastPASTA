@@ -388,19 +388,19 @@ mod tests {
         println!("{rdh_v6}");
         let v = rdh_v7.version;
         println!("{v:?}");
-        print_rdh_cru_v6(rdh_v6);
-        print_rdh_cru(rdh_v7);
+        print_rdh_cru_v6(&rdh_v6);
+        print_rdh_cru(&rdh_v7);
         println!("{}", RdhCru::<V7>::rdh_header_text_with_indent_to_string(7));
         let rdh_v7: RdhCru<V7> = CORRECT_RDH_CRU_V7;
         let rdh_v6: RdhCru<V6> = CORRECT_RDH_CRU_V6;
-        print_rdh_cru::<V6>(rdh_v6);
-        print_rdh_cru::<V7>(rdh_v7);
+        print_rdh_cru::<V6>(&rdh_v6);
+        print_rdh_cru::<V7>(&rdh_v7);
     }
 
-    fn print_rdh_cru<V>(rdh: RdhCru<V>) {
+    fn print_rdh_cru<V>(rdh: &RdhCru<V>) {
         println!("{rdh}");
     }
-    fn print_rdh_cru_v6(rdh: RdhCru<V6>) {
+    fn print_rdh_cru_v6(rdh: &RdhCru<V6>) {
         println!("{rdh}");
     }
 

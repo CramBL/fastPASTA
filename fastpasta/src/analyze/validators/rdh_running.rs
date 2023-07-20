@@ -194,10 +194,10 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                 }
             }
         }
-        if err_cnt != 0 {
-            Err(err_str)
-        } else {
+        if err_cnt == 0 {
             Ok(())
+        } else {
+            Err(err_str)
         }
     }
 }
@@ -216,12 +216,12 @@ mod tests {
         let rdh_2 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT.to_byte_slice()).unwrap();
         let rdh_3_stop =
             RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP.to_byte_slice()).unwrap();
-        let res = rdh_cru_checker.check(&rdh_1);
-        assert!(res.is_ok());
-        let res = rdh_cru_checker.check(&rdh_2);
-        assert!(res.is_ok());
-        let res = rdh_cru_checker.check(&rdh_3_stop);
-        assert!(res.is_ok());
+        let res0 = rdh_cru_checker.check(&rdh_1);
+        assert!(res0.is_ok());
+        let res1 = rdh_cru_checker.check(&rdh_2);
+        assert!(res1.is_ok());
+        let res2 = rdh_cru_checker.check(&rdh_3_stop);
+        assert!(res2.is_ok());
     }
 
     #[test]
@@ -230,11 +230,11 @@ mod tests {
 
         let rdh_1 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
         let rdh_2 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7.to_byte_slice()).unwrap();
-        let res = rdh_cru_checker.check(&rdh_1);
-        assert!(res.is_ok());
-        let res = rdh_cru_checker.check(&rdh_2);
-        assert!(res.is_err());
-        println!("{:?}", res);
+        let res0 = rdh_cru_checker.check(&rdh_1);
+        assert!(res0.is_ok());
+        let res1 = rdh_cru_checker.check(&rdh_2);
+        assert!(res1.is_err());
+        println!("{:?}", res1);
     }
 
     #[test]
@@ -247,13 +247,13 @@ mod tests {
             RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP.to_byte_slice()).unwrap();
         let res = rdh_cru_checker.check(&rdh_1);
         assert!(res.is_ok());
-        let res = rdh_cru_checker.check(&rdh_2);
-        assert!(res.is_ok());
-        let res = rdh_cru_checker.check(&rdh_3_stop);
-        assert!(res.is_ok());
-        let res = rdh_cru_checker.check(&rdh_3_stop);
-        assert!(res.is_err());
-        println!("{:?}", res);
+        let res0 = rdh_cru_checker.check(&rdh_2);
+        assert!(res0.is_ok());
+        let res1 = rdh_cru_checker.check(&rdh_3_stop);
+        assert!(res1.is_ok());
+        let res2 = rdh_cru_checker.check(&rdh_3_stop);
+        assert!(res2.is_err());
+        println!("{:?}", res2);
     }
 
     #[test]
@@ -275,16 +275,16 @@ mod tests {
         let rdh_2 = RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT.to_byte_slice()).unwrap();
         let rdh_3_stop =
             RdhCru::<V7>::load(&mut CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP.to_byte_slice()).unwrap();
-        let res = rdh_cru_checker.check(&rdh_1);
-        assert!(res.is_ok());
-        let res = rdh_cru_checker.check(&rdh_2);
-        assert!(res.is_ok());
-        let res = rdh_cru_checker.check(&rdh_3_stop);
-        assert!(res.is_ok());
-        let res = rdh_cru_checker.check(&rdh_1);
-        assert!(res.is_err());
-        println!("{:?}", res);
-        assert!(res.unwrap_err().contains("Orbit"));
+        let res0 = rdh_cru_checker.check(&rdh_1);
+        assert!(res0.is_ok());
+        let res1 = rdh_cru_checker.check(&rdh_2);
+        assert!(res1.is_ok());
+        let res2 = rdh_cru_checker.check(&rdh_3_stop);
+        assert!(res2.is_ok());
+        let res3 = rdh_cru_checker.check(&rdh_1);
+        assert!(res3.is_err());
+        println!("{:?}", res3);
+        assert!(res3.unwrap_err().contains("Orbit"));
     }
 
     #[test]
@@ -308,14 +308,14 @@ mod tests {
             Rdh3::new(0xdead, 0, 0),
             0,
         );
-        let res = rdh_cru_checker.check(&rdh_1);
-        assert!(res.is_ok());
-        let res = rdh_cru_checker.check(&rdh_2);
-        assert!(res.is_ok());
-        let res = rdh_cru_checker.check(&rdh_3_different);
-        assert!(res.is_err());
-        println!("{:?}", res);
-        let err_str = res.unwrap_err();
+        let res0 = rdh_cru_checker.check(&rdh_1);
+        assert!(res0.is_ok());
+        let res1 = rdh_cru_checker.check(&rdh_2);
+        assert!(res1.is_ok());
+        let res2 = rdh_cru_checker.check(&rdh_3_different);
+        assert!(res2.is_err());
+        println!("{:?}", res2);
+        let err_str = res2.unwrap_err();
         assert!(err_str.contains("Orbit"));
         assert!(err_str.contains("Trigger"));
         assert!(err_str.contains("Detector"));

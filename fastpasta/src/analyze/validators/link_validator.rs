@@ -323,10 +323,10 @@ mod tests {
         }
 
         // Check that the link validator has not sent any more errors
-        while let Ok(stats_msg) = rcv_stats_ch.try_recv() {
-            match stats_msg {
-                StatType::Error(_) => panic!("Received error message: {:?}", stats_msg),
-                _ => println!("Received stats message: {:?}", stats_msg),
+        while let Ok(stat) = rcv_stats_ch.try_recv() {
+            match stat {
+                StatType::Error(msg) => panic!("Received error message: {msg}"),
+                _ => println!("Received stats message: {:?}", stat),
             }
         }
     }

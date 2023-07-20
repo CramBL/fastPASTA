@@ -467,6 +467,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     #[inline]
     fn check_tdh_no_continuation(&mut self, tdh_slice: &[u8]) {
         let current_rdh = self.current_rdh.as_ref().expect("RDH should be set");
+
         let current_tdh = self
             .current_tdh
             .as_ref()

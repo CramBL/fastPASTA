@@ -96,6 +96,6 @@ mod tests {
         assert_eq!(file_tracker.offset_next, 0);
         assert_eq!(file_tracker.memory_address_bytes, 128);
         // This should panic
-        file_tracker.next(63);
+        _ = file_tracker.next(63);
     }
 }

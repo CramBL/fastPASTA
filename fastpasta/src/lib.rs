@@ -1,5 +1,35 @@
+#![warn(unused_extern_crates)]
 #![warn(missing_docs)]
+#![warn(missing_copy_implementations)]
+// Readability lints
+#![warn(
+    clippy::option_filter_map,
+    clippy::manual_filter_map,
+    clippy::if_not_else,
+    clippy::nonminimal_bool,
+    clippy::single_match_else,
+    clippy::range_plus_one,
+    clippy::int_plus_one,
+    clippy::needless_range_loop,
+    clippy::needless_continue,
+    clippy::shadow_same,
+    clippy::shadow_unrelated
+)]
+// Performance lints
+#![warn(variant_size_differences)]
+#![warn(
+    clippy::needless_pass_by_value,
+    clippy::unnecessary_wraps,
+    clippy::mutex_integer,
+    clippy::mem_forget,
+    clippy::maybe_infinite_iter
+)]
+// Safety lints
+#![warn(unused_results)]
+#![warn(unused_import_braces)]
 #![warn(trivial_casts, trivial_numeric_casts)]
+// Unhandled results (allow unwrap and expect as there are many cases where the unwrap is totally safe)
+#![warn(clippy::map_unwrap_or)]
 
 //! fast Protocol Analysis Scanner Tool for ALICE (fastPASTA), for reading and checking raw binary data from ALICE detectors
 //!
@@ -60,6 +90,7 @@ pub mod words;
 pub mod write;
 
 /// Does the initial setup for input data processing
+#[allow(clippy::needless_pass_by_value)] // We need to pass the reader by value to avoid lifetime issues (thread just spins) unless user drops the sender after calling which is not intuitive
 pub fn init_processing(
     config: &'static impl Config,
     mut reader: Box<dyn BufferedReaderWrapper>,
@@ -102,8 +133,8 @@ pub fn init_processing(
             match process::<RdhCru<u8>>(
                 config,
                 loader,
-                Some(input_stats_recv),
-                stat_send_channel.clone(),
+                &Some(input_stats_recv),
+                &stat_send_channel,
                 stop_flag,
             ) {
                 Ok(_) => Ok(()),
@@ -133,8 +164,8 @@ pub fn init_processing(
 pub fn process<T: RDH + 'static>(
     config: &'static impl Config,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
-    recv_input_stats: Option<flume::Receiver<InputStatType>>,
-    send_stats_ch: flume::Sender<StatType>,
+    recv_input_stats: &Option<flume::Receiver<InputStatType>>,
+    send_stats_ch: &flume::Sender<StatType>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
     // 1. Launch reader thread to read data from file or stdin
@@ -205,7 +236,7 @@ pub fn process<T: RDH + 'static>(
 // and sends them
 fn forward_input_stats_to_stats_collector(
     recv_input_stats: &flume::Receiver<InputStatType>,
-    send_stats_ch: flume::Sender<StatType>,
+    send_stats_ch: &flume::Sender<StatType>,
 ) {
     while let Ok(input_stat) = recv_input_stats.recv() {
         match input_stat {
@@ -330,7 +361,7 @@ mod tests {
         cdp_chunk.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);
 
         // Act
-        analyze::lib::spawn_analysis(
+        let handle = analyze::lib::spawn_analysis(
             CFG_TEST_SPAWN_ANALYSIS.get().unwrap(),
             stop_flag.clone(),
             stat_sender,
@@ -354,5 +385,6 @@ mod tests {
             0,
             "Expected some stats received, got: {stats:?}"
         );
+        handle.join().unwrap();
     }
 }

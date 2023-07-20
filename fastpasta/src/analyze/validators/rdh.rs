@@ -422,12 +422,12 @@ mod tests {
         let fee_id_bad_reserved0 = FeeId(0b1000_0000_0000_0000);
         let fee_id_bad_reserved1 = FeeId(0b0000_0100_0000_0000);
         let fee_id_bad_reserved2 = FeeId(0b0000_0000_0100_0000);
-        let res = validator.sanity_check(fee_id_bad_reserved0);
-        println!("{res:?} ");
-        let res = validator.sanity_check(fee_id_bad_reserved1);
-        println!("{res:?} ");
-        let res = validator.sanity_check(fee_id_bad_reserved2);
-        println!("{res:?} `");
+        let res0 = validator.sanity_check(fee_id_bad_reserved0);
+        println!("{res0:?} ");
+        let res1 = validator.sanity_check(fee_id_bad_reserved1);
+        println!("{res1:?} ");
+        let res2 = validator.sanity_check(fee_id_bad_reserved2);
+        println!("{res2:?} `");
         assert!(validator.sanity_check(fee_id_bad_reserved0).is_err());
         assert!(validator.sanity_check(fee_id_bad_reserved1).is_err());
         assert!(validator.sanity_check(fee_id_bad_reserved2).is_err());
@@ -456,10 +456,10 @@ mod tests {
         let rdh0 = Rdh0::new(7, Rdh0::HEADER_SIZE, FeeId(0x502A), 0, ITS_SYSTEM_ID, 0);
         let rdh0_2 = Rdh0::new(7, Rdh0::HEADER_SIZE, FeeId(0x502A), 0, ITS_SYSTEM_ID, 0);
 
-        let res = validator.sanity_check(&rdh0);
-        assert!(res.is_ok());
-        let res = validator.sanity_check(&rdh0_2);
-        assert!(res.is_ok());
+        let res0 = validator.sanity_check(&rdh0);
+        assert!(res0.is_ok());
+        let res1 = validator.sanity_check(&rdh0_2);
+        assert!(res1.is_ok());
     }
     #[test]
     fn invalidate_rdh0_bad_header_id() {
@@ -482,9 +482,9 @@ mod tests {
             res.unwrap_err()
         );
         // Change to different header_id
-        let rdh0 = Rdh0::new(0x8, 0x40, FeeId(0x502A), 0, ITS_SYSTEM_ID, 0);
+        let rdh0_new = Rdh0::new(0x8, 0x40, FeeId(0x502A), 0, ITS_SYSTEM_ID, 0);
 
-        assert!(validator.sanity_check(&rdh0).is_err());
+        assert!(validator.sanity_check(&rdh0_new).is_err());
     }
     #[test]
     fn invalidate_rdh0_bad_header_size() {
@@ -821,8 +821,8 @@ mod tests {
             CORRECT_RDH3,
             CORRECT_RDH_CRU_V7.reserved2(),
         );
-        let res = validator.sanity_check(&rdh_cru_bad_header_id);
-        assert!(res.is_err(), "{rdh_cru_bad_header_id}");
+        let res_new = validator.sanity_check(&rdh_cru_bad_header_id);
+        assert!(res_new.is_err(), "{rdh_cru_bad_header_id}");
     }
     #[test]
     fn invalidate_rdh_cru_v6_multiple_errors() {

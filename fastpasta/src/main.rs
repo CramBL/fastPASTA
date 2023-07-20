@@ -48,5 +48,5 @@ pub fn main() -> std::process::ExitCode {
 
     stat_controller.join().expect("Failed to join stats thread");
 
-    fastpasta::util::lib::exit(exit_code, any_errors_flag)
+    fastpasta::util::lib::exit(exit_code, &any_errors_flag)
 }
