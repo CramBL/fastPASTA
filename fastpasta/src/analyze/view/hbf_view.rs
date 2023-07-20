@@ -19,7 +19,7 @@ pub(crate) fn hbf_view<T: RDH>(
         let gbt_word_chunks = match preprocess_payload(&payload) {
             Ok(gbt_word_chunks) => Some(gbt_word_chunks),
             Err(e) => {
-                send_stats_ch.send(StatType::Error(e)).unwrap();
+                send_stats_ch.send(StatType::Error(e.into())).unwrap();
                 its_payload_fsm_cont.reset_fsm();
                 None
             }

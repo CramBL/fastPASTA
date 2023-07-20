@@ -34,7 +34,7 @@ const SOC_BIT_MASK: u32 = 0b10_0000_0000;
 const SOT_BIT_MASK: u32 = 0b1000_0000;
 const HB_BIT_MASK: u32 = 0b10;
 /// Takes in an RDH and returns a human readable description of the trigger type
-pub fn rdh_trigger_type_as_string<T: RDH>(rdh: &T) -> String {
+pub fn rdh_trigger_type_as_string<T: RDH>(rdh: &T) -> Box<str> {
     let trigger_type = rdh.trigger_type();
     trigger_type_string_from_int(trigger_type)
 }
@@ -43,13 +43,13 @@ pub fn rdh_trigger_type_as_string<T: RDH>(rdh: &T) -> String {
 ///
 /// A trigger can be a combination of different types of triggers, so the description is
 /// prioritized in terms of what triggers are more significant to understand the trigger type
-pub fn trigger_type_string_from_int(trigger_type: u32) -> String {
+pub fn trigger_type_string_from_int(trigger_type: u32) -> Box<str> {
     // Priorities describing the trigger as follows:
     // 1. SOC
     // 2. SOT
     // 3. HB
     // 4. PhT
-    if trigger_type & SOC_BIT_MASK != 0 {
+    let trigger_type_string = if trigger_type & SOC_BIT_MASK != 0 {
         String::from("SOC  ")
     } else if trigger_type & SOT_BIT_MASK != 0 {
         String::from("SOT  ")
@@ -59,7 +59,8 @@ pub fn trigger_type_string_from_int(trigger_type: u32) -> String {
         String::from("PhT  ")
     } else {
         String::from("Other")
-    }
+    };
+    trigger_type_string.into_boxed_str()
 }
 
 /// Calculates the current position in the memory of the current word.

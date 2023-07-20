@@ -116,7 +116,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                 word_slice[7],
                 word_slice[8],
                 word_slice[9],
-                            )))
+                            ).into()))
             .expect("Failed to send error to stats channel");
     }
 
@@ -539,7 +539,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                                     "[E45] TDH trigger period mismatch with user specified: {specified_trig_period} != {detected_period}\
                                     \n\tPrevious TDH Orbit_BC: {prev_trigger_orbit}_{prev_trigger_bc:>4}\
                                     \n\tCurrent  TDH Orbit_BC: {current_trigger_orbit}_{current_trigger_bc:>4}",
-                            ))))
+                            )).into()))
                             .expect("Failed to send error to stats channel");
                     }
                 }
@@ -572,7 +572,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                     lane_id_to_lane_number(lane.lane_id, is_ib)).collect::<Vec<u8>>(),
             );
             self.stats_send_ch
-                .send(StatType::Error(err_msg))
+                .send(StatType::Error(err_msg.into()))
                 .expect("Failed to send error to stats channel");
         }
 
@@ -594,7 +594,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                 error_string.push_str(&lane_error_msg);
             }
             self.stats_send_ch
-                .send(StatType::Error(error_string))
+                .send(StatType::Error(error_string.into()))
                 .expect("Failed to send error to stats channel");
         }
     }
@@ -653,7 +653,7 @@ mod tests {
         match stats_recv_ch.recv() {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
-                    msg,
+                    &*msg,
                     "0x40: [E30] ID is not 0xE0: 0xE1  [FF 3F 00 00 00 00 00 00 00 E1]"
                 );
                 println!("{msg}");
@@ -682,7 +682,7 @@ mod tests {
         match stats_recv_ch.recv() {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
-                    msg,
+                    &*msg,
                     "0x40: [E30] ID is not 0xE0: 0xF1  [00 00 00 00 00 00 00 00 01 F1]"
                 );
                 println!("{msg}");
@@ -713,7 +713,7 @@ mod tests {
         match stats_recv_ch.recv() {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
-                    msg,
+                    &*msg,
                     "0x40: [E30] ID is not 0xE0: 0xF1  [00 00 00 00 00 00 00 00 01 F1]"
                 );
                 println!("{msg}");
@@ -723,7 +723,7 @@ mod tests {
         match stats_recv_ch.recv() {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
-                    msg,
+                    &*msg,
                     "0x4A: [E40] ID is not 0xE8: 0xF2  [00 00 00 00 00 00 00 00 01 F2]"
                 );
                 println!("{msg}");
@@ -765,7 +765,7 @@ mod tests {
         match stats_recv_ch.recv() {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
-                    msg,
+                    &*msg,
                     "0x40: [E30] ID is not 0xE0: 0xF1  [00 00 00 00 00 00 00 00 01 F1]"
                 );
                 println!("{msg}");
@@ -775,7 +775,7 @@ mod tests {
         match stats_recv_ch.recv() {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
-                    msg,
+                    &*msg,
                     "0x4A: [E40] ID is not 0xE8: 0xF2  [00 00 00 00 00 00 00 00 01 F2]"
                 );
                 println!("{msg}");
@@ -785,7 +785,7 @@ mod tests {
         match stats_recv_ch.recv() {
             Ok(StatType::Error(msg)) => {
                 assert_eq!(
-                    msg,
+                    &*msg,
                     "0x4A: [E444] TDH trigger_orbit is not equal to RDH orbit [00 00 00 00 00 00 00 00 01 F2]"
                 );
                 println!("{msg}");
@@ -796,7 +796,7 @@ mod tests {
             Ok(StatType::Error(msg)) => {
                 // Amibiguous error, could be several different data words
                 assert_eq!(
-                    msg,
+                    &*msg,
                     "0x54: [E991] Unrecognized ID in ITS payload, could be Data Word/TDT/CDW based on current state, attempting to parse as Data Word [00 00 00 00 00 00 00 00 01 F3]"
                 );
                 println!("{msg}");
@@ -807,7 +807,7 @@ mod tests {
             Ok(StatType::Error(msg)) => {
                 // Amibiguous error, could be several different data words
                 assert_eq!(
-                    msg,
+                    &*msg,
                     "0x54: [E70] ID is invalid: 0xF3 [00 00 00 00 00 00 00 00 01 F3]"
                 );
                 println!("{msg}");

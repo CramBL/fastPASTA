@@ -39,7 +39,7 @@ pub fn main() -> std::process::ExitCode {
         }
         Err(e) => {
             stat_send_channel
-                .send(StatType::Fatal(e.to_string()))
+                .send(StatType::Fatal(e.to_string().into()))
                 .unwrap();
             drop(stat_send_channel);
             1

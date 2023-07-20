@@ -4,9 +4,9 @@ type LayerStave = (u8, u8);
 
 #[derive(Default, Debug, Clone)]
 pub struct ErrorStats {
-    fatal_error: Option<String>,
-    reported_errors: Vec<String>,
-    custom_checks_stats_errors: Vec<String>,
+    fatal_error: Option<Box<str>>,
+    reported_errors: Vec<Box<str>>,
+    custom_checks_stats_errors: Vec<Box<str>>,
     total_errors: u64,
     unique_error_codes: Option<Vec<u16>>,
     // Only applicable if the data is from ITS
@@ -88,17 +88,17 @@ impl ErrorStats {
         self.total_errors
     }
 
-    pub(super) fn add_reported_error(&mut self, error_msg: String) {
+    pub(super) fn add_reported_error(&mut self, error_msg: Box<str>) {
         self.total_errors += 1;
         self.reported_errors.push(error_msg);
     }
 
-    pub(super) fn add_custom_check_error(&mut self, error_msg: String) {
+    pub(super) fn add_custom_check_error(&mut self, error_msg: Box<str>) {
         self.total_errors += 1;
         self.custom_checks_stats_errors.push(error_msg);
     }
 
-    pub(super) fn add_fatal_error(&mut self, error_msg: String) {
+    pub(super) fn add_fatal_error(&mut self, error_msg: Box<str>) {
         self.fatal_error = Some(error_msg);
     }
 
@@ -106,7 +106,7 @@ impl ErrorStats {
         self.fatal_error.is_some()
     }
 
-    pub(super) fn take_fatal_error(&mut self) -> String {
+    pub(super) fn take_fatal_error(&mut self) -> Box<str> {
         self.fatal_error.take().expect("No fatal error found!")
     }
 
@@ -137,7 +137,7 @@ impl ErrorStats {
         Some(self.staves_with_errors.as_ref().unwrap())
     }
 
-    pub(super) fn consume_reported_errors(&mut self) -> Vec<String> {
+    pub(super) fn consume_reported_errors(&mut self) -> Vec<Box<str>> {
         // Sort stats by memory position where they were found before consuming them
         self.sort_error_msgs_by_mem_pos();
         let mut errors = std::mem::take(&mut self.reported_errors);
@@ -147,7 +147,7 @@ impl ErrorStats {
     }
 }
 
-fn extract_unique_error_codes(error_messages: &[String]) -> Vec<u16> {
+fn extract_unique_error_codes(error_messages: &[Box<str>]) -> Vec<u16> {
     let mut error_codes: Vec<u16> = Vec::new();
     let re = regex::Regex::new(r"\[E(?P<err_code>[0-9]{2,4})\]").unwrap();
     error_messages.iter().for_each(|err_msg| {
