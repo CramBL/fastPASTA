@@ -36,7 +36,7 @@
 //! $ cargo add alice_protocol_reader
 //! ```
 //! Then use the convenience `init_reader()`-function to add the appropriate reader (stdin or file) at runtime. Instantiate the `InputScanner` with the reader and start reading ALICE data.
-//! ```rust
+//! ```text
 //! use alice_protocol_reader::input_scanner::InputScanner;
 //! use alice_protocol_reader::init_reader;
 //! use alice_protocol_reader::rdh::RdhCru;
@@ -51,7 +51,7 @@
 //! ```
 //! Example output
 //!
-//! ```
+//! ```text
 //! RdhCru
 //!         Rdh0 { header_id: 7, header_size: 64, fee_id: 20522, priority_bit: 0, system_id: 32, reserved0: 0 }
 //!         offset_new_packet: 5088
