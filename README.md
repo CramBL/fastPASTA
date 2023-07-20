@@ -9,9 +9,9 @@ fastPASTA uses [Semantic Versioning](https://semver.org/).
 
 For extensive documentation of source code see [documentation](https://docs.rs/fastpasta/latest/fastpasta/index.html) or invoke ```cargo doc --open```.
 
-For an exhaustive list of the data verification done via the `check` subcommand, see [list of checks](doc/checks_list.md).
+For an exhaustive list of the data verification done via the `check` subcommand, see [doc/checks_list.md](https://gitlab.cern.ch/mkonig/fastpasta/-/blob/master/doc/checks_list.md).
 
-Releases and associated changelogs can be found at [releases](https://gitlab.cern.ch/mkonig/fastpasta/-/releases) or [CHANGELOG.md](CHANGELOG.md).
+Releases and associated changelogs can be found at [releases](https://gitlab.cern.ch/mkonig/fastpasta/-/releases) or [CHANGELOG.md](https://gitlab.cern.ch/mkonig/fastpasta/-/blob/master/CHANGELOG.md).
 
 ## Purpose
 
