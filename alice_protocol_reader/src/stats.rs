@@ -1,10 +1,11 @@
 //! Contains the [InputStatType] enum for which kind of statistics are gathered, and the [Stats] struct for tracking and reporting statistics about the input data.
 
+#[allow(variant_size_differences)] // Allow in this case, the string is already a pointer.
 #[derive(Debug, Clone, PartialEq)]
 /// Possible stats that can be sent to the StatsController.
 pub enum InputStatType {
     /// Fatal error, stop processing.
-    Fatal(String),
+    Fatal(Box<str>),
     /// The first trigger type observed is the type of run the data comes from
     ///
     /// Contains the raw value and the string description summarizing the trigger type
