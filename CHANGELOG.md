@@ -1,3 +1,16 @@
+# v1.12.2 - Performance improvements (2023-07-20)
+Benchmarks show >10% performance improvements over `v1.12.1` across all check commands with varying types of files.
+[Example CI benchmark](https://gitlab.cern.ch/mkonig/fastpasta/-/jobs/31170333).
+
+Benchmarks are performed with the [regression_performance.sh script](https://gitlab.cern.ch/mkonig/fastpasta/-/blob/master/tests/regression/regression_performance.sh).
+
+### Optimizations
+- Load payloads with unitialized (but allocated) memory.
+- Reduce size disparity of enums by replacing dynamically sized types with boxed slices.
+- Implement Copy on smaller structs (smaller or very close to usize, assume usize is >64 bits)
+- Change some trivial pass-by-value to borrows
+- Replace all stable sort with unstable sort.
+
 # v1.12.0 - Unique error codes, custom checks for OB chip count (2023-07-13)
 ### Features
 - Custom check for chip count in OB (ML/OL)
