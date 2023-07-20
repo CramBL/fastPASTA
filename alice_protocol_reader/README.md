@@ -16,9 +16,9 @@ $ cargo add alice_protocol_reader
 ```
 Then use the convenience `init_reader()`-function to add the appropriate reader (stdin or file) at runtime. Instantiate the `InputScanner` with the reader and start reading ALICE data.
 ```rust
-use input_scanner::InputScanner;
+use alice_protocol_reader::input_scanner::InputScanner;
 use alice_protocol_reader::init_reader;
-use rdh::RdhCru;
+use alice_protocol_reader::rdh::RdhCru;
 
 let reader = init_reader(&Some(test_file_path)).unwrap();
 
@@ -73,9 +73,9 @@ impl FilterOpt for MyCfg {
     }
 }
 
-use input_scanner::InputScanner;
+use alice_protocol_reader::input_scanner::InputScanner;
 use alice_protocol_reader::init_reader;
-use rdh::RdhCru;
+use alice_protocol_reader::rdh::RdhCru;
 pub fn main() {
     let reader = init_reader(&Some(test_file_path)).unwrap();
 
