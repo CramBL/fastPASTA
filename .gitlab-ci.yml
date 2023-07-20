@@ -179,18 +179,22 @@ test-coverage:
         path: target/coverage/cobertura.xml
 
 # Run benchmarks and check for performance regression
-regression-benchmarks-limited:
+limited-regress-bench:
   stage: test
   needs: []
   before_script:
     - ls -l tests/regression/
   script:
     - tests/regression/regression_performance.sh
+  rules:
+  # Don't create this job if branch suffix is -bench (that unlocks the extended benchmark)
+  - if: '$CI_COMMIT_BRANCH =~ /^.*-bench$/'
+    when: never
   dependencies: []
   cache: []
 
 # Run benchmarks and check for performance regression with bigger and more files than the limited job
-regression-benchmarks-extended:
+extended-regress-bench:
   stage: test
   needs: []
   before_script:
