@@ -109,6 +109,7 @@
 pub mod bufreader_wrapper;
 pub mod config;
 pub mod data_wrapper;
+pub mod data_wrapper_boxed;
 pub mod input_scanner;
 pub mod mem_pos_tracker;
 pub mod prelude;
@@ -118,6 +119,7 @@ pub mod stats;
 pub mod stdin_reader;
 
 use crossbeam_channel::Receiver;
+use data_wrapper_boxed::CdpChunkBoxed;
 use prelude::{BufferedReaderWrapper, CdpChunk, InputScanner, ScanCDP, RDH};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{io::IsTerminal, path::PathBuf};
@@ -194,6 +196,46 @@ pub fn spawn_reader<T: RDH + 'static>(
     (thread_handle, rcv_channel)
 }
 
+/// Test
+#[inline]
+pub fn spawn_reader_boxed<T: RDH + 'static>(
+    stop_flag: std::sync::Arc<AtomicBool>,
+    input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
+) -> (std::thread::JoinHandle<()>, Receiver<CdpChunkBoxed<T>>) {
+    let reader_thread = std::thread::Builder::new().name("Reader".to_string());
+    let (send_channel, rcv_channel) = crossbeam_channel::bounded(CHANNEL_CDP_CHUNK_CAPACITY);
+    let mut local_stop_on_non_full_chunk = false;
+    const CDP_CHUNK_SIZE: usize = 100;
+    let thread_handle = reader_thread
+        .spawn({
+            move || {
+                let mut input_scanner = input_scanner;
+
+                // Automatically extracts link to filter if one is supplied
+                while !stop_flag.load(Ordering::SeqCst) && !local_stop_on_non_full_chunk {
+                    let cdps = match get_chunk_boxed::<T>(&mut input_scanner, CDP_CHUNK_SIZE) {
+                        Ok(cdp) => {
+                            if cdp.len() < CDP_CHUNK_SIZE {
+                                local_stop_on_non_full_chunk = true; // Stop on non-full chunk, could be InvalidData
+                            }
+                            cdp
+                        }
+                        Err(_) => {
+                            break;
+                        }
+                    };
+
+                    // Send a chunk to the checker
+                    if send_channel.send(cdps).is_err() {
+                        break;
+                    }
+                }
+            }
+        })
+        .expect("Failed to spawn reader thread");
+    (thread_handle, rcv_channel)
+}
+
 /// Attempts to fill a CDP chunk with as many CDPs as possible (up to the chunk size) and returns it
 ///
 /// If an error occurs after one or more CDPs have been read, the CDP chunk is returned with the CDPs read so far
@@ -227,6 +269,37 @@ fn get_chunk<T: RDH>(
     }
 
     Ok(cdp_chunk)
+}
+
+#[inline]
+fn get_chunk_boxed<T: RDH>(
+    file_scanner: &mut InputScanner<impl BufferedReaderWrapper + ?Sized>,
+    chunk_size_cdps: usize,
+) -> Result<CdpChunkBoxed<T>, std::io::Error> {
+    let mut cdp_chunk = CdpChunk::with_capacity(chunk_size_cdps);
+
+    for _ in 0..chunk_size_cdps {
+        let cdp_tuple = match file_scanner.load_cdp() {
+            Ok(cdp) => cdp,
+            Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
+                break;
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                break;
+            }
+            Err(e) => return Err(e),
+        };
+        cdp_chunk.push(cdp_tuple.0, cdp_tuple.1, cdp_tuple.2);
+    }
+
+    if cdp_chunk.is_empty() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::UnexpectedEof,
+            "No CDPs found",
+        ));
+    }
+
+    Ok(cdp_chunk.into_boxed())
 }
 
 #[cfg(test)]
