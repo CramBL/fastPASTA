@@ -118,18 +118,35 @@ impl Report {
             None
         };
 
-        let mut multi_table = match (
-            filter_stats_table.is_some(),
-            self.alpide_stats_table.is_some(),
-        ) {
+        let alpide_stats_table = if self.alpide_stats_table.is_some() {
+            Some(format_sub_table(
+                self.alpide_stats_table.take().unwrap(),
+                "ALPIDE Stats".to_string(),
+                SubtableColor::Blue,
+            ))
+        } else {
+            None
+        };
+
+        let mut multi_table = match (filter_stats_table.is_some(), alpide_stats_table.is_some()) {
             (true, true) => {
-                todo!()
+                tabled::col![
+                    global_stats_table,
+                    tabled::row![
+                        detected_attributes_table,
+                        filter_stats_table.unwrap(),
+                        alpide_stats_table.unwrap()
+                    ]
+                ]
             }
             (true, false) => tabled::col![
                 global_stats_table,
                 tabled::row![detected_attributes_table, filter_stats_table.unwrap()]
             ],
-            (false, true) => todo!(),
+            (false, true) => tabled::col![
+                global_stats_table,
+                tabled::row![detected_attributes_table, alpide_stats_table.unwrap()]
+            ],
             (false, false) => {
                 tabled::col![global_stats_table, tabled::row![detected_attributes_table]]
             }
