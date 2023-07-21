@@ -577,8 +577,12 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         }
 
         // Process the data frame
-        let (lanes_in_error_ids, lane_error_msgs) =
+        let (lanes_in_error_ids, lane_error_msgs, alpide_stats) =
             super::alpide::check_alpide_data_frame(alpide_readout_frame, self.config);
+
+        self.stats_send_ch
+            .send(StatType::AlpideStats(alpide_stats))
+            .expect("Failed to send error to stats channel");
 
         // Format and send all errors
         if !lane_error_msgs.is_empty() {

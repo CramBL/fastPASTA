@@ -6,6 +6,8 @@ use crate::config::prelude::Config;
 use crate::words;
 use alice_protocol_reader::prelude::RDH;
 
+use self::its_stats::alpide_stats::AlpideStats;
+
 mod error_stats;
 pub mod its_stats;
 pub mod lib;
@@ -55,6 +57,8 @@ pub enum StatType {
     },
     /// Record the generic FEE ID
     FeeId(u16),
+    /// Stats from ALPIDE data analysis
+    AlpideStats(AlpideStats),
 }
 
 impl std::fmt::Display for StatType {
@@ -79,6 +83,7 @@ impl std::fmt::Display for StatType {
             } => write!(f, "Layer/stave seen: {layer_id}/{stave_id}"),
             StatType::FeeId(id) => write!(f, "FEE ID: {id}"),
             StatType::TriggerType(trig_val) => write!(f, "Trigger type: {trig_val:#X}"),
+            StatType::AlpideStats(alpide_stats) => write!(f, "ALPIDE stats {alpide_stats:?}"),
         }
     }
 }

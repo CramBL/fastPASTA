@@ -5,6 +5,7 @@
 use super::super::StatType;
 
 use super::error_stats::ErrorStats;
+use super::its_stats::alpide_stats::AlpideStats;
 use super::lib;
 use super::rdh_stats::RdhStats;
 use super::stat_format_utils::format_error_codes;
@@ -30,6 +31,7 @@ use std::sync::Arc;
 pub struct StatsController<C: Config + 'static> {
     rdh_stats: RdhStats,
     error_stats: ErrorStats,
+    alpide_stats: Option<AlpideStats>,
     /// Time from [StatsController] is instantiated, to all data processing threads disconnected their [StatType] producer channel.
     pub processing_time: std::time::Instant,
     config: &'static C,
@@ -56,6 +58,13 @@ impl<C: Config + 'static> StatsController<C> {
         StatsController {
             rdh_stats: RdhStats::default(),
             error_stats: ErrorStats::default(),
+            // Only collect alpide stats if the `check all its-stave` command is used
+            alpide_stats: if matches!(global_config.check(), Some(CheckCommands::All { system }) if matches!(system, Some(System::ITS_Stave)))
+            {
+                Some(AlpideStats::default())
+            } else {
+                None
+            },
             config: global_config,
             processing_time: std::time::Instant::now(),
             max_tolerate_errors: global_config.max_tolerate_errors(),
@@ -205,6 +214,13 @@ impl<C: Config + 'static> StatsController<C> {
                 self.rdh_stats.record_fee_observed(id);
             }
             StatType::TriggerType(val) => self.rdh_stats.record_trigger_type(val),
+            StatType::AlpideStats(alp_stats) => {
+                debug_assert!(
+                    self.alpide_stats.is_some(),
+                    "Collecting ALPIDE stats without initializing ALPIDE stats object!"
+                );
+                self.alpide_stats.as_mut().unwrap().sum(alp_stats)
+            }
         }
     }
 
@@ -278,6 +294,11 @@ impl<C: Config + 'static> StatsController<C> {
                 self.rdh_stats.rdhs_seen(),
                 self.rdh_stats.payload_size(),
             ));
+        }
+
+        // Add ALPIDE stats (if they are collected)
+        if let Some(alpide_stats) = self.alpide_stats.take() {
+            add_alpide_stats_to_report(&mut report, alpide_stats);
         }
 
         // Add detected attributes
@@ -437,6 +458,42 @@ fn add_detected_attributes_to_report(report: &mut Report, rdh_stats: &RdhStats) 
             None => String::from("none").red().to_string(),
         }, // Default to TST for unit tests where no RDHs are seen
     );
+}
+
+fn add_alpide_stats_to_report(report: &mut Report, alpide_stats: AlpideStats) {
+    let mut alpide_stat: Vec<StatSummary> = Vec::new();
+
+    let readout_flags = alpide_stats.readout_flags();
+
+    alpide_stat.push(StatSummary::new(
+        "Chip Trailers seen".to_string(),
+        readout_flags.chip_trailers_seen().to_string(),
+        None,
+    ));
+
+    alpide_stat.push(StatSummary::new(
+        "Busy Violations".to_string(),
+        readout_flags.busy_violations().to_string(),
+        None,
+    ));
+
+    alpide_stat.push(StatSummary::new(
+        "Flushed Incomplete".to_string(),
+        readout_flags.flushed_incomplete().to_string(),
+        None,
+    ));
+    alpide_stat.push(StatSummary::new(
+        "Strobe Extended".to_string(),
+        readout_flags.strobe_extended().to_string(),
+        None,
+    ));
+    alpide_stat.push(StatSummary::new(
+        "Busy Transitions".to_string(),
+        readout_flags.busy_transitions().to_string(),
+        None,
+    ));
+
+    report.add_alpide_stats(tabled::Table::new(alpide_stat));
 }
 
 fn new_styled_spinner() -> ProgressBar {

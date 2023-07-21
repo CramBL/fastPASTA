@@ -1,5 +1,7 @@
 //! Contains the [ItsStats] struct which stores ITS specific data observed in the raw data
 
+pub mod alpide_stats;
+
 /// Stores ITS specific data observed through RDHs
 #[derive(Default)]
 pub struct ItsStats {
