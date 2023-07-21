@@ -29,12 +29,12 @@ pub struct Rdh1 {
 
 impl Rdh1 {
     /// Returns the bunch counter.
-    #[inline(always)]
+    #[inline]
     pub fn bc(&self) -> u16 {
         (self.bc_reserved0.0 & 0x0FFF) as u16
     }
     /// Returns the reserved bits.
-    #[inline(always)]
+    #[inline]
     pub fn reserved0(&self) -> u32 {
         self.bc_reserved0.0 >> 12
     }
@@ -59,7 +59,7 @@ impl Rdh1 {
 }
 
 impl RdhSubword for Rdh1 {
-    #[inline(always)]
+    #[inline]
     fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(Rdh1 {
             bc_reserved0: BcReserved(LittleEndian::read_u32(&buf[0..=3])),

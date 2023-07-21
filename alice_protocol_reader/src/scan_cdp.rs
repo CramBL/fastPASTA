@@ -15,7 +15,7 @@ pub trait ScanCDP {
     fn load_payload_raw(&mut self, payload_size: usize) -> Result<Vec<u8>, std::io::Error>;
 
     /// Loads the next CDP ([RDH] and payload) from the input and returns it as a ([RDH], [`Vec<u8>`], [u64]) tuple.
-    #[inline(always)]
+    #[inline]
     fn load_cdp<T: RDH>(&mut self) -> Result<CdpTuple<T>, std::io::Error> {
         let rdh: T = self.load_rdh_cru()?;
         let payload = self.load_payload_raw(rdh.payload_size() as usize)?;
