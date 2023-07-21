@@ -43,6 +43,8 @@
 //!        });
 //!```
 
+use crate::data_wrapper_boxed::CdpChunkBoxed;
+
 use super::rdh::RDH;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
@@ -221,6 +223,20 @@ impl<'a, T: RDH> Iterator for CdpChunkIter<'a, T> {
         } else {
             None
         }
+    }
+}
+
+impl<T: RDH> CdpChunk<T> {
+    /// Convert the [CdpChunk] into a boxed version: [CdpChunkBoxed]s
+    pub fn into_boxed(mut self) -> CdpChunkBoxed<T> {
+        let rdhs = std::mem::take(&mut self.rdhs).into_boxed_slice();
+        let payloads = std::mem::take(&mut self.payloads)
+            .into_iter()
+            .map(|pl| pl.into_boxed_slice())
+            .collect();
+        let rdh_mem_pos = std::mem::take(&mut self.rdh_mem_pos).into_boxed_slice();
+
+        CdpChunkBoxed::new(rdhs, payloads, rdh_mem_pos)
     }
 }
 
