@@ -9,7 +9,7 @@ use alpide_readout_frame::AlpideReadoutFrame;
 use itertools::Itertools;
 use lane_alpide_frame_analyzer::LaneAlpideFrameAnalyzer;
 
-use crate::config::custom_checks::CustomChecksOpt;
+use crate::{config::custom_checks::CustomChecksOpt, stats::its_stats::alpide_stats::AlpideStats};
 
 // Helper struct to group lanes and bunch counters, used for comparing bunch counters between lanes
 struct ValidatedLane {
@@ -23,12 +23,14 @@ struct ValidatedLane {
 pub fn check_alpide_data_frame(
     mut alpide_readout_frame: AlpideReadoutFrame,
     custom_checks: &'static impl CustomChecksOpt,
-) -> (Vec<u8>, Vec<String>) {
+) -> (Vec<u8>, Vec<String>, AlpideStats) {
     let mut lane_error_msgs: Vec<String> = Vec::new();
     let mut lane_error_ids: Vec<u8> = Vec::new();
     let mut validated_lanes: Vec<ValidatedLane> = Vec::new();
 
     let frame_from_layer = alpide_readout_frame.from_layer();
+
+    let mut total_alpide_stats = AlpideStats::default();
 
     alpide_readout_frame
         .take_lane_data_frames()
@@ -41,6 +43,7 @@ pub fn check_alpide_data_frame(
                 custom_checks.chip_orders_ob(),
                 custom_checks.chip_count_ob(),
             );
+
             let lane_number = lane_data_frame.lane_number(frame_from_layer);
             log::trace!("Processing lane #{lane_number}");
 
@@ -57,12 +60,13 @@ pub fn check_alpide_data_frame(
                         .expect("No validated bunch counter in lane readout frame with no errors"),
                 });
             }
+            total_alpide_stats.sum(*analyzer.alpide_stats()); // Add the just recorded stats to the running stats
         });
 
     // Compare all validated bunch counters to each other across lanes
     validate_lane_bcs(&validated_lanes, &mut lane_error_msgs, &mut lane_error_ids);
 
-    (lane_error_ids, lane_error_msgs)
+    (lane_error_ids, lane_error_msgs, total_alpide_stats)
 }
 
 /// Compare all validated bunch counters to each other across lanes
