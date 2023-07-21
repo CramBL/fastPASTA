@@ -5,6 +5,7 @@
 //! Implements drop to flush the remaining data to the file once processing is done.
 
 use crate::config::inputoutput::InputOutputOpt;
+use alice_protocol_reader::data_wrapper_boxed::CdpChunkBoxed;
 use alice_protocol_reader::prelude::CdpChunk;
 use alice_protocol_reader::prelude::RDH;
 
@@ -17,7 +18,7 @@ pub trait Writer<T: RDH> {
     /// Push a vector of payloads to the buffer
     fn push_payload(&mut self, payload: Vec<u8>);
     /// Push a CDP chunk to the buffer
-    fn push_cdp_chunk(&mut self, cdp_chunk: CdpChunk<T>);
+    fn push_cdp_chunk(&mut self, cdp_chunk: CdpChunkBoxed<T>);
     /// Flush the buffer to file/stdout
     fn flush(&mut self) -> std::io::Result<()>;
 }
@@ -84,7 +85,7 @@ impl<T: RDH> Writer<T> for BufferedWriter<T> {
     }
 
     #[inline]
-    fn push_cdp_chunk(&mut self, cdp_chunk: CdpChunk<T>) {
+    fn push_cdp_chunk(&mut self, cdp_chunk: CdpChunkBoxed<T>) {
         if (self.filtered_rdhs_buffer.len() + cdp_chunk.len() >= self.max_buffer_size)
             || (self.filtered_payload_buffers.len() + cdp_chunk.len() >= self.max_buffer_size)
         {
@@ -92,7 +93,7 @@ impl<T: RDH> Writer<T> for BufferedWriter<T> {
         }
         cdp_chunk.into_iter().for_each(|(rdh, payload, _)| {
             self.filtered_rdhs_buffer.push(rdh);
-            self.filtered_payload_buffers.push(payload);
+            self.filtered_payload_buffers.push(payload.to_vec());
         });
     }
 
@@ -213,7 +214,7 @@ mod tests {
         let length = cdp_chunk.len();
         {
             let mut writer = BufferedWriter::<RdhCru<V7>>::new(&config, 10);
-            writer.push_cdp_chunk(cdp_chunk);
+            writer.push_cdp_chunk(cdp_chunk.into_boxed());
             let buf_size = writer.filtered_rdhs_buffer.len();
             assert_eq!(buf_size, length);
         }

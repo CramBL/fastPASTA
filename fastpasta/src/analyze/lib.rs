@@ -5,6 +5,7 @@ use crate::config::lib::Config;
 use crate::stats;
 use crate::stats::StatType;
 use crate::stats::SystemId;
+use alice_protocol_reader::data_wrapper_boxed::CdpChunkBoxed;
 use alice_protocol_reader::prelude::*;
 use crossbeam_channel::Receiver;
 
@@ -13,7 +14,7 @@ pub fn spawn_analysis<T: RDH + 'static>(
     config: &'static impl Config,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
     stats_sender_channel: flume::Sender<StatType>,
-    data_channel: Receiver<CdpChunk<T>>,
+    data_channel: Receiver<CdpChunkBoxed<T>>,
 ) -> std::thread::JoinHandle<()> {
     let analysis_thread = std::thread::Builder::new().name("Analysis".to_string());
     let mut system_id: Option<SystemId> = None; // System ID is only set once

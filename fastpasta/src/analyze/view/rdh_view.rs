@@ -1,7 +1,7 @@
-use alice_protocol_reader::prelude::*;
+use alice_protocol_reader::{data_wrapper_boxed::CdpChunkBoxed, prelude::*};
 use std::io::Write;
 
-pub(crate) fn rdh_view<T: RDH>(cdp_chunk: &CdpChunk<T>) -> Result<(), std::io::Error> {
+pub(crate) fn rdh_view<T: RDH>(cdp_chunk: &CdpChunkBoxed<T>) -> Result<(), std::io::Error> {
     let header_text = RdhCru::<T>::rdh_header_text_with_indent_to_string(16);
     let mut stdio_lock = std::io::stdout().lock();
     writeln!(stdio_lock, "{header_text}")?;

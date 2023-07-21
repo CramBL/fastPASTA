@@ -3,11 +3,12 @@ use crate::analyze::validators::its::its_payload_fsm_cont::ItsPayloadFsmContinuo
 use crate::analyze::validators::its::lib::ItsPayloadWord;
 use crate::analyze::validators::lib::preprocess_payload;
 use crate::stats::StatType;
+use alice_protocol_reader::data_wrapper_boxed::CdpChunkBoxed;
 use alice_protocol_reader::prelude::*;
 use std::io::Write;
 
 pub(crate) fn hbf_view<T: RDH>(
-    cdp_chunk: CdpChunk<T>,
+    cdp_chunk: CdpChunkBoxed<T>,
     send_stats_ch: &flume::Sender<StatType>,
     its_payload_fsm_cont: &mut ItsPayloadFsmContinuous,
 ) -> Result<(), std::io::Error> {

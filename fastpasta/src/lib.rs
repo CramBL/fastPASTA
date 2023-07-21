@@ -77,7 +77,7 @@
 //! $ fastpasta <input_file> view rdh
 //! ```
 
-use alice_protocol_reader::prelude::*;
+use alice_protocol_reader::{data_wrapper_boxed::CdpChunkBoxed, prelude::*};
 use analyze::validators::rdh::Rdh0Validator;
 use config::prelude::*;
 use stats::StatType;
@@ -171,8 +171,8 @@ pub fn process<T: RDH + 'static>(
     // 1. Launch reader thread to read data from file or stdin
     let (reader_handle, reader_rcv_channel): (
         std::thread::JoinHandle<()>,
-        crossbeam_channel::Receiver<CdpChunk<T>>,
-    ) = alice_protocol_reader::spawn_reader(stop_flag.clone(), loader);
+        crossbeam_channel::Receiver<CdpChunkBoxed<T>>,
+    ) = alice_protocol_reader::spawn_reader_boxed(stop_flag.clone(), loader);
 
     // 2. Launch analysis thread if an analysis action is set (view or check)
     let analysis_handle = if config.check().is_some() || config.view().is_some() {
@@ -367,7 +367,7 @@ mod tests {
             stat_sender,
             data_receiver,
         );
-        data_sender.send(cdp_chunk).unwrap();
+        data_sender.send(cdp_chunk.into_boxed()).unwrap();
         drop(data_sender);
         // Sleep to give the thread time to process the data
         std::thread::sleep(std::time::Duration::from_millis(100));

@@ -35,7 +35,7 @@ pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
     prev_rdhs: ConstGenericRingBuffer<T, 2>,
 }
 
-type CdpTuple<T> = (T, Vec<u8>, u64);
+type CdpTuple<T> = (T, Box<[u8]>, u64);
 
 impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator<T, C> {
     /// Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
@@ -175,7 +175,7 @@ mod tests {
         // Send a CDP to the link validator
         let cdp = (
             CORRECT_RDH_CRU_V7,
-            vec![0x00, 0x01, 0x02],
+            vec![0x00, 0x01, 0x02].into_boxed_slice(),
             0x0000_0000_0000_0000,
         );
         _cdp_tuple_send_ch.send(cdp).unwrap();
@@ -216,7 +216,7 @@ mod tests {
         payload.extend_from_slice(&END_PAYLOAD_FLAVOR_0);
 
         // Send a CDP to the link validator
-        let cdp = (CORRECT_RDH_CRU_V7, payload, 0);
+        let cdp = (CORRECT_RDH_CRU_V7, payload.into_boxed_slice(), 0);
 
         cdp_tuple_send_ch.send(cdp).unwrap();
 
@@ -259,7 +259,7 @@ mod tests {
         payload.extend_from_slice(&END_PAYLOAD_FLAVOR_2);
 
         // Send a CDP to the link validator
-        let cdp = (CORRECT_RDH_CRU_V7, payload, 0);
+        let cdp = (CORRECT_RDH_CRU_V7, payload.into_boxed_slice(), 0);
 
         cdp_tuple_send_ch.send(cdp).unwrap();
 
@@ -308,7 +308,7 @@ mod tests {
         payload[19] = 0xE9; // Change the TDH to an invalid value
 
         // Send a CDP to the link validator
-        let cdp = (CORRECT_RDH_CRU_V7, payload, 0);
+        let cdp = (CORRECT_RDH_CRU_V7, payload.into_boxed_slice(), 0);
 
         cdp_tuple_send_ch.send(cdp).unwrap();
 

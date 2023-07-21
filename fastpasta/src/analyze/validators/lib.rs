@@ -2,9 +2,9 @@
 use super::link_validator::LinkValidator;
 use crate::config::prelude::*;
 use crate::stats::StatType;
-use alice_protocol_reader::prelude::{CdpChunk, RDH};
+use alice_protocol_reader::{data_wrapper_boxed::CdpChunkBoxed, prelude::RDH};
 
-type CdpTuple<T> = (T, Vec<u8>, u64);
+type CdpTuple<T> = (T, Box<[u8]>, u64);
 
 /// The [ValidatorDispatcher] is responsible for creating and managing the [LinkValidator] threads.
 ///
@@ -35,7 +35,7 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
     /// Iterates over and consumes a [`CdpChunk<T>`], dispatching the data to the correct thread running an instance of [LinkValidator].
     ///
     /// If a link validator thread does not exist for the link id of the current rdh, a new one is spawned
-    pub fn dispatch_cdp_chunk(&mut self, cdp_chunk: CdpChunk<T>) {
+    pub fn dispatch_cdp_chunk(&mut self, cdp_chunk: CdpChunkBoxed<T>) {
         // Iterate over the CDP chunk
         cdp_chunk.into_iter().for_each(|(rdh, data, mem_pos)| {
             // Dispatch by FEE ID if system targeted for checks is ITS Stave (gonna be a lot of data to parse for each stave!)
@@ -53,7 +53,7 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
                 DispatchId(rdh.link_id() as u16)
             };
 
-            self.dispatch_by_id(rdh, data, mem_pos, id);
+            self.dispatch_by_id(rdh, data.clone(), mem_pos, id);
         });
     }
 
@@ -71,7 +71,7 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
         link_validator
     }
 
-    fn dispatch_by_id(&mut self, rdh: T, data: Vec<u8>, mem_pos: u64, id: DispatchId) {
+    fn dispatch_by_id(&mut self, rdh: T, data: Box<[u8]>, mem_pos: u64, id: DispatchId) {
         // Check if the ID to dispatch by is already in the list of processors
         if let Some(index) = self.processors.iter().position(|&proc_id| proc_id == id) {
             // If the ID was found, use its index to send the data through the correct link validator's channel
@@ -222,12 +222,12 @@ mod tests {
         let mut disp: ValidatorDispatcher<RdhCru<V7>, MockConfig> =
             ValidatorDispatcher::new(CFG_TEST_DISPACTER.get().unwrap(), flume::unbounded().0);
 
-        let cdp_tuple: CdpTuple<RdhCru<V7>> = (CORRECT_RDH_CRU_V7, vec![0; 100], 0);
+        let cdp_tuple = (CORRECT_RDH_CRU_V7, vec![0; 100], 0);
 
         let mut cdp_chunk = CdpChunk::new();
         cdp_chunk.push_tuple(cdp_tuple);
 
-        disp.dispatch_cdp_chunk(cdp_chunk);
+        disp.dispatch_cdp_chunk(cdp_chunk.into_boxed());
 
         disp.join();
     }

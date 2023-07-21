@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
 
+use alice_protocol_reader::data_wrapper_boxed::CdpChunkBoxed;
 use crossbeam_channel::Receiver;
 
 use super::writer::BufferedWriter;
@@ -20,7 +21,7 @@ const BUFFER_SIZE: usize = 1024 * 1024; // 1MB buffer
 pub fn spawn_writer<T: RDH + 'static>(
     config: &'static impl InputOutputOpt,
     stop_flag: Arc<AtomicBool>,
-    data_channel: Receiver<CdpChunk<T>>,
+    data_channel: Receiver<CdpChunkBoxed<T>>,
 ) -> thread::JoinHandle<()> {
     let writer_thread = thread::Builder::new().name("Writer".to_string());
     writer_thread
