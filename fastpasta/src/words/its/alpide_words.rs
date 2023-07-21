@@ -74,6 +74,13 @@ impl AlpideWord {
     }
 }
 
+pub(super) enum TrailerReadoutFlags {
+    BusyViolation,     // 4'b1xxx
+    FlushedIncomplete, // 4'bx1xx
+    StrobeExtended,    // 4'bxx1x
+    BusyTransition,    // 4'bxxx1
+}
+
 /// Contains information from a single ALPIDE chip in a single frame
 ///
 /// Unsafe if used outside of the context of a single frame
