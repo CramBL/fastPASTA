@@ -2,9 +2,12 @@
 //!
 //! Analysis consists of decoding the ALPIDE data and then performing checks on the decoded data.
 
-use crate::words::its::{
-    alpide_words::{AlpideFrameChipData, LaneDataFrame},
-    Layer,
+use crate::{
+    stats::its_stats::alpide_stats::AlpideStats,
+    words::its::{
+        alpide_words::{AlpideFrameChipData, LaneDataFrame},
+        Layer,
+    },
 };
 use itertools::Itertools;
 
@@ -23,6 +26,8 @@ pub struct LaneAlpideFrameAnalyzer<'a> {
     validated_bc: Option<u8>, // Bunch counter for the frame if the bunch counters match
     valid_chip_order_ob: Option<(&'a [u8], &'a [u8])>, // Valid chip order for Outer Barrel
     valid_chip_count_ob: Option<u8>, // Valid chip count for Outer Barrel
+    /// Stats about the ALPIDE data
+    alpide_stats: AlpideStats,
 }
 
 // impl for core utlity
@@ -53,6 +58,7 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
             validated_bc: None,
             valid_chip_order_ob,
             valid_chip_count_ob,
+            alpide_stats: AlpideStats::default(),
         }
     }
 
@@ -146,6 +152,7 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
                 }
                 AlpideWord::ChipTrailer => {
                     self.is_header_seen = false;
+                    self.alpide_stats.log_readout_flags(alpide_byte);
                     log::trace!("{alpide_byte}: ChipTrailer");
                 } // Reset the header seen flag
                 AlpideWord::RegionHeader => {
@@ -329,5 +336,10 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
     /// Get the validated bunch counter. Is `None` if the bunch counters are not identical.
     pub fn validated_bc(&self) -> Option<u8> {
         self.validated_bc
+    }
+
+    /// Get the collected ALPIDE stats
+    pub fn alpide_stats(&mut self) -> &AlpideStats {
+        &self.alpide_stats
     }
 }

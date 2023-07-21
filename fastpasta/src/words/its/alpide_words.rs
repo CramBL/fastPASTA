@@ -30,14 +30,14 @@ impl LaneDataFrame {
 /// All the possible words that can be found in the ALPIDE data stream
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum AlpideWord {
-    ChipHeader,
-    ChipEmptyFrame,
-    ChipTrailer,
-    RegionHeader,
-    DataShort,
-    DataLong,
-    BusyOn,
-    BusyOff,
+    ChipHeader,     // 1010<chip id[3:0]><BUNCH_COUNTER_FOR_FRAME[10:3]>
+    ChipEmptyFrame, // 1110<chip id[3:0]><BUNCH COUNTER FOR FRAME[10:3]>
+    ChipTrailer,    // 1011<readout flags[3:0]>
+    RegionHeader,   // 110<region id[4:0]>
+    DataShort,      // 01<encoder id[3:0]><addr[9:0]>
+    DataLong,       // 00<encoder id[3:0]><addr[9:0]>0<hit map[6:0]>
+    BusyOn,         // 1111_0001
+    BusyOff,        // 1111_0000
 }
 
 impl AlpideWord {

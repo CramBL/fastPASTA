@@ -54,11 +54,12 @@ struct DetectedAttribute {
 /// Contains convenience methods to add stats to the report, and to generate the report table
 pub struct Report {
     pub(crate) stats: Vec<StatSummary>,
-    filter_stats_table: Option<Table>,
     detected_attributes: Vec<DetectedAttribute>,
     processing_time: std::time::Duration,
     fatal_error: Option<String>,
     report_table: Option<Table>,
+    filter_stats_table: Option<Table>,
+    alpide_stats_table: Option<Table>,
 }
 impl Report {
     pub fn new(processing_time: std::time::Duration) -> Self {
@@ -69,7 +70,12 @@ impl Report {
             filter_stats_table: None,
             fatal_error: None,
             report_table: None,
+            alpide_stats_table: None,
         }
+    }
+
+    pub fn add_alpide_stats(&mut self, alpide_stats_table: Table) {
+        self.alpide_stats_table = Some(alpide_stats_table);
     }
 
     pub fn add_filter_stats(&mut self, filter_stats_table: Table) {
@@ -102,24 +108,52 @@ impl Report {
             SubtableColor::Yellow,
         );
 
-        if self.filter_stats_table.is_some() {
-            let filter_stats_table = format_sub_table(
+        let filter_stats_table = if self.filter_stats_table.is_some() {
+            Some(format_sub_table(
                 self.filter_stats_table.take().unwrap(),
                 "Filter Stats".to_string(),
                 SubtableColor::Purple,
-            );
-            let mut multi_table = tabled::col![
-                global_stats_table,
-                tabled::row![detected_attributes_table, filter_stats_table]
-            ];
-            let multi_table = multi_table.with(tabled::settings::Style::rounded());
-            self.report_table = Some(format_super_table(multi_table, self.processing_time));
+            ))
         } else {
-            let mut multi_table =
-                tabled::col![global_stats_table, tabled::row![detected_attributes_table]];
-            let multi_table = multi_table.with(tabled::settings::Style::rounded());
-            self.report_table = Some(format_super_table(multi_table, self.processing_time));
-        }
+            None
+        };
+
+        let alpide_stats_table = if self.alpide_stats_table.is_some() {
+            Some(format_sub_table(
+                self.alpide_stats_table.take().unwrap(),
+                "ALPIDE Stats".to_string(),
+                SubtableColor::Blue,
+            ))
+        } else {
+            None
+        };
+
+        let mut multi_table = match (filter_stats_table.is_some(), alpide_stats_table.is_some()) {
+            (true, true) => {
+                tabled::col![
+                    global_stats_table,
+                    tabled::row![
+                        detected_attributes_table,
+                        filter_stats_table.unwrap(),
+                        alpide_stats_table.unwrap()
+                    ]
+                ]
+            }
+            (true, false) => tabled::col![
+                global_stats_table,
+                tabled::row![detected_attributes_table, filter_stats_table.unwrap()]
+            ],
+            (false, true) => tabled::col![
+                global_stats_table,
+                tabled::row![detected_attributes_table, alpide_stats_table.unwrap()]
+            ],
+            (false, false) => {
+                tabled::col![global_stats_table, tabled::row![detected_attributes_table]]
+            }
+        };
+
+        let multi_table = multi_table.with(tabled::settings::Style::rounded());
+        self.report_table = Some(format_super_table(multi_table, self.processing_time));
 
         if self.fatal_error.is_some() {
             let mut error_table = self.report_table.clone().unwrap();
