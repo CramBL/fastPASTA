@@ -3,6 +3,9 @@
 [![pipeline status](https://gitlab.cern.ch/mkonig/fastpasta/badges/master/pipeline.svg)](https://gitlab.cern.ch/mkonig/fastpasta/-/commits/master)
  [![coverage report](https://gitlab.cern.ch/mkonig/fastpasta/badges/master/coverage.svg)](https://gitlab.cern.ch/mkonig/fastpasta/-/commits/master)
  [![Latest Release](https://gitlab.cern.ch/mkonig/fastpasta/-/badges/release.svg)](https://gitlab.cern.ch/mkonig/fastpasta/-/releases)
+![Crates.io](https://img.shields.io/crates/d/fastpasta)
+![docs.rs](https://img.shields.io/docsrs/fastpasta)
+
 
 ## fast Protocol Analysis Scanner Tool for ALICE
 fastPASTA uses [Semantic Versioning](https://semver.org/).

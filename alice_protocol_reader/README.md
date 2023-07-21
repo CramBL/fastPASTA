@@ -1,5 +1,10 @@
 # [ALICE](https://home.cern/science/experiments/alice) Protocol Reader
 [![coverage report](https://gitlab.cern.ch/mkonig/fastpasta/badges/master/coverage.svg)](https://gitlab.cern.ch/mkonig/fastpasta/-/commits/master)
+![Crates.io](https://img.shields.io/crates/d/alice_protocol_reader)
+![docs.rs](https://img.shields.io/docsrs/alice_protocol_reader)
+
+
+
 ## Purpose
 Provide a simple and efficient reader (stdio/file), that let's a user read the raw binary protocol of the [ALICE Detector](https://home.cern/science/experiments/alice)'s readout system into a convenient data structure for further analysis.
 
