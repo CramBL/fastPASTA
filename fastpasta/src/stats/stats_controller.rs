@@ -478,6 +478,18 @@ fn add_alpide_stats_to_report(report: &mut Report, alpide_stats: AlpideStats) {
     ));
 
     alpide_stat.push(StatSummary::new(
+        "Data Overrun".to_string(),
+        readout_flags.data_overrun().to_string(),
+        None,
+    ));
+
+    alpide_stat.push(StatSummary::new(
+        "Transmission in Fatal".to_string(),
+        readout_flags.transmission_in_fatal().to_string(),
+        None,
+    ));
+
+    alpide_stat.push(StatSummary::new(
         "Flushed Incomplete".to_string(),
         readout_flags.flushed_incomplete().to_string(),
         None,
