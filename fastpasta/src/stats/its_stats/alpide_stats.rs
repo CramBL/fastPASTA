@@ -30,10 +30,12 @@ pub(crate) struct ReadoutFlags {
 }
 
 impl ReadoutFlags {
+    const CHIP_TRAILER_BUSY_VIOLATION: u8 = 0b1011_1000;
     pub fn log(&mut self, chip_trailer: u8) {
         self.chip_trailers_seen += 1;
-        if chip_trailer & 0b0000_1000 == 0b0000_1000 {
+        if chip_trailer == Self::CHIP_TRAILER_BUSY_VIOLATION {
             self.busy_violations += 1;
+            return; // The other flags are not set in this case
         }
         if chip_trailer & 0b0000_0100 == 0b0000_0100 {
             self.flushed_incomplete += 1;
