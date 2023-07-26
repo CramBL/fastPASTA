@@ -48,7 +48,7 @@ serde = { version = "1.0.166", features = ["serde_derive"]}
 serde_derive = "1.0.166"
 sm = "0.9.0"
 stderrlog = "0.5.4"
-tabled = { version = "0.12.2", features = ["color"]}
+tabled = { version = "0.13.0", features = ["color"]}
 toml = "0.7.6"
 descriptive_toml_derive = "0.1.0"
 alice_protocol_reader = { version = "0.9.0", path = "../alice_protocol_reader"}
