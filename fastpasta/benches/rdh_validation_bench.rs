@@ -1,5 +1,8 @@
 use alice_protocol_reader::prelude::*;
 use criterion::{black_box, BenchmarkId, Criterion};
+
+const BENCH_FILE_PATH: &str = "/home/mkonig/rawdata-debugging/thres_ols.raw";
+
 pub struct RelativeOffset(i64);
 impl RelativeOffset {
     fn new(byte_offset: u64) -> Self {
@@ -52,7 +55,7 @@ fn sanity_check_rdhs(rdh_cru_size_bytes: u64, filename: &str, iterations: usize)
 pub fn bench_rdh_sanity_check(c: &mut Criterion) {
     let mut group = c.benchmark_group("rdh_sanity_check");
     const RDH_CRU_SIZE_BYTES: u64 = 64;
-    let filename = "../fastpasta_test_files/data_ols_its-ul-v0.5_3.4GB";
+    let filename = BENCH_FILE_PATH;
     for i in [1000, 10000, 50000, 100000, 1000000].iter() {
         group.bench_with_input(BenchmarkId::new("manual", i.to_string()), i, |b, i| {
             b.iter(|| {

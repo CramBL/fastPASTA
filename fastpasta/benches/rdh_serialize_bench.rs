@@ -1,6 +1,7 @@
 use alice_protocol_reader::prelude::*;
 use criterion::Criterion;
 use std::io::Write;
+const BENCH_FILE_PATH: &str = "/home/mkonig/rawdata-debugging/data_ols_v7.raw";
 
 pub struct RelativeOffset(i64);
 impl RelativeOffset {
@@ -11,7 +12,7 @@ impl RelativeOffset {
 
 #[inline]
 fn write_rdh_manual(fileout: &str) {
-    let filename = "../fastpasta_test_files/data_ols_ul.raw";
+    let filename = BENCH_FILE_PATH;
     const RDH_CRU_SIZE_BYTES: u64 = 64;
     let filepath = std::path::PathBuf::from(filename);
     let file = std::fs::OpenOptions::new()
