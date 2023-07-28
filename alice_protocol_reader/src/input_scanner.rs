@@ -319,6 +319,8 @@ fn invalid_rdh_offset<T: RDH>(rdh: &T, current_memory_address: u64, offset_to_ne
 
 #[cfg(test)]
 mod tests {
+    use crate::prelude::RDH_CRU;
+
     use super::super::config::mock_config::MockConfig;
     use super::super::rdh::{ByteSlice, RdhCru, V6, V7};
     use flume::Receiver;
@@ -437,5 +439,57 @@ mod tests {
             rcv_channel
         };
         assert!(!rcv_stats.is_empty(), "rcv_stats was empty!");
+    }
+
+    #[test]
+    fn test_attempt_read_payload_at_eof() {
+        // Testing that the unsafe reading of payload is handled correctly in the case where the RDH indicates a payload but there's no data, just EOF.
+        let test_data = CORRECT_RDH_CRU_V7;
+
+        let tmp_dir = TempDir::new().unwrap();
+        let test_file = tmp_dir.child("test.raw");
+        std::fs::write(&test_file, test_data.to_byte_slice()).unwrap();
+        let reader = std::fs::OpenOptions::new()
+            .read(true)
+            .open(test_file)
+            .expect("File not found");
+        let bufreader = std::io::BufReader::new(reader);
+        let mut input_scanner = InputScanner::minimal(Box::new(bufreader));
+
+        let rdh = input_scanner.load_rdh_cru::<RdhCru<u8>>().unwrap();
+        let payload = input_scanner.load_payload_raw(rdh.payload_size().into());
+
+        assert!(payload.is_err());
+    }
+
+    #[test]
+    fn test_bad_payload_value() {
+        // Testing that the unsafe reading of payload is handled correctly in the case where the RDH indicates a payload but there's only a partial payload before reaching EOF.
+        let test_data = CORRECT_RDH_CRU_V7;
+
+        let tmp_dir = TempDir::new().unwrap();
+        let test_file = tmp_dir.child("test.raw");
+        // Write the RDH and a bit of a payload
+        std::fs::write(
+            &test_file,
+            [
+                test_data.to_byte_slice(),
+                &[0xe8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+            ]
+            .concat(),
+        )
+        .unwrap();
+
+        let reader = std::fs::OpenOptions::new()
+            .read(true)
+            .open(test_file)
+            .expect("File not found");
+        let bufreader = std::io::BufReader::new(reader);
+        let mut input_scanner = InputScanner::minimal(Box::new(bufreader));
+
+        let rdh = input_scanner.load_rdh_cru::<RdhCru<u8>>().unwrap();
+        let payload = input_scanner.load_payload_raw(rdh.payload_size().into());
+
+        assert!(payload.is_err());
     }
 }
