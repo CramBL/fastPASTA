@@ -2,6 +2,9 @@
 use std::{io::Read, vec};
 
 use criterion::{black_box, BenchmarkId, Criterion};
+
+const BENCH_FILE_PATH: &str = "/home/mkonig/rawdata-debugging/data_ols_v7.raw";
+
 pub struct RelativeOffset(i64);
 impl RelativeOffset {
     fn new(byte_offset: u64) -> Self {
@@ -20,7 +23,7 @@ pub fn buf_reader_with_capacity<R: std::io::Read>(
 // bybass lib arg parser with e.g.: cargo bench --bench io_benchmark -- --measurement-time 15
 #[inline]
 fn buffered_read_custom_capacity(n: usize) {
-    let path = std::path::PathBuf::from("../fastpasta_test_files/data_ols_ul.raw");
+    let path = std::path::PathBuf::from(BENCH_FILE_PATH);
     let file = std::fs::OpenOptions::new()
         .read(true)
         .open(&path)

@@ -1,3 +1,6 @@
+# v1.13.0 - Add ALPIDE stats (2023-07-26)
+Add ALPIDE stats table when using commands that check ALPIDE data. Currently only includes stats about the readout flags of the chip trailer.
+
 # v1.12.2 - Performance improvements (2023-07-20)
 Benchmarks show >10% performance improvements over `v1.12.1` across all check commands with varying types of files.
 [Example CI benchmark](https://gitlab.cern.ch/mkonig/fastpasta/-/jobs/31170333).
