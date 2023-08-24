@@ -246,7 +246,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         match status_word {
             StatusWordKind::Ihw(ihw_as_slice) => {
                 let ihw = Ihw::load(&mut <&[u8]>::clone(&ihw_as_slice)).unwrap();
-                log::debug!("{ihw}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
                     self.report_error(&format!("[E30] {e}"), ihw_as_slice);
                 }
@@ -254,7 +253,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             }
             StatusWordKind::Tdh(tdh_as_slice) => {
                 let tdh = Tdh::load(&mut <&[u8]>::clone(&tdh_as_slice)).unwrap();
-                log::debug!("{tdh}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
                     self.report_error(&format!("[E40] {e}"), tdh_as_slice);
                 }
@@ -278,7 +276,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             }
             StatusWordKind::Tdt(tdt_as_slice) => {
                 let tdt = Tdt::load(&mut <&[u8]>::clone(&tdt_as_slice)).unwrap();
-                log::debug!("{tdt}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
                     self.report_error(&format!("[E50] {e}"), tdt_as_slice);
                 }
@@ -291,7 +288,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             }
             StatusWordKind::Ddw0(ddw0_as_slice) => {
                 let ddw0 = Ddw0::load(&mut <&[u8]>::clone(&ddw0_as_slice)).unwrap();
-                log::debug!("{ddw0}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0) {
                     self.report_error(&format!("[E60] {e}"), ddw0_as_slice);
                 }
@@ -393,7 +389,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             return;
         }
         let cdw = Cdw::load(&mut <&[u8]>::clone(&cdw_slice)).unwrap();
-        log::debug!("{cdw}");
 
         if let Some(previous_cdw) = self.previous_cdw.as_ref() {
             if previous_cdw.calibration_user_fields() != cdw.calibration_user_fields()
