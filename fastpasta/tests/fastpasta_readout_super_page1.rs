@@ -105,6 +105,7 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     match_on_out_no_case(&cmd.output()?.stdout, "total errors.*3", 1)?;
     match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l1_6", 1)?;
+    assert_alpide_stats_report(&cmd.output()?.stdout, 0, 0, 0, 0, 0, 0, 0)?;
 
     Ok(())
 }
