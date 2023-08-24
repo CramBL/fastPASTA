@@ -187,6 +187,8 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     match_on_out_no_case(&cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
 
+    assert_alpide_stats_report(&cmd.output()?.stdout, 24, 0, 0, 0, 0, 0, 0)?;
+
     Ok(())
 }
 

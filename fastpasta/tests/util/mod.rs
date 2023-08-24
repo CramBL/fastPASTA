@@ -6,6 +6,9 @@ pub use assert_fs::prelude::*;
 pub use assert_fs::TempDir;
 pub use predicate::str::is_match;
 pub use predicates::prelude::*; // Used for writing assertions // Create temporary directories
+#[allow(unused_imports)]
+use pretty_assertions::{assert_eq, assert_ne, assert_str_eq};
+use regex::RegexBuilder;
 
 /// Path to test files : tests/test-data/
 /// Files
@@ -79,5 +82,51 @@ pub fn create_custom_checks_toml(
     std::io::Write::write_all(&mut custom_checks_file, toml_content.as_bytes())?;
     custom_checks_file.sync_all()?;
 
+    Ok(())
+}
+
+/// Helper to build a case-insensitive regex pattern and assert that there's a match
+/// Used to check for some pattern ending in some value (e.g. "chip.*trailers.*seen.*{expect_cnt}")
+/// Takes a string slice as input to prevent doing the `from_utf8` conversion multiple times
+fn match_count_suffix(
+    haystack: &str,
+    pre_re: &str,
+    expect_cnt: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Build regex pattern
+    let re = RegexBuilder::new(&format!("{pre_re}{expect_cnt}"))
+        .case_insensitive(true)
+        .build()
+        .unwrap();
+    assert!(
+        re.is_match(haystack),
+        "regex: {re}\nFailed to match on:\n{haystack}"
+    );
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+/// Assert that the output of the alpide stats report matches the expected values
+pub fn assert_alpide_stats_report(
+    byte_output: &[u8],
+    chip_trailers_seen: u64,
+    busy_violations: u64,
+    data_overrun: u64,
+    transmission_in_fatal: u64,
+    flushed_incomplete: u64,
+    strobe_extended: u64,
+    busy_transitions: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Convert the output to string as utf-8
+    let str_res = std::str::from_utf8(byte_output).expect("invalid utf-8 sequence");
+
+    // Check that the output contains the expected values (short circuits on first failure)
+    match_count_suffix(str_res, "chip.*trailers.*seen.*", chip_trailers_seen)?;
+    match_count_suffix(str_res, "busy.*violations.*", busy_violations)?;
+    match_count_suffix(str_res, "data.*overrun.*", data_overrun)?;
+    match_count_suffix(str_res, "transmission.*in.*fatal.*", transmission_in_fatal)?;
+    match_count_suffix(str_res, "flushed.*incomplete.*", flushed_incomplete)?;
+    match_count_suffix(str_res, "strobe.*extended.*", strobe_extended)?;
+    match_count_suffix(str_res, "busy.*transitions.*", busy_transitions)?;
     Ok(())
 }

@@ -17,7 +17,7 @@ use crate::config::custom_checks::CustomChecksOpt;
 use crate::stats::StatType;
 use alice_protocol_reader::prelude::FilterOpt;
 use alice_protocol_reader::prelude::{RdhCru, RDH, V7};
-use ringbuffer::{ConstGenericRingBuffer, RingBufferExt, RingBufferWrite};
+use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
 
 /// Main validator that handles all checks on a specific link.
 ///

@@ -187,6 +187,8 @@ fn check_all_its_trigger_period() -> Result<(), Box<dyn std::error::Error>> {
 
     match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l0_12", 1)?;
 
+    assert_alpide_stats_report(&cmd.output()?.stdout, 15, 0, 0, 0, 0, 0, 0)?;
+
     Ok(())
 }
 
@@ -205,6 +207,7 @@ fn check_all_its_stave_filter() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l0_12", 1)?;
+    assert_alpide_stats_report(&cmd.output()?.stdout, 15, 0, 0, 0, 0, 0, 0)?;
 
     Ok(())
 }
@@ -221,6 +224,7 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
     cmd.assert().success();
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    assert_alpide_stats_report(&cmd.output()?.stdout, 15, 0, 0, 0, 0, 0, 0)?;
 
     Ok(())
 }
