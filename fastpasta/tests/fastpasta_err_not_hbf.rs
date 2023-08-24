@@ -122,3 +122,24 @@ fn view_its_readout_frames() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn check_all_its_stave_debug_verbosity() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_ERR_NOT_HBF)
+        .arg("check")
+        .arg("all")
+        .arg("its-stave")
+        .arg("-v3");
+
+    cmd.assert().success();
+
+    match_on_out_no_case(&cmd.output()?.stderr, "run.*type.*SOC", 1)?;
+    // Check the total errors statistic in the report contains the E11 error code.
+    match_on_out_no_case(&cmd.output()?.stdout, "total.*errors.*E11", 1)?;
+
+    assert_alpide_stats_report(&cmd.output()?.stdout, 6, 0, 0, 0, 0, 0, 0)?;
+
+    Ok(())
+}
