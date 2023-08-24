@@ -13,9 +13,9 @@ pub struct CustomChecks {
     #[example = "0, 10"]
     triggers_pht: Option<u32>,
 
-    #[description = "Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of two lists of 7 chip IDs"]
-    #[example = "[[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]"]
-    chip_orders_ob: Option<(Vec<u8>, Vec<u8>)>,
+    #[description = "Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of lists of chip IDs"]
+    #[example = "[[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14], [1, 2, 3, 4, 5, 6, 7]]"]
+    chip_orders_ob: Option<Vec<Vec<u8>>>,
 
     #[description = "Number of chips expected in the data from Outer Barrel (ML/OL)"]
     #[example = "7"]
@@ -50,11 +50,9 @@ impl CustomChecks {
 
     /// Get the chip orders expected in the data, if it is set.
     ///
-    /// Returns a tuple of two slices, representing the legal chip orders for the Outer Barrel (ML/OL).
-    pub fn chip_orders_ob(&self) -> Option<(&[u8], &[u8])> {
-        self.chip_orders_ob
-            .as_ref()
-            .map(|(a, b)| (a.as_slice(), b.as_slice()))
+    /// Returns a slice over the valid orderings, representing the legal chip orders for the Outer Barrel (ML/OL).
+    pub fn chip_orders_ob(&self) -> Option<&[Vec<u8>]> {
+        self.chip_orders_ob.as_deref()
     }
 }
 
@@ -69,7 +67,10 @@ mod tests {
         let custom_checks = CustomChecks {
             cdps: Some(10),
             triggers_pht: Some(0),
-            chip_orders_ob: Some((vec![0, 1, 2, 3, 4, 5, 6], vec![8, 9, 10, 11, 12, 13, 14])),
+            chip_orders_ob: Some(vec![
+                vec![0, 1, 2, 3, 4, 5, 6],
+                vec![8, 9, 10, 11, 12, 13, 14],
+            ]),
             chip_count_ob: Some(7),
             rdh_version: Some(7),
         };
@@ -100,9 +101,9 @@ mod tests {
 # Example: 0, 10
 #triggers_pht = None [ u32 ] # (Uncomment and set to enable)
 
-# Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of two lists of 7 chip IDs
-# Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
-#chip_orders_ob = None [ (Vec < u8 >, Vec < u8 >) ] # (Uncomment and set to enable)
+# Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of lists of chip IDs
+# Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14], [1, 2, 3, 4, 5, 6, 7]]
+#chip_orders_ob = None [ Vec < Vec < u8 > > ] # (Uncomment and set to enable)
 
 # Number of chips expected in the data from Outer Barrel (ML/OL)
 # Example: 7
@@ -127,9 +128,9 @@ mod tests {
 # Example: 0, 10
 #triggers_pht = None [ u32 ] # (Uncomment and set to enable)
 
-# Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of two lists of 7 chip IDs
-# Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
-#chip_orders_ob = None [ (Vec < u8 >, Vec < u8 >) ] # (Uncomment and set to enable)
+# Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of lists of chip IDs
+# Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14], [1, 2, 3, 4, 5, 6, 7]]
+#chip_orders_ob = None [ Vec < Vec < u8 > > ] # (Uncomment and set to enable)
 
 # The RDH version expected in the data
 # Example: 7
@@ -150,8 +151,8 @@ cdps = 10
 # Example: 0, 10
 triggers_pht = 0
 
-# Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of two lists of 7 chip IDs
-# Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
+# Legal Chip ordering for Outer Barrel (ML/OL). Needs to be a list of lists of chip IDs
+# Example: [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14], [1, 2, 3, 4, 5, 6, 7]]
 chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 
 chip_count_ob = 7
@@ -166,7 +167,10 @@ rdh_version = 6
             CustomChecks {
                 cdps: Some(10),
                 triggers_pht: Some(0),
-                chip_orders_ob: Some((vec![0, 1, 2, 3, 4, 5, 6], vec![8, 9, 10, 11, 12, 13, 14])),
+                chip_orders_ob: Some(vec![
+                    vec![0, 1, 2, 3, 4, 5, 6],
+                    vec![8, 9, 10, 11, 12, 13, 14]
+                ]),
                 chip_count_ob: Some(7),
                 rdh_version: Some(6)
             }

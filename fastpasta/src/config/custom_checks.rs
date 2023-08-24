@@ -41,8 +41,8 @@ pub trait CustomChecksOpt {
 
     /// Get the chip orders expected in the data, if it is set.
     ///
-    /// Returns a tuple of two slices, representing the legal chip orders for the Outer Barrel (ML/OL).
-    fn chip_orders_ob(&'static self) -> Option<(&'static [u8], &'static [u8])>;
+    /// Returns a slice of vectors, representing the legal chip orders for the Outer Barrel (ML/OL).
+    fn chip_orders_ob(&'static self) -> Option<&[Vec<u8>]>;
 
     /// Get the number of chips expected in the data from Outer Barrel (ML/OL), if it is set.
     fn chip_count_ob(&'static self) -> Option<u8>;
@@ -76,7 +76,7 @@ where
         (*self).rdh_version()
     }
 
-    fn chip_orders_ob(&'static self) -> Option<(&'static [u8], &'static [u8])> {
+    fn chip_orders_ob(&'static self) -> Option<&'static [std::vec::Vec<u8>]> {
         (*self).chip_orders_ob()
     }
 
@@ -113,7 +113,7 @@ where
         (**self).rdh_version()
     }
 
-    fn chip_orders_ob(&'static self) -> Option<(&'static [u8], &'static [u8])> {
+    fn chip_orders_ob(&'static self) -> Option<&[Vec<u8>]> {
         (**self).chip_orders_ob()
     }
 
@@ -150,7 +150,7 @@ where
         (**self).rdh_version()
     }
 
-    fn chip_orders_ob(&'static self) -> Option<(&'static [u8], &'static [u8])> {
+    fn chip_orders_ob(&'static self) -> Option<&[Vec<u8>]> {
         (**self).chip_orders_ob()
     }
 
