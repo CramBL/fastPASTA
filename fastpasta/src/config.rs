@@ -335,7 +335,7 @@ impl CustomChecksOpt for Cfg {
         }
     }
 
-    fn chip_orders_ob(&'static self) -> Option<(&'static [u8], &'static [u8])> {
+    fn chip_orders_ob(&'static self) -> Option<&[Vec<u8>]> {
         if self.checks_toml.is_some() {
             self.custom_checks()
                 .expect("Custom checks are not initialized")

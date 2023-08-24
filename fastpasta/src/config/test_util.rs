@@ -168,7 +168,7 @@ impl CustomChecksOpt for MockConfig {
         }
     }
 
-    fn chip_orders_ob(&'static self) -> Option<(&'static [u8], &'static [u8])> {
+    fn chip_orders_ob(&'static self) -> Option<&[Vec<u8>]> {
         if self.custom_checks.is_some() {
             self.custom_checks.as_ref().unwrap().chip_orders_ob()
         } else {

@@ -24,7 +24,7 @@ pub struct LaneAlpideFrameAnalyzer<'a> {
     errors: Option<String>,
     from_layer: Option<Layer>,
     validated_bc: Option<u8>, // Bunch counter for the frame if the bunch counters match
-    valid_chip_order_ob: Option<(&'a [u8], &'a [u8])>, // Valid chip order for Outer Barrel
+    valid_chip_order_ob: Option<&'a [Vec<u8>]>, // Valid chip orders for Outer Barrel
     valid_chip_count_ob: Option<u8>, // Valid chip count for Outer Barrel
     /// Stats about the ALPIDE data
     alpide_stats: AlpideStats,
@@ -39,7 +39,7 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
     /// Creates a new decoder by specifying the layer the data is from
     pub fn new(
         data_origin: Layer,
-        valid_chip_order_ob: Option<(&'a [u8], &'a [u8])>,
+        valid_chip_order_ob: Option<&'a [Vec<u8>]>,
         valid_chip_count_ob: Option<u8>,
     ) -> Self {
         Self {
@@ -268,17 +268,15 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
                 }
                 Layer::Middle | Layer::Outer => {
                     // Check that the chip IDs are in the correct order
-                    if let Some((valid_order_a, valid_order_b)) = self.valid_chip_order_ob.as_ref()
-                    {
-                        if chip_ids != *valid_order_a && chip_ids != *valid_order_b {
+                    if let Some(valid_orderings) = self.valid_chip_order_ob {
+                        if !valid_orderings.contains(&chip_ids) {
+                            // If the chip IDs do not match any of the valid orders, return an error
                             return Err(format!(
-                                "{newline_indent}Expected {expected_chip_order_a:?} or {expected_chip_order_b:?} in {layer} but found {chip_ids:?}",
-                                newline_indent = Self::ERR_MSG_PREFIX,
-                                layer = data_from,
-                                expected_chip_order_a = valid_order_a,
-                                expected_chip_order_b = valid_order_b,
-                                chip_ids = chip_ids
-                            ));
+                                    "{newline_indent}Expected any order={valid_orderings:?} in {layer} but found {chip_ids:?}",
+                                    newline_indent = Self::ERR_MSG_PREFIX,
+                                    layer = data_from,
+                                    chip_ids = chip_ids
+                                ));
                         }
                     }
                 }
