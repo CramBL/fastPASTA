@@ -187,13 +187,7 @@ fn check_all_its_trigger_period() -> Result<(), Box<dyn std::error::Error>> {
 
     match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l0_12", 1)?;
 
-    match_on_out_no_case(&cmd.output()?.stdout, "chip.*trailers.*seen.*15", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "busy.*violations.*0", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "data.*overrun.*0", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "transmission.*in.*fatal.*0", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "flushed.*incomplete.*0", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "strobe.*extended.*0", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "busy.*transitions.*0", 1)?;
+    assert_alpide_stats_report(&cmd.output()?.stdout, 15, 0, 0, 0, 0, 0, 0)?;
 
     Ok(())
 }
