@@ -49,6 +49,20 @@ impl AlpideWord {
     const DATA_LONG: u8 = 0b0000_0000; // 00<encoder_id[3:0]> next 18 bits are <addr[9:0]>_0_<hit_map[6:0]>
     const BUSY_ON: u8 = 0xF0;
     const BUSY_OFF: u8 = 0xF1;
+    // ALPIDE Protocol Extension (APE) words
+    const APE_PADDING: u8 = 0x00;
+    const APE_STRIP_START: u8 = 0xF2; // Lane status = WARNING
+    const APE_DET_TIMEOUT: u8 = 0xF4; // Lane status = FATAL
+    const APE_OOT: u8 = 0xF5; // Lane status = FATAL
+    const APE_PROTOCOL_ERROR: u8 = 0xF6; // Lane status = FATAL
+    const APE_LANE_FIFO_OVERFLOW_ERROR: u8 = 0xF7; // Lane status = FATAL
+    const APE_FSM_ERROR: u8 = 0xF8; // Lane status = FATAL
+    const APE_PENDING_DETECTOR_EVENT_LIMIT: u8 = 0xF9; // Lane status = FATAL
+    const APE_PENDING_LANE_EVENT_LIMIT: u8 = 0xFA; // Lane status = FATAL
+    const APE_O2N_ERROR: u8 = 0xFB; // Lane status = FATAL
+    const APE_RATE_MISSING_TRG_ERROR: u8 = 0xFC; // Lane status = FATAL
+    const APE_PE_DATA_MISSING: u8 = 0xFD; // Lane status = WARNING
+    const APE_OOT_DATA_MISSING: u8 = 0xFE; // Lane status = WARNING
     pub fn from_byte(b: u8) -> Result<AlpideWord, ()> {
         match b {
             // Exact matches
