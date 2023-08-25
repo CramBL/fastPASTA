@@ -58,6 +58,8 @@ pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
     is_readout_frame: bool,
     // If the config is set to check ALPIDE data, the data is collected for a stave.
     from_stave: Option<Stave>,
+    // If any lane is in FATAL state (and correctly reported it through the ITS protocol), then store the lane ids here.
+    fatal_lanes: Option<Vec<u8>>,
 }
 
 impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, C> {
@@ -92,6 +94,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             alpide_readout_frame: None,
             is_readout_frame: false,
             from_stave: None,
+            fatal_lanes: None,
         }
     }
 
@@ -556,8 +559,21 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         let mem_pos_end = alpide_readout_frame.end_mem_pos();
         let is_ib = alpide_readout_frame.from_layer() == Layer::Inner;
 
+        // Process the data frame
+        let (lanes_in_error_ids, lane_error_msgs, alpide_stats, fatal_lanes) =
+            super::alpide::check_alpide_data_frame(&alpide_readout_frame, self.config);
+
+        // Add the fatal lanes to the running list of fatal lanes
+        if let Some(new_fatal_lanes) = fatal_lanes {
+            if let Some(current_fatal_lanes) = &mut self.fatal_lanes {
+                current_fatal_lanes.extend(new_fatal_lanes);
+            } else {
+                self.fatal_lanes = Some(new_fatal_lanes);
+            }
+        }
+
         // Check if the frame is valid in terms of lanes in the data.
-        if let Err(err_msg) = alpide_readout_frame.check_frame_lanes_valid() {
+        if let Err(err_msg) = alpide_readout_frame.check_frame_lanes_valid(&self.fatal_lanes) {
             // Format and send error message
             let err_code = if is_ib { "E72" } else { "E73" };
             let err_msg = format!(
@@ -570,10 +586,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                 .send(StatType::Error(err_msg.into()))
                 .expect("Failed to send error to stats channel");
         }
-
-        // Process the data frame
-        let (lanes_in_error_ids, lane_error_msgs, alpide_stats) =
-            super::alpide::check_alpide_data_frame(alpide_readout_frame, self.config);
 
         self.stats_send_ch
             .send(StatType::AlpideStats(alpide_stats))
