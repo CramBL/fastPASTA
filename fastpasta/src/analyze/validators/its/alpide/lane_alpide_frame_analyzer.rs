@@ -21,6 +21,9 @@ pub struct LaneAlpideFrameAnalyzer<'a> {
     chip_data: Vec<AlpideFrameChipData>,
     // Indicate that the next byte should be saved as bunch counter for frame
     next_is_bc: bool,
+    // Indicates that the lane status SHOULD be fatal. In this case only padding bytes should be observed which would have no effect the rest of analysis.
+    // Meaning that decoding will continue until the end of the frame, but no checks will be performed.
+    lane_status_fatal: bool,
     errors: Option<String>,
     from_layer: Option<Layer>,
     validated_bc: Option<u8>, // Bunch counter for the frame if the bunch counters match
@@ -53,6 +56,7 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
                 Layer::Middle | Layer::Outer => Vec::with_capacity(Self::ML_OL_CHIP_COUNT),
             },
             next_is_bc: false,
+            lane_status_fatal: false,
             errors: Some(String::new()),
             from_layer: Some(data_origin),
             validated_bc: None,
@@ -66,19 +70,109 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
     ///
     /// First data is decoded, then it is validated.
     /// If the validation fails, the error messages are stored in the errors vector that is returned.
-    pub fn analyze_alpide_frame(&mut self, lane_data_frame: LaneDataFrame) -> Result<(), String> {
+    pub fn analyze_alpide_frame(&mut self, lane_data_frame: &LaneDataFrame) -> Result<(), String> {
         self.lane_number = lane_data_frame.lane_number(self.from_layer.unwrap());
         log::debug!(
             "Processing ALPIDE frame for lane {lane_id}",
             lane_id = lane_data_frame.lane_id
         );
-        lane_data_frame
-            .lane_data
-            .into_iter()
-            .for_each(|alpide_byte| {
-                self.decode(alpide_byte);
-            });
+        lane_data_frame.lane_data.iter().for_each(|alpide_byte| {
+            self.decode(*alpide_byte);
+        });
+        if self.lane_status_fatal {
+            // If the lane status is fatal, skip the rest of the analysis
+            Ok(())
+        } else {
+            self.do_lane_alpide_checks()
+        }
+    }
 
+    /// Takes one ALPIDE byte at a time and decodes information from it.
+    fn decode(&mut self, alpide_byte: u8) {
+        use crate::words::its::alpide_words::{AlpideProtocolExtension, AlpideWord};
+        log::trace!("Processing {alpide_byte:#02X} ALPIDE byte");
+
+        if self.skip_n_bytes > 0 {
+            self.skip_n_bytes -= 1;
+            return;
+        }
+        if self.next_is_bc {
+            if let Err(msg) = self.store_bunch_counter(alpide_byte) {
+                self.errors.as_mut().unwrap().push_str(&msg);
+            }
+
+            // Done with the byte containing the bunch counter
+            self.next_is_bc = false;
+
+            // Skip to next byte
+            return;
+        }
+
+        if !self.is_header_seen && alpide_byte == 0 {
+            return; // Padding byte
+        }
+
+        match AlpideWord::from_byte(alpide_byte) {
+            Ok(word) => match word {
+                AlpideWord::ChipHeader => {
+                    self.is_header_seen = true;
+                    self.last_chip_id = alpide_byte & 0b1111;
+                    self.next_is_bc = true;
+                    log::trace!("{alpide_byte:#02X}: ChipHeader");
+                }
+                AlpideWord::ChipEmptyFrame => {
+                    self.is_header_seen = false;
+                    self.last_chip_id = alpide_byte & 0b1111;
+                    self.next_is_bc = true;
+                    log::trace!("{alpide_byte:#02X}: ChipEmptyFrame");
+                }
+                AlpideWord::ChipTrailer => {
+                    self.is_header_seen = false;
+                    self.alpide_stats.log_readout_flags(alpide_byte);
+                    log::trace!("{alpide_byte:#02X}: ChipTrailer");
+                } // Reset the header seen flag
+                AlpideWord::RegionHeader => {
+                    self.is_header_seen = true;
+                    log::trace!("{alpide_byte:#02X}: RegionHeader");
+                } // Do nothing at the moment
+                AlpideWord::DataShort => {
+                    self.skip_n_bytes = 1;
+                    log::trace!("{alpide_byte:#02X}: DataShort");
+                } // Skip the next byte
+                AlpideWord::DataLong => {
+                    self.skip_n_bytes = 2;
+                    log::trace!("{alpide_byte:#02X}: DataLong");
+                } // Skip the next 2 bytes
+                AlpideWord::BusyOn => log::trace!("{alpide_byte:#02X}: BusyOn word seen!"),
+                AlpideWord::BusyOff => log::trace!("{alpide_byte:#02X}: BusyOff word seen!"),
+                AlpideWord::Ape(ape) => match ape {
+                    // Lane status = WARNING
+                    AlpideProtocolExtension::StripStart => {
+                        log::warn!("{alpide_byte:#02X}: APE_STRIP_START seen!")
+                    }
+                    AlpideProtocolExtension::PeDataMissing => {
+                        log::warn!("{alpide_byte:#02X}: APE_PE_DATA_MISSING seen!")
+                    }
+                    AlpideProtocolExtension::OotDataMissing => {
+                        log::warn!("{alpide_byte:#02X}: APE_OOT_DATA_MISSING seen!")
+                    }
+                    // No effect on lane status
+                    AlpideProtocolExtension::Padding => unreachable!("Got APE_PADDING but check and early return for padding should already have been performed"),//log::trace!("{alpide_byte}: APE_PADDING"),
+                    // APEs signifying Lane status = FATAL
+                    fatal_ape => {
+                        log::warn!("{alpide_byte:#02X}: {APE} seen! This APE indicates FATAL lane status!", APE = fatal_ape);
+                        self.lane_status_fatal = true;
+                    }
+                },
+            },
+            Err(_) => {
+                log::warn!("Unknown ALPIDE word: {alpide_byte:#02X}")
+            }
+        }
+    }
+
+    // All checks performed after decoding starts here
+    fn do_lane_alpide_checks(&mut self) -> Result<(), String> {
         // Check all bunch counters match
         if let Err(msg) = self.check_bunch_counters() {
             // if it is already in the errors_per_lane, add it to the list
@@ -108,71 +202,6 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
             Err(self.errors.take().unwrap())
         } else {
             Ok(())
-        }
-    }
-
-    /// Takes one ALPIDE byte at a time and decodes information from it.
-    pub fn decode(&mut self, alpide_byte: u8) {
-        use crate::words::its::alpide_words::AlpideWord;
-        log::trace!("Processing {:02X?} bytes", alpide_byte);
-
-        if self.skip_n_bytes > 0 {
-            self.skip_n_bytes -= 1;
-            return;
-        }
-        if self.next_is_bc {
-            if let Err(msg) = self.store_bunch_counter(alpide_byte) {
-                self.errors.as_mut().unwrap().push_str(&msg);
-            }
-
-            // Done with the byte containing the bunch counter
-            self.next_is_bc = false;
-
-            // Skip to next byte
-            return;
-        }
-
-        if !self.is_header_seen && alpide_byte == 0 {
-            return; // Padding byte
-        }
-
-        match AlpideWord::from_byte(alpide_byte) {
-            Ok(word) => match word {
-                AlpideWord::ChipHeader => {
-                    self.is_header_seen = true;
-                    self.last_chip_id = alpide_byte & 0b1111;
-                    self.next_is_bc = true;
-                    log::trace!("{alpide_byte}: ChipHeader");
-                }
-                AlpideWord::ChipEmptyFrame => {
-                    self.is_header_seen = false;
-                    self.last_chip_id = alpide_byte & 0b1111;
-                    self.next_is_bc = true;
-                    log::trace!("{alpide_byte}: ChipEmptyFrame");
-                }
-                AlpideWord::ChipTrailer => {
-                    self.is_header_seen = false;
-                    self.alpide_stats.log_readout_flags(alpide_byte);
-                    log::trace!("{alpide_byte}: ChipTrailer");
-                } // Reset the header seen flag
-                AlpideWord::RegionHeader => {
-                    self.is_header_seen = true;
-                    log::trace!("{alpide_byte}: RegionHeader");
-                } // Do nothing at the moment
-                AlpideWord::DataShort => {
-                    self.skip_n_bytes = 1;
-                    log::trace!("{alpide_byte}: DataShort");
-                } // Skip the next byte
-                AlpideWord::DataLong => {
-                    self.skip_n_bytes = 2;
-                    log::trace!("{alpide_byte}: DataLong");
-                } // Skip the next 2 bytes
-                AlpideWord::BusyOn => log::trace!("{alpide_byte}: BusyOn word seen!"),
-                AlpideWord::BusyOff => log::trace!("{alpide_byte}: BusyOff word seen!"),
-            },
-            Err(_) => {
-                log::warn!("Unknown ALPIDE word: {alpide_byte:#02X}")
-            }
         }
     }
 
@@ -329,6 +358,11 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
         } else {
             false
         }
+    }
+
+    /// Get if the lane status is fatal (To avoid checking the data against other lanes that were validated in the same readout frame)
+    pub fn is_fatal_lane(&self) -> bool {
+        self.lane_status_fatal
     }
 
     /// Get the validated bunch counter. Is `None` if the bunch counters are not identical.
