@@ -5,6 +5,7 @@ use super::{
     data_words::{ib_data_word_id_to_lane, ob_data_word_id_to_lane},
     Layer,
 };
+use std::fmt::Display;
 
 /// Struct for storing the contents of data words for a specific lane, in a readout frame
 #[derive(Default)]
@@ -27,28 +28,37 @@ impl LaneDataFrame {
     }
 }
 
-/// All the possible words that can be found in the ALPIDE data stream
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum AlpideWord {
-    ChipHeader,     // 1010<chip id[3:0]><BUNCH_COUNTER_FOR_FRAME[10:3]>
-    ChipEmptyFrame, // 1110<chip id[3:0]><BUNCH COUNTER FOR FRAME[10:3]>
-    ChipTrailer,    // 1011<readout flags[3:0]>
-    RegionHeader,   // 110<region id[4:0]>
-    DataShort,      // 01<encoder id[3:0]><addr[9:0]>
-    DataLong,       // 00<encoder id[3:0]><addr[9:0]>0<hit map[6:0]>
-    BusyOn,         // 1111_0001
-    BusyOff,        // 1111_0000
+pub(crate) enum AlpideProtocolExtension {
+    /// Padding word - Lane status = OK
+    Padding,
+    /// Strip start - Lane status = WARNING
+    StripStart,
+    /// Detector timeout - Lane status = FATAL
+    DetectorTimeout,
+    /// Out of table (8b10b OOT) - Lane status = FATAL
+    OutOfTable,
+    /// Protocol error - Lane status = FATAL
+    ProtocolError,
+    /// Lane FIFO overflow error - Lane status = FATAL
+    LaneFifoOverflowError,
+    /// FSM error - Lane status = FATAL
+    FsmError,
+    /// Pending detector event limit - Lane status = FATAL
+    PendingDetectorEventLimit,
+    /// Pending lane event limit - Lane status = FATAL
+    PendingLaneEventLimit,
+    /// O2N error - Lane status = FATAL
+    O2nError,
+    /// Rate missing trigger error - Lane status = FATAL
+    RateMissingTriggerError,
+    /// PE data missing - Lane status = WARNING
+    PeDataMissing,
+    /// OOT data missing - Lane status = WARNING
+    OotDataMissing,
 }
 
-impl AlpideWord {
-    const CHIP_HEADER: u8 = 0xA0; // 1010_<chip_id[3:0]> next 8 bits are bit [10:3] of the bunch counter for the frame
-    const CHIP_EMPTY_FRAME: u8 = 0xE0; // 1110_<chip_id[3:0]> next 8 bits are bit [10:3] of the bunch counter for the frame
-    const CHIP_TRAILER: u8 = 0xB0; // 1011_<readout_flags[3:0]>
-    const REGION_HEADER: u8 = 0xC0; // 110<region_id[4:0]>
-    const DATA_SHORT: u8 = 0b0100_0000; // 01<encoder_id[3:0]> next 10 bits are <addr[9:0]>
-    const DATA_LONG: u8 = 0b0000_0000; // 00<encoder_id[3:0]> next 18 bits are <addr[9:0]>_0_<hit_map[6:0]>
-    const BUSY_ON: u8 = 0xF0;
-    const BUSY_OFF: u8 = 0xF1;
+impl AlpideProtocolExtension {
     // ALPIDE Protocol Extension (APE) words
     const APE_PADDING: u8 = 0x00;
     const APE_STRIP_START: u8 = 0xF2; // Lane status = WARNING
@@ -63,11 +73,94 @@ impl AlpideWord {
     const APE_RATE_MISSING_TRG_ERROR: u8 = 0xFC; // Lane status = FATAL
     const APE_PE_DATA_MISSING: u8 = 0xFD; // Lane status = WARNING
     const APE_OOT_DATA_MISSING: u8 = 0xFE; // Lane status = WARNING
-    pub fn from_byte(b: u8) -> Result<AlpideWord, ()> {
+
+    #[inline]
+    fn from_byte(b: u8) -> Result<AlpideWord, ()> {
         match b {
-            // Exact matches
-            Self::BUSY_ON => Ok(AlpideWord::BusyOn),
-            Self::BUSY_OFF => Ok(AlpideWord::BusyOff),
+            Self::APE_PADDING => Ok(AlpideWord::Ape(AlpideProtocolExtension::Padding)),
+            Self::APE_STRIP_START => Ok(AlpideWord::Ape(AlpideProtocolExtension::StripStart)),
+            Self::APE_DET_TIMEOUT => Ok(AlpideWord::Ape(AlpideProtocolExtension::DetectorTimeout)),
+            Self::APE_OOT => Ok(AlpideWord::Ape(AlpideProtocolExtension::OutOfTable)),
+            Self::APE_PROTOCOL_ERROR => Ok(AlpideWord::Ape(AlpideProtocolExtension::ProtocolError)),
+            Self::APE_LANE_FIFO_OVERFLOW_ERROR => Ok(AlpideWord::Ape(
+                AlpideProtocolExtension::LaneFifoOverflowError,
+            )),
+            Self::APE_FSM_ERROR => Ok(AlpideWord::Ape(AlpideProtocolExtension::FsmError)),
+            Self::APE_PENDING_DETECTOR_EVENT_LIMIT => Ok(AlpideWord::Ape(
+                AlpideProtocolExtension::PendingDetectorEventLimit,
+            )),
+            Self::APE_PENDING_LANE_EVENT_LIMIT => Ok(AlpideWord::Ape(
+                AlpideProtocolExtension::PendingLaneEventLimit,
+            )),
+            Self::APE_O2N_ERROR => Ok(AlpideWord::Ape(AlpideProtocolExtension::O2nError)),
+            Self::APE_RATE_MISSING_TRG_ERROR => Ok(AlpideWord::Ape(
+                AlpideProtocolExtension::RateMissingTriggerError,
+            )),
+            Self::APE_PE_DATA_MISSING => {
+                Ok(AlpideWord::Ape(AlpideProtocolExtension::PeDataMissing))
+            }
+            Self::APE_OOT_DATA_MISSING => {
+                Ok(AlpideWord::Ape(AlpideProtocolExtension::OotDataMissing))
+            }
+            _ => Err(()),
+        }
+    }
+}
+
+impl Display for AlpideProtocolExtension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AlpideProtocolExtension::Padding => write!(f, "APE_PADDING"),
+            AlpideProtocolExtension::StripStart => write!(f, "APE_STRIP_START"),
+            AlpideProtocolExtension::DetectorTimeout => write!(f, "APE_DET_TIMEOUT"),
+            AlpideProtocolExtension::OutOfTable => write!(f, "APE_OOT"),
+            AlpideProtocolExtension::ProtocolError => write!(f, "APE_PROTOCOL_ERROR"),
+            AlpideProtocolExtension::LaneFifoOverflowError => {
+                write!(f, "APE_LANE_FIFO_OVERFLOW_ERROR")
+            }
+            AlpideProtocolExtension::FsmError => write!(f, "APE_FSM_ERROR"),
+            AlpideProtocolExtension::PendingDetectorEventLimit => {
+                write!(f, "APE_PENDING_DETECTOR_EVENT_LIMIT")
+            }
+            AlpideProtocolExtension::PendingLaneEventLimit => {
+                write!(f, "APE_PENDING_LANE_EVENT_LIMIT")
+            }
+            AlpideProtocolExtension::O2nError => write!(f, "APE_O2N_ERROR"),
+            AlpideProtocolExtension::RateMissingTriggerError => {
+                write!(f, "APE_RATE_MISSING_TRG_ERROR")
+            }
+            AlpideProtocolExtension::PeDataMissing => write!(f, "APE_PE_DATA_MISSING"),
+            AlpideProtocolExtension::OotDataMissing => write!(f, "APE_OOT_DATA_MISSING"),
+        }
+    }
+}
+
+/// All the possible words that can be found in the ALPIDE data stream
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AlpideWord {
+    ChipHeader,     // 1010<chip id[3:0]><BUNCH_COUNTER_FOR_FRAME[10:3]>
+    ChipEmptyFrame, // 1110<chip id[3:0]><BUNCH COUNTER FOR FRAME[10:3]>
+    ChipTrailer,    // 1011<readout flags[3:0]>
+    RegionHeader,   // 110<region id[4:0]>
+    DataShort,      // 01<encoder id[3:0]><addr[9:0]>
+    DataLong,       // 00<encoder id[3:0]><addr[9:0]>0<hit map[6:0]>
+    BusyOn,         // 1111_0001
+    BusyOff,        // 1111_0000
+    Ape(AlpideProtocolExtension),
+}
+
+impl AlpideWord {
+    const CHIP_HEADER: u8 = 0xA0; // 1010_<chip_id[3:0]> next 8 bits are bit [10:3] of the bunch counter for the frame
+    const CHIP_EMPTY_FRAME: u8 = 0xE0; // 1110_<chip_id[3:0]> next 8 bits are bit [10:3] of the bunch counter for the frame
+    const CHIP_TRAILER: u8 = 0xB0; // 1011_<readout_flags[3:0]>
+    const REGION_HEADER: u8 = 0xC0; // 110<region_id[4:0]>
+    const DATA_SHORT: u8 = 0b0100_0000; // 01<encoder_id[3:0]> next 10 bits are <addr[9:0]>
+    const DATA_LONG: u8 = 0b0000_0000; // 00<encoder_id[3:0]> next 18 bits are <addr[9:0]>_0_<hit_map[6:0]>
+    const BUSY_ON: u8 = 0xF0;
+    const BUSY_OFF: u8 = 0xF1;
+    pub fn from_byte(b: u8) -> Result<AlpideWord, ()> {
+        #[allow(clippy::match_single_binding)]
+        match b {
             four_msb => match four_msb & 0xF0 {
                 // Match on the 4 MSB
                 Self::CHIP_HEADER => Ok(AlpideWord::ChipHeader),
@@ -80,10 +173,20 @@ impl AlpideWord {
                         // Match on the 2 MSB
                         Self::DATA_SHORT => Ok(AlpideWord::DataShort),
                         Self::DATA_LONG => Ok(AlpideWord::DataLong),
-                        _ => Err(()),
+                        // Still no match, try the more uncommon exact matches including protocol extensions
+                        _ => Self::match_exact(b),
                     },
                 },
             },
+        }
+    }
+
+    #[inline]
+    fn match_exact(b: u8) -> Result<AlpideWord, ()> {
+        match b {
+            Self::BUSY_ON => Ok(AlpideWord::BusyOn),
+            Self::BUSY_OFF => Ok(AlpideWord::BusyOff),
+            _ => AlpideProtocolExtension::from_byte(b),
         }
     }
 }
