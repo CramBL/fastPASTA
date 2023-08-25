@@ -160,8 +160,8 @@ impl<T: RDH> IntoIterator for CdpChunk<T> {
             iter: self
                 .rdhs
                 .into_iter()
-                .zip(self.payloads.into_iter())
-                .zip(self.rdh_mem_pos.into_iter())
+                .zip(self.payloads)
+                .zip(self.rdh_mem_pos)
                 .map(|((rdh, payload), mem_pos)| (rdh, payload, mem_pos))
                 .collect::<Vec<_>>()
                 .into_iter(),

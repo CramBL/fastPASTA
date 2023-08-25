@@ -58,6 +58,8 @@ pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
     is_readout_frame: bool,
     // If the config is set to check ALPIDE data, the data is collected for a stave.
     from_stave: Option<Stave>,
+    // If any lane is in FATAL state (and correctly reported it through the ITS protocol), then store the lane ids here.
+    fatal_lanes: Option<Vec<u8>>,
 }
 
 impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, C> {
@@ -92,6 +94,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             alpide_readout_frame: None,
             is_readout_frame: false,
             from_stave: None,
+            fatal_lanes: None,
         }
     }
 
@@ -246,7 +249,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         match status_word {
             StatusWordKind::Ihw(ihw_as_slice) => {
                 let ihw = Ihw::load(&mut <&[u8]>::clone(&ihw_as_slice)).unwrap();
-                log::debug!("{ihw}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
                     self.report_error(&format!("[E30] {e}"), ihw_as_slice);
                 }
@@ -254,7 +256,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             }
             StatusWordKind::Tdh(tdh_as_slice) => {
                 let tdh = Tdh::load(&mut <&[u8]>::clone(&tdh_as_slice)).unwrap();
-                log::debug!("{tdh}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
                     self.report_error(&format!("[E40] {e}"), tdh_as_slice);
                 }
@@ -278,7 +279,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             }
             StatusWordKind::Tdt(tdt_as_slice) => {
                 let tdt = Tdt::load(&mut <&[u8]>::clone(&tdt_as_slice)).unwrap();
-                log::debug!("{tdt}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
                     self.report_error(&format!("[E50] {e}"), tdt_as_slice);
                 }
@@ -291,7 +291,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             }
             StatusWordKind::Ddw0(ddw0_as_slice) => {
                 let ddw0 = Ddw0::load(&mut <&[u8]>::clone(&ddw0_as_slice)).unwrap();
-                log::debug!("{ddw0}");
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0) {
                     self.report_error(&format!("[E60] {e}"), ddw0_as_slice);
                 }
@@ -393,7 +392,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             return;
         }
         let cdw = Cdw::load(&mut <&[u8]>::clone(&cdw_slice)).unwrap();
-        log::debug!("{cdw}");
 
         if let Some(previous_cdw) = self.previous_cdw.as_ref() {
             if previous_cdw.calibration_user_fields() != cdw.calibration_user_fields()
@@ -561,8 +559,21 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         let mem_pos_end = alpide_readout_frame.end_mem_pos();
         let is_ib = alpide_readout_frame.from_layer() == Layer::Inner;
 
+        // Process the data frame
+        let (lanes_in_error_ids, lane_error_msgs, alpide_stats, fatal_lanes) =
+            super::alpide::check_alpide_data_frame(&alpide_readout_frame, self.config);
+
+        // Add the fatal lanes to the running list of fatal lanes
+        if let Some(new_fatal_lanes) = fatal_lanes {
+            if let Some(current_fatal_lanes) = &mut self.fatal_lanes {
+                current_fatal_lanes.extend(new_fatal_lanes);
+            } else {
+                self.fatal_lanes = Some(new_fatal_lanes);
+            }
+        }
+
         // Check if the frame is valid in terms of lanes in the data.
-        if let Err(err_msg) = alpide_readout_frame.check_frame_lanes_valid() {
+        if let Err(err_msg) = alpide_readout_frame.check_frame_lanes_valid(&self.fatal_lanes) {
             // Format and send error message
             let err_code = if is_ib { "E72" } else { "E73" };
             let err_msg = format!(
@@ -575,10 +586,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                 .send(StatType::Error(err_msg.into()))
                 .expect("Failed to send error to stats channel");
         }
-
-        // Process the data frame
-        let (lanes_in_error_ids, lane_error_msgs, alpide_stats) =
-            super::alpide::check_alpide_data_frame(alpide_readout_frame, self.config);
 
         self.stats_send_ch
             .send(StatType::AlpideStats(alpide_stats))
