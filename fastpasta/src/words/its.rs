@@ -76,7 +76,7 @@ impl Stave {
         let layer = layer_from_feeid(fee_id);
         let stave = stave_number_from_feeid(fee_id);
         match layer {
-            0 | 1 | 2 => Stave::InnerLayer { layer, stave },
+            0..=2 => Stave::InnerLayer { layer, stave },
             3 | 4 => Stave::MiddleLayer { layer, stave },
             5 | 6 => Stave::OuterLayer { layer, stave },
             _ => panic!("Invalid layer number"),
