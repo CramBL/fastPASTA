@@ -52,16 +52,21 @@ impl AlpideReadoutFrame {
     }
 
     /// Check if the frame is valid in terms of number of lanes in the data and for IB, the lane grouping.
-    pub fn check_frame_lanes_valid(&self) -> Result<(), String> {
+    pub fn check_frame_lanes_valid(&self, fatal_lanes: &Option<Vec<u8>>) -> Result<(), String> {
         debug_assert_ne!(
             self.frame_end_mem_pos, 0,
             "Attempted check a lane data frame's validity before closing it"
         );
-        let expect_lane_count = match self.from_layer() {
+        let mut expect_lane_count = match self.from_layer() {
             Layer::Inner => Self::IL_FRAME_LANE_COUNT,
             Layer::Middle => Self::ML_FRAME_LANE_COUNT,
             Layer::Outer => Self::OL_FRAME_LANE_COUNT,
         };
+
+        // Check if any lanes are in FATAL state, in that case lower the expected lane count
+        if let Some(fatal_lanes) = fatal_lanes {
+            expect_lane_count -= fatal_lanes.len();
+        }
 
         // Check number of lanes is correct, then if IB, also check lane grouping is correct
         if self.lane_data_frames.len() != expect_lane_count {
@@ -77,6 +82,7 @@ impl AlpideReadoutFrame {
                 .map(|lane_data_frame| ib_data_word_id_to_lane(lane_data_frame.lane_id))
                 .collect::<Vec<u8>>();
             lane_ids.sort_unstable();
+            // TODO: make compatible with lanes reported to be in FATAL state.
             match lane_ids.as_slice() {
                 &[0, 1, 2] | &[3, 4, 5] | &[6, 7, 8] => return Ok(()),
                 _ => return Err("Invalid lane grouping".to_string()),
