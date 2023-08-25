@@ -21,20 +21,21 @@ struct ValidatedLane {
 ///
 /// Returns a tuple of a vector of lane ids with errors, and a vector of error messages.
 pub fn check_alpide_data_frame(
-    mut alpide_readout_frame: AlpideReadoutFrame,
+    alpide_readout_frame: &AlpideReadoutFrame,
     custom_checks: &'static impl CustomChecksOpt,
-) -> (Vec<u8>, Vec<String>, AlpideStats) {
+) -> (Vec<u8>, Vec<String>, AlpideStats, Option<Vec<u8>>) {
     let mut lane_error_msgs: Vec<String> = Vec::new();
     let mut lane_error_ids: Vec<u8> = Vec::new();
     let mut validated_lanes: Vec<ValidatedLane> = Vec::new();
+    let mut fatal_lanes: Option<Vec<u8>> = None;
 
     let frame_from_layer = alpide_readout_frame.from_layer();
 
     let mut total_alpide_stats = AlpideStats::default();
 
     alpide_readout_frame
-        .take_lane_data_frames()
-        .into_iter()
+        .lane_data_frames_as_slice()
+        .iter()
         .for_each(|lane_data_frame| {
             // Process data for each lane
             // New decoder for each lane
@@ -51,6 +52,12 @@ pub fn check_alpide_data_frame(
                 error_msgs.insert_str(0, &format!("\n\tLane {lane_number} errors: "));
                 lane_error_msgs.push(error_msgs);
                 lane_error_ids.push(lane_number);
+            } else if analyzer.is_fatal_lane() {
+                log::warn!("Lane {lane_number} is in FATAL state, now expecting 1 fewer lane in data frames");
+                if fatal_lanes.is_none() {
+                    fatal_lanes = Some(Vec::new());
+                }
+                fatal_lanes.as_mut().unwrap().push(lane_number);
             } else {
                 // If the bunch counter is validated for this lane, add it to the list of validated lanes.
                 validated_lanes.push(ValidatedLane {
@@ -66,7 +73,12 @@ pub fn check_alpide_data_frame(
     // Compare all validated bunch counters to each other across lanes
     validate_lane_bcs(&validated_lanes, &mut lane_error_msgs, &mut lane_error_ids);
 
-    (lane_error_ids, lane_error_msgs, total_alpide_stats)
+    (
+        lane_error_ids,
+        lane_error_msgs,
+        total_alpide_stats,
+        fatal_lanes,
+    )
 }
 
 /// Compare all validated bunch counters to each other across lanes
