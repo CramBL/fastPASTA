@@ -25,6 +25,7 @@ pub const FILE_TDH_NO_DATA: &str = "../tests/test-data/tdh_no_data.raw";
 pub const FILE_TDH_NO_DATA_IHW: &str = "../tests/test-data/tdh_no_data_ihw.raw";
 pub const FILE_RAWTF_EPN180_L6_1: &str = "../tests/test-data/rawtf_epn180_l6_1.raw";
 pub const FILE_RAWTF_FEE_24612_4RDHS: &str = "../tests/test-data/o2_rawtf_fee24612_4rdh.raw";
+pub const FILE_INVALID_LANE_ORDER_1RDH: &str = "../tests/test-data/invalid_lane_order_1rdh.raw";
 
 pub const FILE_OUTPUT_TMP: &str = "../tests/test-data/output.tmp";
 
