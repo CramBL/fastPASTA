@@ -677,7 +677,7 @@ mod tests {
         let mut validator = RdhCruSanityValidator::default();
         let rdh0 = CORRECT_RDH_CRU_V7.rdh0();
         let rdh_cru: RdhCru<u8> = RdhCru::new(
-            rdh0.clone(),
+            *rdh0,
             CORRECT_RDH_CRU_V7.offset_to_next(),
             CORRECT_RDH_CRU_V7.payload_size(),
             CORRECT_RDH_CRU_V7.link_id(),

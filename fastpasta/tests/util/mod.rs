@@ -25,6 +25,8 @@ pub const FILE_TDH_NO_DATA: &str = "../tests/test-data/tdh_no_data.raw";
 pub const FILE_TDH_NO_DATA_IHW: &str = "../tests/test-data/tdh_no_data_ihw.raw";
 pub const FILE_RAWTF_EPN180_L6_1: &str = "../tests/test-data/rawtf_epn180_l6_1.raw";
 pub const FILE_RAWTF_FEE_24612_4RDHS: &str = "../tests/test-data/o2_rawtf_fee24612_4rdh.raw";
+pub const FILE_INVALID_LANE_ORDER_1HBF: &str = "../tests/test-data/invalid_lane_order_1hbf.raw";
+pub const FILE_CI_OLS_DATA_1HBF: &str = "../tests/test-data/ci_ols_data_1hbf.raw"; // has chip ordering problem because one chip is disabled
 
 pub const FILE_OUTPUT_TMP: &str = "../tests/test-data/output.tmp";
 
@@ -65,12 +67,13 @@ pub fn match_on_out_no_case(
     Ok(())
 }
 
-/// Helper function takes in the output of stderr and asserts that there are no errors or warnings
+/// Helper function takes in the output of stderr and asserts that there are no errors, warnings, or thread panics.
 pub fn assert_no_errors_or_warn(
     stderr_byte_output: &[u8],
 ) -> Result<(), Box<dyn std::error::Error>> {
     match_on_out_no_case(stderr_byte_output, "error - ", 0)?;
     match_on_out_no_case(stderr_byte_output, "warn - ", 0)?;
+    match_on_out_no_case(stderr_byte_output, "thread.*panicked", 0)?;
     Ok(())
 }
 
