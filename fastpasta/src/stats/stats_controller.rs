@@ -239,6 +239,7 @@ impl<C: Config + 'static> StatsController<C> {
             self.error_stats
                 .check_errors_for_stave_id(self.rdh_stats.layer_staves_as_slice());
         }
+        self.spinner.as_mut().unwrap().abandon();
         if !self.config.mute_errors() {
             // Print the errors, limited if there's a max error limit set
             if self.max_tolerate_errors > 0 {
@@ -413,6 +414,10 @@ impl<C: Config + 'static> StatsController<C> {
         if self.spinner.is_some() {
             self.append_spinner_msg("... completed");
             self.spinner.as_mut().unwrap().abandon();
+            self.spinner = Some(new_styled_spinner());
+            self.spinner_message = "".to_string();
+            self.spinner.as_mut().unwrap().set_prefix(prefix);
+        } else {
             self.spinner = Some(new_styled_spinner());
             self.spinner_message = "".to_string();
             self.spinner.as_mut().unwrap().set_prefix(prefix);
