@@ -188,7 +188,7 @@ limited-regress-bench:
     - tests/regression/regression_performance.sh
   rules:
   # Don't create this job if branch suffix is -bench (that unlocks the extended benchmark)
-  - if: '$CI_COMMIT_BRANCH =~ /^.*-bench$/'
+  - if: $CI_COMMIT_BRANCH =~ /^.*-bench$/
     when: never
   dependencies: []
   cache: []
@@ -210,10 +210,10 @@ extended-regress-bench:
   - if: $CI_COMMIT_MESSAGE =~ /\[.*skip-bench.*\]/
     when: never
   # Create job for a merge commit to the normal MR target branch of the project ("master").
-  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     when: on_success
   # Allow manual creation of job if branch suffix is -bench
-  - if: '$CI_COMMIT_BRANCH =~ /^.*-bench$/'
+  - if: $CI_COMMIT_BRANCH =~ /^.*-bench$/
     when: manual
     allow_failure: true
   dependencies: []

@@ -76,22 +76,62 @@ impl AlpideReadoutFrame {
             ))
         } else if self.from_layer() == Layer::Inner {
             // Check frame lane grouping is correct (these groupings are hardcoded in the firmware)
-            let mut lane_ids = self
-                .lane_data_frames
-                .iter()
-                .map(|lane_data_frame| ib_data_word_id_to_lane(lane_data_frame.lane_id))
-                .collect::<Vec<u8>>();
-            lane_ids.sort_unstable();
-            // TODO: make compatible with lanes reported to be in FATAL state.
-            match lane_ids.as_slice() {
-                &[0, 1, 2] | &[3, 4, 5] | &[6, 7, 8] => return Ok(()),
-                _ => return Err("Invalid lane grouping".to_string()),
-            }
+            validate_inner_lane_groupings(&self.lane_data_frames, fatal_lanes)
         } else {
             // No grouping to check for outer barrel
             return Ok(());
         }
     }
+}
+
+/// Validate the inner lane grouping (these groupings are hardcoded in the firmware)
+/// if no fatal lanes are present, then the valid groupings are:
+///  - `[0, 1, 2]`
+///  - `[3, 4, 5]`
+///  - `[6, 7, 8]`
+///
+/// if there's any known fatal lanes then the groupings are adjusted to exclude those lanes.
+/// e.g. if lane 1 is fatal then the first valid grouping is `[0, 2]` instead of `[0, 1, 2]`
+#[inline]
+pub(crate) fn validate_inner_lane_groupings(
+    lane_data_frames: &[LaneDataFrame],
+    fatal_lanes: &Option<Vec<u8>>,
+) -> Result<(), String> {
+    let mut lane_ids = lane_data_frames
+        .iter()
+        .map(|lane_data_frame| ib_data_word_id_to_lane(lane_data_frame.lane_id))
+        .collect::<Vec<u8>>();
+    lane_ids.sort_unstable();
+
+    let mut valid_lane_groupings: [Vec<u8>; 3] = [vec![0, 1, 2], vec![3, 4, 5], vec![6, 7, 8]];
+    if let Some(fatal_lane) = fatal_lanes {
+        for fl in fatal_lane {
+            match fl {
+                0..=2 => unsafe {
+                    valid_lane_groupings
+                        .get_unchecked_mut(0)
+                        .retain(|&x| x != *fl)
+                },
+                3..=5 => unsafe {
+                    valid_lane_groupings
+                        .get_unchecked_mut(1)
+                        .retain(|&x| x != *fl)
+                },
+                6..=8 => unsafe {
+                    valid_lane_groupings
+                        .get_unchecked_mut(2)
+                        .retain(|&x| x != *fl)
+                },
+                _ => unreachable!("Invalid fatal lane number: {fl}"),
+            }
+        }
+    }
+    for lane_grouping in valid_lane_groupings.iter() {
+        if lane_ids == lane_grouping.as_slice() {
+            return Ok(());
+        }
+    }
+    Err("Invalid lane grouping".into())
 }
 
 // impl for simple utility functions
