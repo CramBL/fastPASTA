@@ -2,6 +2,8 @@
 //!
 //! Analysis consists of decoding the ALPIDE data and then performing checks on the decoded data.
 
+use std::hint::unreachable_unchecked;
+
 use crate::{
     stats::its_stats::alpide_stats::AlpideStats,
     words::its::{
@@ -33,7 +35,7 @@ pub struct LaneAlpideFrameAnalyzer<'a> {
     alpide_stats: AlpideStats,
 }
 
-// impl for core utlity
+// impl for core utility
 impl<'a> LaneAlpideFrameAnalyzer<'a> {
     const ERR_MSG_PREFIX: &'static str = "\n\t\t\t"; // Newline + indentation for error messages
     const IL_CHIP_COUNT: usize = 1; // Number of chips in an inner layer readout frame
@@ -113,58 +115,61 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
         }
 
         match AlpideWord::from_byte(alpide_byte) {
-            Ok(word) => match word {
-                AlpideWord::ChipHeader => {
-                    self.is_header_seen = true;
-                    self.last_chip_id = alpide_byte & 0b1111;
-                    self.next_is_bc = true;
-                    log::trace!("{alpide_byte:#02X}: ChipHeader");
+            Ok(word) => {
+                match word {
+                    AlpideWord::ChipHeader => {
+                        self.is_header_seen = true;
+                        self.last_chip_id = alpide_byte & 0b1111;
+                        self.next_is_bc = true;
+                        log::trace!("{alpide_byte:#02X}: ChipHeader");
+                    }
+                    AlpideWord::ChipEmptyFrame => {
+                        self.is_header_seen = false;
+                        self.last_chip_id = alpide_byte & 0b1111;
+                        self.next_is_bc = true;
+                        log::trace!("{alpide_byte:#02X}: ChipEmptyFrame");
+                    }
+                    AlpideWord::ChipTrailer => {
+                        self.is_header_seen = false;
+                        self.alpide_stats.log_readout_flags(alpide_byte);
+                        log::trace!("{alpide_byte:#02X}: ChipTrailer");
+                    } // Reset the header seen flag
+                    AlpideWord::RegionHeader => {
+                        self.is_header_seen = true;
+                        log::trace!("{alpide_byte:#02X}: RegionHeader");
+                    } // Do nothing at the moment
+                    AlpideWord::DataShort => {
+                        self.skip_n_bytes = 1;
+                        log::trace!("{alpide_byte:#02X}: DataShort");
+                    } // Skip the next byte
+                    AlpideWord::DataLong => {
+                        self.skip_n_bytes = 2;
+                        log::trace!("{alpide_byte:#02X}: DataLong");
+                    } // Skip the next 2 bytes
+                    AlpideWord::BusyOn => log::trace!("{alpide_byte:#02X}: BusyOn word seen!"),
+                    AlpideWord::BusyOff => log::trace!("{alpide_byte:#02X}: BusyOff word seen!"),
+                    AlpideWord::Ape(ape) => match ape {
+                        // Lane status = WARNING
+                        AlpideProtocolExtension::StripStart => {
+                            log::warn!("{alpide_byte:#02X}: APE_STRIP_START seen!")
+                        }
+                        AlpideProtocolExtension::PeDataMissing => {
+                            log::warn!("{alpide_byte:#02X}: APE_PE_DATA_MISSING seen!")
+                        }
+                        AlpideProtocolExtension::OotDataMissing => {
+                            log::warn!("{alpide_byte:#02X}: APE_OOT_DATA_MISSING seen!")
+                        }
+                        // Unreachable because the earlier check !is_header_seen && alpide_byte == 0 maches padding bytes
+                        // And in this match statement, a padding byte would instead be interpreted as a Data Long
+                        AlpideProtocolExtension::Padding => unsafe { unreachable_unchecked() },
+                        // APEs signifying Lane status = FATAL
+                        fatal_ape => {
+                            log::warn!("{alpide_byte:#02X}: {APE} seen! This APE indicates FATAL lane status!", APE = fatal_ape);
+                            self.lane_status_fatal = true;
+                        }
+                    },
                 }
-                AlpideWord::ChipEmptyFrame => {
-                    self.is_header_seen = false;
-                    self.last_chip_id = alpide_byte & 0b1111;
-                    self.next_is_bc = true;
-                    log::trace!("{alpide_byte:#02X}: ChipEmptyFrame");
-                }
-                AlpideWord::ChipTrailer => {
-                    self.is_header_seen = false;
-                    self.alpide_stats.log_readout_flags(alpide_byte);
-                    log::trace!("{alpide_byte:#02X}: ChipTrailer");
-                } // Reset the header seen flag
-                AlpideWord::RegionHeader => {
-                    self.is_header_seen = true;
-                    log::trace!("{alpide_byte:#02X}: RegionHeader");
-                } // Do nothing at the moment
-                AlpideWord::DataShort => {
-                    self.skip_n_bytes = 1;
-                    log::trace!("{alpide_byte:#02X}: DataShort");
-                } // Skip the next byte
-                AlpideWord::DataLong => {
-                    self.skip_n_bytes = 2;
-                    log::trace!("{alpide_byte:#02X}: DataLong");
-                } // Skip the next 2 bytes
-                AlpideWord::BusyOn => log::trace!("{alpide_byte:#02X}: BusyOn word seen!"),
-                AlpideWord::BusyOff => log::trace!("{alpide_byte:#02X}: BusyOff word seen!"),
-                AlpideWord::Ape(ape) => match ape {
-                    // Lane status = WARNING
-                    AlpideProtocolExtension::StripStart => {
-                        log::warn!("{alpide_byte:#02X}: APE_STRIP_START seen!")
-                    }
-                    AlpideProtocolExtension::PeDataMissing => {
-                        log::warn!("{alpide_byte:#02X}: APE_PE_DATA_MISSING seen!")
-                    }
-                    AlpideProtocolExtension::OotDataMissing => {
-                        log::warn!("{alpide_byte:#02X}: APE_OOT_DATA_MISSING seen!")
-                    }
-                    // No effect on lane status
-                    AlpideProtocolExtension::Padding => unreachable!("Got APE_PADDING but check and early return for padding should already have been performed"),//log::trace!("{alpide_byte}: APE_PADDING"),
-                    // APEs signifying Lane status = FATAL
-                    fatal_ape => {
-                        log::warn!("{alpide_byte:#02X}: {APE} seen! This APE indicates FATAL lane status!", APE = fatal_ape);
-                        self.lane_status_fatal = true;
-                    }
-                },
-            },
+            }
             Err(_) => {
                 log::warn!("Unknown ALPIDE word: {alpide_byte:#02X}")
             }
