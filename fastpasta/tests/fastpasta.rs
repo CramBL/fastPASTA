@@ -243,7 +243,7 @@ fn file_exists_exit_successful_rawtf_fee_24612_4rdhs() -> Result<(), Box<dyn std
 fn file_exists_exit_successful_invalid_lane_order_1rdh() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
-    cmd.arg(FILE_INVALID_LANE_ORDER_1RDH)
+    cmd.arg(FILE_INVALID_LANE_ORDER_1HBF)
         .arg("check")
         .arg("sanity")
         .arg("-v4");
