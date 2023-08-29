@@ -65,12 +65,13 @@ pub fn match_on_out_no_case(
     Ok(())
 }
 
-/// Helper function takes in the output of stderr and asserts that there are no errors or warnings
+/// Helper function takes in the output of stderr and asserts that there are no errors, warnings, or thread panics.
 pub fn assert_no_errors_or_warn(
     stderr_byte_output: &[u8],
 ) -> Result<(), Box<dyn std::error::Error>> {
     match_on_out_no_case(stderr_byte_output, "error - ", 0)?;
     match_on_out_no_case(stderr_byte_output, "warn - ", 0)?;
+    match_on_out_no_case(stderr_byte_output, "thread.*panicked", 0)?;
     Ok(())
 }
 
