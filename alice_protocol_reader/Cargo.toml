@@ -1,6 +1,6 @@
 [package]
 name = "alice_protocol_reader"
-version = "0.9.0"
+version = "0.10.0"
 edition = "2021"
 description = "Reader library for reading raw binary data from the ALICE detector into a convenient structure for implementing analysis."
 keywords = ["parser", "verification"]
