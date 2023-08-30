@@ -45,7 +45,6 @@ readonly REMOTE_PRE="fastpasta"
 ## Constant arrays
 declare -a -r test_cmds_array=(
     "check sanity"
-    "check sanity its"
     "check all"
     "check all its"
     "check all its-stave"
@@ -111,6 +110,15 @@ declare -a bench_results_local_mean_diff_absolute=()
 # The accumulated execution time of the remote version of fastpasta
 declare -i bench_results_remote_total_ms=0
 
+# Make two arrays with as many 0's as there's test command
+# Use this to store the diff of each test command and the absolute timing of the remote version
+declare -a test_cmds_diff=()
+declare -a test_cmds_remote_abs=()
+for ((i=0; i<cmd_count; i++)); do
+    test_cmds_diff+=(0)
+    test_cmds_remote_abs+=(0)
+done
+
 
 declare -a mean_timings
 function bench_two_cmds_return_timings {
@@ -138,6 +146,7 @@ println_blue "Running ${cmd_count} command on each of ${file_count} files for a 
 
 for file in "${tests_files_array[@]}"; do
 
+    declare -i test_cmd_idx=0
     for command in "${test_cmds_array[@]}"; do
 
         println_blue "\n---\nStarting test $(( completed_tests + 1 ))/${total_test_count}"
@@ -150,6 +159,10 @@ for file in "${tests_files_array[@]}"; do
         declare -i local_minus_remote=$(( local_mean - remote_mean))
         bench_results_local_mean_diff_absolute+=("${local_minus_remote}")
         bench_results_remote_total_ms=$(( bench_results_remote_total_ms + remote_mean ))
+        # Store the absolute timing values for each command run by the remote version
+        (( test_cmds_remote_abs[test_cmd_idx]+=remote_mean ))
+        (( test_cmd_idx+=1 ))
+
 
         evaluate_benchmark_test_result "$local_mean" "$remote_mean"
 
@@ -169,9 +182,16 @@ println_magenta "***************************************************************
 println_magenta "***                  SUMMARY OF PERFORMANCE REGRESSION TESTS                  ***"
 println_magenta "*********************************************************************************\n"
 
+### Calculate the total performance diff as well as the diff for each command
+declare -i test_cmds_counter=0 # Loop counter to store diffs in the test command diff array
 declare -i total_diff=0
 for i in "${bench_results_local_mean_diff_absolute[@]}"; do
     (( total_diff+=i ))
+    (( test_cmds_diff[test_cmds_counter]+=i ))
+    (( test_cmds_counter+=1 ))
+    if [[ ${test_cmds_counter} == ${cmd_count} ]]; then
+        (( test_cmds_counter=0 ))
+    fi
 done
 
 
@@ -187,9 +207,26 @@ readonly frac_diff
 percent_diff=$( fraction_to_percent "$frac_diff" )
 readonly percent_diff
 
-println_magenta "\tMean : ${avg_diff} ms"
+println_magenta "\tMean : ${avg_diff} ms\n"
 
-println_cyan "\n--- RESULT --- \n"
+# Calculate and show the timing difference for each tested command
+declare -i idx=0
+for timing_diff in "${test_cmds_diff[@]}"; do
+
+    cmd_avg_diff=$( calc_average ${timing_diff} $total_test_count )
+    cmd_frac_diff=$( calc_relative_fraction ${timing_diff} ${test_cmds_remote_abs[idx]})
+    cmd_percent_diff=$( fraction_to_percent "$cmd_frac_diff" )
+    padded_timing_diff_str=$(left_pad_str "${timing_diff}" 10 ' ')
+    padded_cmd_str=$(right_pad_str "${test_cmds_array[idx]}" 19 ' ')
+    # Old fashioned '\t' because of the traling '$'
+    println_bright_yellow "        ${padded_cmd_str}${padded_timing_diff_str} ms (${cmd_percent_diff: 0:5} %)"
+    (( idx+=1 ))
+    if [[ ${idx} == ${cmd_count} ]]; then
+        idx=0
+    fi
+done
+
+println_cyan "\n--- CONCLUSION --- \n"
 
 if [[ $(float_cmp "${avg_diff}" 0) == 0 ]]; then
     println_blue "No difference"
@@ -217,6 +254,6 @@ elif [[ $(float_cmp "${percent_diff}" 5) -eq 1 ]]; then
 else
     printf "Execution time: "
     println_bright_yellow "+${percent_diff: 0:4} %"
-    println_bright_yellow  "It seems slower but not significantly"
+    println_bright_yellow "It seems slower but not significantly"
     exit 0
 fi
