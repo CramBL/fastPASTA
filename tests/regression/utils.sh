@@ -46,6 +46,42 @@ function println_bright_yellow {
     printf "\e[93m%b\e[0m\n" "${1}"
 }
 
+# Arg1: String to be padded
+# Arg2: How much to pad
+# Arg3: Character to pad with
+function right_pad_str {
+    local arg_str="${1}"; local -i pad_cnt="${2}"; local pad_char="${3}";
+    if (( ${pad_cnt} < ${#arg_str} )); then
+        # No padding in this case
+        echo "${arg_str}"
+    else
+        local padding=""
+        for ((i=0; i<pad_cnt; i++)); do
+            padding="${padding}${pad_char}"
+        done
+        out="${arg_str:0:((pad_cnt))}${padding:0:((pad_cnt - ${#arg_str}))}"
+        echo "${out}"
+    fi
+}
+
+# Arg1: String to be padded
+# Arg2: How much to pad
+# Arg3: Character to pad with
+function left_pad_str {
+    local arg_str="${1}"; local -i pad_cnt="${2}"; local pad_char="${3}";
+    if (( ${pad_cnt} < ${#arg_str} )); then
+        # No padding in this case
+        echo "${arg_str}"
+    else
+        local padding=""
+        for ((i=0; i<pad_cnt; i++)); do
+            padding="${padding}${pad_char}"
+        done
+        out="${padding:0:((pad_cnt - ${#arg_str}))}${arg_str:0:((pad_cnt))}"
+        echo "${out}"
+    fi
+}
+
 # WARNING: Does not correctly compare between two negative floats. Not relevant for the use case though...
 # WARNING: Also incorrect if the integer parts are equal but the length of the fractional part of A and B are different.
 # Compares two floating points in bash without external dependencies such as `bc` or `awk`
