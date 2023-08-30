@@ -20,29 +20,6 @@ fn view_rdh() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn view_hbf() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("fastpasta")?;
-
-    cmd.arg(FILE_1_HBF_BAD_DW_DDW0)
-        .arg("view")
-        .arg("hbf")
-        .arg("-v2");
-
-    use predicate::str::contains;
-    cmd.assert().success().stdout(
-        contains("RDH").count(2).and(
-            contains("IHW").count(1).and(
-                contains("TDH")
-                    .count(1)
-                    .and(contains("TDT").count(1).and(contains("DDW").count(1))),
-            ),
-        ),
-    );
-
-    Ok(())
-}
-
-#[test]
 fn check_all_its_max_error_1() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
     let expect_err_cnt = 1;

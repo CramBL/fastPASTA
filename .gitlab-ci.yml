@@ -188,8 +188,7 @@ limited-regress-bench:
     - tests/regression/regression_performance.sh
   rules:
   # Don't create this job if branch suffix is -bench (that unlocks the extended benchmark)
-  - if: $CI_COMMIT_BRANCH =~ /^.*-bench$/
-    when: never
+  - if: $CI_COMMIT_BRANCH !~ /^.*-bench$/
   dependencies: []
   cache: []
 

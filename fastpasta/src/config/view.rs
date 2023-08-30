@@ -6,8 +6,6 @@ use clap::Subcommand;
 pub enum ViewCommands {
     /// Print formatted RDHs to stdout
     Rdh,
-    /// DEPRECATED! use its-readout-frames instead. Print formatted ITS payload HBFs to stdout, validating the printed words with a Protocol Tracker.
-    Hbf,
     /// Print formatted ITS readout frames to stdout
     ItsReadoutFrames,
     /// Print formatted ITS readout frames with Data Words to stdout

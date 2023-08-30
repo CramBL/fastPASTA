@@ -37,26 +37,6 @@ fn err_not_hbf_detect_page_error() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn view_hbf() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("fastpasta")?;
-
-    cmd.arg(FILE_ERR_NOT_HBF).arg("view").arg("hbf");
-
-    use predicate::str::contains;
-    cmd.assert().success().stdout(
-        contains("RDH").count(2).and(
-            contains("IHW").count(2).and(
-                contains("TDH")
-                    .count(2)
-                    .and(contains("TDT").count(2).and(contains("DDW").count(0))),
-            ),
-        ),
-    );
-
-    Ok(())
-}
-
-#[test]
 fn view_rdh() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 

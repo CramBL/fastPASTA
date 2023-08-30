@@ -140,7 +140,7 @@ fn check_all_its_stave_bad_trigger_period() -> Result<(), Box<dyn std::error::Er
 }
 
 #[test]
-fn view_hbf() -> Result<(), Box<dyn std::error::Error>> {
+fn view_its_readout_frames() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
     cmd.arg("view")
