@@ -1,5 +1,4 @@
 //! Contains the [spawn_analysis] function that spawns the analysis thread for either data validation or view generation.
-use super::validators::its::its_payload_fsm_cont::ItsPayloadFsmContinuous;
 use super::validators::lib::ValidatorDispatcher;
 use crate::config::lib::Config;
 use crate::stats;
@@ -23,8 +22,6 @@ pub fn spawn_analysis<T: RDH + 'static>(
                 // Setup for check case
                 let mut validator_dispatcher =
                     ValidatorDispatcher::new(config, stats_sender_channel.clone());
-                // Setup for view case
-                let mut its_payload_fsm_cont = ItsPayloadFsmContinuous::default();
                 // Start analysis
                 while !stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
                     // Receive chunk from reader
@@ -62,12 +59,7 @@ pub fn spawn_analysis<T: RDH + 'static>(
                     if config.check().is_some() {
                         validator_dispatcher.dispatch_cdp_chunk(cdp_chunk);
                     } else if let Some(view) = config.view() {
-                        if let Err(e) = super::view::lib::generate_view(
-                            view,
-                            cdp_chunk,
-                            &stats_sender_channel,
-                            &mut its_payload_fsm_cont,
-                        ) {
+                        if let Err(e) = super::view::lib::generate_view(view, cdp_chunk) {
                             stats_sender_channel
                                 .send(StatType::Fatal(e.to_string().into()))
                                 .expect("Couldn't send to StatsController");

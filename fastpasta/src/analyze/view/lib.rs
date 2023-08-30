@@ -1,6 +1,4 @@
 //! Contains the entry point and dispatcher function [generate_view()] for generating data views.
-use crate::analyze::validators::its::its_payload_fsm_cont::ItsPayloadFsmContinuous;
-use crate::stats::StatType;
 use alice_protocol_reader::prelude::*;
 
 /// Calls a specific view generator based on the [View][crate::config::view::ViewCommands] type.
@@ -8,15 +6,10 @@ use alice_protocol_reader::prelude::*;
 pub fn generate_view<T: RDH>(
     view: crate::config::view::ViewCommands,
     cdp_chunk: CdpChunk<T>,
-    send_stats_ch: &flume::Sender<StatType>,
-    its_payload_fsm_cont: &mut ItsPayloadFsmContinuous,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use crate::config::view::ViewCommands;
     match view {
         ViewCommands::Rdh => super::rdh_view::rdh_view(&cdp_chunk)?,
-        ViewCommands::Hbf => {
-            super::hbf_view::hbf_view(cdp_chunk, send_stats_ch, its_payload_fsm_cont)?
-        }
         ViewCommands::ItsReadoutFrames => {
             super::its_readout_frame::its_readout_frame_view::its_readout_frame_view(cdp_chunk)?
         }
