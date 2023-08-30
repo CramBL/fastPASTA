@@ -97,9 +97,9 @@ declare -a -r test_1_5=(
     "$REGEX_RDHS_IN_RDH_VIEW"
     6
 )
-## Test 1_multi_1 `view hbf`
+## Test 1_multi_1 `view its-readout-frames`
 declare -a -r test_1_multi_1=(
-    "readout.superpage.1.raw view hbf"
+    "readout.superpage.1.raw view its-readout-frames"
     # Check the right amount of IHWs is shown
     ": IHW "
     3
@@ -155,9 +155,9 @@ declare -a -r test_2_1=(
     "$REGEX_RDHS_IN_RDH_VIEW"
     10
 )
-## Test 2_multi_1: `view hbf` -
+## Test 2_multi_1: `view its-readout-frames` -
 declare -a -r test_2_multi_1=(
-    "10_rdh.raw view hbf"
+    "10_rdh.raw view its-readout-frames"
     # Check the right number of RDHs is shown
     ": RDH"
     10
@@ -201,9 +201,9 @@ declare -a -r test_3_3=(
     "$REGEX_RDHS_IN_RDH_VIEW"
     2
 )
-## Test 3_multi_0: `view hbf`
+## Test 3_multi_0: `view its-readout-frames`
 declare -a -r test_3_multi_0=(
-    "err_not_hbf.raw view hbf"
+    "err_not_hbf.raw view its-readout-frames"
     # Check the right number of RDHs is shown
     ": RDH "
     2
