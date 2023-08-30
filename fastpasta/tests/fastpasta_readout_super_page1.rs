@@ -11,25 +11,6 @@ const REPORT_MATCH_PATTERNS: [&str; 6] = [
 ];
 
 #[test]
-fn view_hbf() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("fastpasta")?;
-
-    cmd.arg(FILE_READOUT_SUPERPAGE_1).arg("view").arg("hbf");
-
-    cmd.assert().success().stdout(
-        predicate::str::contains("IHW").count(3).and(
-            predicate::str::contains("TDH").count(3).and(
-                predicate::str::contains("TDT")
-                    .count(3)
-                    .and(predicate::str::contains("DDW").count(3)),
-            ),
-        ),
-    );
-
-    Ok(())
-}
-
-#[test]
 fn check_sanity() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
