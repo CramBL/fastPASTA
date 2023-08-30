@@ -2,7 +2,7 @@
 //!
 //! A [LinkValidator] is created for each link that is being checked.
 //! The [LinkValidator] is responsible for creating and running all the [RDH] subvalidators, and delegating payload depending on target system.
-//! It also contains an [ConstGenericRingBuffer] that is used to store the previous two [RDH]s, to be able to include them in error messages.
+//! It also contains a [ConstGenericRingBuffer] that is used to store the previous two [RDH]s, to be able to include them in error messages.
 //!
 //! Adding a new system to the validator is done by adding a new module to the [validators](crate::analyze::validators) module, and adding the new system to the [System](crate::config::check::System) enum.
 //! The new module should contain a main payload validator that can be used by the [LinkValidator] to delegate payload to.
