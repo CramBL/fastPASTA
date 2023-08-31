@@ -1,13 +1,17 @@
-# v1.14.0 (unreleased)
+# v1.14.0 (2023-08-31)
 
-## Features
+### Features
 [MR95](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/95) Allow specifying any amount of custom valid chip ordering as part of a custom checks config.
 
 [MR97](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/97) Inner Layer lane grouping validation now takes into account
 lanes that correctly reported themselves as being in fatal state. e.g. if lane 2 is in fatal the new valid lane grouping is [0, 1] for lanes 1-3 in inner layer.
 
+Various code quality improvements resulting in [~5%](https://gitlab.cern.ch/mkonig/fastpasta/-/jobs/32141026) performance improvement over `v1.13.0` even with added features.
+
 ### Fix
 [!39](https://gitlab.cern.ch/mkonig/fastpasta/-/issues/39) Validator panic during alpide data parsing fixed in [MR96](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/96)
+
+The long deprecated `view hbf` subcommand is now removed.
 
 # v1.13.0 - Add ALPIDE stats (2023-07-26)
 Add ALPIDE stats table when using commands that check ALPIDE data. Currently only includes stats about the readout flags of the chip trailer.
