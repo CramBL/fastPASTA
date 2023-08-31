@@ -153,7 +153,7 @@ where
         sanity_check_offset_next(
             &rdh,
             self.tracker.current_mem_address(),
-            &self.stats_controller_sender_ch,
+            self.stats_controller_sender_ch.as_ref(),
         )?;
 
         // If a filter is set, check if the RDH matches the filter
@@ -236,7 +236,7 @@ where
             sanity_check_offset_next(
                 &rdh,
                 self.tracker.current_mem_address(),
-                &self.stats_controller_sender_ch,
+                self.stats_controller_sender_ch.as_ref(),
             )?;
             self.collect_rdh_seen_stats(&rdh);
 
@@ -288,7 +288,7 @@ fn is_match_feeid_layer_stave(a_fee_id: u16, b_fee_id: u16) -> bool {
 fn sanity_check_offset_next<T: RDH>(
     rdh: &T,
     current_memory_address: u64,
-    stats_ch: &Option<flume::Sender<InputStatType>>,
+    stats_ch: Option<&flume::Sender<InputStatType>>,
 ) -> Result<(), std::io::Error> {
     let next_rdh_memory_location = rdh.offset_to_next() as i64 - 64;
     // If the offset is not between 0 and 10 KB it is invalid
