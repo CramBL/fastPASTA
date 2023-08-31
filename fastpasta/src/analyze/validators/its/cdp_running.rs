@@ -573,7 +573,9 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         }
 
         // Check if the frame is valid in terms of lanes in the data.
-        if let Err(err_msg) = alpide_readout_frame.check_frame_lanes_valid(&self.fatal_lanes) {
+        if let Err(err_msg) =
+            alpide_readout_frame.check_frame_lanes_valid(self.fatal_lanes.as_deref())
+        {
             // Format and send error message
             let err_code = if is_ib { "E72" } else { "E73" };
             let err_msg = format!(

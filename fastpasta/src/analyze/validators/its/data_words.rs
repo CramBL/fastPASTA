@@ -1,5 +1,5 @@
 //! Performs sanity checks on data words
-use crate::words::its::data_words::*;
+use crate::words::its::data_words as dw;
 use std::fmt::Write;
 
 /// Convenience const struct to avoid having to instantiate the struct elsewhere
@@ -25,21 +25,21 @@ impl DataWordSanityChecker {
 
     #[inline]
     fn is_valid_il_id(&self, id: u8) -> bool {
-        VALID_IL_ID.contains(&id)
+        dw::VALID_IL_ID.contains(&id)
     }
     #[inline]
     fn is_valid_ml_id(&self, id: u8) -> bool {
-        VALID_ML_CONNECT0_ID.contains(&id)
-            || VALID_ML_CONNECT1_ID.contains(&id)
-            || VALID_ML_CONNECT2_ID.contains(&id)
-            || VALID_ML_CONNECT3_ID.contains(&id)
+        dw::VALID_ML_CONNECT0_ID.contains(&id)
+            || dw::VALID_ML_CONNECT1_ID.contains(&id)
+            || dw::VALID_ML_CONNECT2_ID.contains(&id)
+            || dw::VALID_ML_CONNECT3_ID.contains(&id)
     }
     #[inline]
     fn is_valid_ol_id(&self, id: u8) -> bool {
-        VALID_OL_CONNECT0_ID.contains(&id)
-            || VALID_OL_CONNECT1_ID.contains(&id)
-            || VALID_OL_CONNECT2_ID.contains(&id)
-            || VALID_OL_CONNECT3_ID.contains(&id)
+        dw::VALID_OL_CONNECT0_ID.contains(&id)
+            || dw::VALID_OL_CONNECT1_ID.contains(&id)
+            || dw::VALID_OL_CONNECT2_ID.contains(&id)
+            || dw::VALID_OL_CONNECT3_ID.contains(&id)
     }
     #[inline]
     fn is_valid_any_id(&self, id: u8) -> bool {

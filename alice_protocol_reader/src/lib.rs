@@ -132,7 +132,7 @@ const READER_BUFFER_SIZE: usize = 1024 * 50; // 50KB
 /// The input mode is determined by the presence of the input file path in the config
 #[inline]
 pub fn init_reader(
-    input_file: &Option<PathBuf>,
+    input_file: Option<&PathBuf>,
 ) -> Result<Box<dyn BufferedReaderWrapper>, std::io::Error> {
     if let Some(path) = input_file {
         let f = std::fs::OpenOptions::new().read(true).open(path)?;
@@ -249,7 +249,7 @@ mod tests {
 
         use crate::input_scanner::InputScanner;
         use rdh::RdhCru;
-        let reader = init_reader(&Some(test_file_path)).unwrap();
+        let reader = init_reader(Some(&test_file_path)).unwrap();
 
         let mut input_scanner = InputScanner::minimal(reader);
 
@@ -291,7 +291,7 @@ mod tests {
 
         use rdh::RdhCru;
 
-        let reader = init_reader(&Some(test_file_path)).unwrap();
+        let reader = init_reader(Some(&test_file_path)).unwrap();
 
         let mut input_scanner = input_scanner::InputScanner::new(&MyCfg, reader, None);
 

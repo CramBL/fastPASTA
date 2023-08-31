@@ -63,7 +63,7 @@ mod tests {
             reserved0: 0x0000,
         };
         println!("{:?}", rdh3);
-        let rdh3_2 = rdh3.clone();
+        let rdh3_2 = rdh3;
 
         assert_eq!(rdh3, rdh3_2);
     }

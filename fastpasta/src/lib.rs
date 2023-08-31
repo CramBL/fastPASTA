@@ -133,7 +133,7 @@ pub fn init_processing(
             match process::<RdhCru<u8>>(
                 config,
                 loader,
-                &Some(input_stats_recv),
+                Some(&input_stats_recv),
                 &stat_send_channel,
                 stop_flag,
             ) {
@@ -164,7 +164,7 @@ pub fn init_processing(
 pub fn process<T: RDH + 'static>(
     config: &'static impl Config,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
-    recv_input_stats: &Option<flume::Receiver<InputStatType>>,
+    recv_input_stats: Option<&flume::Receiver<InputStatType>>,
     send_stats_ch: &flume::Sender<StatType>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {

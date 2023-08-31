@@ -117,12 +117,12 @@ impl UtilOpt for MockConfig {
     }
 }
 impl InputOutputOpt for MockConfig {
-    fn input_file(&self) -> &Option<std::path::PathBuf> {
-        &self.input_file
+    fn input_file(&self) -> Option<&std::path::PathBuf> {
+        self.input_file.as_ref()
     }
 
-    fn output(&self) -> &Option<std::path::PathBuf> {
-        &self.output
+    fn output(&self) -> Option<&std::path::PathBuf> {
+        self.output.as_ref()
     }
 
     fn output_mode(&self) -> DataOutputMode {
