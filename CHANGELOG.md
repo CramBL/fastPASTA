@@ -1,4 +1,6 @@
 # v1.14.0 (unreleased)
+
+## Features
 [MR95](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/95) Allow specifying any amount of custom valid chip ordering as part of a custom checks config.
 
 [MR97](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/97) Inner Layer lane grouping validation now takes into account

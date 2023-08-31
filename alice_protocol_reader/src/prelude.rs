@@ -4,8 +4,8 @@ pub use super::bufreader_wrapper::BufferedReaderWrapper;
 pub use super::data_wrapper::CdpChunk;
 pub use super::input_scanner::InputScanner;
 pub use super::scan_cdp::ScanCDP;
+pub use super::stats::InputStatType;
 pub use super::stdin_reader::StdInReaderSeeker;
-pub use crate::stats::InputStatType;
 // RDH related
 pub use super::rdh::macros;
 pub use super::rdh::rdh0::FeeId;
