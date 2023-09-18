@@ -160,6 +160,13 @@ impl AlpideReadoutFrame {
         self.frame_end_mem_pos
     }
 
+    /// Get the number of [LaneDataFrame]s in the [AlpideReadoutFrame]
+    ///
+    /// An empty readout frame after a TDT with packet done indicates a readout error and should be reported.
+    pub fn is_empty(&self) -> bool {
+        self.lane_data_frames.is_empty()
+    }
+
     /// Borrow the [LaneDataFrame]s as a slice
     pub fn lane_data_frames_as_slice(&self) -> &[LaneDataFrame] {
         &self.lane_data_frames
