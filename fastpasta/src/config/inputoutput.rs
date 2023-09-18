@@ -5,9 +5,9 @@ use std::path::PathBuf;
 /// Input/Output option set by a user
 pub trait InputOutputOpt {
     /// Input file to read from.
-    fn input_file(&self) -> &Option<PathBuf>;
+    fn input_file(&self) -> Option<&PathBuf>;
     /// Output file to write to.
-    fn output(&self) -> &Option<PathBuf>;
+    fn output(&self) -> Option<&PathBuf>;
     /// Output mode of the data writing (file, stdout, none)
     fn output_mode(&self) -> DataOutputMode;
 }
@@ -16,10 +16,10 @@ impl<T> InputOutputOpt for &T
 where
     T: InputOutputOpt,
 {
-    fn input_file(&self) -> &Option<PathBuf> {
+    fn input_file(&self) -> Option<&PathBuf> {
         (*self).input_file()
     }
-    fn output(&self) -> &Option<PathBuf> {
+    fn output(&self) -> Option<&PathBuf> {
         (*self).output()
     }
     fn output_mode(&self) -> DataOutputMode {
@@ -31,10 +31,10 @@ impl<T> InputOutputOpt for Box<T>
 where
     T: InputOutputOpt,
 {
-    fn input_file(&self) -> &Option<PathBuf> {
+    fn input_file(&self) -> Option<&PathBuf> {
         (**self).input_file()
     }
-    fn output(&self) -> &Option<PathBuf> {
+    fn output(&self) -> Option<&PathBuf> {
         (**self).output()
     }
     fn output_mode(&self) -> DataOutputMode {
@@ -45,10 +45,10 @@ impl<T> InputOutputOpt for std::sync::Arc<T>
 where
     T: InputOutputOpt,
 {
-    fn input_file(&self) -> &Option<PathBuf> {
+    fn input_file(&self) -> Option<&PathBuf> {
         (**self).input_file()
     }
-    fn output(&self) -> &Option<PathBuf> {
+    fn output(&self) -> Option<&PathBuf> {
         (**self).output()
     }
     fn output_mode(&self) -> DataOutputMode {

@@ -73,7 +73,7 @@ mod tests {
             stop_bit: 0x00,
             reserved0: 0x00,
         };
-        let rdh2_2 = rdh2.clone();
+        let rdh2_2 = rdh2;
 
         assert_eq!(rdh2, rdh2_2);
     }

@@ -52,7 +52,7 @@ impl AlpideReadoutFrame {
     }
 
     /// Check if the frame is valid in terms of number of lanes in the data and for IB, the lane grouping.
-    pub fn check_frame_lanes_valid(&self, fatal_lanes: &Option<Vec<u8>>) -> Result<(), String> {
+    pub fn check_frame_lanes_valid(&self, fatal_lanes: Option<&[u8]>) -> Result<(), String> {
         debug_assert_ne!(
             self.frame_end_mem_pos, 0,
             "Attempted check a lane data frame's validity before closing it"
@@ -95,7 +95,7 @@ impl AlpideReadoutFrame {
 #[inline]
 pub(crate) fn validate_inner_lane_groupings(
     lane_data_frames: &[LaneDataFrame],
-    fatal_lanes: &Option<Vec<u8>>,
+    fatal_lanes: Option<&[u8]>,
 ) -> Result<(), String> {
     let mut lane_ids = lane_data_frames
         .iter()

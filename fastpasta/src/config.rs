@@ -242,12 +242,12 @@ impl ChecksOpt for Cfg {
 
 impl InputOutputOpt for Cfg {
     #[inline]
-    fn input_file(&self) -> &Option<PathBuf> {
-        &self.file
+    fn input_file(&self) -> Option<&PathBuf> {
+        self.file.as_ref()
     }
     #[inline]
-    fn output(&self) -> &Option<PathBuf> {
-        &self.output
+    fn output(&self) -> Option<&PathBuf> {
+        self.output.as_ref()
     }
     // Determine data output mode
     #[inline]
