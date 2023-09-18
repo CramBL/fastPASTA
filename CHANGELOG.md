@@ -1,6 +1,9 @@
-# v1.14.1 (2023-09-18)
+# v1.14.2 (2023-09-18)
 
+### Fix
 Update RDH sanity check for [detector field v1.21.0](https://gitlab.cern.ch/alice-its-wp10-firmware/RU_mainFPGA/-/wikis/ITS%20Data%20Format#RDHDetectorField)
+
+A crash occured if a TDT with packet_done closed an ALPIDE readout frame with no data words. Now this is checked before processing the readout frame and an error is reported that includes information about lane status from any potential APEs and from the last seen TDT and DDW.
 
 # v1.14.0 (2023-08-31)
 
