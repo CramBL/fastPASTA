@@ -1,3 +1,7 @@
+# v1.14.1 (2023-09-18)
+
+Update RDH sanity check for [detector field v1.21.0](https://gitlab.cern.ch/alice-its-wp10-firmware/RU_mainFPGA/-/wikis/ITS%20Data%20Format#RDHDetectorField)
+
 # v1.14.0 (2023-08-31)
 
 ### Features
