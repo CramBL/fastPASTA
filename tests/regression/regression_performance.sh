@@ -11,6 +11,10 @@
 ####
 ###########
 
+# Import utility functions
+# shellcheck disable=SC1091
+source ./tests/regression/utils.sh
+
 # This is how much we'll ask `binmult` to "grow" the test files to in MiB
 declare -i BENCHMARK_FILE_SIZE_MIB=200
 
@@ -52,9 +56,6 @@ declare -a -r test_cmds_array=(
 
 ##### Readonly variables generated from constants above #####
 declare -i -r cmd_count=${#test_cmds_array[@]}
-
-# shellcheck disable=SC1091
-source ./tests/regression/utils.sh
 
 println_yellow "Building in release mode\n"
 
@@ -169,7 +170,6 @@ for file in "${tests_files_array[@]}"; do
         completed_tests=$(( completed_tests + 1 ))
 
     done
-
 done
 
 # Clean up the temporary files

@@ -101,7 +101,11 @@ fn generate_its_readout_frame_word_view(
         ItsPayloadWord::IHW_continuation
         | ItsPayloadWord::TDH_continuation
         | ItsPayloadWord::TDH_after_packet_done => {
-            unreachable!("This function should only receive simple types!")
+            unsafe {
+                // This function receives only simple types,
+                //  as they are coming from ItsPayloadWord::from_id() and not from the FSM that can determine more complex types
+                std::hint::unreachable_unchecked()
+            }
         }
     }
     Ok(())
