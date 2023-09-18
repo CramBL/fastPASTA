@@ -707,6 +707,8 @@ mod tests {
 
         let loaded_tdt = Tdt::load(&mut tdt.to_byte_slice()).unwrap();
         assert_eq!(tdt, loaded_tdt);
+        let tdt_ref = &tdt;
+        println!("{tdt_ref}");
     }
 
     #[test]
@@ -723,6 +725,7 @@ mod tests {
         assert_eq!(ddw0.lane_status(), 0);
         let loaded_ddw0 = Ddw0::load(&mut ddw0.to_byte_slice()).unwrap();
         assert_eq!(ddw0, loaded_ddw0);
+        println!("{ddw0}");
     }
 
     #[test]
