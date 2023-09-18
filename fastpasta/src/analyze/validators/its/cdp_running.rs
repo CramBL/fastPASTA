@@ -315,7 +315,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             // Regular data word
             if let Err(e) = DATA_WORD_SANITY_CHECKER.check_any(data_word_slice) {
                 self.report_error(&format!("[E70] {e}"), data_word_slice);
-                log::debug!("Data word: {data_word_slice:?}");
             }
 
             let id_3_msb = data_word_slice[ID_INDEX] >> 5;
@@ -586,7 +585,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         }
 
         let is_ib = alpide_readout_frame.from_layer() == Layer::Inner;
-        log::debug!("After from_layer()");
 
         // Process the data frame
         let (lanes_in_error_ids, lane_error_msgs, alpide_stats, fatal_lanes) =
