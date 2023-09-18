@@ -377,17 +377,27 @@ impl Rdh3Validator {
     pub fn sanity_check(&self, rdh3: &Rdh3) -> Result<(), String> {
         let mut err_str = String::new();
         let mut err_cnt: u8 = 0;
+
         if rdh3.reserved0 != 0 {
             err_cnt += 1;
             let tmp = rdh3.reserved0;
             write!(err_str, "reserved0 = {:#x} ", tmp).unwrap();
         }
-        let reserved_bits_4_to_23_set: u32 = 0b1111_1111_1111_1111_1111_0000;
-        if rdh3.detector_field & reserved_bits_4_to_23_set != 0 {
+
+        // Updated for v1.21.0 (bit 4:11 are no longer reserved)
+        let reserved_bits_12_to_23_set: u32 = 0b1111_1111_1111_0000_0000_0000;
+        if rdh3.detector_field & reserved_bits_12_to_23_set != 0 {
             err_cnt += 1;
             let tmp = rdh3.detector_field;
             write!(err_str, "detector_field = {:#x} ", tmp).unwrap();
         }
+
+        /***  New from v1.21.0  ***
+        (not checked in sanity check as both set and not set is valid)
+
+        - 11:6: User configurable reserved | can be set to configurable value by register
+        - 5: Stave autorecovery including trigger ramp | User configurable: To be set manually during the autorecovery including a trigger ramping
+        - 4: Trigger ramp | User configurable: To be set manually during trigger ramping  */
 
         // No checks on Par bit
 
@@ -653,8 +663,8 @@ mod tests {
     #[test]
     fn invalidate_rdh3_bad_detector_field() {
         let validator = RDH3_VALIDATOR;
-        let _reserved_bits_4_to_23_set: u32 = 0b1111_1111_1111_1111_1111_0000;
-        let example_bad_detector_field = 0b1000_0000;
+        let _reserved_bits_12_to_23_set: u32 = 0b1111_1111_1111_0000_0000_0000; // Updated for v1.21.0
+        let example_bad_detector_field = 0b1000_0000_0000_0000;
         let rdh3 = Rdh3 {
             detector_field: example_bad_detector_field,
             par_bit: 0,

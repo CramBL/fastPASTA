@@ -7,7 +7,7 @@ use std::fmt::{self, Debug, Display};
 #[repr(packed)]
 #[derive(Clone, PartialEq, Debug, Copy)]
 pub struct Rdh3 {
-    /// RDH detector field 32 bit, but 23:4 are reserved bits.
+    /// RDH detector field 32 bit, but as of v1.21.0 23:12 are reserved bits.
     pub detector_field: u32,
     /// RDH parity bit 16 bit.
     pub par_bit: u16,
