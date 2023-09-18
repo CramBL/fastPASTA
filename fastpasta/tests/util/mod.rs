@@ -27,6 +27,7 @@ pub const FILE_RAWTF_EPN180_L6_1: &str = "../tests/test-data/rawtf_epn180_l6_1.r
 pub const FILE_RAWTF_FEE_24612_4RDHS: &str = "../tests/test-data/o2_rawtf_fee24612_4rdh.raw";
 pub const FILE_INVALID_LANE_ORDER_1HBF: &str = "../tests/test-data/invalid_lane_order_1hbf.raw";
 pub const FILE_CI_OLS_DATA_1HBF: &str = "../tests/test-data/ci_ols_data_1hbf.raw"; // has chip ordering problem because one chip is disabled
+pub const FILE_2_RDH_DET_FIELD_V1_21_0: &str = "../tests/test-data/2_rdh_det_field_v1.21.0.raw"; // has Detector field v1.21.0
 
 pub const FILE_OUTPUT_TMP: &str = "../tests/test-data/output.tmp";
 
