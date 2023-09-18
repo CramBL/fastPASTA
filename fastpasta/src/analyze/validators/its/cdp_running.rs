@@ -282,12 +282,12 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
                     self.report_error(&format!("[E50] {e}"), tdt_as_slice);
                 }
-                if tdt.packet_done() && self.alpide_checks_enabled {
+                self.current_tdt = Some(tdt); // Replace TDT before processing ALPIDE readout frame
+                if self.current_tdt.as_ref().unwrap().packet_done() && self.alpide_checks_enabled {
                     self.is_readout_frame = false;
                     let complete_readout_frame = self.alpide_readout_frame.take().unwrap();
                     self.process_alpide_data(complete_readout_frame);
                 }
-                self.current_tdt = Some(tdt);
             }
             StatusWordKind::Ddw0(ddw0_as_slice) => {
                 let ddw0 = Ddw0::load(&mut <&[u8]>::clone(&ddw0_as_slice)).unwrap();
@@ -557,7 +557,36 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 
         let mem_pos_start = alpide_readout_frame.start_mem_pos();
         let mem_pos_end = alpide_readout_frame.end_mem_pos();
+
+        if alpide_readout_frame.is_empty() {
+            // No data in a full readout frame is a protocol error unless lanes in error has been reported by the TDT/DDW.
+            log::warn!("ALPIDE data frame at {mem_pos_start:#X} - {mem_pos_end:#X} is empty",);
+            // TODO: Check lane errors in TDT and DDW
+            let ddw_lane_status_str = if self.current_ddw0.is_some() {
+                let ddw0 = self.current_ddw0.as_ref().unwrap();
+                format!("Last DDW [{ddw0}] lane status: {:#X}", ddw0.lane_status())
+            } else {
+                "No DDW seen yet".to_string()
+            };
+
+            let tdt_lane_status_str = {
+                let curr_tdt = self.current_tdt.as_ref().unwrap();
+                format!("Frame closing TDT [{curr_tdt}] lane status: 0:15={lane_0_15:#X} 16:23={lane_16_23:#X} 24:27={lane_24_27:#X}", lane_0_15 = curr_tdt.lane_status_15_0(),
+                lane_16_23 = curr_tdt.lane_status_23_16(), lane_24_27 = curr_tdt.lane_status_27_24())
+            };
+
+            let error_string = format!(
+                "{mem_pos_start:#X}: [E701] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has no data words. \n\t Additional information:\n\t\t - Lanes in error (as indicated by APEs): {fatal_lanes:?}\n\t\t - {ddw_lane_status_str}\n\t\t - {tdt_lane_status_str}", feeid=self.current_rdh.as_ref().unwrap().fee_id(), fatal_lanes = self.fatal_lanes
+            );
+            self.stats_send_ch
+                .send(StatType::Error(error_string.into()))
+                .expect("Failed to send error to stats channel");
+            // No data, nothing to process (and erroneous to do so) early return
+            return;
+        }
+
         let is_ib = alpide_readout_frame.from_layer() == Layer::Inner;
+        log::debug!("After from_layer()");
 
         // Process the data frame
         let (lanes_in_error_ids, lane_error_msgs, alpide_stats, fatal_lanes) =
