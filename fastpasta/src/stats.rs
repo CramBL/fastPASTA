@@ -8,7 +8,6 @@ use alice_protocol_reader::prelude::RDH;
 use serde::{Deserialize, Serialize};
 use stats_collector::its_stats::alpide_stats::AlpideStats;
 
-mod error_stats;
 pub mod lib;
 mod rdh_stats;
 pub mod stats_collector;

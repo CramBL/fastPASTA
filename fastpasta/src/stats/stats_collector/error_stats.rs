@@ -127,7 +127,7 @@ impl ErrorStats {
     ///
     /// Returns ´None´ if no staves were seen in any error messages
     /// Panics if staves with errors is None when there's errors.
-    pub(super) fn staves_with_errors_as_slice(&self) -> Option<&[LayerStave]> {
+    pub(crate) fn staves_with_errors_as_slice(&self) -> Option<&[LayerStave]> {
         if self.staves_with_errors.is_none() {
             if self.total_errors == 0 {
                 return None;
