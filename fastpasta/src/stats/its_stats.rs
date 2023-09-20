@@ -1,9 +1,9 @@
 //! Contains the [ItsStats] struct which stores ITS specific data observed in the raw data
-
+use serde::{Deserialize, Serialize};
 pub mod alpide_stats;
 
 /// Stores ITS specific data observed through RDHs
-#[derive(Default)]
+#[derive(Default, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ItsStats {
     /// Holds a layer/stave combinations observed in the raw data
     layer_staves_seen: Vec<(u8, u8)>,
@@ -22,5 +22,28 @@ impl ItsStats {
     /// Returns a borrowed slice of the vector containing the layer/staves seen.
     pub fn layer_staves_as_slice(&self) -> &[(u8, u8)] {
         &self.layer_staves_seen
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_serde_consistency() {
+        let mut its_stats = ItsStats::default();
+        its_stats.record_layer_stave_seen((1, 2));
+        its_stats.record_layer_stave_seen((3, 4));
+        its_stats.record_layer_stave_seen((5, 6));
+
+        // JSON
+        let its_stats_ser_json = serde_json::to_string(&its_stats).unwrap();
+        let its_stats_de_json: ItsStats = serde_json::from_str(&its_stats_ser_json).unwrap();
+        assert_eq!(its_stats, its_stats_de_json);
+
+        // TOML
+        let its_stats_ser_toml = toml::to_string(&its_stats).unwrap();
+        let its_stats_de_toml: ItsStats = toml::from_str(&its_stats_ser_toml).unwrap();
+        assert_eq!(its_stats, its_stats_de_toml);
     }
 }
