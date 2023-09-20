@@ -8,7 +8,7 @@
 use self::{
     check::{CheckCommands, ChecksOpt},
     custom_checks::{CustomChecks, CustomChecksOpt},
-    inputoutput::{DataOutputMode, InputOutputOpt},
+    inputoutput::{DataOutputFormat, DataOutputMode, InputOutputOpt},
     prelude::Config,
     util::UtilOpt,
     view::{ViewCommands, ViewOpt},
@@ -140,6 +140,28 @@ pub struct Cfg {
         visible_aliases = ["custom-checks", "checks-file"],
       )]
     checks_toml: Option<PathBuf>,
+
+    /// Output stats (default: none), requires setting a data format option (JSON, TOML)
+    #[arg(
+        name = "OUTPUT FINAL STATS",
+        short = 'S',
+        long = "output-stats",
+        visible_aliases = ["output-stats-report","output-final-stats"],
+        global = true,
+        requires = "STATS FORMAT"
+    )]
+    stats_output: Option<DataOutputMode>,
+
+    /// Output stats format, requires setting a stats output option
+    #[arg(
+        name = "STATS FORMAT",
+        short = 'D',
+        long = "stats-format",
+        visible_alias = "stats-data-format",
+        global = true,
+        requires = "OUTPUT FINAL STATS"
+    )]
+    stats_output_format: Option<DataOutputFormat>,
 }
 
 impl Cfg {
@@ -270,6 +292,18 @@ impl InputOutputOpt for Cfg {
         else {
             DataOutputMode::Stdout
         }
+    }
+
+    fn stats_output_mode(&self) -> DataOutputMode {
+        if let Some(stats_output) = self.stats_output {
+            stats_output
+        } else {
+            DataOutputMode::None
+        }
+    }
+
+    fn stats_output_format(&self) -> Option<DataOutputFormat> {
+        self.stats_output_format
     }
 }
 
