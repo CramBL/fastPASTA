@@ -212,12 +212,13 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn filter_its_stave() -> Result<(), Box<dyn std::error::Error>> {
+    let (_tmp_dir, tmp_fpath) = make_tmp_dir_w_fpath();
     let mut cmd = Command::cargo_bin("fastpasta")?;
     cmd.arg(FILE_10_RDH)
         .arg("--filter-its-stave")
         .arg("L0_12")
         .arg("-o")
-        .arg(FILE_OUTPUT_TMP);
+        .arg(tmp_fpath.as_os_str());
 
     cmd.assert().success();
 
@@ -231,21 +232,20 @@ fn filter_its_stave() -> Result<(), Box<dyn std::error::Error>> {
 
     match_on_out_no_case(&cmd.output()?.stdout, r".*L0_12", 1)?;
 
-    // cleanup temp file
-    std::fs::remove_file(FILE_OUTPUT_TMP).expect("Could not remove temp file");
-
     Ok(())
 }
 
 #[test]
 fn filter_its_stave_not_found() -> Result<(), Box<dyn std::error::Error>> {
+    let (_tmp_dir, tmp_fpath) = make_tmp_dir_w_fpath();
+
     let mut cmd = Command::cargo_bin("fastpasta")?;
     let stave_to_filter = "L3_0"; // Not in the data
     cmd.arg(FILE_10_RDH)
         .arg("--filter-its-stave")
         .arg(stave_to_filter)
         .arg("-o")
-        .arg(FILE_OUTPUT_TMP);
+        .arg(tmp_fpath.as_os_str());
 
     cmd.assert().success();
 
@@ -262,21 +262,20 @@ fn filter_its_stave_not_found() -> Result<(), Box<dyn std::error::Error>> {
         1,
     )?;
 
-    // cleanup temp file
-    std::fs::remove_file(FILE_OUTPUT_TMP).expect("Could not remove temp file");
-
     Ok(())
 }
 
 #[test]
 fn filter_fee() -> Result<(), Box<dyn std::error::Error>> {
+    let (_tmp_dir, tmp_fpath) = make_tmp_dir_w_fpath();
+
     let mut cmd = Command::cargo_bin("fastpasta")?;
     let fee_id_to_filter = "524";
     cmd.arg(FILE_10_RDH)
         .arg("--filter-fee")
         .arg(fee_id_to_filter)
         .arg("-o")
-        .arg(FILE_OUTPUT_TMP);
+        .arg(tmp_fpath.as_os_str());
 
     cmd.assert().success();
 
@@ -294,21 +293,20 @@ fn filter_fee() -> Result<(), Box<dyn std::error::Error>> {
 
     match_on_out_no_case(&cmd.output()?.stdout, r"\|.* RDHs.*10", 1)?;
 
-    // cleanup temp file
-    std::fs::remove_file(FILE_OUTPUT_TMP).expect("Could not remove temp file");
-
     Ok(())
 }
 
 #[test]
 fn filter_fee_not_found() -> Result<(), Box<dyn std::error::Error>> {
+    let (_tmp_dir, tmp_fpath) = make_tmp_dir_w_fpath();
+
     let mut cmd = Command::cargo_bin("fastpasta")?;
     let fee_id_to_filter = "1337";
     cmd.arg(FILE_10_RDH)
         .arg("--filter-fee")
         .arg(fee_id_to_filter)
         .arg("-o")
-        .arg(FILE_OUTPUT_TMP);
+        .arg(tmp_fpath.as_os_str());
 
     cmd.assert().success();
 
@@ -324,9 +322,6 @@ fn filter_fee_not_found() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     match_on_out_no_case(&cmd.output()?.stdout, r"\|.* RDHs.* 0 ", 1)?;
-
-    // cleanup temp file
-    std::fs::remove_file(FILE_OUTPUT_TMP).expect("Could not remove temp file");
 
     Ok(())
 }

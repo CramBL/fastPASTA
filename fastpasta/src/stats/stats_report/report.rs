@@ -195,6 +195,7 @@ mod tests {
         }};
     }
 
+    #[ignore = "Uses stdout which prevents concurrent test execution and also break without --nocapture"]
     #[test]
     fn test_summary_contains_filtered_links_rdhs() {
         let processing_time = std::time::Instant::now();
@@ -221,6 +222,7 @@ mod tests {
         assert_stdout_contains!(report.print(), "725800");
     }
 
+    #[ignore = "Uses stdout which prevents concurrent test execution and also break without --nocapture"]
     #[test]
     fn test_summary_contains_filtered_links_rdhs_windows() {
         let filtered_links = StatSummary::new(
@@ -238,6 +240,7 @@ mod tests {
         assert_stdout_contains!(println!("{filter_table}"), "Filtered links");
     }
 
+    #[ignore = "Uses stdout which prevents concurrent test execution and also break without --nocapture"]
     #[test]
     fn test_fatal_error_report() {
         let processing_time = std::time::Instant::now();

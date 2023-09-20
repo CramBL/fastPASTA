@@ -199,10 +199,8 @@ The following is a list of error codes and their meaning, `x` is a placeholder f
 ## Running tests
 Run the full test suite with:
 ```shell
-$ cargo test -- --test-threads=1 --nocapture
+$ cargo test
 ```
-Passing `--test-threads=1` and `--nocapture` is necessary as several tests asserts that content written to stdout matches expectations, which will break when tests are run concurrently or writing to stdout is suppressed.
-
 # License
 Apache 2.0 or MIT at your option.
 
