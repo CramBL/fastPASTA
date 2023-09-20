@@ -29,6 +29,16 @@ where
                 {
                     return Err("Invalid config: Specifying trigger period has to be done with the `check all its-stave` command".to_string());
                 }
+            } else {
+                // All the illegal options when a check target is not specified
+                if self.check_its_trigger_period().is_some() {
+                    return Err("Invalid config: Specifying trigger period has to be done with the `check all its-stave` command".to_string());
+                }
+            }
+        } else {
+            // All the illegal options when checks are not enabled
+            if self.check_its_trigger_period().is_some() {
+                return Err("Invalid config: Specifying trigger period has to be done with the `check all its-stave` command".to_string());
             }
         }
         if self.any_errors_exit_code().is_some_and(|val| val == 0) {

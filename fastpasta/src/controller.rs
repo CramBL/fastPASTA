@@ -152,8 +152,8 @@ impl<C: Config + 'static> Controller<C> {
     fn update(&mut self, stat: StatType) {
         match stat {
             StatType::Error(msg) => {
+                // Stop processing any error messages
                 if self.stats_collector.fatal_err() {
-                    // Stop processing any error messages
                     log::trace!("Fatal error already seen, ignoring error: {msg}");
                     return;
                 }
@@ -180,8 +180,8 @@ impl<C: Config + 'static> Controller<C> {
             }
 
             StatType::Fatal(err) => {
+                // Stop processing any error messages
                 if self.stats_collector.fatal_err() {
-                    // Stop processing any error messages
                     log::trace!("Fatal error already seen, ignoring error: {err}");
                     return;
                 }

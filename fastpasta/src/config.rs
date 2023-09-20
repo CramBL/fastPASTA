@@ -120,7 +120,7 @@ pub struct Cfg {
         long = "output",
         visible_alias = "out",
         global = true,
-        requires("filter")
+        requires = "filter"
     )]
     output: Option<PathBuf>,
 
