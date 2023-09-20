@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 /// Collects stats from analysis.
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct StatsCollector {
-    #[serde(skip_serializing)]
     is_finalized: bool,
     rdh_stats: RdhStats,
     error_stats: ErrorStats,
@@ -105,5 +104,46 @@ impl StatsCollector {
 
     pub(super) fn take_alpide_stats(&mut self) -> Option<AlpideStats> {
         self.alpide_stats.take()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_serde() {
+        // Test serialization and deserialization of StatsCollector to JSON and TOML.
+        let mut stats_collector = StatsCollector::with_alpide_stats();
+        stats_collector.collect(StatType::Fatal("fatal error".into()));
+        stats_collector.collect(StatType::Error("error".into()));
+        stats_collector.collect(StatType::RunTriggerType((0, "trigger type".into())));
+        stats_collector.collect(StatType::TriggerType(0xE021));
+        stats_collector.collect(StatType::SystemId(SystemId::ZDC));
+        stats_collector.collect(StatType::RDHSeen(1));
+        stats_collector.collect(StatType::RDHFiltered(2));
+        stats_collector.collect(StatType::PayloadSize(3));
+        stats_collector.collect(StatType::LinksObserved(4));
+        stats_collector.collect(StatType::RdhVersion(5));
+        stats_collector.collect(StatType::DataFormat(2));
+        stats_collector.collect(StatType::HBFSeen);
+        stats_collector.collect(StatType::LayerStaveSeen { layer: 6, stave: 7 });
+        stats_collector.collect(StatType::FeeId(8));
+        stats_collector.collect(StatType::AlpideStats(AlpideStats::default()));
+        stats_collector.finalize();
+
+        let json = serde_json::to_string(&stats_collector).unwrap();
+        let from_json = serde_json::from_str::<StatsCollector>(&json).unwrap();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&stats_collector).unwrap()
+        );
+        assert_eq!(stats_collector, from_json);
+
+        let toml = toml::to_string(&stats_collector).unwrap();
+        let from_toml = toml::from_str::<StatsCollector>(&toml).unwrap();
+        println!("{toml}");
+        assert_eq!(stats_collector, from_toml);
     }
 }
