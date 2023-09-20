@@ -1,30 +1,46 @@
 //! Contains the [Controller] that collects stats and reports errors.
 //! It also controls the stop flag, which can be used to stop the program if a fatal error occurs, or if the config contains a max number of errors to tolerate.
 //! Finally when the event loop breaks (at the end of execution), it will print a summary of the stats collected, using the Report struct.
+//!
+//! Also contains the convenience [init_controller] function, which spawns a thread with the [Controller] running, and returns the thread handle, the channel to send stats to, and the stop flag.
 
-use super::super::StatType;
-
-use super::lib;
-use super::stats_collector::its_stats::alpide_stats::AlpideStats;
-use super::stats_collector::rdh_stats::RdhStats;
-use super::stats_collector::StatsCollector;
-use super::stats_report::stat_format_utils::format_error_codes;
-use super::stats_report::stat_format_utils::format_fee_ids;
-use super::stats_report::stat_format_utils::format_links_observed;
-use super::stats_report::stat_summerize_utils::summerize_data_size;
-use super::stats_report::stat_summerize_utils::summerize_filtered_fee_ids;
-use super::stats_report::stat_summerize_utils::summerize_filtered_its_layer_staves;
-use super::stats_report::stat_summerize_utils::summerize_filtered_links;
-use super::stats_report::stat_summerize_utils::summerize_layers_staves_seen;
-use super::SystemId;
+use super::stats;
+use super::stats::stats_collector::StatsCollector;
+use super::StatType;
 use crate::config::prelude::*;
-use crate::stats::stats_report::report::Report;
-use crate::stats::stats_report::report::StatSummary;
-use alice_protocol_reader::prelude::FilterTarget;
 use indicatif::{ProgressBar, ProgressStyle};
 use owo_colors::OwoColorize;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+
+/// Spawns a thread with the [Controller](Controller) running, and returns the thread handle, the channel to send stats to, and the stop flag.
+pub fn init_controller<C: Config + 'static>(
+    config: &'static C,
+) -> (
+    std::thread::JoinHandle<()>,
+    flume::Sender<StatType>,
+    std::sync::Arc<std::sync::atomic::AtomicBool>,
+    std::sync::Arc<std::sync::atomic::AtomicBool>,
+) {
+    log::trace!("Initializing stats controller");
+    let mut stats = Controller::new(config);
+    let send_stats_channel = stats.send_channel();
+    let thread_stop_flag = stats.end_processing_flag();
+    let any_errors_flag = stats.any_errors_flag();
+
+    let stats_thread = std::thread::Builder::new()
+        .name("stats_thread".to_string())
+        .spawn(move || {
+            stats.run();
+        })
+        .expect("Failed to spawn stats thread");
+    (
+        stats_thread,
+        send_stats_channel,
+        thread_stop_flag,
+        any_errors_flag,
+    )
+}
 
 /// The Controller receives stats and builds a summary report that is printed at the end of execution.
 pub struct Controller<C: Config + 'static> {
@@ -116,18 +132,18 @@ impl<C: Config + 'static> Controller<C> {
             // Avoid printing the report in the middle of a view, or if output is being redirected
             log::info!("View active or output is being piped, skipping report summary printout.")
         } else {
-            if self.stats_collector.total_errors() > 0 {
+            if self.stats_collector.any_errors() {
                 self.process_error_messages();
             }
 
             // Print the summary report if any RDHs were seen. If not, it's likely that an early error occurred and no data was processed.
-            if self.stats_collector.rdh_stats().rdhs_seen() > 0 {
+            if self.stats_collector.any_rdhs_seen() {
                 // New spinner/progress bar
                 self.new_spinner_with_prefix("Generating report".to_string());
                 self.print();
             }
         }
-        if self.stats_collector.total_errors() > 0 {
+        if self.stats_collector.any_errors() {
             self.any_errors_flag
                 .store(true, std::sync::atomic::Ordering::SeqCst);
         }
@@ -136,7 +152,7 @@ impl<C: Config + 'static> Controller<C> {
     fn update(&mut self, stat: StatType) {
         match stat {
             StatType::Error(msg) => {
-                if self.stats_collector.is_fatal_err() {
+                if self.stats_collector.fatal_err() {
                     // Stop processing any error messages
                     log::trace!("Fatal error already seen, ignoring error: {msg}");
                     return;
@@ -147,15 +163,15 @@ impl<C: Config + 'static> Controller<C> {
                 self.set_spinner_msg(
                     format!(
                         "{err_cnt} Errors in data!",
-                        err_cnt = self.stats_collector.total_errors()
+                        err_cnt = self.stats_collector.err_count()
                     )
                     .red()
                     .to_string(),
                 );
 
                 if self.max_tolerate_errors > 0 {
-                    log::trace!("Error count: {}", self.stats_collector.total_errors());
-                    if self.stats_collector.total_errors() == self.max_tolerate_errors as u64 {
+                    log::trace!("Error count: {}", self.stats_collector.err_count());
+                    if self.stats_collector.err_count() == self.max_tolerate_errors as u64 {
                         log::trace!("Errors reached maximum tolerated errors, exiting...");
                         self.end_processing_flag
                             .store(true, std::sync::atomic::Ordering::SeqCst);
@@ -164,7 +180,7 @@ impl<C: Config + 'static> Controller<C> {
             }
 
             StatType::Fatal(err) => {
-                if self.stats_collector.is_fatal_err() {
+                if self.stats_collector.fatal_err() {
                     // Stop processing any error messages
                     log::trace!("Fatal error already seen, ignoring error: {err}");
                     return;
@@ -192,7 +208,7 @@ impl<C: Config + 'static> Controller<C> {
                 if self.spinner.is_some() {
                     self.spinner.as_mut().unwrap().set_prefix(format!(
                         "Analyzing {hbfs} HBFs",
-                        hbfs = self.stats_collector.rdh_stats().hbfs_seen()
+                        hbfs = self.stats_collector.hbfs_seen()
                     ))
                 };
             }
@@ -209,7 +225,7 @@ impl<C: Config + 'static> Controller<C> {
         self.new_spinner_with_prefix(
             format!(
                 "Processing {err_count} error messages",
-                err_count = self.stats_collector.total_errors()
+                err_count = self.stats_collector.err_count()
             )
             .yellow()
             .to_string(),
@@ -225,14 +241,14 @@ impl<C: Config + 'static> Controller<C> {
                     .drain(..)
                     .take(self.max_tolerate_errors as usize)
                     .for_each(|e| {
-                        lib::display_error(&e);
+                        stats::lib::display_error(&e);
                     });
             } else {
                 self.stats_collector
                     .consume_reported_errors()
                     .drain(..)
                     .for_each(|e| {
-                        lib::display_error(&e);
+                        stats::lib::display_error(&e);
                     });
             }
         }
@@ -240,161 +256,16 @@ impl<C: Config + 'static> Controller<C> {
 
     /// Builds and prints the report
     fn print(&mut self) {
-        let mut report = Report::new(self.processing_time.elapsed());
-        // Add fatal error if any
-        if self.stats_collector.is_fatal_err() {
-            report.add_fatal_error(self.stats_collector.take_fatal_err().into_string());
-        }
-        // Add global stats
-        self.add_global_stats_to_report(&mut report);
-
-        if self.config.filter_enabled() {
-            let filtered_stats: Vec<StatSummary> = self.add_filtered_stats();
-            report.add_filter_stats(tabled::Table::new(filtered_stats));
-        } else {
-            // Check if the observed system ID is ITS
-            if matches!(
-                self.stats_collector.rdh_stats().system_id(),
-                Some(SystemId::ITS)
-            ) {
-                // If no filtering, the layers and staves seen is from the total RDHs
-                report.add_stat(summerize_layers_staves_seen(
-                    self.stats_collector.rdh_stats().layer_staves_as_slice(),
-                    self.stats_collector
-                        .error_stats()
-                        .staves_with_errors_as_slice(),
-                ));
-            }
-            // If no filtering, the HBFs seen is from the total RDHs
-            report.add_stat(StatSummary::new(
-                "Total HBFs".to_string(),
-                self.stats_collector.rdh_stats().hbfs_seen().to_string(),
-                None,
-            ));
-
-            // If no filtering, the payload size seen is from the total RDHs
-            report.add_stat(summerize_data_size(
-                self.stats_collector.rdh_stats().rdhs_seen(),
-                self.stats_collector.rdh_stats().payload_size(),
-            ));
-        }
-
-        // Add ALPIDE stats (if they are collected)
-        if let Some(alpide_stats) = self.stats_collector.take_alpide_stats() {
-            add_alpide_stats_to_report(&mut report, alpide_stats);
-        }
-
-        // Add detected attributes
-        add_detected_attributes_to_report(&mut report, self.stats_collector.rdh_stats());
-
+        let mut report = stats::stats_report::make_report(
+            self.processing_time.elapsed(),
+            &mut self.stats_collector,
+            self.config.filter_target(),
+        );
         self.append_spinner_msg("... completed");
         if self.spinner.is_some() {
             self.spinner.as_mut().unwrap().abandon();
         }
         report.print();
-    }
-
-    fn add_global_stats_to_report(&mut self, report: &mut Report) {
-        if self.stats_collector.total_errors() == 0 {
-            report.add_stat(StatSummary::new(
-                "Total Errors".green().to_string(),
-                self.stats_collector.total_errors().green().to_string(),
-                None,
-            ));
-        } else {
-            report.add_stat(StatSummary::new(
-                "Total Errors".red().to_string(),
-                self.stats_collector.total_errors().red().to_string(),
-                Some(format_error_codes(
-                    self.stats_collector.unique_error_codes_as_slice(),
-                )),
-            ));
-        }
-
-        let (trigger_type_raw, trigger_type_str) =
-            self.stats_collector.rdh_stats().run_trigger_type();
-        report.add_stat(StatSummary {
-            statistic: "Run Trigger Type".to_string(),
-            value: format!("{trigger_type_raw:#02X}"),
-            notes: trigger_type_str.into_string(),
-        });
-        report.add_stat(StatSummary::new(
-            "Total RDHs".to_string(),
-            self.stats_collector.rdh_stats().rdhs_seen().to_string(),
-            None,
-        ));
-        self.stats_collector.finalize();
-        report.add_stat(StatSummary::new(
-            "Links observed".to_string(),
-            format_links_observed(self.stats_collector.rdh_stats().links_as_slice()),
-            None,
-        ));
-        report.add_stat(StatSummary::new(
-            "FEE IDs seen".to_string(),
-            format_fee_ids(self.stats_collector.rdh_stats().fee_ids_as_slice()),
-            None,
-        ));
-    }
-
-    /// Helper function that builds a vector of the stats associated with the filtered data
-    fn add_filtered_stats(&mut self) -> Vec<StatSummary> {
-        let mut filtered_stats: Vec<StatSummary> = Vec::new();
-        filtered_stats.push(StatSummary::new(
-            "RDHs".to_string(),
-            self.stats_collector.rdh_stats().rdhs_filtered().to_string(),
-            None,
-        ));
-        // If filtering, the HBFs seen is from the filtered RDHs
-        filtered_stats.push(StatSummary::new(
-            "HBFs".to_string(),
-            self.stats_collector.rdh_stats().hbfs_seen().to_string(),
-            None,
-        ));
-
-        filtered_stats.push(summerize_data_size(
-            self.stats_collector.rdh_stats().rdhs_filtered(),
-            self.stats_collector.rdh_stats().payload_size(),
-        ));
-
-        if let Some(filter_target) = self.config.filter_target() {
-            let filtered_target = match filter_target {
-                FilterTarget::Link(link_id) => summerize_filtered_links(
-                    link_id,
-                    self.stats_collector.rdh_stats().links_as_slice(),
-                ),
-                FilterTarget::Fee(fee_id) => summerize_filtered_fee_ids(
-                    fee_id,
-                    self.stats_collector.rdh_stats().fee_ids_as_slice(),
-                ),
-                FilterTarget::ItsLayerStave(fee_id_no_link) => summerize_filtered_its_layer_staves(
-                    fee_id_no_link,
-                    self.stats_collector.rdh_stats().layer_staves_as_slice(),
-                ),
-            };
-            filtered_stats.push(filtered_target);
-        }
-
-        if self
-            .config
-            .filter_target()
-            .is_some_and(|target| !matches!(target, FilterTarget::ItsLayerStave(_)))
-        {
-            // Check if the observed system ID is ITS
-            if matches!(
-                self.stats_collector.rdh_stats().system_id(),
-                Some(SystemId::ITS)
-            ) {
-                // If no filtering, the layers and staves seen is from the total RDHs
-                filtered_stats.push(summerize_layers_staves_seen(
-                    self.stats_collector.rdh_stats().layer_staves_as_slice(),
-                    self.stats_collector
-                        .error_stats()
-                        .staves_with_errors_as_slice(),
-                ));
-            }
-        }
-
-        filtered_stats
     }
 
     /// Add completed message to current spinner and abandon it
@@ -435,74 +306,6 @@ impl<C: Config + 'static> Controller<C> {
     }
 }
 
-fn add_detected_attributes_to_report(report: &mut Report, rdh_stats: &RdhStats) {
-    report.add_detected_attribute(
-        "RDH Version".to_string(),
-        rdh_stats.rdh_version().to_string(),
-    );
-
-    report.add_detected_attribute(
-        "Data Format".to_string(),
-        rdh_stats.data_format().to_string(),
-    );
-    report.add_detected_attribute(
-        "System ID".to_string(),
-        // If no system ID is found, something is wrong, set it to "none" in red.
-        match rdh_stats.system_id() {
-            Some(sys_id) => sys_id.to_string(),
-            None => String::from("none").red().to_string(),
-        }, // Default to TST for unit tests where no RDHs are seen
-    );
-}
-
-fn add_alpide_stats_to_report(report: &mut Report, alpide_stats: AlpideStats) {
-    let mut alpide_stat: Vec<StatSummary> = Vec::new();
-
-    let readout_flags = alpide_stats.readout_flags();
-
-    alpide_stat.push(StatSummary::new(
-        "Chip Trailers seen".to_string(),
-        readout_flags.chip_trailers_seen().to_string(),
-        None,
-    ));
-
-    alpide_stat.push(StatSummary::new(
-        "Busy Violations".to_string(),
-        readout_flags.busy_violations().to_string(),
-        None,
-    ));
-
-    alpide_stat.push(StatSummary::new(
-        "Data Overrun".to_string(),
-        readout_flags.data_overrun().to_string(),
-        None,
-    ));
-
-    alpide_stat.push(StatSummary::new(
-        "Transmission in Fatal".to_string(),
-        readout_flags.transmission_in_fatal().to_string(),
-        None,
-    ));
-
-    alpide_stat.push(StatSummary::new(
-        "Flushed Incomplete".to_string(),
-        readout_flags.flushed_incomplete().to_string(),
-        None,
-    ));
-    alpide_stat.push(StatSummary::new(
-        "Strobe Extended".to_string(),
-        readout_flags.strobe_extended().to_string(),
-        None,
-    ));
-    alpide_stat.push(StatSummary::new(
-        "Busy Transitions".to_string(),
-        readout_flags.busy_transitions().to_string(),
-        None,
-    ));
-
-    report.add_alpide_stats(tabled::Table::new(alpide_stat));
-}
-
 fn new_styled_spinner() -> ProgressBar {
     let spinner_style =
         ProgressStyle::with_template("{spinner} [ {prefix:.bold.blue} ] {wide_msg}")
@@ -520,4 +323,53 @@ fn new_styled_spinner() -> ProgressBar {
     pb.set_style(spinner_style);
     pb.enable_steady_tick(std::time::Duration::from_millis(120));
     pb
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::OnceLock;
+
+    use crate::config::test_util::MockConfig;
+    static CONFIG_TEST_INIT_CONTROLLER: OnceLock<MockConfig> = OnceLock::new();
+
+    #[test]
+    fn test_init_controller() {
+        let mock_config = MockConfig::default();
+        CONFIG_TEST_INIT_CONTROLLER.set(mock_config).unwrap();
+
+        let (handle, send_ch, stop_flag, _errors_flag) =
+            init_controller(CONFIG_TEST_INIT_CONTROLLER.get().unwrap());
+
+        // Stop flag should be false
+        assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));
+
+        // Send RDH version seen
+        send_ch.send(StatType::RdhVersion(7)).unwrap();
+
+        // Send Data format seen
+        send_ch.send(StatType::DataFormat(99)).unwrap();
+
+        // Send Run Trigger Type
+        send_ch
+            .send(StatType::RunTriggerType((0xBEEF, "BEEF".to_owned().into())))
+            .unwrap();
+
+        // Send rdh seen stat
+        send_ch.send(StatType::RDHSeen(1)).unwrap();
+
+        // Send a fatal error that should cause the stop flag to be set
+        send_ch
+            .send(StatType::Fatal("Test fatal error".to_string().into()))
+            .unwrap();
+
+        // Stop the controller by dropping the sender channel
+        drop(send_ch);
+
+        // Wait for the controller to stop
+        handle.join().unwrap();
+
+        // Stop flag should be true
+        assert!(stop_flag.load(std::sync::atomic::Ordering::SeqCst));
+    }
 }
