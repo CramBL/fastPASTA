@@ -1,5 +1,4 @@
 use crate::util::*;
-use assert_fs::fixture::ChildPath;
 use predicates::str::contains;
 mod util;
 
@@ -213,7 +212,7 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn filter_its_stave() -> Result<(), Box<dyn std::error::Error>> {
-    let (_, tmp_fpath) = make_tmp_dir_w_fpath();
+    let (_tmp_dir, tmp_fpath) = make_tmp_dir_w_fpath();
     let mut cmd = Command::cargo_bin("fastpasta")?;
     cmd.arg(FILE_10_RDH)
         .arg("--filter-its-stave")
@@ -238,7 +237,7 @@ fn filter_its_stave() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn filter_its_stave_not_found() -> Result<(), Box<dyn std::error::Error>> {
-    let (_, tmp_fpath) = make_tmp_dir_w_fpath();
+    let (_tmp_dir, tmp_fpath) = make_tmp_dir_w_fpath();
 
     let mut cmd = Command::cargo_bin("fastpasta")?;
     let stave_to_filter = "L3_0"; // Not in the data
@@ -268,7 +267,7 @@ fn filter_its_stave_not_found() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn filter_fee() -> Result<(), Box<dyn std::error::Error>> {
-    let (_, tmp_fpath) = make_tmp_dir_w_fpath();
+    let (_tmp_dir, tmp_fpath) = make_tmp_dir_w_fpath();
 
     let mut cmd = Command::cargo_bin("fastpasta")?;
     let fee_id_to_filter = "524";
@@ -299,7 +298,7 @@ fn filter_fee() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn filter_fee_not_found() -> Result<(), Box<dyn std::error::Error>> {
-    let (_, tmp_fpath) = make_tmp_dir_w_fpath();
+    let (_tmp_dir, tmp_fpath) = make_tmp_dir_w_fpath();
 
     let mut cmd = Command::cargo_bin("fastpasta")?;
     let fee_id_to_filter = "1337";
