@@ -1,6 +1,7 @@
 #![allow(missing_docs)]
 
 use super::custom_checks::CustomChecks;
+use super::inputoutput::DataOutputFormat;
 use super::prelude::*;
 use alice_protocol_reader::prelude::FilterOpt;
 
@@ -23,6 +24,8 @@ pub struct MockConfig {
     pub mute_errors: bool,
     pub generate_checks_toml: bool,
     pub custom_checks: Option<CustomChecks>,
+    pub stats_output_mode: DataOutputMode,
+    pub stats_output_format: Option<DataOutputFormat>,
 }
 
 impl Default for MockConfig {
@@ -50,6 +53,8 @@ impl MockConfig {
             mute_errors: false,
             generate_checks_toml: false,
             custom_checks: None,
+            stats_output_mode: DataOutputMode::None,
+            stats_output_format: None,
         }
     }
 }
@@ -127,6 +132,14 @@ impl InputOutputOpt for MockConfig {
 
     fn output_mode(&self) -> DataOutputMode {
         self.output_mode
+    }
+
+    fn stats_output_mode(&self) -> DataOutputMode {
+        self.stats_output_mode
+    }
+
+    fn stats_output_format(&self) -> Option<super::inputoutput::DataOutputFormat> {
+        self.stats_output_format
     }
 }
 
