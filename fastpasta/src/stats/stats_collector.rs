@@ -1,14 +1,16 @@
 //! Contains the [StatsCollector] that collects stats from analysis.
 pub(super) mod error_stats;
 pub mod its_stats;
+pub(super) mod rdh_stats;
+pub(super) mod trigger_stats;
 
 use crate::config::custom_checks::CustomChecksOpt;
 
-use super::rdh_stats::RdhStats;
 use super::stats_validation::validate_custom_stats;
 use super::{StatType, SystemId};
 use error_stats::ErrorStats;
 use its_stats::alpide_stats::AlpideStats;
+use rdh_stats::RdhStats;
 use serde::{Deserialize, Serialize};
 
 /// Collects stats from analysis.

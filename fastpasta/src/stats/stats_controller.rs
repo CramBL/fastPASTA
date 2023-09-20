@@ -5,8 +5,8 @@
 use super::super::StatType;
 
 use super::lib;
-use super::rdh_stats::RdhStats;
 use super::stats_collector::its_stats::alpide_stats::AlpideStats;
+use super::stats_collector::rdh_stats::RdhStats;
 use super::stats_collector::StatsCollector;
 use super::stats_report::stat_format_utils::format_error_codes;
 use super::stats_report::stat_format_utils::format_fee_ids;

@@ -9,12 +9,10 @@ use serde::{Deserialize, Serialize};
 use stats_collector::its_stats::alpide_stats::AlpideStats;
 
 pub mod lib;
-mod rdh_stats;
 pub mod stats_collector;
 pub mod stats_controller;
 mod stats_report;
 mod stats_validation;
-mod trigger_stats;
 
 #[derive(Debug, Clone, PartialEq)]
 /// Possible stats that can be sent to the StatsController.
