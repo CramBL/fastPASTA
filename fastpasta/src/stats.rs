@@ -1,6 +1,6 @@
 //! All stat collecting functionality, and controller that can stop the program based on the collected stats.
 //!
-//! Contains the [init_stats_controller] function, which spawns a thread with the [StatsController](stats_controller::StatsController) running, and returns the thread handle, the channel to send stats to, and the stop flag.
+//! Contains the [init_controller] function, which spawns a thread with the [Controller](controller::Controller) running, and returns the thread handle, the channel to send stats to, and the stop flag.
 
 use crate::config::prelude::Config;
 use crate::words;
@@ -8,14 +8,14 @@ use alice_protocol_reader::prelude::RDH;
 use serde::{Deserialize, Serialize};
 use stats_collector::its_stats::alpide_stats::AlpideStats;
 
+pub mod controller;
 pub mod lib;
 pub mod stats_collector;
-pub mod stats_controller;
 mod stats_report;
 mod stats_validation;
 
 #[derive(Debug, Clone, PartialEq)]
-/// Possible stats that can be sent to the StatsController.
+/// Possible stats that can be sent to the Controller.
 pub enum StatType {
     /// Fatal error, stop processing.
     Fatal(Box<str>),
@@ -166,8 +166,8 @@ impl std::fmt::Display for SystemId {
     }
 }
 
-/// Spawns a thread with the [StatsController](stats_controller::StatsController) running, and returns the thread handle, the channel to send stats to, and the stop flag.
-pub fn init_stats_controller<C: Config + 'static>(
+/// Spawns a thread with the [Controller](controller::Controller) running, and returns the thread handle, the channel to send stats to, and the stop flag.
+pub fn init_controller<C: Config + 'static>(
     config: &'static C,
 ) -> (
     std::thread::JoinHandle<()>,
@@ -176,7 +176,7 @@ pub fn init_stats_controller<C: Config + 'static>(
     std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) {
     log::trace!("Initializing stats controller");
-    let mut stats = stats_controller::StatsController::new(config);
+    let mut stats = controller::Controller::new(config);
     let send_stats_channel = stats.send_channel();
     let thread_stop_flag = stats.end_processing_flag();
     let any_errors_flag = stats.any_errors_flag();
@@ -197,12 +197,12 @@ pub fn init_stats_controller<C: Config + 'static>(
 
 /// Takes an [RDH](RDH) and determines the [SystemId] and collects system specific stats.
 /// Uses the received [`Option<SystemId>`] to check if the system ID has already been determined,
-/// otherwise it will determine the [SystemId] and send it to the [StatsController](stats_controller::StatsController) via the channel [`flume::Sender<StatType>`].
+/// otherwise it will determine the [SystemId] and send it to the [Controller](controller::Controller) via the channel [`flume::Sender<StatType>`].
 ///
 /// # Arguments
 /// * `rdh` - The [RDH](RDH) to collect stats from.
 /// * `system_id` - The [`Option<SystemId>`] to check if the system ID has already been determined.
-/// * `stats_sender_channel` - The [`flume::Sender<StatType>`] to send the stats to the [StatsController](stats_controller::StatsController).
+/// * `stats_sender_channel` - The [`flume::Sender<StatType>`] to send the stats to the [Controller](controller::Controller).
 /// # Returns
 /// * `Ok(())` - If the stats were collected successfully.
 /// * `Err(())` - If its the first time the [SystemId] is determined and the [SystemId] is not recognized.
@@ -241,7 +241,7 @@ pub fn collect_system_specific_stats<T: RDH + 'static>(
     Ok(())
 }
 
-/// Collects stats specific to ITS from the given [RDH][RDH] and sends them to the [StatsController].
+/// Collects stats specific to ITS from the given [RDH][RDH] and sends them to the [Controller].
 fn collect_its_stats<T: RDH>(rdh: &T, stats_sender_channel: &flume::Sender<StatType>) {
     let layer = words::its::layer_from_feeid(rdh.fee_id());
     let stave = words::its::stave_number_from_feeid(rdh.fee_id());

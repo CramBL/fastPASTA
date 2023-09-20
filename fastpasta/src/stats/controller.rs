@@ -1,4 +1,4 @@
-//! Contains the [StatsController] that collects stats and reports errors.
+//! Contains the [Controller] that collects stats and reports errors.
 //! It also controls the stop flag, which can be used to stop the program if a fatal error occurs, or if the config contains a max number of errors to tolerate.
 //! Finally when the event loop breaks (at the end of execution), it will print a summary of the stats collected, using the Report struct.
 
@@ -26,10 +26,10 @@ use owo_colors::OwoColorize;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-/// The StatsController receives stats and builds a summary report that is printed at the end of execution.
-pub struct StatsController<C: Config + 'static> {
+/// The Controller receives stats and builds a summary report that is printed at the end of execution.
+pub struct Controller<C: Config + 'static> {
     stats_collector: StatsCollector,
-    /// Time from [StatsController] is instantiated, to all data processing threads disconnected their [StatType] producer channel.
+    /// Time from [Controller] is instantiated, to all data processing threads disconnected their [StatType] producer channel.
     pub processing_time: std::time::Instant,
     config: &'static C,
     max_tolerate_errors: u32,
@@ -38,21 +38,21 @@ pub struct StatsController<C: Config + 'static> {
     // The channel stats are sent through, stored so that a clone of the channel can be returned easily
     // Has to be an option so that it can be set to None when the event loop starts.
     // Once run is called no producers that don't already have a channel to send stats through, will be able to get one.
-    // This is because the event loop breaks when all sender channels are dropped, and if the StatsController keeps a reference to the channel, it will cause a deadlock.
+    // This is because the event loop breaks when all sender channels are dropped, and if the Controller keeps a reference to the channel, it will cause a deadlock.
     send_stats_channel: Option<flume::Sender<StatType>>,
     end_processing_flag: Arc<AtomicBool>,
     any_errors_flag: Arc<AtomicBool>,
     spinner: Option<ProgressBar>,
     spinner_message: String,
 }
-impl<C: Config + 'static> StatsController<C> {
-    /// Creates a new [StatsController] from a [Config], a [flume::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
+impl<C: Config + 'static> Controller<C> {
+    /// Creates a new [Controller] from a [Config], a [flume::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
     pub fn new(global_config: &'static C) -> Self {
         let (send_stats_channel, recv_stats_channel): (
             flume::Sender<StatType>,
             flume::Receiver<StatType>,
         ) = flume::unbounded();
-        StatsController {
+        Controller {
             // Only collect alpide stats if alpide checks are enabled
             stats_collector: if global_config.alpide_checks_enabled() {
                 StatsCollector::with_alpide_stats()
@@ -75,11 +75,11 @@ impl<C: Config + 'static> StatsController<C> {
         }
     }
 
-    /// Returns a clone of the channel that is used to send stats to the StatsController.
+    /// Returns a clone of the channel that is used to send stats to the Controller.
     pub fn send_channel(&self) -> flume::Sender<StatType> {
         if self.send_stats_channel.is_none() {
-            log::error!("StatsController send channel is none, most likely it is already running and does not accept new producers");
-            panic!("StatsController send channel is none, most likely it is already running and does not accept new producers");
+            log::error!("Controller send channel is none, most likely it is already running and does not accept new producers");
+            panic!("Controller send channel is none, most likely it is already running and does not accept new producers");
         }
         self.send_stats_channel.as_ref().unwrap().clone()
     }
@@ -96,7 +96,7 @@ impl<C: Config + 'static> StatsController<C> {
         self.any_errors_flag.clone()
     }
 
-    /// Starts the event loop for the StatsController
+    /// Starts the event loop for the Controller
     /// This function will block until the channel is closed
     pub fn run(&mut self) {
         // Set the send stats channel to none so that no new producers can be added, and so the loop breaks when all producers have dropped their channel.

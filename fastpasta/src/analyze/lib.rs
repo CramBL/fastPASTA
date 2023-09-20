@@ -62,7 +62,7 @@ pub fn spawn_analysis<T: RDH + 'static>(
                         if let Err(e) = super::view::lib::generate_view(view, cdp_chunk) {
                             stats_sender_channel
                                 .send(StatType::Fatal(e.to_string().into()))
-                                .expect("Couldn't send to StatsController");
+                                .expect("Couldn't send to Controller");
                         }
                     }
                 }

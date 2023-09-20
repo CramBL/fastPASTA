@@ -22,7 +22,7 @@ type CdpTuple<T> = (T, Vec<u8>, u64);
 pub struct InputScanner<R: ?Sized + BufferedReaderWrapper> {
     reader: Box<R>,
     tracker: MemPosTracker,
-    stats_controller_sender_ch: Option<flume::Sender<InputStatType>>,
+    stats_sender_ch: Option<flume::Sender<InputStatType>>,
     filter_target: Option<FilterTarget>,
     skip_payload: bool,
     stats: Option<Stats>,
@@ -34,15 +34,15 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     pub fn new(
         config: &impl FilterOpt,
         reader: Box<R>,
-        stats_controller_sender_ch: Option<flume::Sender<InputStatType>>,
+        stats_sender_ch: Option<flume::Sender<InputStatType>>,
     ) -> Self {
         InputScanner {
             reader,
             tracker: MemPosTracker::new(),
-            stats_controller_sender_ch: stats_controller_sender_ch.clone(),
+            stats_sender_ch: stats_sender_ch.clone(),
             filter_target: config.filter_target(),
             skip_payload: config.skip_payload(),
-            stats: stats_controller_sender_ch.map(Stats::new),
+            stats: stats_sender_ch.map(Stats::new),
             initial_rdh0: None,
         }
     }
@@ -52,16 +52,16 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
     pub fn new_from_rdh0(
         config: &impl FilterOpt,
         reader: Box<R>,
-        stats_controller_sender_ch: Option<flume::Sender<InputStatType>>,
+        stats_sender_ch: Option<flume::Sender<InputStatType>>,
         rdh0: Rdh0,
     ) -> Self {
         InputScanner {
             reader,
             tracker: MemPosTracker::new(),
             filter_target: config.filter_target(),
-            stats_controller_sender_ch: stats_controller_sender_ch.clone(),
+            stats_sender_ch: stats_sender_ch.clone(),
             skip_payload: config.skip_payload(),
-            stats: stats_controller_sender_ch.map(Stats::new),
+            stats: stats_sender_ch.map(Stats::new),
             initial_rdh0: Some(rdh0),
         }
     }
@@ -73,7 +73,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         Self {
             reader,
             tracker: Default::default(),
-            stats_controller_sender_ch: Default::default(),
+            stats_sender_ch: Default::default(),
             filter_target: Default::default(),
             skip_payload: Default::default(),
             stats: Default::default(),
@@ -83,7 +83,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
 
     #[inline]
     fn report(&self, stat: InputStatType) {
-        if let Some(stats_sender) = self.stats_controller_sender_ch.as_ref() {
+        if let Some(stats_sender) = self.stats_sender_ch.as_ref() {
             stats_sender
                 .send(stat)
                 .expect("Failed to send stats, receiver was dropped")
@@ -153,7 +153,7 @@ where
         sanity_check_offset_next(
             &rdh,
             self.tracker.current_mem_address(),
-            self.stats_controller_sender_ch.as_ref(),
+            self.stats_sender_ch.as_ref(),
         )?;
 
         // If a filter is set, check if the RDH matches the filter
@@ -236,7 +236,7 @@ where
             sanity_check_offset_next(
                 &rdh,
                 self.tracker.current_mem_address(),
-                self.stats_controller_sender_ch.as_ref(),
+                self.stats_sender_ch.as_ref(),
             )?;
             self.collect_rdh_seen_stats(&rdh);
 
@@ -339,7 +339,7 @@ mod tests {
             filter_link: Some(0),
             ..Default::default()
         };
-        let (send_stats_controller_channel, recv_stats_controller_channel): (
+        let (send_controller_channel, recv_controller_channel): (
             flume::Sender<InputStatType>,
             flume::Receiver<InputStatType>,
         ) = flume::unbounded();
@@ -351,13 +351,9 @@ mod tests {
         let bufreader = std::io::BufReader::new(reader);
 
         (
-            InputScanner::new(
-                &config,
-                Box::new(bufreader),
-                Some(send_stats_controller_channel),
-            ),
+            InputScanner::new(&config, Box::new(bufreader), Some(send_controller_channel)),
             // Has to be returned so it lives long enough for the test. Otherwise it will be dropped, and inputscanner will panic when trying to report stats.
-            recv_stats_controller_channel,
+            recv_controller_channel,
         )
     }
 

@@ -2,7 +2,7 @@ use alice_protocol_reader::init_reader;
 use fastpasta::config::init_config;
 use fastpasta::config::prelude::*;
 use fastpasta::config::Cfg;
-use fastpasta::stats::init_stats_controller;
+use fastpasta::stats::init_controller;
 use fastpasta::stats::StatType;
 
 pub fn main() -> std::process::ExitCode {
@@ -18,10 +18,10 @@ pub fn main() -> std::process::ExitCode {
         return std::process::ExitCode::from(0);
     }
 
-    // Launch statistics thread
-    // If max allowed errors is reached, stop the processing from the stats thread
+    // Launch controller thread
+    // If max allowed errors is reached, the controller thread signals every other thread to stop
     let (stat_controller, stat_send_channel, stop_flag, any_errors_flag) =
-        init_stats_controller(Cfg::global());
+        init_controller(Cfg::global());
 
     // Handles SIGINT, SIGTERM and SIGHUP (as the `termination` feature is  enabled)
     fastpasta::util::lib::init_ctrlc_handler(stop_flag.clone());

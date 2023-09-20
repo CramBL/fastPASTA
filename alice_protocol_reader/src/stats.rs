@@ -2,7 +2,7 @@
 
 #[allow(variant_size_differences)] // Allow in this case, the string is already a pointer.
 #[derive(Debug, Clone, PartialEq)]
-/// Possible stats that can be sent to the StatsController.
+/// Possible stats that can be sent to the Controller.
 pub enum InputStatType {
     /// Fatal error, stop processing.
     Fatal(Box<str>),

@@ -67,14 +67,14 @@ mod tests {
     }
 
     use crate::config::test_util::MockConfig;
-    static CONFIG_TEST_INIT_STATS_CONTROLLER: OnceLock<MockConfig> = OnceLock::new();
+    static CONFIG_TEST_INIT_CONTROLLER: OnceLock<MockConfig> = OnceLock::new();
     #[test]
-    fn test_init_stats_controller() {
+    fn test_init_controller() {
         let mock_config = MockConfig::default();
-        CONFIG_TEST_INIT_STATS_CONTROLLER.set(mock_config).unwrap();
+        CONFIG_TEST_INIT_CONTROLLER.set(mock_config).unwrap();
 
         let (handle, send_ch, stop_flag, _errors_flag) =
-            crate::stats::init_stats_controller(CONFIG_TEST_INIT_STATS_CONTROLLER.get().unwrap());
+            crate::stats::init_controller(CONFIG_TEST_INIT_CONTROLLER.get().unwrap());
 
         // Stop flag should be false
         assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));
