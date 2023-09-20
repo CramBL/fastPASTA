@@ -127,6 +127,7 @@ flowchart TD;
   top_sub_cmd -- "view" --> view_type{"Type of view"};
   view_type -- "rdh" --> view_rdh{{$ fastpasta view rdh}};
   view_type -- "its-readout-frames" --> view_ro_frames{{$ fastpasta view its-readout-frames}};
+  view_type -- "its-readout-frames-data" --> view_ro_frames_data{{$ fastpasta view its-readout-frames-data}};
 
   top_sub_cmd -- "check" --> check_type{"Type of check"};
 
