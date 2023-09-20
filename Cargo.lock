@@ -548,6 +548,7 @@ dependencies = [
  "ringbuffer",
  "serde",
  "serde_derive",
+ "serde_json",
  "sm",
  "stderrlog",
  "tabled",

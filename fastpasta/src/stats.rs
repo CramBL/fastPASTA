@@ -5,6 +5,7 @@
 use crate::config::prelude::Config;
 use crate::words;
 use alice_protocol_reader::prelude::RDH;
+use serde::{Deserialize, Serialize};
 
 use self::its_stats::alpide_stats::AlpideStats;
 
@@ -89,7 +90,7 @@ impl std::fmt::Display for StatType {
 }
 
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 /// Enums to represent each subsystem in the ALICE DAQ from the System ID.
 pub enum SystemId {
     // ignore missing docs

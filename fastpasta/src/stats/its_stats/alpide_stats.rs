@@ -1,7 +1,9 @@
 //! Contains the possible ALPIDE stats that can be collected during analysis
 
+use serde::{Deserialize, Serialize};
+
 /// Struct to store observed ALPIDE stats
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
+#[derive(Default, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AlpideStats {
     readout_flags: ReadoutFlags,
 }
@@ -20,7 +22,7 @@ impl AlpideStats {
     }
 }
 
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
+#[derive(Default, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct ReadoutFlags {
     pub(super) chip_trailers_seen: u32,
     pub(super) busy_violations: u32,       // 4'b1000
@@ -90,5 +92,31 @@ impl ReadoutFlags {
             data_overrun: self.data_overrun + other.data_overrun,
             transmission_in_fatal: self.transmission_in_fatal + other.transmission_in_fatal,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_serde_consistency() {
+        // Test JSON and TOML serialization/deserialization
+        let mut alpide_stats = AlpideStats::default();
+        alpide_stats.log_readout_flags(ReadoutFlags::CHIP_TRAILER_BUSY_VIOLATION);
+
+        // JSON
+        let alpide_stats_ser_json = serde_json::to_string(&alpide_stats).unwrap();
+        let alpide_stats_de_json: AlpideStats =
+            serde_json::from_str(&alpide_stats_ser_json).unwrap();
+        assert_eq!(alpide_stats, alpide_stats_de_json);
+        println!("{}", serde_json::to_string_pretty(&alpide_stats).unwrap());
+
+        // TOML
+        let alpide_stats_ser_toml = toml::to_string(&alpide_stats).unwrap();
+        let alpide_stats_de_toml: AlpideStats = toml::from_str(&alpide_stats_ser_toml).unwrap();
+        assert_eq!(alpide_stats, alpide_stats_de_toml);
+        println!("{}", alpide_stats_ser_toml);
     }
 }

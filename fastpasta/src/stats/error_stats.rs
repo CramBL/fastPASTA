@@ -1,8 +1,9 @@
 use crate::words::its::{layer_from_feeid, stave_number_from_feeid};
+use serde::{Deserialize, Serialize};
 
 type LayerStave = (u8, u8);
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ErrorStats {
     fatal_error: Option<Box<str>>,
     reported_errors: Vec<Box<str>>,
@@ -171,4 +172,30 @@ fn extract_unique_error_codes(error_messages: &[Box<str>]) -> Vec<u16> {
         });
     });
     error_codes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_serde_consistency() {
+        // Test JSON and TOML serialization/deserialization
+        let mut error_stats = ErrorStats::default();
+
+        error_stats.add_reported_error("0xE0: [E0001] Error message".into());
+        error_stats.finalize_stats();
+
+        let error_stats_ser_json = serde_json::to_string(&error_stats).unwrap();
+        let error_stats_de_json: ErrorStats = serde_json::from_str(&error_stats_ser_json).unwrap();
+        assert_eq!(error_stats, error_stats_de_json);
+        println!("{}", serde_json::to_string_pretty(&error_stats).unwrap());
+
+        let error_stats_ser_toml = toml::to_string(&error_stats).unwrap();
+        let error_stats_de_toml: ErrorStats = toml::from_str(&error_stats_ser_toml).unwrap();
+        assert_eq!(error_stats, error_stats_de_toml);
+        println!("{}", error_stats_ser_toml);
+    }
 }
