@@ -85,11 +85,11 @@ impl ErrorStats {
         self.staves_with_errors = Some(staves_with_errors);
     }
 
-    pub(super) fn total_errors(&self) -> u64 {
+    pub(super) fn err_count(&self) -> u64 {
         self.total_errors
     }
 
-    pub(super) fn add_reported_error(&mut self, error_msg: Box<str>) {
+    pub(super) fn add_err(&mut self, error_msg: Box<str>) {
         self.total_errors += 1;
         self.reported_errors.push(error_msg);
     }
@@ -99,15 +99,15 @@ impl ErrorStats {
         self.custom_checks_stats_errors.push(error_msg);
     }
 
-    pub(super) fn add_fatal_error(&mut self, error_msg: Box<str>) {
+    pub(super) fn add_fatal_err(&mut self, error_msg: Box<str>) {
         self.fatal_error = Some(error_msg);
     }
 
-    pub(super) fn is_fatal_error(&self) -> bool {
+    pub(super) fn fatal_err(&self) -> bool {
         self.fatal_error.is_some()
     }
 
-    pub(super) fn take_fatal_error(&mut self) -> Box<str> {
+    pub(super) fn take_fatal_err(&mut self) -> Box<str> {
         self.fatal_error.take().expect("No fatal error found!")
     }
 
@@ -127,7 +127,7 @@ impl ErrorStats {
     ///
     /// Returns ´None´ if no staves were seen in any error messages
     /// Panics if staves with errors is None when there's errors.
-    pub(super) fn staves_with_errors_as_slice(&self) -> Option<&[LayerStave]> {
+    pub(crate) fn staves_with_errors_as_slice(&self) -> Option<&[LayerStave]> {
         if self.staves_with_errors.is_none() {
             if self.total_errors == 0 {
                 return None;
@@ -185,7 +185,7 @@ mod tests {
         // Test JSON and TOML serialization/deserialization
         let mut error_stats = ErrorStats::default();
 
-        error_stats.add_reported_error("0xE0: [E0001] Error message".into());
+        error_stats.add_err("0xE0: [E0001] Error message".into());
         error_stats.finalize_stats();
 
         let error_stats_ser_json = serde_json::to_string(&error_stats).unwrap();

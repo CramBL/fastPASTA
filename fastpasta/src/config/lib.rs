@@ -36,6 +36,11 @@ where
         }
         Ok(())
     }
+
+    /// Check if the config has the `check all its-stave` command set, which is currently the only way to enable ALPIDE checks
+    fn alpide_checks_enabled(&self) -> bool {
+        matches!(self.check(), Some(CheckCommands::All { system }) if matches!(system, Some(System::ITS_Stave)))
+    }
 }
 
 impl<T> Config for &T
@@ -44,6 +49,10 @@ where
 {
     fn validate_args(&self) -> Result<(), String> {
         (*self).validate_args()
+    }
+
+    fn alpide_checks_enabled(&self) -> bool {
+        (*self).alpide_checks_enabled()
     }
 }
 
@@ -54,6 +63,10 @@ where
     fn validate_args(&self) -> Result<(), String> {
         (**self).validate_args()
     }
+
+    fn alpide_checks_enabled(&self) -> bool {
+        (**self).alpide_checks_enabled()
+    }
 }
 impl<T> Config for std::sync::Arc<T>
 where
@@ -61,5 +74,9 @@ where
 {
     fn validate_args(&self) -> Result<(), String> {
         (**self).validate_args()
+    }
+
+    fn alpide_checks_enabled(&self) -> bool {
+        (**self).alpide_checks_enabled()
     }
 }

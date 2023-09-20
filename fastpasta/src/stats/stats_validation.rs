@@ -1,4 +1,4 @@
-use super::rdh_stats::RdhStats;
+use super::stats_collector::rdh_stats::RdhStats;
 use crate::config::custom_checks::CustomChecksOpt;
 
 /// Validate the stats against the custom checks configuration.

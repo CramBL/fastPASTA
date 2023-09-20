@@ -3,7 +3,7 @@
 //! Analysis consists of decoding the ALPIDE data and then performing checks on the decoded data.
 
 use crate::{
-    stats::its_stats::alpide_stats::AlpideStats,
+    stats::stats_collector::its_stats::alpide_stats::AlpideStats,
     words::its::{
         alpide_words::{AlpideFrameChipData, LaneDataFrame},
         Layer,

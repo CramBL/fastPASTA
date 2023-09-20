@@ -231,6 +231,7 @@ fn get_chunk<T: RDH>(
 
 #[cfg(test)]
 mod tests {
+    #![allow(unused_imports)]
     use super::*;
     use rdh::test_data::CORRECT_RDH_CRU_V7;
     use rdh::test_data::CORRECT_RDH_CRU_V7_NEXT;

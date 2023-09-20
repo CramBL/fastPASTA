@@ -1,6 +1,7 @@
 //! Contains the [RdhStats] struct, that holds stats extracted from the RDHs of the raw data
 
-use super::{its_stats::ItsStats, trigger_stats::TriggerStats};
+use super::super::stats_collector::its_stats::ItsStats;
+use super::trigger_stats::TriggerStats;
 use crate::stats::SystemId;
 use serde::{Deserialize, Serialize};
 
@@ -132,9 +133,9 @@ impl RdhStats {
     /// Returns the Trigger Type from the start of the run
     ///
     /// Panics if it isn't set.
-    pub fn run_trigger_type(&mut self) -> (u32, Box<str>) {
+    pub fn run_trigger_type(&self) -> (u32, Box<str>) {
         self.run_trigger_type
-            .take()
+            .clone()
             .expect("Run Trigger Type has not been recorded!")
     }
 
@@ -164,11 +165,11 @@ impl RdhStats {
         self.payload_size += payload_size;
     }
 
-    pub(super) fn payload_size(&self) -> u64 {
+    pub(crate) fn payload_size(&self) -> u64 {
         self.payload_size
     }
 
-    pub(super) fn hbfs_seen(&self) -> u32 {
+    pub(crate) fn hbfs_seen(&self) -> u32 {
         self.hbfs_seen
     }
 
@@ -185,7 +186,7 @@ impl RdhStats {
         self.rdhs_seen += rdhs_seen as u64;
     }
 
-    pub(super) fn rdhs_seen(&self) -> u64 {
+    pub(crate) fn rdhs_seen(&self) -> u64 {
         self.rdhs_seen
     }
 
@@ -198,8 +199,12 @@ impl RdhStats {
         self.rdhs_filtered += rdhs_filtered as u64;
     }
 
-    pub(super) fn rdhs_filtered(&self) -> u64 {
+    pub(crate) fn rdhs_filtered(&self) -> u64 {
         self.rdhs_filtered
+    }
+
+    pub(crate) fn finalize(&mut self) {
+        self.sort_links_observed();
     }
 }
 

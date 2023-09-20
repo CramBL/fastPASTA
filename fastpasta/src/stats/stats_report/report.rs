@@ -1,4 +1,4 @@
-/// The Report struct is used by the StatsController to structure the report printed at the end of execution
+/// The Report struct is used by the Controller to structure the report printed at the end of execution
 ///
 /// Report contains several StatSummary structs that are used to generate the report table
 use tabled::{
@@ -49,7 +49,7 @@ struct DetectedAttribute {
     pub detected: String,
 }
 
-/// The Report struct is used by the StatsController to structure the report printed at the end of execution
+/// The Report struct is used by the Controller to structure the report printed at the end of execution
 ///
 /// Contains convenience methods to add stats to the report, and to generate the report table
 pub struct Report {
