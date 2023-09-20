@@ -2,9 +2,10 @@
 
 use super::{its_stats::ItsStats, trigger_stats::TriggerStats};
 use crate::stats::SystemId;
+use serde::{Deserialize, Serialize};
 
 /// Stores stats extracted from the RDHs of the raw data.
-#[derive(Default)]
+#[derive(Default, PartialEq, Debug, Serialize, Deserialize)]
 pub struct RdhStats {
     /// Total RDHs seen.
     rdhs_seen: u64,
@@ -199,5 +200,42 @@ impl RdhStats {
 
     pub(super) fn rdhs_filtered(&self) -> u64 {
         self.rdhs_filtered
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_serde_consistency() {
+        let mut rdh_stats = RdhStats {
+            rdhs_seen: 10,
+            rdhs_filtered: 0,
+            rdh_version: Some(7),
+            hbfs_seen: 0,
+            payload_size: 0,
+            data_format: Some(0),
+            links: vec![0, 1, 2, 3, 4, 5, 6],
+            fee_id: vec![8, 9, 10, 11, 12, 13, 14],
+            system_id: Some(SystemId::MFT),
+            run_trigger_type: Some((1, "Test".into())),
+            its_stats: ItsStats::default(),
+            trigger_stats: TriggerStats::default(),
+        };
+
+        rdh_stats.incr_hbf_seen();
+
+        let rdh_stats_ser_json = serde_json::to_string(&rdh_stats).unwrap();
+        println!("{}", serde_json::to_string_pretty(&rdh_stats).unwrap());
+        let rdh_stats_de_json: RdhStats = serde_json::from_str(&rdh_stats_ser_json).unwrap();
+
+        assert_eq!(rdh_stats, rdh_stats_de_json);
+
+        let rdh_stats_ser_toml = toml::to_string(&rdh_stats).unwrap();
+        println!("{}", rdh_stats_ser_toml);
+        let rdh_stats_de_toml: RdhStats = toml::from_str(&rdh_stats_ser_toml).unwrap();
+        assert_eq!(rdh_stats, rdh_stats_de_toml);
     }
 }
