@@ -1,6 +1,6 @@
 //! Contains the [RdhStats] struct, that holds stats extracted from the RDHs of the raw data
 
-use super::{its_stats::ItsStats, trigger_stats::TriggerStats};
+use super::{stats_collector::its_stats::ItsStats, trigger_stats::TriggerStats};
 use crate::stats::SystemId;
 use serde::{Deserialize, Serialize};
 

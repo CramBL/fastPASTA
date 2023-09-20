@@ -6,14 +6,12 @@ use crate::config::prelude::Config;
 use crate::words;
 use alice_protocol_reader::prelude::RDH;
 use serde::{Deserialize, Serialize};
-
-use self::its_stats::alpide_stats::AlpideStats;
+use stats_collector::its_stats::alpide_stats::AlpideStats;
 
 mod error_stats;
-pub mod its_stats;
 pub mod lib;
 mod rdh_stats;
-mod stats_collector;
+pub mod stats_collector;
 pub mod stats_controller;
 mod stats_report;
 mod stats_validation;
