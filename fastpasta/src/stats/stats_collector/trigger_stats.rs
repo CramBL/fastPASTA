@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-#[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Clone, Copy, Default, Deserialize, Serialize)]
 pub struct TriggerStats {
     orbit: u32,
     // [1] Heart Beat flag

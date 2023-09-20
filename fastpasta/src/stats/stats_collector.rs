@@ -32,6 +32,7 @@ impl StatsCollector {
         }
     }
 
+    /// Record a stat.
     pub fn collect(&mut self, stat: StatType) {
         match stat {
             StatType::Fatal(m) => self.error_stats.add_fatal_err(m),
@@ -56,7 +57,7 @@ impl StatsCollector {
         }
     }
 
-    pub fn validate_custom_stats(&mut self, custom_checks: &'static impl CustomChecksOpt) {
+    pub(super) fn validate_custom_stats(&mut self, custom_checks: &'static impl CustomChecksOpt) {
         if let Err(e) = validate_custom_stats(custom_checks, &self.rdh_stats) {
             e.into_iter().for_each(|error_msg| {
                 self.error_stats.add_custom_check_error(error_msg);
@@ -64,6 +65,10 @@ impl StatsCollector {
         }
     }
 
+    /// Finalize stats collection. Meaning no more stats can be collected.
+    ///
+    /// Does post-processing on the stats collected which assumes that no more stats are collected.
+    /// Does nothing if already finalized.
     pub fn finalize(&mut self) {
         if self.is_finalized {
             return;
@@ -80,11 +85,11 @@ impl StatsCollector {
         self.is_finalized = true;
     }
 
-    pub fn rdh_stats(&self) -> &RdhStats {
+    pub(super) fn rdh_stats(&self) -> &RdhStats {
         &self.rdh_stats
     }
 
-    pub fn error_stats(&self) -> &ErrorStats {
+    pub(super) fn error_stats(&self) -> &ErrorStats {
         &self.error_stats
     }
 
