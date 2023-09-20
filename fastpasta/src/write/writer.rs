@@ -139,26 +139,18 @@ mod tests {
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
     use alice_protocol_reader::prelude::{RdhCru, V6, V7};
     use clap::Parser;
+    use temp_dir::TempDir;
 
     use super::*;
 
-    const OUTPUT_FILE_STR: &str = " test_filter_link.raw";
-    const OUTPUT_CMD: &str = "-o test_filter_link.raw";
     const INPUT_FILE_STR: &str = "tests/test-data/10_rdh.raw";
-    const CONFIG_STR: [&str; 7] = [
-        "fastpasta",
-        "tests/test-data/10_rdh.raw",
-        OUTPUT_CMD,
-        "-f",
-        "2",
-        "check",
-        "sanity",
-    ];
+    const CONFIG_STR_NEEDS_OUTPUT: [&str; 4] =
+        ["fastpasta", "tests/test-data/10_rdh.raw", "-f", "2"];
 
-    fn build_test_config() -> MockConfig {
+    fn build_test_config(output_path: &std::path::Path) -> MockConfig {
         let mut cfg = MockConfig::new();
         cfg.check = Some(CheckCommands::Sanity { system: None });
-        cfg.output = Some(std::path::PathBuf::from(OUTPUT_FILE_STR));
+        cfg.output = Some(output_path.to_owned());
         cfg.output_mode = DataOutputMode::File;
         cfg.input_file = Some(std::path::PathBuf::from(INPUT_FILE_STR));
         cfg.filter_link = Some(2);
@@ -167,17 +159,14 @@ mod tests {
 
     #[test]
     fn test_buffered_writer() {
-        let cfg = build_test_config();
+        let tmp_d = TempDir::new().unwrap();
+        let test_file_path = tmp_d.child("test.raw");
+        let cfg = build_test_config(&test_file_path);
         {
             let writer = BufferedWriter::<RdhCru<V6>>::new(&cfg, 10);
 
             assert!(writer.buf_writer.is_some());
         }
-
-        let filepath = std::path::PathBuf::from(OUTPUT_FILE_STR);
-
-        // delete output file
-        std::fs::remove_file(filepath).unwrap();
     }
 
     #[test]
@@ -185,7 +174,14 @@ mod tests {
     // Should panic, Because when the writer is dropped, it flushes the buffer, which will panic because the number of RDHs and payloads are not equal
     // Empty payloads are counted.
     fn test_push_2_rdh_v7_buffer_is_2() {
-        let config: Cfg = <Cfg>::parse_from(CONFIG_STR);
+        let tmp_d = TempDir::new().unwrap();
+        let test_file_path = tmp_d.child("test.raw");
+        let mut config_str = CONFIG_STR_NEEDS_OUTPUT.to_vec();
+        config_str.push("-o");
+        config_str.push(test_file_path.to_str().unwrap());
+
+        println!("config_str: {:?}", config_str);
+        let config: Cfg = <Cfg>::parse_from(config_str);
         let rdhs = vec![CORRECT_RDH_CRU_V7, CORRECT_RDH_CRU_V7];
         let length = rdhs.len();
         println!("length: {}", length);
@@ -195,16 +191,19 @@ mod tests {
             let buf_size = writer.filtered_rdhs_buffer.len();
             println!("buf_size: {}", buf_size);
             assert_eq!(buf_size, length);
-            // Clean up before drop
-            let filepath = std::path::PathBuf::from(OUTPUT_FILE_STR);
-            // delete output file
-            std::fs::remove_file(filepath).unwrap();
         }
     }
 
     #[test]
     fn test_push_2_rdh_v7_and_empty_payloads_buffers_are_2() {
-        let config: Cfg = <Cfg>::parse_from(CONFIG_STR);
+        let tmp_d = TempDir::new().unwrap();
+        let test_file_path = tmp_d.child("test.raw");
+        let mut config_str = CONFIG_STR_NEEDS_OUTPUT.to_vec();
+        config_str.push("-o");
+        config_str.push(test_file_path.to_str().unwrap());
+
+        let config: Cfg = <Cfg>::parse_from(config_str);
+
         let mut cdp_chunk = CdpChunk::new();
 
         cdp_chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
@@ -217,10 +216,5 @@ mod tests {
             let buf_size = writer.filtered_rdhs_buffer.len();
             assert_eq!(buf_size, length);
         }
-
-        // CLEANUP
-        let filepath = std::path::PathBuf::from(OUTPUT_FILE_STR);
-        // delete output file
-        std::fs::remove_file(filepath).unwrap();
     }
 }
