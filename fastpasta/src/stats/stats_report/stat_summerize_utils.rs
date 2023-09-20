@@ -1,8 +1,8 @@
 use owo_colors::OwoColorize;
 
+use super::report::StatSummary;
 use super::stat_format_utils::format_data_size;
 use super::stat_format_utils::format_layers_and_staves;
-use super::stats_report::report::StatSummary;
 use crate::words::its::layer_from_feeid;
 use crate::words::its::stave_number_from_feeid;
 use alice_protocol_reader::prelude::RDH_CRU_SIZE_BYTES;

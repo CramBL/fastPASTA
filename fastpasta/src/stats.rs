@@ -13,8 +13,6 @@ mod error_stats;
 pub mod its_stats;
 pub mod lib;
 mod rdh_stats;
-mod stat_format_utils;
-mod stat_summerize_utils;
 mod stats_collector;
 pub mod stats_controller;
 mod stats_report;
