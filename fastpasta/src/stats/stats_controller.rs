@@ -4,7 +4,6 @@
 
 use super::super::StatType;
 
-use super::error_stats::ErrorStats;
 use super::its_stats::alpide_stats::AlpideStats;
 use super::lib;
 use super::rdh_stats::RdhStats;
@@ -16,7 +15,7 @@ use super::stat_summerize_utils::summerize_filtered_fee_ids;
 use super::stat_summerize_utils::summerize_filtered_its_layer_staves;
 use super::stat_summerize_utils::summerize_filtered_links;
 use super::stat_summerize_utils::summerize_layers_staves_seen;
-use super::stats_validation::validate_custom_stats;
+use super::stats_collector::StatsCollector;
 use super::SystemId;
 use crate::config::prelude::*;
 use crate::stats::stats_report::report::Report;
@@ -29,9 +28,7 @@ use std::sync::Arc;
 
 /// The StatsController receives stats and builds a summary report that is printed at the end of execution.
 pub struct StatsController<C: Config + 'static> {
-    rdh_stats: RdhStats,
-    error_stats: ErrorStats,
-    alpide_stats: Option<AlpideStats>,
+    stats_collector: StatsCollector,
     /// Time from [StatsController] is instantiated, to all data processing threads disconnected their [StatType] producer channel.
     pub processing_time: std::time::Instant,
     config: &'static C,
@@ -56,14 +53,11 @@ impl<C: Config + 'static> StatsController<C> {
             flume::Receiver<StatType>,
         ) = flume::unbounded();
         StatsController {
-            rdh_stats: RdhStats::default(),
-            error_stats: ErrorStats::default(),
-            // Only collect alpide stats if the `check all its-stave` command is used
-            alpide_stats: if matches!(global_config.check(), Some(CheckCommands::All { system }) if matches!(system, Some(System::ITS_Stave)))
-            {
-                Some(AlpideStats::default())
+            // Only collect alpide stats if alpide checks are enabled
+            stats_collector: if global_config.alpide_checks_enabled() {
+                StatsCollector::with_alpide_stats()
             } else {
-                None
+                StatsCollector::default()
             },
             config: global_config,
             processing_time: std::time::Instant::now(),
@@ -114,11 +108,7 @@ impl<C: Config + 'static> StatsController<C> {
         }
 
         if self.config.custom_checks_enabled() {
-            if let Err(e) = validate_custom_stats(self.config, &self.rdh_stats) {
-                e.into_iter().for_each(|error_msg| {
-                    self.error_stats.add_custom_check_error(error_msg);
-                });
-            }
+            self.stats_collector.validate_custom_stats(self.config);
         }
 
         // After processing all stats, print the summary report or don't if in view mode
@@ -126,18 +116,18 @@ impl<C: Config + 'static> StatsController<C> {
             // Avoid printing the report in the middle of a view, or if output is being redirected
             log::info!("View active or output is being piped, skipping report summary printout.")
         } else {
-            if self.error_stats.total_errors() > 0 {
+            if self.stats_collector.total_errors() > 0 {
                 self.process_error_messages();
             }
 
             // Print the summary report if any RDHs were seen. If not, it's likely that an early error occurred and no data was processed.
-            if self.rdh_stats.rdhs_seen() > 0 {
+            if self.stats_collector.rdh_stats().rdhs_seen() > 0 {
                 // New spinner/progress bar
                 self.new_spinner_with_prefix("Generating report".to_string());
                 self.print();
             }
         }
-        if self.error_stats.total_errors() > 0 {
+        if self.stats_collector.total_errors() > 0 {
             self.any_errors_flag
                 .store(true, std::sync::atomic::Ordering::SeqCst);
         }
@@ -146,50 +136,35 @@ impl<C: Config + 'static> StatsController<C> {
     fn update(&mut self, stat: StatType) {
         match stat {
             StatType::Error(msg) => {
-                if self.error_stats.is_fatal_error() {
+                if self.stats_collector.is_fatal_err() {
                     // Stop processing any error messages
                     log::trace!("Fatal error already seen, ignoring error: {msg}");
                     return;
                 }
 
-                self.error_stats.add_reported_error(msg);
+                self.stats_collector.collect(StatType::Error(msg));
+
                 self.set_spinner_msg(
                     format!(
                         "{err_cnt} Errors in data!",
-                        err_cnt = self.error_stats.total_errors()
+                        err_cnt = self.stats_collector.total_errors()
                     )
                     .red()
                     .to_string(),
                 );
 
                 if self.max_tolerate_errors > 0 {
-                    log::trace!("Error count: {}", self.error_stats.total_errors());
-                    if self.error_stats.total_errors() == self.max_tolerate_errors as u64 {
+                    log::trace!("Error count: {}", self.stats_collector.total_errors());
+                    if self.stats_collector.total_errors() == self.max_tolerate_errors as u64 {
                         log::trace!("Errors reached maximum tolerated errors, exiting...");
                         self.end_processing_flag
                             .store(true, std::sync::atomic::Ordering::SeqCst);
                     }
                 }
             }
-            StatType::RDHSeen(val) => self.rdh_stats.add_rdhs_seen(val),
-            StatType::RDHFiltered(val) => self.rdh_stats.add_rdhs_filtered(val),
-            StatType::PayloadSize(size) => self.rdh_stats.add_payload_size(size as u64),
-            StatType::LinksObserved(val) => self.rdh_stats.record_link(val),
-            StatType::RdhVersion(version) => self.rdh_stats.record_rdh_version(version),
-            StatType::DataFormat(version) => {
-                self.rdh_stats.record_data_format(version);
-            }
-            StatType::HBFSeen => {
-                self.rdh_stats.incr_hbf_seen();
-                if self.spinner.is_some() {
-                    self.spinner.as_mut().unwrap().set_prefix(format!(
-                        "Analyzing {hbfs} HBFs",
-                        hbfs = self.rdh_stats.hbfs_seen()
-                    ))
-                };
-            }
+
             StatType::Fatal(err) => {
-                if self.error_stats.is_fatal_error() {
+                if self.stats_collector.is_fatal_err() {
                     // Stop processing any error messages
                     log::trace!("Fatal error already seen, ignoring error: {err}");
                     return;
@@ -197,29 +172,34 @@ impl<C: Config + 'static> StatsController<C> {
                 self.end_processing_flag
                     .store(true, std::sync::atomic::Ordering::SeqCst);
                 log::error!("FATAL: {err}\nShutting down...");
-                self.error_stats.add_fatal_error(err);
+                self.stats_collector.collect(StatType::Fatal(err));
             }
-            StatType::LayerStaveSeen { layer, stave } => {
-                self.rdh_stats.record_layer_stave_seen((layer, stave));
+            StatType::RDHSeen(_)
+            | StatType::RDHFiltered(_)
+            | StatType::PayloadSize(_)
+            | StatType::LinksObserved(_)
+            | StatType::RdhVersion(_)
+            | StatType::DataFormat(_)
+            | StatType::LayerStaveSeen { .. }
+            | StatType::SystemId(_)
+            | StatType::FeeId(_)
+            | StatType::TriggerType(_)
+            | StatType::AlpideStats(_) => {
+                self.stats_collector.collect(stat);
             }
-            StatType::RunTriggerType((raw_trigger_type, trigger_type_str)) => {
-                log::debug!(
-                    "Run trigger type determined to be {raw_trigger_type:#0x}: {trigger_type_str}"
-                );
-                self.rdh_stats
-                    .record_run_trigger_type((raw_trigger_type, trigger_type_str));
+            StatType::HBFSeen => {
+                self.stats_collector.collect(stat);
+                if self.spinner.is_some() {
+                    self.spinner.as_mut().unwrap().set_prefix(format!(
+                        "Analyzing {hbfs} HBFs",
+                        hbfs = self.stats_collector.rdh_stats().hbfs_seen()
+                    ))
+                };
             }
-            StatType::SystemId(sys_id) => self.rdh_stats.record_system_id(sys_id),
-            StatType::FeeId(id) => {
-                self.rdh_stats.record_fee_observed(id);
-            }
-            StatType::TriggerType(val) => self.rdh_stats.record_trigger_type(val),
-            StatType::AlpideStats(alp_stats) => {
-                debug_assert!(
-                    self.alpide_stats.is_some(),
-                    "Collecting ALPIDE stats without initializing ALPIDE stats object!"
-                );
-                self.alpide_stats.as_mut().unwrap().sum(alp_stats)
+            StatType::RunTriggerType((raw_tt, tt_str)) => {
+                log::debug!("Run trigger type determined to be {raw_tt:#0x}: {tt_str}");
+                self.stats_collector
+                    .collect(StatType::RunTriggerType((raw_tt, tt_str)));
             }
         }
     }
@@ -229,21 +209,18 @@ impl<C: Config + 'static> StatsController<C> {
         self.new_spinner_with_prefix(
             format!(
                 "Processing {err_count} error messages",
-                err_count = self.error_stats.total_errors()
+                err_count = self.stats_collector.total_errors()
             )
             .yellow()
             .to_string(),
         );
-        self.error_stats.finalize_stats();
-        if matches!(self.rdh_stats.system_id(), Some(SystemId::ITS)) {
-            self.error_stats
-                .check_errors_for_stave_id(self.rdh_stats.layer_staves_as_slice());
-        }
+        self.stats_collector.finalize();
         self.spinner.as_mut().unwrap().abandon();
+
         if !self.config.mute_errors() {
             // Print the errors, limited if there's a max error limit set
             if self.max_tolerate_errors > 0 {
-                self.error_stats
+                self.stats_collector
                     .consume_reported_errors()
                     .drain(..)
                     .take(self.max_tolerate_errors as usize)
@@ -251,7 +228,7 @@ impl<C: Config + 'static> StatsController<C> {
                         lib::display_error(&e);
                     });
             } else {
-                self.error_stats
+                self.stats_collector
                     .consume_reported_errors()
                     .drain(..)
                     .for_each(|e| {
@@ -265,8 +242,8 @@ impl<C: Config + 'static> StatsController<C> {
     fn print(&mut self) {
         let mut report = Report::new(self.processing_time.elapsed());
         // Add fatal error if any
-        if self.error_stats.is_fatal_error() {
-            report.add_fatal_error(self.error_stats.take_fatal_error().into_string());
+        if self.stats_collector.is_fatal_err() {
+            report.add_fatal_error(self.stats_collector.take_fatal_err().into_string());
         }
         // Add global stats
         self.add_global_stats_to_report(&mut report);
@@ -276,34 +253,39 @@ impl<C: Config + 'static> StatsController<C> {
             report.add_filter_stats(tabled::Table::new(filtered_stats));
         } else {
             // Check if the observed system ID is ITS
-            if matches!(self.rdh_stats.system_id(), Some(SystemId::ITS)) {
+            if matches!(
+                self.stats_collector.rdh_stats().system_id(),
+                Some(SystemId::ITS)
+            ) {
                 // If no filtering, the layers and staves seen is from the total RDHs
                 report.add_stat(summerize_layers_staves_seen(
-                    self.rdh_stats.layer_staves_as_slice(),
-                    self.error_stats.staves_with_errors_as_slice(),
+                    self.stats_collector.rdh_stats().layer_staves_as_slice(),
+                    self.stats_collector
+                        .error_stats()
+                        .staves_with_errors_as_slice(),
                 ));
             }
             // If no filtering, the HBFs seen is from the total RDHs
             report.add_stat(StatSummary::new(
                 "Total HBFs".to_string(),
-                self.rdh_stats.hbfs_seen().to_string(),
+                self.stats_collector.rdh_stats().hbfs_seen().to_string(),
                 None,
             ));
 
             // If no filtering, the payload size seen is from the total RDHs
             report.add_stat(summerize_data_size(
-                self.rdh_stats.rdhs_seen(),
-                self.rdh_stats.payload_size(),
+                self.stats_collector.rdh_stats().rdhs_seen(),
+                self.stats_collector.rdh_stats().payload_size(),
             ));
         }
 
         // Add ALPIDE stats (if they are collected)
-        if let Some(alpide_stats) = self.alpide_stats.take() {
+        if let Some(alpide_stats) = self.stats_collector.take_alpide_stats() {
             add_alpide_stats_to_report(&mut report, alpide_stats);
         }
 
         // Add detected attributes
-        add_detected_attributes_to_report(&mut report, &self.rdh_stats);
+        add_detected_attributes_to_report(&mut report, self.stats_collector.rdh_stats());
 
         self.append_spinner_msg("... completed");
         if self.spinner.is_some() {
@@ -313,23 +295,24 @@ impl<C: Config + 'static> StatsController<C> {
     }
 
     fn add_global_stats_to_report(&mut self, report: &mut Report) {
-        if self.error_stats.total_errors() == 0 {
+        if self.stats_collector.total_errors() == 0 {
             report.add_stat(StatSummary::new(
                 "Total Errors".green().to_string(),
-                self.error_stats.total_errors().green().to_string(),
+                self.stats_collector.total_errors().green().to_string(),
                 None,
             ));
         } else {
             report.add_stat(StatSummary::new(
                 "Total Errors".red().to_string(),
-                self.error_stats.total_errors().red().to_string(),
+                self.stats_collector.total_errors().red().to_string(),
                 Some(format_error_codes(
-                    self.error_stats.unique_error_codes_as_slice(),
+                    self.stats_collector.unique_error_codes_as_slice(),
                 )),
             ));
         }
 
-        let (trigger_type_raw, trigger_type_str) = self.rdh_stats.run_trigger_type();
+        let (trigger_type_raw, trigger_type_str) =
+            self.stats_collector.rdh_stats().run_trigger_type();
         report.add_stat(StatSummary {
             statistic: "Run Trigger Type".to_string(),
             value: format!("{trigger_type_raw:#02X}"),
@@ -337,18 +320,18 @@ impl<C: Config + 'static> StatsController<C> {
         });
         report.add_stat(StatSummary::new(
             "Total RDHs".to_string(),
-            self.rdh_stats.rdhs_seen().to_string(),
+            self.stats_collector.rdh_stats().rdhs_seen().to_string(),
             None,
         ));
-        self.rdh_stats.sort_links_observed();
+        self.stats_collector.finalize();
         report.add_stat(StatSummary::new(
             "Links observed".to_string(),
-            format_links_observed(self.rdh_stats.links_as_slice()),
+            format_links_observed(self.stats_collector.rdh_stats().links_as_slice()),
             None,
         ));
         report.add_stat(StatSummary::new(
             "FEE IDs seen".to_string(),
-            format_fee_ids(self.rdh_stats.fee_ids_as_slice()),
+            format_fee_ids(self.stats_collector.rdh_stats().fee_ids_as_slice()),
             None,
         ));
     }
@@ -358,32 +341,34 @@ impl<C: Config + 'static> StatsController<C> {
         let mut filtered_stats: Vec<StatSummary> = Vec::new();
         filtered_stats.push(StatSummary::new(
             "RDHs".to_string(),
-            self.rdh_stats.rdhs_filtered().to_string(),
+            self.stats_collector.rdh_stats().rdhs_filtered().to_string(),
             None,
         ));
         // If filtering, the HBFs seen is from the filtered RDHs
         filtered_stats.push(StatSummary::new(
             "HBFs".to_string(),
-            self.rdh_stats.hbfs_seen().to_string(),
+            self.stats_collector.rdh_stats().hbfs_seen().to_string(),
             None,
         ));
 
         filtered_stats.push(summerize_data_size(
-            self.rdh_stats.rdhs_filtered(),
-            self.rdh_stats.payload_size(),
+            self.stats_collector.rdh_stats().rdhs_filtered(),
+            self.stats_collector.rdh_stats().payload_size(),
         ));
 
         if let Some(filter_target) = self.config.filter_target() {
             let filtered_target = match filter_target {
-                FilterTarget::Link(link_id) => {
-                    summerize_filtered_links(link_id, self.rdh_stats.links_as_slice())
-                }
-                FilterTarget::Fee(fee_id) => {
-                    summerize_filtered_fee_ids(fee_id, self.rdh_stats.fee_ids_as_slice())
-                }
+                FilterTarget::Link(link_id) => summerize_filtered_links(
+                    link_id,
+                    self.stats_collector.rdh_stats().links_as_slice(),
+                ),
+                FilterTarget::Fee(fee_id) => summerize_filtered_fee_ids(
+                    fee_id,
+                    self.stats_collector.rdh_stats().fee_ids_as_slice(),
+                ),
                 FilterTarget::ItsLayerStave(fee_id_no_link) => summerize_filtered_its_layer_staves(
                     fee_id_no_link,
-                    self.rdh_stats.layer_staves_as_slice(),
+                    self.stats_collector.rdh_stats().layer_staves_as_slice(),
                 ),
             };
             filtered_stats.push(filtered_target);
@@ -395,11 +380,16 @@ impl<C: Config + 'static> StatsController<C> {
             .is_some_and(|target| !matches!(target, FilterTarget::ItsLayerStave(_)))
         {
             // Check if the observed system ID is ITS
-            if matches!(self.rdh_stats.system_id(), Some(SystemId::ITS)) {
+            if matches!(
+                self.stats_collector.rdh_stats().system_id(),
+                Some(SystemId::ITS)
+            ) {
                 // If no filtering, the layers and staves seen is from the total RDHs
                 filtered_stats.push(summerize_layers_staves_seen(
-                    self.rdh_stats.layer_staves_as_slice(),
-                    self.error_stats.staves_with_errors_as_slice(),
+                    self.stats_collector.rdh_stats().layer_staves_as_slice(),
+                    self.stats_collector
+                        .error_stats()
+                        .staves_with_errors_as_slice(),
                 ));
             }
         }

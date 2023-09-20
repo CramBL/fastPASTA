@@ -132,9 +132,9 @@ impl RdhStats {
     /// Returns the Trigger Type from the start of the run
     ///
     /// Panics if it isn't set.
-    pub fn run_trigger_type(&mut self) -> (u32, Box<str>) {
+    pub fn run_trigger_type(&self) -> (u32, Box<str>) {
         self.run_trigger_type
-            .take()
+            .clone()
             .expect("Run Trigger Type has not been recorded!")
     }
 
@@ -200,6 +200,10 @@ impl RdhStats {
 
     pub(super) fn rdhs_filtered(&self) -> u64 {
         self.rdhs_filtered
+    }
+
+    pub(super) fn finalize(&mut self) {
+        self.sort_links_observed();
     }
 }
 

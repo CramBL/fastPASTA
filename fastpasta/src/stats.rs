@@ -15,6 +15,7 @@ pub mod lib;
 mod rdh_stats;
 mod stat_format_utils;
 mod stat_summerize_utils;
+mod stats_collector;
 pub mod stats_controller;
 mod stats_report;
 mod stats_validation;

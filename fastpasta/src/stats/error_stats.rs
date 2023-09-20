@@ -89,7 +89,7 @@ impl ErrorStats {
         self.total_errors
     }
 
-    pub(super) fn add_reported_error(&mut self, error_msg: Box<str>) {
+    pub(super) fn add_err(&mut self, error_msg: Box<str>) {
         self.total_errors += 1;
         self.reported_errors.push(error_msg);
     }
@@ -99,7 +99,7 @@ impl ErrorStats {
         self.custom_checks_stats_errors.push(error_msg);
     }
 
-    pub(super) fn add_fatal_error(&mut self, error_msg: Box<str>) {
+    pub(super) fn add_fatal_err(&mut self, error_msg: Box<str>) {
         self.fatal_error = Some(error_msg);
     }
 
@@ -107,7 +107,7 @@ impl ErrorStats {
         self.fatal_error.is_some()
     }
 
-    pub(super) fn take_fatal_error(&mut self) -> Box<str> {
+    pub(super) fn take_fatal_err(&mut self) -> Box<str> {
         self.fatal_error.take().expect("No fatal error found!")
     }
 
@@ -185,7 +185,7 @@ mod tests {
         // Test JSON and TOML serialization/deserialization
         let mut error_stats = ErrorStats::default();
 
-        error_stats.add_reported_error("0xE0: [E0001] Error message".into());
+        error_stats.add_err("0xE0: [E0001] Error message".into());
         error_stats.finalize_stats();
 
         let error_stats_ser_json = serde_json::to_string(&error_stats).unwrap();
