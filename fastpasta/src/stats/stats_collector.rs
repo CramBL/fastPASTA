@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Contains the [StatsCollector] that collects stats from analysis.
 pub(super) mod error_stats;
 pub mod its_stats;
@@ -57,7 +58,7 @@ impl StatsCollector {
         }
     }
 
-    pub(super) fn validate_custom_stats(&mut self, custom_checks: &'static impl CustomChecksOpt) {
+    pub(crate) fn validate_custom_stats(&mut self, custom_checks: &'static impl CustomChecksOpt) {
         if let Err(e) = validate_custom_stats(custom_checks, &self.rdh_stats) {
             e.into_iter().for_each(|error_msg| {
                 self.error_stats.add_custom_check_error(error_msg);
@@ -85,35 +86,67 @@ impl StatsCollector {
         self.is_finalized = true;
     }
 
-    pub(super) fn rdh_stats(&self) -> &RdhStats {
+    pub(crate) fn rdh_stats(&self) -> &RdhStats {
         &self.rdh_stats
+    }
+
+    pub(crate) fn rdhs_seen(&self) -> u64 {
+        self.rdh_stats.rdhs_seen()
+    }
+
+    pub(crate) fn payload_size(&self) -> u64 {
+        self.rdh_stats.payload_size()
+    }
+
+    pub(crate) fn hbfs_seen(&self) -> u32 {
+        self.rdh_stats.hbfs_seen()
+    }
+
+    pub(crate) fn any_rdhs_seen(&self) -> bool {
+        self.rdh_stats.rdhs_seen() > 0
+    }
+
+    pub(crate) fn system_id(&self) -> Option<SystemId> {
+        self.rdh_stats.system_id()
+    }
+
+    pub(crate) fn layer_staves_as_slice(&self) -> &[(u8, u8)] {
+        self.rdh_stats.layer_staves_as_slice()
     }
 
     pub(super) fn error_stats(&self) -> &ErrorStats {
         &self.error_stats
     }
 
-    pub(super) fn total_errors(&self) -> u64 {
-        self.error_stats.total_errors()
+    pub(crate) fn err_count(&self) -> u64 {
+        self.error_stats.err_count()
     }
 
-    pub(super) fn is_fatal_err(&self) -> bool {
-        self.error_stats.is_fatal_error()
+    pub(crate) fn any_errors(&self) -> bool {
+        self.error_stats.err_count() > 0
     }
 
-    pub(super) fn consume_reported_errors(&mut self) -> Vec<Box<str>> {
+    pub(crate) fn fatal_err(&self) -> bool {
+        self.error_stats.fatal_err()
+    }
+
+    pub(crate) fn consume_reported_errors(&mut self) -> Vec<Box<str>> {
         self.error_stats.consume_reported_errors()
     }
 
-    pub(super) fn take_fatal_err(&mut self) -> Box<str> {
+    pub(crate) fn take_fatal_err(&mut self) -> Box<str> {
         self.error_stats.take_fatal_err()
     }
 
-    pub(super) fn unique_error_codes_as_slice(&mut self) -> &[u16] {
+    pub(crate) fn unique_error_codes_as_slice(&mut self) -> &[u16] {
         self.error_stats.unique_error_codes_as_slice()
     }
 
-    pub(super) fn take_alpide_stats(&mut self) -> Option<AlpideStats> {
+    pub(crate) fn staves_with_errors_as_slice(&self) -> Option<&[(u8, u8)]> {
+        self.error_stats.staves_with_errors_as_slice()
+    }
+
+    pub(crate) fn take_alpide_stats(&mut self) -> Option<AlpideStats> {
         self.alpide_stats.take()
     }
 }

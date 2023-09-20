@@ -84,6 +84,7 @@ use stats::StatType;
 
 pub mod analyze;
 pub mod config;
+pub mod controller;
 pub mod stats;
 pub mod util;
 pub mod words;

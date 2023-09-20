@@ -13,7 +13,6 @@ pub(crate) fn display_error(error: &str) {
 mod tests {
     use crate::stats::{collect_its_stats, collect_system_specific_stats, StatType, SystemId};
     use alice_protocol_reader::prelude::*;
-    use std::sync::OnceLock;
 
     #[test]
     fn test_collect_its_stats() {
@@ -64,48 +63,6 @@ mod tests {
         assert_eq!(system_id, SystemId::ITS);
         let as_string = format!("{system_id}");
         assert_eq!(as_string, "ITS");
-    }
-
-    use crate::config::test_util::MockConfig;
-    static CONFIG_TEST_INIT_CONTROLLER: OnceLock<MockConfig> = OnceLock::new();
-    #[test]
-    fn test_init_controller() {
-        let mock_config = MockConfig::default();
-        CONFIG_TEST_INIT_CONTROLLER.set(mock_config).unwrap();
-
-        let (handle, send_ch, stop_flag, _errors_flag) =
-            crate::stats::init_controller(CONFIG_TEST_INIT_CONTROLLER.get().unwrap());
-
-        // Stop flag should be false
-        assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));
-
-        // Send RDH version seen
-        send_ch.send(StatType::RdhVersion(7)).unwrap();
-
-        // Send Data format seen
-        send_ch.send(StatType::DataFormat(99)).unwrap();
-
-        // Send Run Trigger Type
-        send_ch
-            .send(StatType::RunTriggerType((0xBEEF, "BEEF".to_owned().into())))
-            .unwrap();
-
-        // Send rdh seen stat
-        send_ch.send(StatType::RDHSeen(1)).unwrap();
-
-        // Send a fatal error that should cause the stop flag to be set
-        send_ch
-            .send(StatType::Fatal("Test fatal error".to_string().into()))
-            .unwrap();
-
-        // Stop the controller by dropping the sender channel
-        drop(send_ch);
-
-        // Wait for the controller to stop
-        handle.join().unwrap();
-
-        // Stop flag should be true
-        assert!(stop_flag.load(std::sync::atomic::Ordering::SeqCst));
     }
 
     #[test]

@@ -85,7 +85,7 @@ impl ErrorStats {
         self.staves_with_errors = Some(staves_with_errors);
     }
 
-    pub(super) fn total_errors(&self) -> u64 {
+    pub(super) fn err_count(&self) -> u64 {
         self.total_errors
     }
 
@@ -103,7 +103,7 @@ impl ErrorStats {
         self.fatal_error = Some(error_msg);
     }
 
-    pub(super) fn is_fatal_error(&self) -> bool {
+    pub(super) fn fatal_err(&self) -> bool {
         self.fatal_error.is_some()
     }
 

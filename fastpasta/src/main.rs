@@ -2,7 +2,7 @@ use alice_protocol_reader::init_reader;
 use fastpasta::config::init_config;
 use fastpasta::config::prelude::*;
 use fastpasta::config::Cfg;
-use fastpasta::stats::init_controller;
+use fastpasta::controller::init_controller;
 use fastpasta::stats::StatType;
 
 pub fn main() -> std::process::ExitCode {
