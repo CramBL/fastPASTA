@@ -18,7 +18,8 @@ use serde::{Deserialize, Serialize};
 /// Collects stats from analysis.
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct StatsCollector {
-    is_finalized: bool,
+    /// If the stats collection is finalized. If finalized, no more stats can be collected. If it is not finalized, it is not valid to read the stats.
+    pub is_finalized: bool,
     rdh_stats: RdhStats,
     error_stats: ErrorStats,
     alpide_stats: Option<AlpideStats>,
@@ -71,20 +72,51 @@ impl StatsCollector {
     ///
     /// Does post-processing on the stats collected which assumes that no more stats are collected.
     /// Does nothing if already finalized.
-    pub fn finalize(&mut self) {
+    pub fn finalize(&mut self, mute_errors: bool) {
         if self.is_finalized {
             return;
         }
-        self.error_stats.finalize_stats();
         self.rdh_stats.finalize();
 
-        // If the data is from ITS, correlate the errors with the layer/stave
         if matches!(self.rdh_stats().system_id(), Some(SystemId::ITS)) {
             self.error_stats
-                .check_errors_for_stave_id(self.rdh_stats.layer_staves_as_slice());
+                .finalize_stats(mute_errors, Some(self.rdh_stats.layer_staves_as_slice()));
+        } else {
+            self.error_stats.finalize_stats(mute_errors, None);
         }
 
         self.is_finalized = true;
+    }
+
+    /// Display the errors reported, optionally limiting the number of errors displayed.
+    pub fn display_errors(&self, display_max: Option<usize>) {
+        if let Some(max) = display_max {
+            let mut cnt: usize = self.err_count() as usize;
+            self.reported_errors_as_slice()
+                .iter()
+                .take(max)
+                .for_each(|err| {
+                    super::lib::display_error(err);
+                    cnt -= 1;
+                });
+
+            if cnt > 0 {
+                self.custom_check_errors_as_slice()
+                    .iter()
+                    .take(cnt)
+                    .for_each(|err| {
+                        super::lib::display_error(err);
+                    });
+            }
+        } else {
+            // Display all
+            self.reported_errors_as_slice()
+                .iter()
+                .for_each(|err| super::lib::display_error(err));
+            self.custom_check_errors_as_slice()
+                .iter()
+                .for_each(|err| super::lib::display_error(err));
+        }
     }
 
     /// Returns a reference to the [RdhStats].
@@ -138,18 +170,23 @@ impl StatsCollector {
     }
 
     /// Returns if any fatal errors were reported.
-    pub fn fatal_err(&self) -> bool {
+    pub fn any_fatal_err(&self) -> bool {
+        self.error_stats.any_fatal_err()
+    }
+
+    /// Returns a borrowed slice of the reported error messages as read-only strings.
+    pub fn reported_errors_as_slice(&self) -> &[Box<str>] {
+        self.error_stats.reported_errors_as_slice()
+    }
+
+    /// Returns a borrowed slice of the custom checks error messages as read-only strings.
+    pub fn custom_check_errors_as_slice(&self) -> &[Box<str>] {
+        self.error_stats.custom_check_errors_as_slice()
+    }
+
+    /// Returns a reference to the fatal error message.
+    pub fn fatal_err(&self) -> &Box<str> {
         self.error_stats.fatal_err()
-    }
-
-    /// Takes the reported errors and returns them as a vector of owned read-only strings.
-    pub fn consume_reported_errors(&mut self) -> Vec<Box<str>> {
-        self.error_stats.consume_reported_errors()
-    }
-
-    /// Takes the reported fatal error and returns it as an owned read-only string.
-    pub fn take_fatal_err(&mut self) -> Box<str> {
-        self.error_stats.take_fatal_err()
     }
 
     /// Returns a slice of the unique error codes of reported errors.
@@ -160,11 +197,6 @@ impl StatsCollector {
     /// Returns a slice of the staves in which errors were reported.
     pub fn staves_with_errors_as_slice(&self) -> Option<&[(u8, u8)]> {
         self.error_stats.staves_with_errors_as_slice()
-    }
-
-    /// Returns the owned [AlpideStats] instance.
-    pub fn take_alpide_stats(&mut self) -> Option<AlpideStats> {
-        self.alpide_stats.take()
     }
 
     /// Returns a reference to the [AlpideStats] instance.
@@ -223,7 +255,7 @@ mod tests {
         stats_collector.collect(StatType::LayerStaveSeen { layer: 6, stave: 7 });
         stats_collector.collect(StatType::FeeId(8));
         stats_collector.collect(StatType::AlpideStats(AlpideStats::default()));
-        stats_collector.finalize();
+        stats_collector.finalize(false);
 
         let json = serde_json::to_string(&stats_collector).unwrap();
         let from_json = serde_json::from_str::<StatsCollector>(&json).unwrap();
