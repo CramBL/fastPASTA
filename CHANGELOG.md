@@ -1,5 +1,7 @@
 # [Unreleased]
 
+
+# v1.15.0 (2023-09-21) statistics output and validation
 ### Added
 1. **Output analysis stats using the following two options**:
 - `--output-stats <PATH/STDOUT>`
