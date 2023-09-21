@@ -44,6 +44,9 @@ To verify or view curated content of the scanned raw binary data from the ALICE 
     - [Read from file -\> view ITS readout frames with `less`](#read-from-file---view-its-readout-frames-with-less)
   - [Command flow](#command-flow)
 - [Customize checks](#customize-checks)
+  - [Config with custom checks](#config-with-custom-checks)
+  - [Output comprehensive statistics](#output-comprehensive-statistics)
+    - [Example](#example)
 - [Error messages](#error-messages)
     - [Messages are formatted as follows:](#messages-are-formatted-as-follows)
     - [Example of failed RDH sanity check](#example-of-failed-rdh-sanity-check)
@@ -144,6 +147,8 @@ flowchart TD;
 ```
 
 # Customize checks
+
+## Config with custom checks
 To perform very specific checks on the raw data, it is possible to supply a `TOML` file with the `--checks-toml <PATH>` option.
 
 To get started use the `--generate-checks-toml` flag to generate a template that shows which custom checks are available, along with descriptions, and examples.
@@ -163,6 +168,15 @@ triggers_pht = 1 # This data should contain 1 PhT trigger.
 Finally run fastPASTA as usual e.g.
 ```shell
 $ fastpasta check all its input-data.raw --checks-toml custom_checks.toml
+```
+
+## Output comprehensive statistics
+A large variety of statistics are collected during data analysis. These statistics can be written to file/stdout in JSON/TOML and could for example serve as input to a script that verifies these statistics further.
+
+### Example
+Check everything applicable to ITS on stave level for the data in `bin.raw`, save stats as `stats.json`
+```shell
+fastpasta check all its-stave --output-stats stats.json --stats-format json bin.raw
 ```
 
 # Error messages
