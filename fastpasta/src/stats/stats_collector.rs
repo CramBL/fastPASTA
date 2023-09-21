@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 //! Contains the [StatsCollector] that collects stats from analysis.
-pub(super) mod error_stats;
+pub mod error_stats;
 pub mod its_stats;
-pub(super) mod rdh_stats;
-pub(super) mod trigger_stats;
+pub mod rdh_stats;
+pub mod trigger_stats;
 
 use crate::config::custom_checks::CustomChecksOpt;
 use crate::config::inputoutput::{DataOutputFormat, DataOutputMode};

@@ -1,8 +1,10 @@
+//! Contains the [ErrorStats] struct which stores error messages observed in the raw data and related data
 use crate::words::its::{layer_from_feeid, stave_number_from_feeid};
 use serde::{Deserialize, Serialize};
 
 type LayerStave = (u8, u8);
 
+/// Stores error messages observed during analysis
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ErrorStats {
     fatal_error: Option<Box<str>>,
