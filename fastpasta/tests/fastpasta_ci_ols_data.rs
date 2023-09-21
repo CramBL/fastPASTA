@@ -52,7 +52,7 @@ chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 
     custom_checks_file.sync_all()?;
 
-    let (_tmp_dir, tmp_fpath_stats) = make_tmp_dir_w_fpath();
+    let (_tmp_dir, tmp_fpath_stats) = make_tmp_dir_w_named_file("out-stats.toml");
 
     let mut cmd = Command::cargo_bin("fastpasta")?;
     cmd.arg(FILE_CI_OLS_DATA_1HBF)
@@ -60,7 +60,7 @@ chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
         .arg("all")
         .arg("its-stave")
         .arg("--checks-toml")
-        .arg(tmp_custom_checks_path)
+        .arg(&tmp_custom_checks_path)
         .arg("--output-final-stats")
         .arg(tmp_fpath_stats.as_os_str())
         .arg("--stats-data-format")
@@ -80,6 +80,39 @@ chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
     assert_eq!(stats_toml.rdh_stats().trigger_stats().pht(), 2);
     assert_eq!(stats_toml.rdh_stats().trigger_stats().hb(), 2);
     assert_eq!(stats_toml.rdh_stats().trigger_stats().orbit(), 2);
+
+    // Feed the stats back and check that it matches the collected stats
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_CI_OLS_DATA_1HBF)
+        .arg("check")
+        .arg("all")
+        .arg("its-stave")
+        .arg("--checks-toml")
+        .arg(tmp_custom_checks_path)
+        .arg("--input-stats")
+        .arg(tmp_fpath_stats.as_os_str());
+
+    cmd.assert().success();
+    // No errors mentioning a mismatch between the expected and the collected stats
+    match_on_out_no_case(&cmd.output()?.stderr, r"ERROR - .*mismatch", 0)?;
+
+    // Now run it back without the custom checks, now there should be no errors in the data processing
+    // But there's now a mismatch between the expected and the collected stats as errors are expected
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_CI_OLS_DATA_1HBF)
+        .arg("check")
+        .arg("all")
+        .arg("its-stave")
+        .arg("--input-stats")
+        .arg(tmp_fpath_stats.as_os_str());
+
+    cmd.assert().success();
+
+    match_on_out_no_case(
+        &cmd.output()?.stderr,
+        r"ERROR - .*total_errors.*mismatch",
+        1,
+    )?;
 
     Ok(())
 }
