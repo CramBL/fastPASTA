@@ -569,3 +569,30 @@ rdh_version = 6
 
     Ok(())
 }
+
+#[test]
+fn check_sanity_output_stats_json() -> Result<(), Box<dyn std::error::Error>> {
+    let (_tmp_dir, tmp_fpath) = make_tmp_dir_w_fpath();
+
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("sanity")
+        .arg("--output-stats")
+        .arg(tmp_fpath.as_os_str())
+        .arg("--stats-format")
+        .arg("json");
+
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    let stats_str = std::fs::read_to_string(tmp_fpath)?;
+    let stats: fastpasta::stats::stats_collector::StatsCollector =
+        serde_json::from_str(&stats_str)?;
+    assert_eq!(stats.rdh_stats().rdh_version(), 7);
+    assert_eq!(stats.rdhs_seen(), 10);
+
+    Ok(())
+}
