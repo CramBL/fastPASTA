@@ -52,18 +52,34 @@ chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 
     custom_checks_file.sync_all()?;
 
+    let (_tmp_dir, tmp_fpath_stats) = make_tmp_dir_w_fpath();
+
     let mut cmd = Command::cargo_bin("fastpasta")?;
     cmd.arg(FILE_CI_OLS_DATA_1HBF)
         .arg("check")
         .arg("all")
         .arg("its-stave")
         .arg("--checks-toml")
-        .arg(tmp_custom_checks_path);
+        .arg(tmp_custom_checks_path)
+        .arg("--output-final-stats")
+        .arg(tmp_fpath_stats.as_os_str())
+        .arg("--stats-data-format")
+        .arg("toml");
 
     cmd.assert().success();
 
     match_on_out_no_case(&cmd.output()?.stderr, r"\[E9005\] chip id order", 1)?;
     match_on_out_no_case(&cmd.output()?.stderr, "error.*expected.*PhT trigger", 1)?;
+
+    let stats_toml = read_stats_from_file(&tmp_fpath_stats, "toml")?;
+
+    assert_eq!(stats_toml.err_count(), 2);
+    assert_eq!(stats_toml.rdhs_seen(), 2);
+    assert_eq!(stats_toml.hbfs_seen(), 1);
+    assert_eq!(stats_toml.payload_size(), 480);
+    assert_eq!(stats_toml.rdh_stats().trigger_stats().pht(), 2);
+    assert_eq!(stats_toml.rdh_stats().trigger_stats().hb(), 2);
+    assert_eq!(stats_toml.rdh_stats().trigger_stats().orbit(), 2);
 
     Ok(())
 }

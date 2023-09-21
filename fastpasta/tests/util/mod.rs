@@ -41,6 +41,23 @@ pub fn make_tmp_dir_w_fpath() -> (TempDir, ChildPath) {
     (tmp_d, tmp_fpath)
 }
 
+/// Helper function to read output stats from a file
+///
+/// Takes a reference to a `ChildPath` to enforce temp file usage
+pub fn read_stats_from_file(
+    stats_fpath: &ChildPath,
+    format: &str,
+) -> Result<fastpasta::stats::stats_collector::StatsCollector, Box<dyn std::error::Error>> {
+    let stats_file = std::fs::read_to_string(stats_fpath)?;
+    let stats = match format.to_uppercase().as_str() {
+        "JSON" => serde_json::from_str(&stats_file)?,
+        "TOML" => toml::from_str(&stats_file)?,
+        _ => panic!("Invalid format: {format}"),
+    };
+
+    Ok(stats)
+}
+
 /// Helper function to match the raw output of stderr or stdout, with a pattern a fixed amount of times
 pub fn match_on_output(
     byte_output: &[u8],

@@ -1,7 +1,10 @@
+//! Trigger statistics collector
 #![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+
+/// Struct to store observed trigger statistics
 #[derive(Debug, PartialEq, Clone, Copy, Default, Deserialize, Serialize)]
 pub struct TriggerStats {
     orbit: u32,
@@ -47,6 +50,7 @@ pub struct TriggerStats {
 }
 
 impl TriggerStats {
+    /// Collects the trigger statistics from the trigger field of the RDH
     pub fn collect_stats(&mut self, trigger: u32) {
         // Checks the trigger for each bit and increments the corresponding counters
         if trigger & 0b0000_0000_0000_0000_0000_0000_0000_0001 != 0 {
@@ -111,82 +115,102 @@ impl TriggerStats {
         }
     }
 
+    /// Returns the number of trigger orbits observed
     pub fn orbit(&self) -> u32 {
         self.orbit
     }
 
+    /// Returns the number of Heart Beat flags observed
     pub fn hb(&self) -> u32 {
         self.hb
     }
 
+    /// Returns the number of Heart Beat Reject flags observed
     pub fn hbr(&self) -> u32 {
         self.hbr
     }
 
+    /// Returns the number of Health Check flags observed
     pub fn hc(&self) -> u32 {
         self.hc
     }
 
+    /// Returns the number of Physics Trigger flags observed
     pub fn pht(&self) -> u32 {
         self.pht
     }
 
+    /// Returns the number of Pre Pulse for calibration flags observed
     pub fn pp(&self) -> u32 {
         self.pp
     }
 
+    /// Returns the number of Calibration Trigger flags observed
     pub fn cal(&self) -> u32 {
         self.cal
     }
 
+    /// Returns the number of Start of Triggered flags observed
     pub fn sot(&self) -> u32 {
         self.sot
     }
 
+    /// Returns the number of End of Triggered flags observed
     pub fn eot(&self) -> u32 {
         self.eot
     }
 
+    /// Returns the number of Start of Continuous flags observed
     pub fn soc(&self) -> u32 {
         self.soc
     }
 
+    /// Returns the number of End of Continuous flags observed
     pub fn eoc(&self) -> u32 {
         self.eoc
     }
 
+    /// Returns the number of Time Frame delimiter flags observed
     pub fn tf(&self) -> u32 {
         self.tf
     }
 
+    /// Returns the number of Front End reset flags observed
     pub fn fe_rst(&self) -> u32 {
         self.fe_rst
     }
 
+    /// Returns the number of Run Type flags observed
     pub fn rt(&self) -> u32 {
         self.rt
     }
 
+    /// Returns the number of Running State flags observed
     pub fn rs(&self) -> u32 {
         self.rs
     }
 
+    /// Returns the number of LHC about gap 1 flags observed
     pub fn lhc_gap1(&self) -> u32 {
         self.lhc_gap1
     }
 
+    /// Returns the number of LHC about gap 2 flags observed
     pub fn lhc_gap2(&self) -> u32 {
         self.lhc_gap2
     }
 
+    /// Returns the number of TPC synchronization/ITS reset flags observed
     pub fn tpc_sync(&self) -> u32 {
         self.tpc_sync
     }
 
+    /// Returns the number of On request reset flags observed
     pub fn tpc_rst(&self) -> u32 {
         self.tpc_rst
     }
 
+    /// Returns the number of TOF special trigger flags observed
     pub fn tof(&self) -> u32 {
         self.tof
     }

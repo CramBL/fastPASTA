@@ -26,12 +26,12 @@ pub fn make_report(
     stats: &mut StatsCollector,
     filter_target: Option<FilterTarget>,
 ) -> Report {
-    stats.finalize();
+    debug_assert!(stats.is_finalized);
 
     let mut report = Report::new(processing_time);
 
-    if stats.fatal_err() {
-        report.add_fatal_error(stats.take_fatal_err().into_string());
+    if stats.any_fatal_err() {
+        report.add_fatal_error(stats.fatal_err().to_owned());
     }
 
     // Add global stats
@@ -61,7 +61,7 @@ pub fn make_report(
     }
 
     // Add ALPIDE stats (if they are collected)
-    if let Some(alpide_stats) = stats.take_alpide_stats() {
+    if let Some(alpide_stats) = stats.alpide_stats() {
         add_alpide_stats_to_report(&mut report, alpide_stats);
     }
 
@@ -164,7 +164,7 @@ fn add_filtered_stats(
 }
 
 // Helper function that adds the ALPIDE stats to the report
-fn add_alpide_stats_to_report(report: &mut Report, alpide_stats: AlpideStats) {
+fn add_alpide_stats_to_report(report: &mut Report, alpide_stats: &AlpideStats) {
     let mut alpide_stat: Vec<StatSummary> = Vec::new();
 
     let readout_flags = alpide_stats.readout_flags();

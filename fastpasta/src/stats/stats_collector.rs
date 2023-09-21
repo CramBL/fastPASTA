@@ -1,11 +1,12 @@
 #![allow(dead_code)]
 //! Contains the [StatsCollector] that collects stats from analysis.
-pub(super) mod error_stats;
+pub mod error_stats;
 pub mod its_stats;
-pub(super) mod rdh_stats;
-pub(super) mod trigger_stats;
+pub mod rdh_stats;
+pub mod trigger_stats;
 
 use crate::config::custom_checks::CustomChecksOpt;
+use crate::config::inputoutput::{DataOutputFormat, DataOutputMode};
 
 use super::stats_validation::validate_custom_stats;
 use super::{StatType, SystemId};
@@ -17,7 +18,8 @@ use serde::{Deserialize, Serialize};
 /// Collects stats from analysis.
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct StatsCollector {
-    is_finalized: bool,
+    /// If the stats collection is finalized. If finalized, no more stats can be collected. If it is not finalized, it is not valid to read the stats.
+    pub is_finalized: bool,
     rdh_stats: RdhStats,
     error_stats: ErrorStats,
     alpide_stats: Option<AlpideStats>,
@@ -70,84 +72,162 @@ impl StatsCollector {
     ///
     /// Does post-processing on the stats collected which assumes that no more stats are collected.
     /// Does nothing if already finalized.
-    pub fn finalize(&mut self) {
+    pub fn finalize(&mut self, mute_errors: bool) {
         if self.is_finalized {
             return;
         }
-        self.error_stats.finalize_stats();
         self.rdh_stats.finalize();
 
-        // If the data is from ITS, correlate the errors with the layer/stave
         if matches!(self.rdh_stats().system_id(), Some(SystemId::ITS)) {
             self.error_stats
-                .check_errors_for_stave_id(self.rdh_stats.layer_staves_as_slice());
+                .finalize_stats(mute_errors, Some(self.rdh_stats.layer_staves_as_slice()));
+        } else {
+            self.error_stats.finalize_stats(mute_errors, None);
         }
 
         self.is_finalized = true;
     }
 
-    pub(crate) fn rdh_stats(&self) -> &RdhStats {
+    /// Display the errors reported, optionally limiting the number of errors displayed.
+    pub fn display_errors(&self, display_max: Option<usize>) {
+        if let Some(max) = display_max {
+            let mut cnt: usize = self.err_count() as usize;
+            self.reported_errors_as_slice()
+                .iter()
+                .take(max)
+                .for_each(|err| {
+                    super::lib::display_error(err);
+                    cnt -= 1;
+                });
+
+            if cnt > 0 {
+                self.custom_check_errors_as_slice()
+                    .iter()
+                    .take(cnt)
+                    .for_each(|err| {
+                        super::lib::display_error(err);
+                    });
+            }
+        } else {
+            // Display all
+            self.reported_errors_as_slice()
+                .iter()
+                .for_each(|err| super::lib::display_error(err));
+            self.custom_check_errors_as_slice()
+                .iter()
+                .for_each(|err| super::lib::display_error(err));
+        }
+    }
+
+    /// Returns a reference to the [RdhStats].
+    pub fn rdh_stats(&self) -> &RdhStats {
         &self.rdh_stats
     }
 
-    pub(crate) fn rdhs_seen(&self) -> u64 {
+    /// Returns the number of RDHs seen.
+    pub fn rdhs_seen(&self) -> u64 {
         self.rdh_stats.rdhs_seen()
     }
 
-    pub(crate) fn payload_size(&self) -> u64 {
+    /// Returns the processed payload size in bytes
+    pub fn payload_size(&self) -> u64 {
         self.rdh_stats.payload_size()
     }
 
-    pub(crate) fn hbfs_seen(&self) -> u32 {
+    /// Returns the number of HBFs in the processed data.
+    pub fn hbfs_seen(&self) -> u32 {
         self.rdh_stats.hbfs_seen()
     }
 
-    pub(crate) fn any_rdhs_seen(&self) -> bool {
+    /// Returns if any RDHs were seen in the processed data.
+    pub fn any_rdhs_seen(&self) -> bool {
         self.rdh_stats.rdhs_seen() > 0
     }
 
-    pub(crate) fn system_id(&self) -> Option<SystemId> {
+    /// Returns the System ID of the processed data if it was observed/determined.
+    pub fn system_id(&self) -> Option<SystemId> {
         self.rdh_stats.system_id()
     }
 
-    pub(crate) fn layer_staves_as_slice(&self) -> &[(u8, u8)] {
+    /// Returns the layers/staves seen in the processed data as a borrowed slice.
+    pub fn layer_staves_as_slice(&self) -> &[(u8, u8)] {
         self.rdh_stats.layer_staves_as_slice()
     }
 
-    pub(super) fn error_stats(&self) -> &ErrorStats {
+    /// Returns a reference to the [ErrorStats].
+    pub fn error_stats(&self) -> &ErrorStats {
         &self.error_stats
     }
 
-    pub(crate) fn err_count(&self) -> u64 {
+    /// Returns the number of errors reported.
+    pub fn err_count(&self) -> u64 {
         self.error_stats.err_count()
     }
 
-    pub(crate) fn any_errors(&self) -> bool {
+    /// Return if any errors were reported.
+    pub fn any_errors(&self) -> bool {
         self.error_stats.err_count() > 0
     }
 
-    pub(crate) fn fatal_err(&self) -> bool {
+    /// Returns if any fatal errors were reported.
+    pub fn any_fatal_err(&self) -> bool {
+        self.error_stats.any_fatal_err()
+    }
+
+    /// Returns a borrowed slice of the reported error messages as read-only strings.
+    pub fn reported_errors_as_slice(&self) -> &[Box<str>] {
+        self.error_stats.reported_errors_as_slice()
+    }
+
+    /// Returns a borrowed slice of the custom checks error messages as read-only strings.
+    pub fn custom_check_errors_as_slice(&self) -> &[Box<str>] {
+        self.error_stats.custom_check_errors_as_slice()
+    }
+
+    /// Returns a reference to the fatal error message.
+    pub fn fatal_err(&self) -> &str {
         self.error_stats.fatal_err()
     }
 
-    pub(crate) fn consume_reported_errors(&mut self) -> Vec<Box<str>> {
-        self.error_stats.consume_reported_errors()
-    }
-
-    pub(crate) fn take_fatal_err(&mut self) -> Box<str> {
-        self.error_stats.take_fatal_err()
-    }
-
-    pub(crate) fn unique_error_codes_as_slice(&mut self) -> &[u16] {
+    /// Returns a slice of the unique error codes of reported errors.
+    pub fn unique_error_codes_as_slice(&mut self) -> &[u16] {
         self.error_stats.unique_error_codes_as_slice()
     }
 
-    pub(crate) fn staves_with_errors_as_slice(&self) -> Option<&[(u8, u8)]> {
+    /// Returns a slice of the staves in which errors were reported.
+    pub fn staves_with_errors_as_slice(&self) -> Option<&[(u8, u8)]> {
         self.error_stats.staves_with_errors_as_slice()
     }
 
-    pub(crate) fn take_alpide_stats(&mut self) -> Option<AlpideStats> {
-        self.alpide_stats.take()
+    /// Returns a reference to the [AlpideStats] instance.
+    pub fn alpide_stats(&self) -> Option<&AlpideStats> {
+        self.alpide_stats.as_ref()
+    }
+
+    pub(crate) fn write_stats(&self, mode: &DataOutputMode, format: DataOutputFormat) {
+        if *mode == DataOutputMode::None {
+            return;
+        }
+        match format {
+            DataOutputFormat::JSON => write_stats_str(
+                mode,
+                &serde_json::to_string_pretty(&self).expect("Failed to serialize stats to JSON"),
+            ),
+            DataOutputFormat::TOML => write_stats_str(
+                mode,
+                &toml::to_string_pretty(&self).expect("Failed to serialize stats to TOML"),
+            ),
+        }
+    }
+}
+
+fn write_stats_str(mode: &DataOutputMode, stats_str: &str) {
+    match mode {
+        DataOutputMode::File(path) => {
+            std::fs::write(path, stats_str).expect("Failed writing stats output file")
+        }
+        DataOutputMode::Stdout => println!("{stats_str}"),
+        DataOutputMode::None => (),
     }
 }
 
@@ -175,7 +255,7 @@ mod tests {
         stats_collector.collect(StatType::LayerStaveSeen { layer: 6, stave: 7 });
         stats_collector.collect(StatType::FeeId(8));
         stats_collector.collect(StatType::AlpideStats(AlpideStats::default()));
-        stats_collector.finalize();
+        stats_collector.finalize(false);
 
         let json = serde_json::to_string(&stats_collector).unwrap();
         let from_json = serde_json::from_str::<StatsCollector>(&json).unwrap();

@@ -13,7 +13,7 @@ pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
         .expect("Failed to initialize logger");
     match cfg.output_mode() {
         DataOutputMode::Stdout => log::trace!("Data ouput set to stdout"),
-        DataOutputMode::File => log::trace!("Data ouput set to file"),
+        DataOutputMode::File(p) => log::trace!("Data ouput set to file: {:?}", p),
         DataOutputMode::None => {
             log::trace!("Data output set to suppressed")
         }

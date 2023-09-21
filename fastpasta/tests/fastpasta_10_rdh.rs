@@ -569,3 +569,113 @@ rdh_version = 6
 
     Ok(())
 }
+
+#[test]
+fn check_sanity_output_stats_json_toml() -> Result<(), Box<dyn std::error::Error>> {
+    let (_tmp_dir, tmp_fpath) = make_tmp_dir_w_fpath();
+
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("sanity")
+        .arg("--output-stats")
+        .arg(tmp_fpath.as_os_str())
+        .arg("--stats-format")
+        .arg("json");
+
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    let stats_str = std::fs::read_to_string(tmp_fpath)?;
+    let stats_from_json: fastpasta::stats::stats_collector::StatsCollector =
+        serde_json::from_str(&stats_str)?;
+    assert_eq!(stats_from_json.rdh_stats().rdh_version(), 7);
+    assert_eq!(stats_from_json.rdhs_seen(), 10);
+
+    // Serialize it to TOML and back to a StatsCollector from TOML to compare
+    let stats_from_toml: fastpasta::stats::stats_collector::StatsCollector =
+        toml::from_str(&toml::to_string(&stats_from_json).unwrap())?;
+    assert_eq!(stats_from_json, stats_from_toml);
+
+    // Run the command again with TOML output and compare the output
+    let (_tmp_dir2, tmp_fpath2) = make_tmp_dir_w_fpath();
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_10_RDH)
+        .arg("check")
+        .arg("sanity")
+        .arg("--output-stats")
+        .arg(tmp_fpath2.as_os_str())
+        .arg("--stats-format")
+        .arg("toml");
+
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    let stats_str = std::fs::read_to_string(tmp_fpath2)?;
+    let stats_from_toml: fastpasta::stats::stats_collector::StatsCollector =
+        toml::from_str(&stats_str)?;
+
+    assert_eq!(stats_from_json, stats_from_toml);
+
+    Ok(())
+}
+
+#[test]
+fn check_all_its_stave_output_stats_json_toml() -> Result<(), Box<dyn std::error::Error>> {
+    let check_arg = ["check", "all", "its-stave"];
+
+    let (_tmp_dir, tmp_fpath) = make_tmp_dir_w_fpath();
+
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_10_RDH)
+        .args(check_arg)
+        .arg("--output-stats")
+        .arg(tmp_fpath.as_os_str())
+        .arg("--stats-format")
+        .arg("json");
+
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    let stats_str = std::fs::read_to_string(tmp_fpath)?;
+    let stats_from_json: fastpasta::stats::stats_collector::StatsCollector =
+        serde_json::from_str(&stats_str)?;
+    assert_eq!(stats_from_json.rdh_stats().rdh_version(), 7);
+    assert_eq!(stats_from_json.rdhs_seen(), 10);
+    assert_eq!(stats_from_json.err_count(), 0);
+    assert_eq!(stats_from_json.rdh_stats().trigger_stats().pht(), 0);
+
+    // Serialize it to TOML and back to a StatsCollector from TOML to compare
+    let stats_from_toml: fastpasta::stats::stats_collector::StatsCollector =
+        toml::from_str(&toml::to_string(&stats_from_json).unwrap())?;
+    assert_eq!(stats_from_json, stats_from_toml);
+
+    // Run the command again with TOML output and compare the output
+    let (_tmp_dir2, tmp_fpath2) = make_tmp_dir_w_fpath();
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_10_RDH)
+        .args(check_arg)
+        .arg("--output-stats")
+        .arg(tmp_fpath2.as_os_str())
+        .arg("--stats-format")
+        .arg("TOML");
+
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    let stats_str = std::fs::read_to_string(tmp_fpath2)?;
+    let stats_from_toml: fastpasta::stats::stats_collector::StatsCollector =
+        toml::from_str(&stats_str)?;
+
+    assert_eq!(stats_from_json, stats_from_toml);
+
+    Ok(())
+}

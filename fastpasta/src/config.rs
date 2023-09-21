@@ -8,7 +8,7 @@
 use self::{
     check::{CheckCommands, ChecksOpt},
     custom_checks::{CustomChecks, CustomChecksOpt},
-    inputoutput::{DataOutputMode, InputOutputOpt},
+    inputoutput::{DataOutputFormat, DataOutputMode, InputOutputOpt},
     prelude::Config,
     util::UtilOpt,
     view::{ViewCommands, ViewOpt},
@@ -120,7 +120,7 @@ pub struct Cfg {
         long = "output",
         visible_alias = "out",
         global = true,
-        requires("filter")
+        requires = "filter"
     )]
     output: Option<PathBuf>,
 
@@ -140,6 +140,29 @@ pub struct Cfg {
         visible_aliases = ["custom-checks", "checks-file"],
       )]
     checks_toml: Option<PathBuf>,
+
+    /// Output stats (default: none), requires setting a data format option (JSON, TOML)
+    #[arg(
+        name = "OUTPUT FINAL STATS",
+        short = 'S',
+        long = "output-stats",
+        default_value_t = DataOutputMode::None,
+        visible_aliases = ["output-stats-report","output-final-stats"],
+        global = true,
+        requires = "STATS FORMAT"
+    )]
+    stats_output: DataOutputMode,
+
+    /// Output stats format (JSON/TOML), requires setting a stats output option
+    #[arg(
+        name = "STATS FORMAT",
+        short = 'D',
+        long = "stats-format",
+        visible_alias = "stats-data-format",
+        global = true,
+        requires = "OUTPUT FINAL STATS"
+    )]
+    stats_output_format: Option<DataOutputFormat>,
 }
 
 impl Cfg {
@@ -259,7 +282,7 @@ impl InputOutputOpt for Cfg {
             }
             // if output is set and a file path is given, output to file
             else {
-                DataOutputMode::File
+                DataOutputMode::File(self.output().unwrap().clone().into())
             }
         }
         // if output is not set, but checks or prints are enabled, suppress output
@@ -270,6 +293,14 @@ impl InputOutputOpt for Cfg {
         else {
             DataOutputMode::Stdout
         }
+    }
+
+    fn stats_output_mode(&self) -> DataOutputMode {
+        self.stats_output.clone()
+    }
+
+    fn stats_output_format(&self) -> Option<DataOutputFormat> {
+        self.stats_output_format
     }
 }
 

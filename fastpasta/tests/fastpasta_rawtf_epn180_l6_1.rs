@@ -339,13 +339,19 @@ chip_count_ob = 6
 
     const EXPECTED_ALPIDE_ERRORS: u8 = 18;
 
+    let (_tmp_dir, tmp_stats_path) = make_tmp_dir_w_fpath();
+
     let mut cmd = Command::cargo_bin("fastpasta")?;
     cmd.arg(FILE_RAWTF_EPN180_L6_1)
         .arg("check")
         .arg("all")
         .arg("its-stave")
         .arg("--checks-toml")
-        .arg(tmp_custom_checks_path);
+        .arg(tmp_custom_checks_path)
+        .arg("--output-stats-report")
+        .arg(tmp_stats_path.as_os_str())
+        .arg("-D")
+        .arg("json");
 
     cmd.assert().success();
 
@@ -356,6 +362,18 @@ chip_count_ob = 6
     )?;
 
     match_on_out_no_case(&cmd.output()?.stderr, "chip id count", 252)?;
+
+    let stats = read_stats_from_file(&tmp_stats_path, "json")?;
+
+    assert_eq!(stats.err_count(), EXPECTED_ALPIDE_ERRORS as u64);
+    assert_eq!(
+        stats
+            .alpide_stats()
+            .unwrap()
+            .readout_flags()
+            .chip_trailers_seen(),
+        24,
+    );
 
     Ok(())
 }

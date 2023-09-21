@@ -1,8 +1,10 @@
+//! Contains the [ErrorStats] struct which stores error messages observed in the raw data and related data
 use crate::words::its::{layer_from_feeid, stave_number_from_feeid};
 use serde::{Deserialize, Serialize};
 
 type LayerStave = (u8, u8);
 
+/// Stores error messages observed during analysis
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ErrorStats {
     fatal_error: Option<Box<str>>,
@@ -16,8 +18,21 @@ pub struct ErrorStats {
 
 impl ErrorStats {
     /// If data processing is done, sort error messages, extract unique error codes etc.
-    pub(super) fn finalize_stats(&mut self) {
+    pub(super) fn finalize_stats(
+        &mut self,
+        mute_errors: bool,
+        layer_staves_seen: Option<&[(u8, u8)]>,
+    ) {
         // Extract unique error codes from reported errors
+        self.process_unique_error_codes();
+
+        if !mute_errors {
+            // Sort stats by memory position where they were found before consuming them
+            self.sort_error_msgs_by_mem_pos();
+        }
+        if let Some(layer_staves_seen) = layer_staves_seen {
+            self.check_errors_for_stave_id(layer_staves_seen);
+        }
         self.process_unique_error_codes();
     }
 
@@ -59,6 +74,9 @@ impl ErrorStats {
     }
 
     pub(super) fn check_errors_for_stave_id(&mut self, layer_staves_seen: &[LayerStave]) {
+        if self.staves_with_errors.is_some() {
+            return;
+        }
         let mut staves_with_errors: Vec<LayerStave> = Vec::new();
         let re: regex::Regex =
             regex::Regex::new("FEE(?:.|)ID:(?P<fee_id>[1-9][0-9]{0,4})").unwrap();
@@ -103,24 +121,18 @@ impl ErrorStats {
         self.fatal_error = Some(error_msg);
     }
 
-    pub(super) fn fatal_err(&self) -> bool {
+    pub(super) fn any_fatal_err(&self) -> bool {
         self.fatal_error.is_some()
     }
 
-    pub(super) fn take_fatal_err(&mut self) -> Box<str> {
-        self.fatal_error.take().expect("No fatal error found!")
+    pub(super) fn fatal_err(&self) -> &str {
+        self.fatal_error.as_ref().unwrap()
     }
 
     pub(super) fn unique_error_codes_as_slice(&mut self) -> &[u16] {
-        if self.unique_error_codes.is_some() {
-            return self.unique_error_codes.as_ref().unwrap();
-        } else {
-            self.process_unique_error_codes();
-
-            self.unique_error_codes
-                .as_ref()
-                .expect("Unique error codes were never set")
-        }
+        self.unique_error_codes
+            .as_ref()
+            .expect("Unique error codes were never set")
     }
 
     /// Returns a slice of Layer/Staves seen in error messages
@@ -138,13 +150,13 @@ impl ErrorStats {
         Some(self.staves_with_errors.as_ref().unwrap())
     }
 
-    pub(super) fn consume_reported_errors(&mut self) -> Vec<Box<str>> {
-        // Sort stats by memory position where they were found before consuming them
-        self.sort_error_msgs_by_mem_pos();
-        let mut errors = std::mem::take(&mut self.reported_errors);
-        let mut custom_checks_stats_errors = std::mem::take(&mut self.custom_checks_stats_errors);
-        errors.append(&mut custom_checks_stats_errors);
-        errors
+    // Only includes reported errors, not custom check errors
+    pub(super) fn reported_errors_as_slice(&self) -> &[Box<str>] {
+        &self.reported_errors
+    }
+
+    pub(super) fn custom_check_errors_as_slice(&self) -> &[Box<str>] {
+        &self.custom_checks_stats_errors
     }
 }
 
@@ -186,7 +198,7 @@ mod tests {
         let mut error_stats = ErrorStats::default();
 
         error_stats.add_err("0xE0: [E0001] Error message".into());
-        error_stats.finalize_stats();
+        error_stats.finalize_stats(false, None);
 
         let error_stats_ser_json = serde_json::to_string(&error_stats).unwrap();
         let error_stats_de_json: ErrorStats = serde_json::from_str(&error_stats_ser_json).unwrap();
