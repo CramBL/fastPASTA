@@ -6,6 +6,7 @@ pub(super) mod rdh_stats;
 pub(super) mod trigger_stats;
 
 use crate::config::custom_checks::CustomChecksOpt;
+use crate::config::inputoutput::{DataOutputFormat, DataOutputMode};
 
 use super::stats_validation::validate_custom_stats;
 use super::{StatType, SystemId};
@@ -148,6 +149,32 @@ impl StatsCollector {
 
     pub(crate) fn take_alpide_stats(&mut self) -> Option<AlpideStats> {
         self.alpide_stats.take()
+    }
+
+    pub(crate) fn write_stats(&self, mode: &DataOutputMode, format: DataOutputFormat) {
+        if *mode == DataOutputMode::None {
+            return;
+        }
+        match format {
+            DataOutputFormat::JSON => write_stats_str(
+                mode,
+                &serde_json::to_string_pretty(&self).expect("Failed to serialize stats to JSON"),
+            ),
+            DataOutputFormat::TOML => write_stats_str(
+                mode,
+                &toml::to_string_pretty(&self).expect("Failed to serialize stats to TOML"),
+            ),
+        }
+    }
+}
+
+fn write_stats_str(mode: &DataOutputMode, stats_str: &str) {
+    match mode {
+        DataOutputMode::File(path) => {
+            std::fs::write(path, stats_str).expect("Failed writing stats output file")
+        }
+        DataOutputMode::Stdout => println!("{stats_str}"),
+        DataOutputMode::None => (),
     }
 }
 

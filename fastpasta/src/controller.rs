@@ -147,6 +147,12 @@ impl<C: Config + 'static> Controller<C> {
             self.any_errors_flag
                 .store(true, std::sync::atomic::Ordering::SeqCst);
         }
+
+        // Stats collector will serialize and write out stats if the config specifies it
+        self.stats_collector.write_stats(
+            &self.config.stats_output_mode(),
+            self.config.stats_output_format().unwrap(),
+        );
     }
 
     fn update(&mut self, stat: StatType) {
