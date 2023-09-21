@@ -45,8 +45,11 @@ To verify or view curated content of the scanned raw binary data from the ALICE 
   - [Command flow](#command-flow)
 - [Customize checks](#customize-checks)
   - [Config with custom checks](#config-with-custom-checks)
-  - [Output comprehensive statistics](#output-comprehensive-statistics)
+  - [Output comprehensive statistics (and input them for validation)](#output-comprehensive-statistics-and-input-them-for-validation)
+    - [Output statistics](#output-statistics)
     - [Example](#example)
+    - [Use statistics for data validation](#use-statistics-for-data-validation)
+    - [Example](#example-1)
 - [Error messages](#error-messages)
     - [Messages are formatted as follows:](#messages-are-formatted-as-follows)
     - [Example of failed RDH sanity check](#example-of-failed-rdh-sanity-check)
@@ -83,7 +86,7 @@ Run `cargo build -r` and find the binary in /target/release/fastpasta
 ## See help, including examples of use
 
 ```shell
-$ fastpasta -h
+fastpasta -h
 ```
 
 ## Examples of use
@@ -91,7 +94,7 @@ $ fastpasta -h
 ### Read from stdin -> filter link -> view RDHs
 ```shell
 
-$ lz4 -d input.raw -c | fastpasta --filter-link 3 | fastpasta view rdh
+lz4 -d input.raw -c | fastpasta --filter-link 3 | fastpasta view rdh
 #        ^^^^                      ^^^^                       ^^^^
 #       INPUT       --->          FILTER          --->        VIEW
 # Decompressing with `lz4`
@@ -99,26 +102,26 @@ $ lz4 -d input.raw -c | fastpasta --filter-link 3 | fastpasta view rdh
 
 Piping is often optional and avoiding it will improve performance. e.g. the following is equivalent to the previous example, but saves significant IO overhead, by using one less pipe.
 ```shell
-$ lz4 -d input.raw -c | fastpasta --filter-link 3 view rdh
+lz4 -d input.raw -c | fastpasta --filter-link 3 view rdh
 ```
 ### Read from file -> filter by link -> validate
 Enable all generic checks: `sanity` (stateless) AND `running` (stateful)
 ```shell
-$ fastpasta input.raw --filter-link 0 check all
+fastpasta input.raw --filter-link 0 check all
 ```
 Enable all `sanity` checks and include checks applicable to `ITS` only
 ```shell
-$ fastpasta input.raw check sanity its --filter-link 0
+fastpasta input.raw check sanity its --filter-link 0
 ```
 
 ### Read from file -> view ITS readout frames with `less`
 Generate ITS readout frame view
 ```shell
-$ fastpasta input.raw view its-readout-frames | less
+fastpasta input.raw view its-readout-frames | less
 ```
 View only readout frames from link #3
 ```shell
-$ fastpasta input.raw view its-readout-frames -f 3 | less
+fastpasta input.raw view its-readout-frames -f 3 | less
 ```
 
 
@@ -167,17 +170,25 @@ triggers_pht = 1 # This data should contain 1 PhT trigger.
 ```
 Finally run fastPASTA as usual e.g.
 ```shell
-$ fastpasta check all its input-data.raw --checks-toml custom_checks.toml
+fastpasta check all its input-data.raw --checks-toml custom_checks.toml
 ```
 
-## Output comprehensive statistics
+## Output comprehensive statistics (and input them for validation)
+### Output statistics
 A large variety of statistics are collected during data analysis. These statistics can be written to file/stdout in JSON/TOML and could for example serve as input to a script that verifies these statistics further.
-
 ### Example
 Check everything applicable to ITS on stave level for the data in `bin.raw`, save stats as `stats.json`
 ```shell
 fastpasta check all its-stave --output-stats stats.json --stats-format json bin.raw
 ```
+### Use statistics for data validation
+The output statistics can also serve as the input to fastPASTA along with checks on some raw data, using the option `--input-stats-file <file>`. This will run a full comparison between the input stats and the stats collected during analysis, and output an error message for each mismatching value.
+### Example
+Verify that analysis of `bin.raw` finds the same exact stats as listed in `stats.json`.
+```shell
+fastpasta check all its-stave --input-stats-file stats.json bin.raw
+```
+Even if you are not 100% sure that all the stats are correct, running one analysis and then using the output stats file as a reference in CI, will let you know if the data output ever changed in terms of these statistics, which could serve as a hint that something has gone wrong (or confirm a correct change in behaviour).
 
 # Error messages
 ### Messages are formatted as follows:
@@ -206,7 +217,7 @@ The following is a list of error codes and their meaning, `x` is a placeholder f
 ## Verbosity levels
 - 0: Errors
 - 1: Errors and warnings
-- 2: Errors, warnings and info
+- 2: Errors, warnings and info **[default]**
 - 3: Errors, warnings, info and debug
 - 4: Errors, warnings, info, debug and trace
 
@@ -214,7 +225,7 @@ The following is a list of error codes and their meaning, `x` is a placeholder f
 ## Running tests
 Run the full test suite with:
 ```shell
-$ cargo test
+cargo test
 ```
 # License
 Apache 2.0 or MIT at your option.
@@ -254,11 +265,11 @@ The rust compiler `rustc` does not yet provide access to all the features that i
 
 ### To install the nightly toolchain (and check your installation)
 ```shell
-$ rustup toolchain install nightly
-$ rustup run nightly rustc --version
+rustup toolchain install nightly
+rustup run nightly rustc --version
 ```
 ### Compile the optimized `release-nightly` experimental build profile
 ```shell
-$ cargo +nightly build --profile release-nightly
+cargo +nightly build --profile release-nightly
 ```
 ### Path to binary: `/target/release-nightly/fastpasta`

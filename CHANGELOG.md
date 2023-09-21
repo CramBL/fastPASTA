@@ -12,6 +12,8 @@ the specified format. Currently allows **JSON** or **TOML**.
 - `--input-stats-file <FILE.JSON/FILE.TOML>`
 At end of analysis, the collected stats are compared with every stat in the input stats file. Each mismatch raises an error.
 
+See readme for more information including examples.
+
 # v1.14.2 (2023-09-18)
 
 ### Fix
