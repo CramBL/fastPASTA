@@ -132,9 +132,7 @@ impl<C: Config + 'static> Controller<C> {
             // Avoid printing the report in the middle of a view, or if output is being redirected
             log::info!("View active or output is being piped, skipping report summary printout.")
         } else {
-            if self.stats_collector.any_errors() {
-                self.process_error_messages();
-            }
+            self.process_stats();
 
             // Print the summary report if any RDHs were seen. If not, it's likely that an early error occurred and no data was processed.
             if self.stats_collector.any_rdhs_seen() {
@@ -161,7 +159,7 @@ impl<C: Config + 'static> Controller<C> {
         match stat {
             StatType::Error(msg) => {
                 // Stop processing any error messages
-                if self.stats_collector.fatal_err() {
+                if self.stats_collector.any_fatal_err() {
                     log::trace!("Fatal error already seen, ignoring error: {msg}");
                     return;
                 }
@@ -189,7 +187,7 @@ impl<C: Config + 'static> Controller<C> {
 
             StatType::Fatal(err) => {
                 // Stop processing any error messages
-                if self.stats_collector.fatal_err() {
+                if self.stats_collector.any_fatal_err() {
                     log::trace!("Fatal error already seen, ignoring error: {err}");
                     return;
                 }
@@ -228,7 +226,7 @@ impl<C: Config + 'static> Controller<C> {
         }
     }
 
-    fn process_error_messages(&mut self) {
+    fn process_stats(&mut self) {
         // New spinner/progress bar
         self.new_spinner_with_prefix(
             format!(
@@ -238,26 +236,16 @@ impl<C: Config + 'static> Controller<C> {
             .yellow()
             .to_string(),
         );
-        self.stats_collector.finalize();
+        self.stats_collector.finalize(self.config.mute_errors());
         self.spinner.as_mut().unwrap().abandon();
 
         if !self.config.mute_errors() {
             // Print the errors, limited if there's a max error limit set
             if self.max_tolerate_errors > 0 {
                 self.stats_collector
-                    .consume_reported_errors()
-                    .drain(..)
-                    .take(self.max_tolerate_errors as usize)
-                    .for_each(|e| {
-                        stats::lib::display_error(&e);
-                    });
+                    .display_errors(Some(self.max_tolerate_errors as usize));
             } else {
-                self.stats_collector
-                    .consume_reported_errors()
-                    .drain(..)
-                    .for_each(|e| {
-                        stats::lib::display_error(&e);
-                    });
+                self.stats_collector.display_errors(None);
             }
         }
     }
