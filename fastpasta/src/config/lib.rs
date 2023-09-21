@@ -44,14 +44,26 @@ where
         if self.any_errors_exit_code().is_some_and(|val| val == 0) {
             return Err("Invalid config: Exit code for any errors cannot be 0".to_string());
         }
-        if self
-            .input_stats_file()
-            .is_some_and(|path_str| !path_str.ends_with(".json") && !path_str.ends_with(".toml"))
-        {
-            return Err(
-                "Invalid config: Input stats file has to have .json or .toml file-extension"
-                    .to_string(),
-            );
+        // Validate input stats file
+        if let Some(path_str) = self.input_stats_file() {
+            if !path_str.is_file() {
+                return Err(format!(
+                    "Invalid config: Input stats file does not exist (got: {})",
+                    path_str.to_string_lossy()
+                ));
+            } else if path_str.extension().is_none() {
+                return Err(format!(
+                    "Invalid config: Input stats file has no extension (got: {})",
+                    path_str.to_string_lossy()
+                ));
+            } else if path_str.extension().unwrap() != "json"
+                && path_str.extension().unwrap() != "toml"
+            {
+                return Err(format!(
+                    "Invalid config: Input stats file has invalid extension, should be JSON or TOML, got: {})",
+                    path_str.to_string_lossy()
+                ));
+            }
         }
         Ok(())
     }

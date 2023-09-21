@@ -156,13 +156,16 @@ impl<C: Config + 'static> Controller<C> {
 
         // User supplied a stats file to compare against, validate the match
         if let Some(input_stats) = self.config.input_stats_file() {
+            log::info!("Validating input stats file against collected stats");
             let input_stats_str =
                 std::fs::read_to_string(input_stats).expect("Failed to read input stats file");
 
-            let input_stats_collector: StatsCollector = if input_stats.ends_with(".json") {
+            let input_stats_collector: StatsCollector = if input_stats.extension().unwrap()
+                == "json"
+            {
                 serde_json::from_str(&input_stats_str)
                     .expect("Failed to deserialize input stats file")
-            } else if input_stats.ends_with(".toml") {
+            } else if input_stats.extension().unwrap() == "toml" {
                 toml::from_str(&input_stats_str).expect("Failed to deserialize input stats file")
             } else {
                 // Should've already been validated when parsing the command-line arguments
@@ -176,7 +179,10 @@ impl<C: Config + 'static> Controller<C> {
             {
                 self.any_errors_flag
                     .store(true, std::sync::atomic::Ordering::SeqCst);
-            };
+                log::warn!("Input stats did not match collected stats");
+            } else {
+                log::info!("Input stats matched collected stats");
+            }
         }
     }
 
