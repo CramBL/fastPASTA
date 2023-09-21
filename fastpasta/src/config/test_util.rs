@@ -131,11 +131,11 @@ impl InputOutputOpt for MockConfig {
     }
 
     fn output_mode(&self) -> DataOutputMode {
-        self.output_mode
+        self.output_mode.clone()
     }
 
     fn stats_output_mode(&self) -> DataOutputMode {
-        self.stats_output_mode
+        self.stats_output_mode.clone()
     }
 
     fn stats_output_format(&self) -> Option<super::inputoutput::DataOutputFormat> {

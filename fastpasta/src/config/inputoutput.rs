@@ -79,10 +79,10 @@ where
 }
 
 /// Enum for all possible data output modes.
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum DataOutputMode {
     /// Write to a file.
-    File,
+    File(Box<std::path::Path>),
     /// Write to stdout.
     Stdout,
     /// Do not write data out.
@@ -92,7 +92,7 @@ pub enum DataOutputMode {
 impl std::fmt::Display for DataOutputMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DataOutputMode::File => write!(f, "File"),
+            DataOutputMode::File(p) => write!(f, "File({})", p.display()),
             DataOutputMode::Stdout => write!(f, "Stdout"),
             DataOutputMode::None => write!(f, "None"),
         }
@@ -104,13 +104,9 @@ impl std::str::FromStr for DataOutputMode {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_uppercase().as_str() {
-            "FILE" => Ok(DataOutputMode::File),
             "STDOUT" => Ok(DataOutputMode::Stdout),
             "NONE" => Ok(DataOutputMode::None),
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("Invalid data output mode {s}"),
-            )),
+            _ => Ok(DataOutputMode::File(std::path::Path::new(s).into())),
         }
     }
 }

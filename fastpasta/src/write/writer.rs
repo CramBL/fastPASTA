@@ -151,7 +151,7 @@ mod tests {
         let mut cfg = MockConfig::new();
         cfg.check = Some(CheckCommands::Sanity { system: None });
         cfg.output = Some(output_path.to_owned());
-        cfg.output_mode = DataOutputMode::File;
+        cfg.output_mode = DataOutputMode::File(output_path.into());
         cfg.input_file = Some(std::path::PathBuf::from(INPUT_FILE_STR));
         cfg.filter_link = Some(2);
         cfg

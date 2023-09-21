@@ -281,7 +281,7 @@ impl InputOutputOpt for Cfg {
             }
             // if output is set and a file path is given, output to file
             else {
-                DataOutputMode::File
+                DataOutputMode::File(self.output().unwrap().clone().into())
             }
         }
         // if output is not set, but checks or prints are enabled, suppress output
@@ -295,7 +295,7 @@ impl InputOutputOpt for Cfg {
     }
 
     fn stats_output_mode(&self) -> DataOutputMode {
-        if let Some(stats_output) = self.stats_output {
+        if let Some(stats_output) = self.stats_output.clone() {
             stats_output
         } else {
             DataOutputMode::None
