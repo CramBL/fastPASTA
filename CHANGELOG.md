@@ -1,17 +1,16 @@
 # [Unreleased]
 
 ### Added
-The two options:
-- `--output-stats`
-- `--stats-format`
+1. **Output analysis stats using the following two options**:
+- `--output-stats <PATH/STDOUT>`
+- `--stats-format <JSON/TOML>`
 
 combine to allow writing all stats collected during data analysis out (stdout or file) in
 the specified format. Currently allows **JSON** or **TOML**.
 
-Example: Check everything applicable to ITS on stave level for the data in `bin.raw`, save stats as `stats.json`
-```shell
-fastpasta check all its-stave --output-stats stats.json --stats-format json bin.raw
-```
+2. **Use analysis stats as input to verify match for analyzed data with:**
+- `--input-stats-file <FILE.JSON/FILE.TOML>`
+At end of analysis, the collected stats are compared with every stat in the input stats file. Each mismatch raises an error.
 
 # v1.14.2 (2023-09-18)
 
