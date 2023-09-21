@@ -153,6 +153,31 @@ impl<C: Config + 'static> Controller<C> {
                 self.config.stats_output_format().unwrap(),
             );
         }
+
+        // User supplied a stats file to compare against, validate the match
+        if let Some(input_stats) = self.config.input_stats_file() {
+            let input_stats_str =
+                std::fs::read_to_string(input_stats).expect("Failed to read input stats file");
+
+            let input_stats_collector: StatsCollector = if input_stats.ends_with(".json") {
+                serde_json::from_str(&input_stats_str)
+                    .expect("Failed to deserialize input stats file")
+            } else if input_stats.ends_with(".toml") {
+                toml::from_str(&input_stats_str).expect("Failed to deserialize input stats file")
+            } else {
+                // Should've already been validated when parsing the command-line arguments
+                panic!("Invalid input stats file extension, must be .json or .toml")
+            };
+
+            if self
+                .stats_collector
+                .validate_other_stats(&input_stats_collector, self.config.mute_errors())
+                .is_err()
+            {
+                self.any_errors_flag
+                    .store(true, std::sync::atomic::Ordering::SeqCst);
+            };
+        }
     }
 
     fn update(&mut self, stat: StatType) {
@@ -243,9 +268,9 @@ impl<C: Config + 'static> Controller<C> {
             // Print the errors, limited if there's a max error limit set
             if self.max_tolerate_errors > 0 {
                 self.stats_collector
-                    .display_errors(Some(self.max_tolerate_errors as usize));
+                    .display_errors(Some(self.max_tolerate_errors as usize), false);
             } else {
-                self.stats_collector.display_errors(None);
+                self.stats_collector.display_errors(None, false);
             }
         }
     }

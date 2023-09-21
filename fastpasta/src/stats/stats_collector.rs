@@ -89,7 +89,10 @@ impl StatsCollector {
     }
 
     /// Display the errors reported, optionally limiting the number of errors displayed.
-    pub fn display_errors(&self, display_max: Option<usize>) {
+    pub fn display_errors(&self, display_max: Option<usize>, mute_errors: bool) {
+        if mute_errors {
+            return;
+        }
         if let Some(max) = display_max {
             let mut cnt: usize = self.err_count() as usize;
             self.reported_errors_as_slice()
@@ -219,6 +222,52 @@ impl StatsCollector {
             ),
         }
     }
+
+    /// Validate that the other stats (from user input) matches the collected stats.
+    pub fn validate_other_stats(
+        &self,
+        other: &Self,
+        mute_errors: bool,
+    ) -> Result<(), std::io::Error> {
+        let mut errs = Vec::new();
+
+        if let Err(mut err_msgs) = self.rdh_stats.validate_other(other.rdh_stats()) {
+            errs.append(&mut err_msgs);
+        }
+
+        if let Err(mut err_msgs) = self.error_stats.validate_other(other.error_stats()) {
+            errs.append(&mut err_msgs);
+        }
+
+        if let Some(alpide_stats) = self.alpide_stats() {
+            if let Some(other_alpide_stats) = other.alpide_stats() {
+                if let Err(mut err_msgs) = alpide_stats.validate_other(other_alpide_stats) {
+                    errs.append(&mut err_msgs);
+                }
+            } else {
+                errs.push(
+                    "ALPIDE stats was collected but the input stats does not contain ALPIDE stats"
+                        .into(),
+                );
+            }
+        } else if other.alpide_stats.is_some() {
+            log::warn!("Input stats contains ALPIDE stats but the chosen analysis did not collect ALPIDE stats (did you mean to use `check all its-stave`?)");
+        }
+
+        if errs.is_empty() {
+            Ok(())
+        } else {
+            if !mute_errors {
+                errs.iter().for_each(|err| {
+                    super::lib::display_error(err);
+                });
+            }
+            Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Stats validation failed",
+            ))
+        }
+    }
 }
 
 fn write_stats_str(mode: &DataOutputMode, stats_str: &str) {
@@ -269,5 +318,93 @@ mod tests {
         let from_toml = toml::from_str::<StatsCollector>(&toml).unwrap();
         println!("{toml}");
         assert_eq!(stats_collector, from_toml);
+    }
+
+    #[test]
+    fn test_validate_other_stats_default_succeeds() {
+        let stats_collector = StatsCollector::default();
+        let other_stats_collector = StatsCollector::default();
+
+        assert!(stats_collector
+            .validate_other_stats(&other_stats_collector, false)
+            .is_ok());
+    }
+
+    #[test]
+    fn test_validate_other_stats_with_alpide_stats_succeeds() {
+        let stats_collector = StatsCollector::with_alpide_stats();
+        let other_stats_collector = StatsCollector::with_alpide_stats();
+
+        assert!(stats_collector
+            .validate_other_stats(&other_stats_collector, false)
+            .is_ok());
+    }
+
+    #[test]
+    fn test_validate_other_stats_with_alpide_stats_and_default_fails() {
+        let stats_collector = StatsCollector::with_alpide_stats();
+        let other_stats_collector = StatsCollector::default();
+
+        if let Err(msgs) = stats_collector.validate_other_stats(&other_stats_collector, false) {
+            println!("{:?}", msgs);
+        } else {
+            panic!("Should have failed");
+        }
+
+        // Vice versa is OK (if ALPIDE stats are provided by user, it's OK if the analysis didn't collect ALPIDE stats)
+        assert!(other_stats_collector
+            .validate_other_stats(&stats_collector, false)
+            .is_ok());
+        // The user should be warned about this though
+    }
+
+    #[test]
+    fn test_validate_mismatch_errors() {
+        let stats_collector = StatsCollector::default();
+        let mut other_stats_collector = StatsCollector::default();
+
+        other_stats_collector.collect(StatType::Fatal("fatal error".into()));
+        other_stats_collector.collect(StatType::Error("error".into()));
+        other_stats_collector.collect(StatType::RunTriggerType((0, "trigger type".into())));
+        other_stats_collector.collect(StatType::TriggerType(0xE021));
+        other_stats_collector.collect(StatType::SystemId(SystemId::ZDC));
+
+        if let Err(err) = stats_collector.validate_other_stats(&other_stats_collector, false) {
+            println!("{:?}", err);
+        } else {
+            panic!("Should have failed");
+        }
+    }
+
+    #[test]
+    fn test_validate_match_various_vals() {
+        let mut stats_collector = StatsCollector::with_alpide_stats();
+        let mut other_stats_collector = StatsCollector::with_alpide_stats();
+
+        stats_collector.collect(StatType::Error("0xe0 : [E10] big error".into()));
+        other_stats_collector.collect(StatType::Error("0xe0 : [E10] big error".into()));
+
+        stats_collector.collect(StatType::FeeId(1));
+        other_stats_collector.collect(StatType::FeeId(1));
+
+        stats_collector.collect(StatType::RDHSeen(11));
+        other_stats_collector.collect(StatType::RDHSeen(11));
+
+        stats_collector.collect(StatType::RDHFiltered(10));
+        other_stats_collector.collect(StatType::RDHFiltered(10));
+
+        stats_collector.collect(StatType::PayloadSize(100));
+        other_stats_collector.collect(StatType::PayloadSize(100));
+
+        let mut alpide_stats = AlpideStats::default();
+        alpide_stats.log_readout_flags(0b0000_0001);
+        alpide_stats.log_readout_flags(0b0001_1001);
+
+        stats_collector.collect(StatType::AlpideStats(alpide_stats));
+        other_stats_collector.collect(StatType::AlpideStats(alpide_stats));
+
+        assert!(stats_collector
+            .validate_other_stats(&other_stats_collector, false)
+            .is_ok());
     }
 }

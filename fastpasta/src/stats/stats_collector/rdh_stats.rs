@@ -206,6 +206,62 @@ impl RdhStats {
     pub(crate) fn finalize(&mut self) {
         self.sort_links_observed();
     }
+
+    pub(super) fn validate_other(&self, other: &Self) -> Result<(), Vec<String>> {
+        let mut errs: Vec<String> = vec![];
+
+        if let Err(mut sub_errs) = self.its_stats.validate_other(&other.its_stats) {
+            errs.append(&mut sub_errs);
+        }
+
+        if let Err(mut sub_errs) = self.trigger_stats.validate_other(&other.trigger_stats) {
+            errs.append(&mut sub_errs);
+        }
+
+        // This syntax is used to ensure that a compile error is raised if a
+        // new field is added to the struct but not added to the validation here
+        // Also add new fields to the `validate_fields` macro!
+        let other_top_fields_only = Self {
+            rdhs_seen: other.rdhs_seen,
+            rdhs_filtered: other.rdhs_filtered,
+            rdh_version: other.rdh_version,
+            hbfs_seen: other.hbfs_seen,
+            payload_size: other.payload_size,
+            data_format: other.data_format,
+            links: other.links.clone(),
+            fee_id: other.fee_id.clone(),
+            system_id: other.system_id,
+            run_trigger_type: other.run_trigger_type.clone(),
+            its_stats: ItsStats::default(), // Validated in previous seperate function
+            trigger_stats: TriggerStats::default(), // Validated in seperate function
+        };
+
+        if let Err(mut local_top_field_errs) = self.validate_fields(&other_top_fields_only) {
+            errs.append(&mut local_top_field_errs);
+        }
+
+        if errs.is_empty() {
+            Ok(())
+        } else {
+            Err(errs)
+        }
+    }
+
+    // Implementation of the `validate_fields` macro
+    // Remember to add new fields here as well!
+    crate::validate_fields!(
+        RdhStats,
+        rdhs_seen,
+        rdhs_filtered,
+        rdh_version,
+        hbfs_seen,
+        payload_size,
+        data_format,
+        links,
+        fee_id,
+        system_id,
+        run_trigger_type
+    );
 }
 
 #[cfg(test)]
