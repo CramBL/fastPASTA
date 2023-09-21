@@ -185,7 +185,7 @@ impl StatsCollector {
     }
 
     /// Returns a reference to the fatal error message.
-    pub fn fatal_err(&self) -> &Box<str> {
+    pub fn fatal_err(&self) -> &str {
         self.error_stats.fatal_err()
     }
 

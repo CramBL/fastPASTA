@@ -31,7 +31,7 @@ pub fn make_report(
     let mut report = Report::new(processing_time);
 
     if stats.any_fatal_err() {
-        report.add_fatal_error(stats.fatal_err().clone().into_string());
+        report.add_fatal_error(stats.fatal_err().to_owned());
     }
 
     // Add global stats

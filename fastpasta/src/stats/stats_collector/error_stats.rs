@@ -125,8 +125,8 @@ impl ErrorStats {
         self.fatal_error.is_some()
     }
 
-    pub(super) fn fatal_err(&self) -> &Box<str> {
-        &self.fatal_error.as_ref().unwrap()
+    pub(super) fn fatal_err(&self) -> &str {
+        self.fatal_error.as_ref().unwrap()
     }
 
     pub(super) fn unique_error_codes_as_slice(&mut self) -> &[u16] {
