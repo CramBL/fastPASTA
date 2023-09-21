@@ -23,6 +23,18 @@ impl ItsStats {
     pub fn layer_staves_as_slice(&self) -> &[(u8, u8)] {
         &self.layer_staves_seen
     }
+
+    pub(super) fn validate_other(&self, other: &Self) -> Result<(), Vec<String>> {
+        // Do this (syntax) to ensure that adding a new field to the struct doesn't break the validation
+        // If a new field is added, this will fail to compile, before explicitly adding the new field to this instantiation
+        let other = Self {
+            layer_staves_seen: other.layer_staves_seen.clone(),
+        };
+        self.validate_fields(&other)
+    }
+    // Implementation of the `validate_fields` macro
+    // Remember to add new fields here as well!
+    crate::validate_fields!(ItsStats, layer_staves_seen);
 }
 
 #[cfg(test)]

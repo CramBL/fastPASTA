@@ -21,6 +21,33 @@ impl AlpideStats {
     pub(crate) fn sum(&mut self, other: AlpideStats) {
         self.readout_flags = self.readout_flags.sum(other.readout_flags);
     }
+
+    pub(crate) fn validate_other(&self, other: &Self) -> Result<(), Vec<String>> {
+        let mut errs: Vec<String> = vec![];
+
+        if let Err(mut sub_errs) = self.readout_flags.validate_other(&other.readout_flags) {
+            errs.append(&mut sub_errs);
+        }
+
+        // Do this (syntax) to ensure that adding a new field to the struct doesn't break the validation
+        // If a new field is added, this will fail to compile, before explicitly adding the new field to this instantiation
+        // unused right now as there's only a sub struct which is validated above
+        let _other = Self {
+            readout_flags: ReadoutFlags::default(),
+        };
+
+        if errs.is_empty() {
+            Ok(())
+        } else {
+            Err(errs)
+        }
+
+        //self.validate_fields(&other)
+    }
+    // Implementation of the `validate_fields` macro
+    // Remember to add new fields here as well!
+    // Commented out as there's only a sub struct as of now
+    //crate::validate_fields!(AlpideStats, readout_flags);
 }
 
 /// Struct to store the readout flags observed in ALPIDE chip trailers
@@ -110,6 +137,36 @@ impl ReadoutFlags {
             transmission_in_fatal: self.transmission_in_fatal + other.transmission_in_fatal,
         }
     }
+
+    pub(super) fn validate_other(&self, other: &Self) -> Result<(), Vec<String>> {
+        // Do this (syntax) to ensure that adding a new field to the struct doesn't break the validation
+        // If a new field is added, this will fail to compile, before explicitly adding the new field to this instantiation
+        // Remebmer to add new fields to the `validate_fields` macro as well!
+        let other = Self {
+            chip_trailers_seen: other.chip_trailers_seen,
+            busy_violations: other.busy_violations,
+            flushed_incomplete: other.flushed_incomplete,
+            strobe_extended: other.strobe_extended,
+            busy_transitions: other.busy_transitions,
+            data_overrun: other.data_overrun,
+            transmission_in_fatal: other.transmission_in_fatal,
+        };
+
+        self.validate_fields(&other)
+    }
+
+    // Implementation of the `validate_fields` macro
+    // Remember to add new fields here as well!
+    crate::validate_fields!(
+        ReadoutFlags,
+        chip_trailers_seen,
+        busy_violations,
+        flushed_incomplete,
+        strobe_extended,
+        busy_transitions,
+        data_overrun,
+        transmission_in_fatal
+    );
 }
 
 #[cfg(test)]

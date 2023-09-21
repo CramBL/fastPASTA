@@ -1,12 +1,40 @@
 //! Contains utility related to collecting stats about the input data.
 
 /// Displays an error message if the config doesn't have the mute error flag set.
+/// Check for the mute error flag in the config before calling this function.
 pub(crate) fn display_error(error: &str) {
-    use crate::config::prelude::*;
-    let is_muting_errors = crate::config::CONFIG.get().unwrap().mute_errors();
-    if !is_muting_errors {
-        log::error!("{error}");
-    }
+    log::error!("{error}");
+}
+
+/// Module containing macros related to stats.
+pub mod macros {
+    /// Macro to generate the `validate_fields` function for a struct
+    ///
+    /// It's possible to do this without having to specify each field, although it would require a procedural macro which would require a whole new crate.
+    #[macro_export]
+    macro_rules! validate_fields {
+    ($struct_name:ident, $($field:ident),*) => {
+        fn validate_fields(&self, other: &$struct_name) -> Result<(), Vec<String>> {
+            let mut errs = vec![];
+
+            $(
+                if self.$field != other.$field {
+                    errs.push(format!("{field_name} mismatch! expected: {other_val:?}, got: {this_val:?}",
+                        field_name = stringify!($field),
+                        other_val = other.$field, this_val = self.$field
+                        )
+                    );
+                }
+            )*
+
+            if errs.is_empty() {
+                Ok(())
+            } else {
+                Err(errs)
+            }
+        }
+    };
+}
 }
 
 #[cfg(test)]

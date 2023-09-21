@@ -14,6 +14,8 @@ pub trait InputOutputOpt {
     fn stats_output_mode(&self) -> DataOutputMode;
     /// Stats output format (JSON, TOML)
     fn stats_output_format(&self) -> Option<DataOutputFormat>;
+    /// Input stats file to read from and verify match with collected stats at end of analysis.
+    fn input_stats_file(&self) -> Option<&PathBuf>;
 }
 
 impl<T> InputOutputOpt for &T
@@ -34,6 +36,9 @@ where
     }
     fn stats_output_format(&self) -> Option<DataOutputFormat> {
         (*self).stats_output_format()
+    }
+    fn input_stats_file(&self) -> Option<&PathBuf> {
+        (*self).input_stats_file()
     }
 }
 
@@ -56,6 +61,9 @@ where
     fn stats_output_format(&self) -> Option<DataOutputFormat> {
         (**self).stats_output_format()
     }
+    fn input_stats_file(&self) -> Option<&PathBuf> {
+        (**self).input_stats_file()
+    }
 }
 impl<T> InputOutputOpt for std::sync::Arc<T>
 where
@@ -75,6 +83,9 @@ where
     }
     fn stats_output_format(&self) -> Option<DataOutputFormat> {
         (**self).stats_output_format()
+    }
+    fn input_stats_file(&self) -> Option<&PathBuf> {
+        (**self).input_stats_file()
     }
 }
 

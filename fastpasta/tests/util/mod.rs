@@ -34,10 +34,19 @@ pub const FILE_2_HBF_2ND_BAD_FRAME: &str = "../tests/test-data/2_hbf_2nd_bad_fra
 
 /// Helper function to create a temp dir and a child file path
 ///
-/// It's important to return the directory because the directory must be kept alive
+/// It's important to return the directory because the directory must be kept alive (don't match dir with '_' it will drop it immediately)
 pub fn make_tmp_dir_w_fpath() -> (TempDir, ChildPath) {
     let tmp_d = TempDir::new().unwrap();
     let tmp_fpath = tmp_d.child("tmp.raw");
+    (tmp_d, tmp_fpath)
+}
+
+/// Helper function to create a temp dir and a child file path with a given name
+///
+/// It's important to return the directory because the directory must be kept alive (don't match dir with '_' it will drop it immediately)
+pub fn make_tmp_dir_w_named_file(fname: &str) -> (TempDir, ChildPath) {
+    let tmp_d = TempDir::new().unwrap();
+    let tmp_fpath = tmp_d.child(fname);
     (tmp_d, tmp_fpath)
 }
 

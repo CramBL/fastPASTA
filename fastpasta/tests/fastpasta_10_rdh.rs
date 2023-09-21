@@ -679,3 +679,58 @@ fn check_all_its_stave_output_stats_json_toml() -> Result<(), Box<dyn std::error
 
     Ok(())
 }
+
+#[test]
+fn test_check_all_its_with_stats_validation() -> Result<(), Box<dyn std::error::Error>> {
+    let check_arg = ["check", "all", "its"];
+
+    let (_tmp_dir, tmp_fpath) = make_tmp_dir_w_named_file("out-stats.json");
+
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_10_RDH)
+        .args(check_arg)
+        .arg("--output-stats")
+        .arg(tmp_fpath.as_os_str())
+        .arg("--stats-format")
+        .arg("json");
+
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+
+    // Now run again with the created stats as input
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_10_RDH)
+        .args(check_arg)
+        .arg("--input-stats")
+        .arg(tmp_fpath.as_os_str());
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+
+    // Now alter the stats and run again, expect an error
+    let stats_str = std::fs::read_to_string(tmp_fpath)?;
+    // alter the json string before deserializing
+    let new_wrong_stat_str = stats_str.replace("\"rdhs_seen\": 10", "\"rdhs_seen\": 11");
+    assert_ne!(stats_str, new_wrong_stat_str); // make sure we actually changed something
+    let stats_from_json: fastpasta::stats::stats_collector::StatsCollector =
+        serde_json::from_str(&new_wrong_stat_str)?;
+
+    let (_tmp_dir2, tmp_fpath2) = make_tmp_dir_w_named_file("out-stats-wrong.json");
+    let wrong_stats_str = serde_json::to_string(&stats_from_json)?;
+    std::fs::write(tmp_fpath2.as_os_str(), wrong_stats_str)?;
+
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg(FILE_10_RDH)
+        .args(check_arg)
+        .arg("--input-stats")
+        .arg(tmp_fpath2.as_os_str())
+        .arg("--any-errors-exit-code")
+        .arg("123");
+
+    cmd.assert().failure().code(123);
+
+    match_on_out_no_case(&cmd.output()?.stderr, "ERROR -.* mismatch.*11", 1)?;
+
+    Ok(())
+}

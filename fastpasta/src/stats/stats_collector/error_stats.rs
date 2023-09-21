@@ -158,6 +158,31 @@ impl ErrorStats {
     pub(super) fn custom_check_errors_as_slice(&self) -> &[Box<str>] {
         &self.custom_checks_stats_errors
     }
+
+    pub(super) fn validate_other(&self, other: &Self) -> Result<(), Vec<String>> {
+        // This syntax is used to ensure that a compile error is raised if a new field is added to the struct but not added to the validation here
+        // Also add it to the `validate_fields` macro!
+        let other = Self {
+            fatal_error: other.fatal_error.clone(),
+            reported_errors: other.reported_errors.clone(),
+            custom_checks_stats_errors: other.custom_checks_stats_errors.clone(),
+            total_errors: other.total_errors,
+            unique_error_codes: other.unique_error_codes.clone(),
+            staves_with_errors: other.staves_with_errors.clone(),
+        };
+
+        self.validate_fields(&other)
+    }
+
+    crate::validate_fields!(
+        ErrorStats,
+        fatal_error,
+        reported_errors,
+        custom_checks_stats_errors,
+        total_errors,
+        unique_error_codes,
+        staves_with_errors
+    );
 }
 
 fn extract_unique_error_codes(error_messages: &[Box<str>]) -> Vec<u16> {

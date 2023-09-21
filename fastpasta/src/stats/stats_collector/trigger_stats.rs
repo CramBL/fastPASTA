@@ -214,6 +214,62 @@ impl TriggerStats {
     pub fn tof(&self) -> u32 {
         self.tof
     }
+
+    pub(super) fn validate_other(&self, other: &Self) -> Result<(), Vec<String>> {
+        // Do this to ensure that adding a new field to the struct doesn't break the validation
+        // If a new field is added, this will fail to compile, before explicitly adding the new field to this instantiation
+        let other = Self {
+            orbit: other.orbit(),
+            hb: other.hb(),
+            hbr: other.hbr(),
+            hc: other.hc(),
+            pht: other.pht(),
+            pp: other.pp(),
+            cal: other.cal(),
+            sot: other.sot(),
+            eot: other.eot(),
+            soc: other.soc(),
+            eoc: other.eoc(),
+            tf: other.tf(),
+            fe_rst: other.fe_rst(),
+            rt: other.rt(),
+            rs: other.rs(),
+            lhc_gap1: other.lhc_gap1(),
+            lhc_gap2: other.lhc_gap2(),
+            tpc_sync: other.tpc_sync(),
+            tpc_rst: other.tpc_rst(),
+            tof: other.tof(),
+            // Also add to the macro invocation below this function!
+        };
+
+        self.validate_fields(&other)
+    }
+
+    // Implementation of the `validate_fields` macro
+    // Remember to add new fields here as well!
+    crate::validate_fields!(
+        TriggerStats,
+        orbit,
+        hb,
+        hbr,
+        hc,
+        pht,
+        pp,
+        cal,
+        sot,
+        eot,
+        soc,
+        eoc,
+        tf,
+        fe_rst,
+        rt,
+        rs,
+        lhc_gap1,
+        lhc_gap2,
+        tpc_sync,
+        tpc_rst,
+        tof
+    );
 }
 
 impl Display for TriggerStats {
@@ -322,5 +378,46 @@ mod tests {
         assert_eq!(trigger_stats.tpc_sync(), 1);
         assert_eq!(trigger_stats.tpc_rst(), 1);
         assert_eq!(trigger_stats.tof(), 1);
+    }
+
+    #[test]
+    fn test_validate_other_success() {
+        let trigger_stats = TriggerStats::default();
+        let other_trigger_stats = TriggerStats::default();
+
+        if let Err(msg) = trigger_stats.validate_other(&other_trigger_stats) {
+            panic!("{}", msg.join("\n"));
+        }
+    }
+
+    #[test]
+    fn test_validate_other_fails() {
+        let mut trigger_stats = TriggerStats::default();
+        trigger_stats.collect_stats(0b0000_0000_0000_0000_0000_0000_0000_0001);
+        let trigger_stats_other = TriggerStats::default();
+
+        if let Err(msg) = trigger_stats.validate_other(&trigger_stats_other) {
+            println!("{}", msg.join("\n"));
+        } else {
+            panic!("Validation succeeded, but should have failed!")
+        }
+    }
+
+    #[test]
+    fn test_validate_other_multiple_fails() {
+        let mut trigger_stats = TriggerStats::default();
+        trigger_stats.collect_stats(0b0000_0000_0000_0000_0000_0000_0000_0001);
+        trigger_stats.collect_stats(0b0000_0000_0000_0000_0000_0000_0000_0010);
+        trigger_stats.collect_stats(0b0000_0000_0000_0000_0000_0000_0000_0100);
+        trigger_stats.collect_stats(0b0000_0000_0000_0000_0000_0000_0000_1000);
+
+        let other_trigger_stats = TriggerStats::default();
+
+        if let Err(msg) = trigger_stats.validate_other(&other_trigger_stats) {
+            println!("{}", msg.join("\n"));
+            assert!(msg.len() == 4);
+        } else {
+            panic!("Validation succeeded, but should have failed!")
+        }
     }
 }
