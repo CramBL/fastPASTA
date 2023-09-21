@@ -87,67 +87,83 @@ impl StatsCollector {
         self.is_finalized = true;
     }
 
-    pub(crate) fn rdh_stats(&self) -> &RdhStats {
+    /// Returns a reference to the [RdhStats].
+    pub fn rdh_stats(&self) -> &RdhStats {
         &self.rdh_stats
     }
 
-    pub(crate) fn rdhs_seen(&self) -> u64 {
+    /// Returns the number of RDHs seen.
+    pub fn rdhs_seen(&self) -> u64 {
         self.rdh_stats.rdhs_seen()
     }
 
-    pub(crate) fn payload_size(&self) -> u64 {
+    /// Returns the processed payload size in bytes
+    pub fn payload_size(&self) -> u64 {
         self.rdh_stats.payload_size()
     }
 
-    pub(crate) fn hbfs_seen(&self) -> u32 {
+    /// Returns the number of HBFs in the processed data.
+    pub fn hbfs_seen(&self) -> u32 {
         self.rdh_stats.hbfs_seen()
     }
 
-    pub(crate) fn any_rdhs_seen(&self) -> bool {
+    /// Returns if any RDHs were seen in the processed data.
+    pub fn any_rdhs_seen(&self) -> bool {
         self.rdh_stats.rdhs_seen() > 0
     }
 
-    pub(crate) fn system_id(&self) -> Option<SystemId> {
+    /// Returns the System ID of the processed data if it was observed/determined.
+    pub fn system_id(&self) -> Option<SystemId> {
         self.rdh_stats.system_id()
     }
 
-    pub(crate) fn layer_staves_as_slice(&self) -> &[(u8, u8)] {
+    /// Returns the layers/staves seen in the processed data as a borrowed slice.
+    pub fn layer_staves_as_slice(&self) -> &[(u8, u8)] {
         self.rdh_stats.layer_staves_as_slice()
     }
 
-    pub(super) fn error_stats(&self) -> &ErrorStats {
+    /// Returns a reference to the [ErrorStats].
+    pub fn error_stats(&self) -> &ErrorStats {
         &self.error_stats
     }
 
-    pub(crate) fn err_count(&self) -> u64 {
+    /// Returns the number of errors reported.
+    pub fn err_count(&self) -> u64 {
         self.error_stats.err_count()
     }
 
-    pub(crate) fn any_errors(&self) -> bool {
+    /// Return if any errors were reported.
+    pub fn any_errors(&self) -> bool {
         self.error_stats.err_count() > 0
     }
 
-    pub(crate) fn fatal_err(&self) -> bool {
+    /// Returns if any fatal errors were reported.
+    pub fn fatal_err(&self) -> bool {
         self.error_stats.fatal_err()
     }
 
-    pub(crate) fn consume_reported_errors(&mut self) -> Vec<Box<str>> {
+    /// Takes the reported errors and returns them as a vector of owned read-only strings.
+    pub fn consume_reported_errors(&mut self) -> Vec<Box<str>> {
         self.error_stats.consume_reported_errors()
     }
 
-    pub(crate) fn take_fatal_err(&mut self) -> Box<str> {
+    /// Takes the reported fatal error and returns it as an owned read-only string.
+    pub fn take_fatal_err(&mut self) -> Box<str> {
         self.error_stats.take_fatal_err()
     }
 
-    pub(crate) fn unique_error_codes_as_slice(&mut self) -> &[u16] {
+    /// Returns a slice of the unique error codes of reported errors.
+    pub fn unique_error_codes_as_slice(&mut self) -> &[u16] {
         self.error_stats.unique_error_codes_as_slice()
     }
 
-    pub(crate) fn staves_with_errors_as_slice(&self) -> Option<&[(u8, u8)]> {
+    /// Returns a slice of the staves in which errors were reported.
+    pub fn staves_with_errors_as_slice(&self) -> Option<&[(u8, u8)]> {
         self.error_stats.staves_with_errors_as_slice()
     }
 
-    pub(crate) fn take_alpide_stats(&mut self) -> Option<AlpideStats> {
+    /// Returns the owned [AlpideStats] instance.
+    pub fn take_alpide_stats(&mut self) -> Option<AlpideStats> {
         self.alpide_stats.take()
     }
 
