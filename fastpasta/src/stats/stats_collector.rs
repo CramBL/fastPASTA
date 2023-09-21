@@ -167,6 +167,11 @@ impl StatsCollector {
         self.alpide_stats.take()
     }
 
+    /// Returns a reference to the [AlpideStats] instance.
+    pub fn alpide_stats(&self) -> Option<&AlpideStats> {
+        self.alpide_stats.as_ref()
+    }
+
     pub(crate) fn write_stats(&self, mode: &DataOutputMode, format: DataOutputFormat) {
         if *mode == DataOutputMode::None {
             return;
