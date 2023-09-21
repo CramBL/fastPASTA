@@ -149,10 +149,12 @@ impl<C: Config + 'static> Controller<C> {
         }
 
         // Stats collector will serialize and write out stats if the config specifies it
-        self.stats_collector.write_stats(
-            &self.config.stats_output_mode(),
-            self.config.stats_output_format().unwrap(),
-        );
+        if self.config.stats_output_mode() != DataOutputMode::None {
+            self.stats_collector.write_stats(
+                &self.config.stats_output_mode(),
+                self.config.stats_output_format().unwrap(),
+            );
+        }
     }
 
     fn update(&mut self, stat: StatType) {

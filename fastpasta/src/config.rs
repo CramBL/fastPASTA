@@ -153,7 +153,7 @@ pub struct Cfg {
     )]
     stats_output: DataOutputMode,
 
-    /// Output stats format, requires setting a stats output option
+    /// Output stats format (JSON/TOML), requires setting a stats output option
     #[arg(
         name = "STATS FORMAT",
         short = 'D',
