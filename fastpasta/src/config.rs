@@ -163,6 +163,17 @@ pub struct Cfg {
         requires = "OUTPUT FINAL STATS"
     )]
     stats_output_format: Option<DataOutputFormat>,
+
+    /// Input stats file to read from and verify match with collected stats at end of analysis.
+    /// The file extension determines the format (JSON/TOML)
+    #[arg(
+        name = "INPUT STATS FILE",
+        short = 'i',
+        long = "input-stats-file",
+        visible_aliases = ["input-stats", "stats-file", "verify-stats"],
+        global = true,
+    )]
+    input_stats_file: Option<PathBuf>,
 }
 
 impl Cfg {
@@ -301,6 +312,10 @@ impl InputOutputOpt for Cfg {
 
     fn stats_output_format(&self) -> Option<DataOutputFormat> {
         self.stats_output_format
+    }
+
+    fn input_stats_file(&self) -> Option<&PathBuf> {
+        self.input_stats_file.as_ref()
     }
 }
 

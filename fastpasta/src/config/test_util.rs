@@ -26,6 +26,7 @@ pub struct MockConfig {
     pub custom_checks: Option<CustomChecks>,
     pub stats_output_mode: DataOutputMode,
     pub stats_output_format: Option<DataOutputFormat>,
+    pub stats_input_file: Option<std::path::PathBuf>,
 }
 
 impl Default for MockConfig {
@@ -55,6 +56,7 @@ impl MockConfig {
             custom_checks: None,
             stats_output_mode: DataOutputMode::None,
             stats_output_format: None,
+            stats_input_file: None,
         }
     }
 }
@@ -140,6 +142,10 @@ impl InputOutputOpt for MockConfig {
 
     fn stats_output_format(&self) -> Option<super::inputoutput::DataOutputFormat> {
         self.stats_output_format
+    }
+
+    fn input_stats_file(&self) -> Option<&std::path::PathBuf> {
+        self.stats_input_file.as_ref()
     }
 }
 

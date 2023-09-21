@@ -44,6 +44,15 @@ where
         if self.any_errors_exit_code().is_some_and(|val| val == 0) {
             return Err("Invalid config: Exit code for any errors cannot be 0".to_string());
         }
+        if self
+            .input_stats_file()
+            .is_some_and(|path_str| !path_str.ends_with(".json") && !path_str.ends_with(".toml"))
+        {
+            return Err(
+                "Invalid config: Input stats file has to have .json or .toml file-extension"
+                    .to_string(),
+            );
+        }
         Ok(())
     }
 
