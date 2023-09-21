@@ -146,11 +146,12 @@ pub struct Cfg {
         name = "OUTPUT FINAL STATS",
         short = 'S',
         long = "output-stats",
+        default_value_t = DataOutputMode::None,
         visible_aliases = ["output-stats-report","output-final-stats"],
         global = true,
         requires = "STATS FORMAT"
     )]
-    stats_output: Option<DataOutputMode>,
+    stats_output: DataOutputMode,
 
     /// Output stats format, requires setting a stats output option
     #[arg(
@@ -295,11 +296,7 @@ impl InputOutputOpt for Cfg {
     }
 
     fn stats_output_mode(&self) -> DataOutputMode {
-        if let Some(stats_output) = self.stats_output.clone() {
-            stats_output
-        } else {
-            DataOutputMode::None
-        }
+        self.stats_output.clone()
     }
 
     fn stats_output_format(&self) -> Option<DataOutputFormat> {
