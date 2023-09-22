@@ -34,12 +34,13 @@ fn print_rdh_its_readout_frame_view<T: RDH>(
     let orbit = rdh.rdh1().orbit; // Packed field
 
     writeln!(stdio_lock,
-        "{rdh_mem_pos:>8X}: RDH v{version} stop={stop} stave: {stave:<15}{trig_str:<35} #{link:>2}{orbit_bc_str:>34}",
+        "{rdh_mem_pos:>8X}: RDH v{version} stop={stop} stave: {stave:<15}{trig_str:<35} #{link:>2} {lane_status:>14}{orbit_bc_str:>19}",
         version = rdh.version(),
         stop = rdh.stop_bit(),
         stave = Stave::from_feeid(rdh.fee_id()).to_string(),
         trig_str = super::lib::rdh_trigger_type_as_string(rdh),
         link = rdh.link_id().to_string(),
+        lane_status = super::lib::rdh_detector_field_lane_status_as_string(rdh),
         orbit_bc_str = format!("{orbit}_{bc:>4}", bc = rdh.rdh1().bc()),
     )?;
 
