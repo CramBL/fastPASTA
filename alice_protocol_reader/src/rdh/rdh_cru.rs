@@ -51,13 +51,15 @@ impl<Version> Display for RdhCru<Version> {
         let tmp_link = self.link_id;
         let tmp_packet_cnt = self.packet_counter;
         let rdhcru_fields0 = format!("{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}");
+        let detector_field = self.rdh3.detector_field;
         write!(
             f,
-            "{rdh0}{rdhcru_fields0}{rdh1}{data_format:<11}{rdh2}",
+            "{rdh0}{rdhcru_fields0}{rdh1}{data_format:<11}{rdh2} {det_field:#x}",
             rdh0 = self.rdh0,
             rdh1 = self.rdh1,
             data_format = self.data_format(),
-            rdh2 = self.rdh2
+            rdh2 = self.rdh2,
+            det_field = detector_field
         )
     }
 }
@@ -102,10 +104,10 @@ impl<Version> RdhCru<Version> {
     /// Takes an [usize] as an argument, which is the number of spaces to indent the 2 lines by.
     #[inline]
     pub fn rdh_header_text_with_indent_to_string(indent: usize) -> String {
-        let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop";
-        let header_text_bottom = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit";
+        let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop  Detector";
+        let header_text_bot = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit   field";
         format!(
-            "{:indent$}{header_text_top}\n{:indent2$}{header_text_bottom}\n",
+            "{:indent$}{header_text_top}\n{:indent2$}{header_text_bot}\n",
             "",
             "",
             indent = indent,
