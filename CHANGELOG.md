@@ -1,8 +1,49 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 # [Unreleased]
+
+# v1.16.0 (2023-09-22) Detector field info in all `view` subcommands
 ### Added
 1. Detector field lane status to RDH row in the commands:
      - `view its-readout-frames`
      - `view its-readout-frames-data`
+
+2. For `view rdh`: Added column *Detector field* with raw (hex) value of the detector field
+
+Examples below.
+
+Example: `fastpasta view its-readout-frame bin.raw`
+```
+Memory    Word                                Trig.      Packet      Expect        Link      Lane            Trigger
+Position  type                                type       status      Data?         ID        faults          Orbit_BC
+
+       0: RDH v7 stop=0 stave: L6_36          SOC                                 # 0        -           102670144_   0
+      40: IHW [FF 3F 00 00 00 00 00 00 00 E0]
+      4A: TDH [03 1A 00 00 40 9F 1E 06 00 E8] SOC                    Data!                               102670144_   0
+     14E: TDT [30 02 00 00 00 00 00 40 03 F0]           Complete                             Fatal
+     158: TDH [00 10 A4 04 40 9F 1E 06 00 E8] Internal               Data!                               102670144_1188
+     252: TDT [30 00 00 00 00 00 00 00 01 F0]           Complete                             Fatal
+     25C: TDH [00 10 48 09 40 9F 1E 06 00 E8] Internal               Data!                               102670144_2376
+     356: TDT [30 00 00 00 00 00 00 00 01 F0]           Complete                             Fatal
+     360: RDH v7 stop=1 stave: L6_36          SOC                                 # 0        Fatal       102670144_   0
+     3A0: DDW [30 02 00 00 00 00 00 00 02 E4]                                                Fatal
+```
+
+
+Example: `fastpasta view rdh bin.raw`
+```
+          RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop  Detector
+          ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit   field
+
+  0:       7     64     24612  32    864     0     10        0    0x61e9f40   2          0x6a03    0        0     0x0
+360:       7     64     24612  32    80      0     22        0    0x61e9f40   2          0x6a03    1        1     0xd
+3B0:       7     64     24612  32    864     0     35        0    0x61e9f41   2          0x6003    0        0     0xd
+710:       7     64     24612  32    80      0     47        0    0x61e9f41   2          0x6003    1        1     0xd
+```
 
 # v1.15.0 (2023-09-21) statistics output and validation
 ### Added
