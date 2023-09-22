@@ -69,7 +69,7 @@ pub mod util {
         } else if ddw0_tdt_lane_status_any_warning(ddw0_tdt_slice) {
             String::from("Warning")
         } else {
-            String::from("       ")
+            String::from("-      ")
         }
     }
 
