@@ -36,7 +36,7 @@
 //! $ cargo add alice_protocol_reader
 //! ```
 //! Then use the convenience `init_reader()`-function to add the appropriate reader (stdin or file) at runtime. Instantiate the `InputScanner` with the reader and start reading ALICE data.
-//! ```rust
+//! ```text
 //! use alice_protocol_reader::input_scanner::InputScanner;
 //! use alice_protocol_reader::init_reader;
 //! use alice_protocol_reader::rdh::RdhCru;
@@ -71,7 +71,7 @@
 //!
 //! Implement the `FilterOpt` on your own config struct and pass it to the `InputScanner` to customize its behaviour
 //!
-//! ```rust
+//! ```text
 //! use alice_protocol_reader::filter::FilterOpt;
 //!
 //! struct MyCfg;
@@ -97,13 +97,13 @@
 //! use alice_protocol_reader::input_scanner::InputScanner;
 //! use alice_protocol_reader::init_reader;
 //! use alice_protocol_reader::rdh::RdhCru;
-//! // In main
+//! pub fn main() {}
 //!     let reader = init_reader(&Some(test_file_path)).unwrap();
 //!
 //!     let mut input_scanner = input_scanner::InputScanner::new(&MyCfg, reader, None); // None: Option<flume::Sender<InputStatType>>
 //!
 //!     let rdh = input_scanner.load_cdp::<RdhCru<u8>>();
-//!
+//! }
 //! ```
 
 pub mod bufreader_wrapper;
