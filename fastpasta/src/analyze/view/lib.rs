@@ -37,8 +37,8 @@ pub fn rdh_detector_field_lane_status_as_string<T: RDH>(rdh: &T) -> Box<str> {
     use alice_protocol_reader::rdh::rdh3::det_field_util;
     let detector_field = rdh.rdh3().detector_field;
 
-    let lane_status_description = if det_field_util::lane_fault(detector_field) {
-        String::from("Fault  ")
+    let lane_status_description = if det_field_util::lane_fatal(detector_field) {
+        String::from("Fatal  ")
     } else if det_field_util::lane_error(detector_field) {
         String::from("Error  ")
     } else if det_field_util::lane_warning(detector_field) {

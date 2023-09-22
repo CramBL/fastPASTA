@@ -97,10 +97,10 @@ pub mod det_field_util {
         det_field & 0b1_0000 != 0
     }
 
-    /// `[3]`: Lane FAULT
+    /// `[3]`: Lane FATAL
     ///
-    /// Set if at least one lane had a FAULT in this HBF, i.e. lane has status as FAULT in DDW0
-    pub fn lane_fault(det_field: u32) -> bool {
+    /// Set if at least one lane had a FATAL in this HBF, i.e. lane has status as FATAL in DDW0
+    pub fn lane_fatal(det_field: u32) -> bool {
         det_field & 0b1000 != 0
     }
 
@@ -120,7 +120,7 @@ pub mod det_field_util {
 
     /// `[0]`: Lane missing data
     ///
-    /// DDW0 follows (if this is a STOP RDH) with per-lane details of lane status (strip/error/fault). Expected to be 1 if any of bit `[3:1]` is set.
+    /// DDW0 follows (if this is a STOP RDH) with per-lane details of lane status (strip/error/fatal). Expected to be 1 if any of bit `[3:1]` is set.
     pub fn lane_missing_data(det_field: u32) -> bool {
         det_field & 0b1 != 0
     }

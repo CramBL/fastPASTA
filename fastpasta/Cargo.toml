@@ -51,7 +51,7 @@ stderrlog = "0.5.4"
 tabled = { version = "0.14.0", features = ["color"]}
 toml = "0.8.0"
 descriptive_toml_derive = "0.1.0"
-alice_protocol_reader = { version = "0.11.0", path = "../alice_protocol_reader"}
+alice_protocol_reader = { version = "0.11.1", path = "../alice_protocol_reader"}
 serde_json = "1.0.107"
 
 [[bench]]
