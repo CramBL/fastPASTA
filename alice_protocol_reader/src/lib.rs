@@ -25,7 +25,7 @@
 //! Additionally it contains a helper function [spawn_reader] that spawns a thread that reads input and sents it to a channel that is returned from the function.
 //!
 //! The [InputScanner] is a generic type that can be instantiated with any type that implements the [BufferedReaderWrapper] trait.
-//! This trait is implemented for the [StdInReaderSeeker] and the [std::io::BufReader] types.
+//! This trait is implemented for the [StdInReaderSeeker] and the [BufReader](std::io::BufReader) types.
 //! Allowing the [InputScanner] to read from both stdin and files, in a convenient and efficient way.
 //!
 //! The [CdpChunk] is a wrapper for the data read from the input, it contains the data and the memory address of the first byte of the data.

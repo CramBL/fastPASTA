@@ -1,9 +1,9 @@
-//! Wrapper trait for [std::io::BufReader], requires that the reader implements [std::io::Read] and [std::io::Seek]
+//! Wrapper trait for [BufReader](std::io::BufReader), requires that the reader implements [Read](std::io::Read) and [Seek](std::io::Seek)
 use std::fs::File;
 use std::io;
 
 /// Allows a stdin reader to be used in the same way as a file reader, by making it possible to seek (skip data)
-/// Formally it it requires implementing [std::io::Seek] but practically only the seek_relative method is used
+/// Formally it it requires implementing [Seek](std::io::Seek) but practically only the seek_relative method is used
 /// and as such all other methods can be left unimplemented (return not implemented error)
 pub trait BufferedReaderWrapper: io::Read + io::Seek + Send {
     /// Seek relative to the current position

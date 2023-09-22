@@ -1,6 +1,6 @@
 //! A convenience vector-like wrapper struct for CDPs. Contains a vector of [RDH]s, a vector of payloads and a vector of memory positions.
 //!
-//! [CdpChunk] can be treated similarly to a `std::vec::Vec::<T>` where `T` is a tuple of `(impl RDH, vec<u8>, u64)`
+//! [CdpChunk] can be treated similarly to a [`Vec<T>`](std::vec::Vec::<T>) where `T` is a tuple of `(impl RDH, vec<u8>, u64)`
 //!
 //!  # Examples
 //!
