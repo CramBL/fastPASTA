@@ -53,11 +53,11 @@ impl<Version> Display for RdhCru<Version> {
         let rdhcru_fields0 = format!("{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}");
         write!(
             f,
-            "{}{rdhcru_fields0}{}{:<11}{}",
-            self.rdh0,
-            self.rdh1,
-            self.data_format(),
-            self.rdh2
+            "{rdh0}{rdhcru_fields0}{rdh1}{data_format:<11}{rdh2}",
+            rdh0 = self.rdh0,
+            rdh1 = self.rdh1,
+            data_format = self.data_format(),
+            rdh2 = self.rdh2
         )
     }
 }
