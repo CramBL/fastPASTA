@@ -1,5 +1,8 @@
 # [Unreleased]
-
+### Added
+1. Detector field lane status to RDH row in the commands:
+     - `view its-readout-frames`
+     - `view its-readout-frames-data`
 
 # v1.15.0 (2023-09-21) statistics output and validation
 ### Added

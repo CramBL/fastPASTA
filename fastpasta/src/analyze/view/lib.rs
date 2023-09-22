@@ -32,6 +32,26 @@ pub fn rdh_trigger_type_as_string<T: RDH>(rdh: &T) -> Box<str> {
     trigger_type_string_from_int(trigger_type)
 }
 
+/// Takes in an RDH and returns a human readable description of the detector field lane status
+pub fn rdh_detector_field_lane_status_as_string<T: RDH>(rdh: &T) -> Box<str> {
+    use alice_protocol_reader::rdh::rdh3::det_field_util;
+    let detector_field = rdh.rdh3().detector_field;
+
+    let lane_status_description = if det_field_util::lane_fault(detector_field) {
+        String::from("Fault  ")
+    } else if det_field_util::lane_error(detector_field) {
+        String::from("Error  ")
+    } else if det_field_util::lane_warning(detector_field) {
+        String::from("Warning")
+    } else if det_field_util::lane_missing_data(detector_field) {
+        String::from("Missing")
+    } else {
+        String::from("-      ")
+    };
+
+    lane_status_description.into_boxed_str()
+}
+
 /// Takes in a [u32] and returns a human readable description of the trigger type
 ///
 /// A trigger can be a combination of different types of triggers, so the description is

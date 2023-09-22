@@ -50,6 +50,82 @@ impl Display for Rdh3 {
     }
 }
 
+pub mod det_field_util {
+    //! Utility for making sense of the detector field
+    //!
+    //! [ITS Data Format](https://gitlab.cern.ch/alice-its-wp10-firmware/RU_mainFPGA/-/wikis/ITS-Data-Format#RDHDetectorField)
+    #![allow(dead_code)]
+
+    // ([31:27] Expert reserved] - Non-zero indicates error)
+
+    /// `[26]`: Clock event
+    pub fn clock_event(det_field: u32) -> bool {
+        det_field & 0b100_0000_0000_0000_0000_0000_0000 != 0
+    }
+
+    /// `[25]`: Timebase event
+    pub fn timebase_event(det_field: u32) -> bool {
+        det_field & 0b10_0000_0000_0000_0000_0000_0000 != 0
+    }
+
+    /// `[24]`: Timebase unsynced
+    pub fn timebase_unsynced(det_field: u32) -> bool {
+        det_field & 0b1_0000_0000_0000_0000_0000_0000 != 0
+    }
+
+    // (Reserved 23:12)
+
+    /// `[11:6]`: User configurable reserved
+    ///
+    /// Can be set to configurable value by register (v1.21.0)
+    /// returns an 8-bit value representing the value of the 6-bits that signify the user configurable reserved bits
+    pub fn user_configurable_reserved(det_field: u32) -> u8 {
+        ((det_field & 0b1111_1100_0000) >> 6) as u8
+    }
+
+    /// `[5]`: Stave autorecovery including trigger ramp
+    ///
+    /// User configurable: to be set manually during the autorecovery including a trigger ramping (v1.21.0)
+    pub fn stave_autorecovery_including_trigger_ramp(det_field: u32) -> bool {
+        det_field & 0b10_0000 != 0
+    }
+
+    /// `[4]`: Trigger ramp
+    ///
+    /// User configurable: to be set manually during trigger ramping (v1.21.0)
+    pub fn trigger_ramp(det_field: u32) -> bool {
+        det_field & 0b1_0000 != 0
+    }
+
+    /// `[3]`: Lane FAULT
+    ///
+    /// Set if at least one lane had a FAULT in this HBF, i.e. lane has status as FAULT in DDW0
+    pub fn lane_fault(det_field: u32) -> bool {
+        det_field & 0b1000 != 0
+    }
+
+    /// `[2]`: Lane ERROR
+    ///
+    /// Set if at least one lane had an ERROR in this HBF, i.e. lane has status as ERROR in DDW0
+    pub fn lane_error(det_field: u32) -> bool {
+        det_field & 0b100 != 0
+    }
+
+    /// `[1]`: Lane WARNING
+    ///
+    /// Set if at least one lane had a WARNING in this HBF, i.e. lane has status as WARNING in DDW0
+    pub fn lane_warning(det_field: u32) -> bool {
+        det_field & 0b10 != 0
+    }
+
+    /// `[0]`: Lane missing data
+    ///
+    /// DDW0 follows (if this is a STOP RDH) with per-lane details of lane status (strip/error/fault). Expected to be 1 if any of bit `[3:1]` is set.
+    pub fn lane_missing_data(det_field: u32) -> bool {
+        det_field & 0b1 != 0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

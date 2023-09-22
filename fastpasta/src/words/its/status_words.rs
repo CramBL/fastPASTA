@@ -47,7 +47,7 @@ pub mod util {
     /// # use fastpasta::words::its::status_words::util::ddw0_tdt_lane_status_as_string;
     /// /// Example of a DDW0 with a all lanes in a OK state
     /// let ddw0_slice = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE4];
-    /// assert_eq!(ddw0_tdt_lane_status_as_string(&ddw0_slice), "       ");
+    /// assert_eq!(ddw0_tdt_lane_status_as_string(&ddw0_slice), "-      ");
     /// ```
     /// ```
     /// # use fastpasta::words::its::status_words::util::ddw0_tdt_lane_status_as_string;
@@ -69,7 +69,7 @@ pub mod util {
         } else if ddw0_tdt_lane_status_any_warning(ddw0_tdt_slice) {
             String::from("Warning")
         } else {
-            String::from("       ")
+            String::from("-      ")
         }
     }
 

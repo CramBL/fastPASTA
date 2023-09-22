@@ -25,8 +25,8 @@
 //! Additionally it contains a helper function [spawn_reader] that spawns a thread that reads input and sents it to a channel that is returned from the function.
 //!
 //! The [InputScanner] is a generic type that can be instantiated with any type that implements the [BufferedReaderWrapper] trait.
-//! This trait is implemented for the [StdInReaderSeeker] and the [std::io::BufReader] types.
-//! Allowing the [InputScanner] to read from both stdin and files, in a convenient and effecient way.
+//! This trait is implemented for the [StdInReaderSeeker] and the [BufReader](std::io::BufReader) types.
+//! Allowing the [InputScanner] to read from both stdin and files, in a convenient and efficient way.
 //!
 //! The [CdpChunk] is a wrapper for the data read from the input, it contains the data and the memory address of the first byte of the data.
 
@@ -71,7 +71,7 @@
 //!
 //! Implement the `FilterOpt` on your own config struct and pass it to the `InputScanner` to customize its behaviour
 //!
-//! ```Rust
+//! ```text
 //! use alice_protocol_reader::filter::FilterOpt;
 //!
 //! struct MyCfg;
@@ -97,7 +97,7 @@
 //! use alice_protocol_reader::input_scanner::InputScanner;
 //! use alice_protocol_reader::init_reader;
 //! use alice_protocol_reader::rdh::RdhCru;
-//! pub fn main() {
+//! pub fn main() {}
 //!     let reader = init_reader(&Some(test_file_path)).unwrap();
 //!
 //!     let mut input_scanner = input_scanner::InputScanner::new(&MyCfg, reader, None); // None: Option<flume::Sender<InputStatType>>
