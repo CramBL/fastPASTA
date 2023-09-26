@@ -20,7 +20,7 @@ const BUFFER_SIZE: usize = 1024 * 1024; // 1MB buffer
 pub fn spawn_writer<T: RDH + 'static>(
     config: &'static impl InputOutputOpt,
     stop_flag: Arc<AtomicBool>,
-    data_channel: Receiver<CdpChunk<T>>,
+    data_recv: Receiver<CdpChunk<T>>,
 ) -> thread::JoinHandle<()> {
     let writer_thread = thread::Builder::new().name("Writer".to_string());
     writer_thread
@@ -28,7 +28,7 @@ pub fn spawn_writer<T: RDH + 'static>(
             let mut writer = BufferedWriter::<T>::new(config, BUFFER_SIZE);
             move || loop {
                 // Receive chunk from checker
-                let cdps = match data_channel.recv() {
+                let cdps = match data_recv.recv() {
                     Ok(cdp) => cdp,
                     Err(e) => {
                         debug_assert_eq!(e, crossbeam_channel::RecvError);

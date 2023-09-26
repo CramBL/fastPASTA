@@ -20,16 +20,14 @@ pub fn main() -> std::process::ExitCode {
 
     // Launch controller thread
     // If max allowed errors is reached, the controller thread signals every other thread to stop
-    let (stat_controller, stat_send_channel, stop_flag, any_errors_flag) =
-        init_controller(Cfg::global());
+    let (controller, stat_send_chan, stop_flag, any_errors_flag) = init_controller(Cfg::global());
 
     // Handles SIGINT, SIGTERM and SIGHUP (as the `termination` feature is  enabled)
     fastpasta::util::lib::init_ctrlc_handler(stop_flag.clone());
 
     let exit_code: u8 = match init_reader(Cfg::global().input_file()) {
         Ok(readable) => {
-            match fastpasta::init_processing(Cfg::global(), readable, stat_send_channel, stop_flag)
-            {
+            match fastpasta::init_processing(Cfg::global(), readable, stat_send_chan, stop_flag) {
                 Ok(_) => 0,
                 Err(e) => {
                     log::error!("Init processing failed: {e}");
@@ -38,15 +36,15 @@ pub fn main() -> std::process::ExitCode {
             }
         }
         Err(e) => {
-            stat_send_channel
+            stat_send_chan
                 .send(StatType::Fatal(e.to_string().into()))
                 .unwrap();
-            drop(stat_send_channel);
+            drop(stat_send_chan);
             1
         }
     };
 
-    stat_controller.join().expect("Failed to join stats thread");
+    controller.join().expect("Failed to join stats thread");
 
     fastpasta::util::lib::exit(exit_code, &any_errors_flag)
 }

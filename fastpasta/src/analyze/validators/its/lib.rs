@@ -7,11 +7,11 @@ use alice_protocol_reader::prelude::RDH;
 
 /// # Arguments
 /// * `cdp_chunk_slice` - A tuple containing the RDH, the payload and the RDH memory position
-/// * `send_stats_channel` - The channel to send stats through
+/// * `stats_send_chan` - The channel to send stats through
 /// * `cdp_validator` - The CDP validator to use, which is an ITS specific [CdpRunningValidator]
 pub fn do_payload_checks<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt>(
     cdp_chunk_slice: (&T, &[u8], u64),
-    send_stats_channel: &flume::Sender<StatType>,
+    stats_send_chan: &flume::Sender<StatType>,
     cdp_validator: &mut CdpRunningValidator<T, C>,
 ) {
     let (rdh, payload, rdh_mem_pos) = cdp_chunk_slice;
@@ -21,7 +21,7 @@ pub fn do_payload_checks<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt>(
             cdp_validator.check(&gbt_word[..10]); // Take 10 bytes as flavor 0 would have additional 6 bytes of padding
         }),
         Err(e) => {
-            send_stats_channel
+            stats_send_chan
                 .send(StatType::Error(
                     format!("{rdh_mem_pos:#X}: Payload error following RDH at this location: {e}")
                         .into(),
@@ -93,22 +93,22 @@ mod tests {
         });
         CFG_TEST_DO_PAYLOAD_CHECKS.set(mock_config).unwrap();
 
-        let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
+        let (stats_send_chan, stats_recv_chan) = flume::unbounded();
 
         let mut cdp_validator: CdpRunningValidator<RdhCru<V7>, MockConfig> =
             CdpRunningValidator::new(
                 CFG_TEST_DO_PAYLOAD_CHECKS.get().unwrap(),
-                send_stats_ch.clone(),
+                stats_send_chan.clone(),
             );
         let rdh = CORRECT_RDH_CRU_V7;
         let payload = vec![0x3D; 100];
         let rdh_mem_pos = 0;
         let cdp_chunk_slice = (&rdh, payload.as_slice(), rdh_mem_pos);
 
-        do_payload_checks(cdp_chunk_slice, &send_stats_ch, &mut cdp_validator);
+        do_payload_checks(cdp_chunk_slice, &stats_send_chan, &mut cdp_validator);
 
         // Receive and check stats
-        while let Ok(stats) = rcv_stats_ch.try_recv() {
+        while let Ok(stats) = stats_recv_chan.try_recv() {
             // the payload is only made up of 0x3D, so there should be errors, and all mentioning `3D`
             assert!(stats.to_string().contains("3D"));
             println!("Stats: {stats:?}")

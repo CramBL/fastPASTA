@@ -24,7 +24,7 @@ pub fn init_controller<C: Config + 'static>(
 ) {
     log::trace!("Initializing stats controller");
     let mut stats = Controller::new(config);
-    let send_stats_channel = stats.send_channel();
+    let stats_send_chan = stats.send_channel();
     let thread_stop_flag = stats.end_processing_flag();
     let any_errors_flag = stats.any_errors_flag();
 
@@ -36,7 +36,7 @@ pub fn init_controller<C: Config + 'static>(
         .expect("Failed to spawn stats thread");
     (
         stats_thread,
-        send_stats_channel,
+        stats_send_chan,
         thread_stop_flag,
         any_errors_flag,
     )
@@ -50,12 +50,12 @@ pub struct Controller<C: Config + 'static> {
     config: &'static C,
     max_tolerate_errors: u32,
     // The channel where stats are received from other threads.
-    recv_stats_channel: flume::Receiver<StatType>,
+    stats_recv_chan: flume::Receiver<StatType>,
     // The channel stats are sent through, stored so that a clone of the channel can be returned easily
     // Has to be an option so that it can be set to None when the event loop starts.
     // Once run is called no producers that don't already have a channel to send stats through, will be able to get one.
     // This is because the event loop breaks when all sender channels are dropped, and if the Controller keeps a reference to the channel, it will cause a deadlock.
-    send_stats_channel: Option<flume::Sender<StatType>>,
+    stats_send_chan: Option<flume::Sender<StatType>>,
     end_processing_flag: Arc<AtomicBool>,
     any_errors_flag: Arc<AtomicBool>,
     spinner: Option<ProgressBar>,
@@ -64,7 +64,7 @@ pub struct Controller<C: Config + 'static> {
 impl<C: Config + 'static> Controller<C> {
     /// Creates a new [Controller] from a [Config], a [flume::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
     pub fn new(global_config: &'static C) -> Self {
-        let (send_stats_channel, recv_stats_channel): (
+        let (stats_send_chan, stats_recv_chan): (
             flume::Sender<StatType>,
             flume::Receiver<StatType>,
         ) = flume::unbounded();
@@ -78,8 +78,8 @@ impl<C: Config + 'static> Controller<C> {
             config: global_config,
             processing_time: std::time::Instant::now(),
             max_tolerate_errors: global_config.max_tolerate_errors(),
-            recv_stats_channel,
-            send_stats_channel: Some(send_stats_channel),
+            stats_recv_chan,
+            stats_send_chan: Some(stats_send_chan),
             end_processing_flag: Arc::new(AtomicBool::new(false)),
             any_errors_flag: Arc::new(AtomicBool::new(false)),
             spinner: if global_config.view().is_some() {
@@ -93,11 +93,11 @@ impl<C: Config + 'static> Controller<C> {
 
     /// Returns a clone of the channel that is used to send stats to the Controller.
     pub fn send_channel(&self) -> flume::Sender<StatType> {
-        if self.send_stats_channel.is_none() {
+        if self.stats_send_chan.is_none() {
             log::error!("Controller send channel is none, most likely it is already running and does not accept new producers");
             panic!("Controller send channel is none, most likely it is already running and does not accept new producers");
         }
-        self.send_stats_channel.as_ref().unwrap().clone()
+        self.stats_send_chan.as_ref().unwrap().clone()
     }
 
     /// Returns a cloned reference to the end processing flag.
@@ -116,10 +116,10 @@ impl<C: Config + 'static> Controller<C> {
     /// This function will block until the channel is closed
     pub fn run(&mut self) {
         // Set the send stats channel to none so that no new producers can be added, and so the loop breaks when all producers have dropped their channel.
-        self.send_stats_channel = None;
+        self.stats_send_chan = None;
 
         // While loop breaks when an error is received from the channel, which means the channel is disconnected
-        while let Ok(stats_update) = self.recv_stats_channel.recv() {
+        while let Ok(stats_update) = self.stats_recv_chan.recv() {
             self.update(stats_update);
         }
 

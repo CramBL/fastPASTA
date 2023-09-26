@@ -166,17 +166,17 @@ impl std::fmt::Display for SystemId {
 /// Uses the received [`Option<SystemId>`] to check if the system ID has already been determined,
 /// otherwise it will determine the [SystemId] and send it via the channel [`flume::Sender<StatType>`].
 ///
-/// # Arguments
+/// ### Arguments
 /// * `rdh` - The [RDH](RDH) to collect stats from.
 /// * `system_id` - The [`Option<SystemId>`] to check if the system ID has already been determined.
 /// * `stats_sender_channel` - The [`flume::Sender<StatType>`] to send the stats through.
-/// # Returns
+/// ### Returns
 /// * `Ok(())` - If the stats were collected successfully.
 /// * `Err(())` - If its the first time the [SystemId] is determined and the [SystemId] is not recognized.
 pub fn collect_system_specific_stats<T: RDH + 'static>(
     rdh: &T,
     system_id: &mut Option<SystemId>,
-    stats_sender_channel: &flume::Sender<StatType>,
+    stats_send_chan: &flume::Sender<StatType>,
 ) -> Result<(), String> {
     if system_id.is_none() {
         // First time seeing a system ID
@@ -193,7 +193,7 @@ pub fn collect_system_specific_stats<T: RDH + 'static>(
             // Collect stats for each system
             SystemId::ITS => {
                 log::trace!("Collecting stats for ITS");
-                collect_its_stats(rdh, stats_sender_channel)
+                collect_its_stats(rdh, stats_send_chan)
             }
             // Example for other systems (and to make clippy shut up about using if let instead of match, cause only 1 case is implemented)
             SystemId::FOC => {
@@ -209,10 +209,10 @@ pub fn collect_system_specific_stats<T: RDH + 'static>(
 }
 
 /// Collects stats specific to ITS from the given [RDH] and sends them via the channel [`flume::Sender<StatType>`].
-fn collect_its_stats<T: RDH>(rdh: &T, stats_sender_channel: &flume::Sender<StatType>) {
+fn collect_its_stats<T: RDH>(rdh: &T, stats_send_chan: &flume::Sender<StatType>) {
     let layer = words::its::layer_from_feeid(rdh.fee_id());
     let stave = words::its::stave_number_from_feeid(rdh.fee_id());
-    stats_sender_channel
+    stats_send_chan
         .send(StatType::LayerStaveSeen { layer, stave })
         .unwrap();
 }

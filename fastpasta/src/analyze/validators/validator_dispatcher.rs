@@ -62,11 +62,11 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
         self.processors.push(id);
 
         // Create a new link validator thread to handle a new ID that should be processed
-        let (link_validator, send_channel) =
+        let (link_validator, send_chan) =
             LinkValidator::<T, C>::new(self.global_config, self.stats_sender.clone());
 
         // Add the send channel to the new link validator
-        self.process_channels.push(send_channel);
+        self.process_channels.push(send_chan);
 
         link_validator
     }

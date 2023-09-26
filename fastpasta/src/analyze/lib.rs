@@ -11,8 +11,8 @@ use crossbeam_channel::Receiver;
 pub fn spawn_analysis<T: RDH + 'static>(
     config: &'static impl Config,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
-    stats_sender_channel: flume::Sender<StatType>,
-    data_channel: Receiver<CdpChunk<T>>,
+    stats_send: flume::Sender<StatType>,
+    data_recv: Receiver<CdpChunk<T>>,
 ) -> std::thread::JoinHandle<()> {
     let analysis_thread = std::thread::Builder::new().name("Analysis".to_string());
     let mut system_id: Option<SystemId> = None; // System ID is only set once
@@ -20,12 +20,11 @@ pub fn spawn_analysis<T: RDH + 'static>(
         .spawn({
             move || {
                 // Setup for check case
-                let mut validator_dispatcher =
-                    ValidatorDispatcher::new(config, stats_sender_channel.clone());
+                let mut validator_dispatcher = ValidatorDispatcher::new(config, stats_send.clone());
                 // Start analysis
                 while !stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
                     // Receive chunk from reader
-                    let cdp_chunk = match data_channel.recv() {
+                    let cdp_chunk = match data_recv.recv() {
                         Ok(cdp) => cdp,
                         Err(e) => {
                             debug_assert_eq!(e, crossbeam_channel::RecvError);
@@ -37,20 +36,16 @@ pub fn spawn_analysis<T: RDH + 'static>(
                     // Send HBF seen if stop bit is 1
                     for rdh in cdp_chunk.rdh_slice().iter() {
                         if rdh.stop_bit() == 1 {
-                            stats_sender_channel.send(StatType::HBFSeen).unwrap();
+                            stats_send.send(StatType::HBFSeen).unwrap();
                         }
-                        stats_sender_channel
+                        stats_send
                             .send(StatType::TriggerType(rdh.trigger_type()))
                             .unwrap();
-                        if let Err(e) = stats::collect_system_specific_stats(
-                            rdh,
-                            &mut system_id,
-                            &stats_sender_channel,
-                        ) {
+                        if let Err(e) =
+                            stats::collect_system_specific_stats(rdh, &mut system_id, &stats_send)
+                        {
                             // Send error and break, stop processing
-                            stats_sender_channel
-                                .send(StatType::Fatal(e.into()))
-                                .unwrap();
+                            stats_send.send(StatType::Fatal(e.into())).unwrap();
                             break; // Fatal error
                         }
                     }
@@ -60,7 +55,7 @@ pub fn spawn_analysis<T: RDH + 'static>(
                         validator_dispatcher.dispatch_cdp_chunk(cdp_chunk);
                     } else if let Some(view) = config.view() {
                         if let Err(e) = super::view::lib::generate_view(view, cdp_chunk) {
-                            stats_sender_channel
+                            stats_send
                                 .send(StatType::Fatal(e.to_string().into()))
                                 .expect("Couldn't send to Controller");
                         }
