@@ -42,7 +42,7 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
     ///
     /// Larger capacity means less overhead, but more memory usage
     /// Too small capacity will cause the producer thread to block
-    const CHANNEL_CDP_CAPACITY: usize = 100; // associated constant
+    const CHANNEL_CDP_CAPACITY: usize = 1000; // associated constant
 
     /// Creates a new [LinkValidator] and the [StatType] sender channel to it, from a config that implements [ChecksOpt] + [FilterOpt].
     pub fn new(
