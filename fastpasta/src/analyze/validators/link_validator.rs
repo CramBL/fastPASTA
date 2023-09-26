@@ -26,9 +26,9 @@ pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
     config: &'static C,
     running_checks: bool,
     /// Producer channel to send stats through.
-    pub send_stats_ch: flume::Sender<StatType>,
+    pub stats_send: flume::Sender<StatType>,
     /// Consumer channel to receive data from.
-    pub data_rcv_channel: crossbeam_channel::Receiver<CdpTuple<T>>,
+    pub data_recv_chan: crossbeam_channel::Receiver<CdpTuple<T>>,
     its_cdp_validator: its::cdp_running::CdpRunningValidator<T, C>,
     rdh_running_validator: RdhCruRunningChecker<T>,
     rdh_sanity_validator: RdhCruSanityValidator<T>,
@@ -47,12 +47,11 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
     /// Creates a new [LinkValidator] and the [StatType] sender channel to it, from a config that implements [ChecksOpt] + [FilterOpt].
     pub fn new(
         global_config: &'static C,
-        send_stats_ch: flume::Sender<StatType>,
+        stats_send_chan: flume::Sender<StatType>,
     ) -> (Self, crossbeam_channel::Sender<CdpTuple<T>>) {
         let rdh_sanity_validator = RdhCruSanityValidator::new_from_config(global_config);
 
-        let (send_channel, data_rcv_channel) =
-            crossbeam_channel::bounded(Self::CHANNEL_CDP_CAPACITY);
+        let (data_send, data_recv) = crossbeam_channel::bounded(Self::CHANNEL_CDP_CAPACITY);
         (
             Self {
                 config: global_config,
@@ -61,26 +60,25 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
                     CheckCommands::Sanity { system: _ } => false,
                 },
 
-                send_stats_ch: send_stats_ch.clone(),
-                data_rcv_channel,
+                stats_send: stats_send_chan.clone(),
+                data_recv_chan: data_recv,
                 its_cdp_validator: its::cdp_running::CdpRunningValidator::new(
                     global_config,
-                    send_stats_ch,
+                    stats_send_chan,
                 ),
                 rdh_running_validator: RdhCruRunningChecker::default(),
                 rdh_sanity_validator,
                 prev_rdhs: ConstGenericRingBuffer::<_, 2>::new(),
             },
-            send_channel,
+            data_send,
         )
     }
 
     /// Event loop where data is received and validation starts
     pub fn run(&mut self) {
-        while let Ok(cdp) = self.data_rcv_channel.recv() {
+        while let Ok(cdp) = self.data_recv_chan.recv() {
             self.do_checks(cdp);
         }
-        log::trace!("LinkValidator: No more data to process, shutting down");
     }
 
     fn do_checks(&mut self, cdp_tuple: CdpTuple<T>) {
@@ -94,7 +92,7 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
                     if !payload.is_empty() {
                         super::its::lib::do_payload_checks(
                             (&rdh, &payload, rdh_mem_pos),
-                            &self.send_stats_ch,
+                            &self.stats_send,
                             &mut self.its_cdp_validator,
                         );
                     }
@@ -106,7 +104,7 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
                   // 2. Call the do_payload_checks in the `new_system` module and pass the necessary arguments to do the checks
                   //         super::new_system::lib::do_payload_checks(
                   //             (&rdh, &payload, rdh_mem_pos),
-                  //             &self.send_stats_ch,
+                  //             &self.stats_send_chan,
                   //             &mut self.new_system_cdp_validator,
                   //         );
                   //     }
@@ -137,7 +135,7 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
         });
         error.push_str(&format!("  current :  {rdh} <--- Error detected here\n"));
 
-        self.send_stats_ch
+        self.stats_send
             .send(StatType::Error(format!("{rdh_mem_pos:#X}: {error}").into()))
             .unwrap();
     }
@@ -157,13 +155,13 @@ mod tests {
 
     #[test]
     fn test_run_link_validator() {
-        let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
+        let (stats_send_chan, stats_recv_chan) = flume::unbounded();
         let mut mock_config = MockConfig::new();
         mock_config.check = Some(CheckCommands::Sanity { system: None });
         CFG_TEST_RUN_LINK_VALIDATOR.set(mock_config).unwrap();
 
         let (mut link_validator, _cdp_tuple_send_ch) =
-            LinkValidator::new(CFG_TEST_RUN_LINK_VALIDATOR.get().unwrap(), send_stats_ch);
+            LinkValidator::new(CFG_TEST_RUN_LINK_VALIDATOR.get().unwrap(), stats_send_chan);
 
         assert!(!link_validator.running_checks);
 
@@ -184,7 +182,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(100));
 
         // Check that the link validator has not sent any errors
-        let stats_msg = rcv_stats_ch.try_recv();
+        let stats_msg = stats_recv_chan.try_recv();
         assert!(stats_msg.is_err());
     }
 
@@ -197,11 +195,11 @@ mod tests {
         });
         CFG_TEST_VALID_PAYLOADS_FLAVOR_0.set(mock_config).unwrap();
 
-        let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
+        let (stats_send_chan, stats_recv_chan) = flume::unbounded();
 
         let (mut link_validator, cdp_tuple_send_ch) = LinkValidator::new(
             CFG_TEST_VALID_PAYLOADS_FLAVOR_0.get().unwrap(),
-            send_stats_ch,
+            stats_send_chan,
         );
 
         assert!(!link_validator.running_checks);
@@ -224,7 +222,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(100));
 
         // Check that the link validator has not sent any errors
-        while let Ok(stats_msg) = rcv_stats_ch.try_recv() {
+        while let Ok(stats_msg) = stats_recv_chan.try_recv() {
             match stats_msg {
                 StatType::Error(_) => panic!("Received error message: {:?}", stats_msg),
                 _ => println!("Received stats message: {:?}", stats_msg),
@@ -240,11 +238,11 @@ mod tests {
             system: Some(System::ITS),
         });
         CFG_TEST_VALID_PAYLOADS_FLAVOR_2.set(mock_config).unwrap();
-        let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
+        let (stats_send_chan, stats_recv_chan) = flume::unbounded();
 
         let (mut link_validator, cdp_tuple_send_ch) = LinkValidator::new(
             CFG_TEST_VALID_PAYLOADS_FLAVOR_2.get().unwrap(),
-            send_stats_ch,
+            stats_send_chan,
         );
 
         assert!(!link_validator.running_checks);
@@ -267,7 +265,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(100));
 
         // Check that the link validator has not sent any errors
-        while let Ok(stats_msg) = rcv_stats_ch.try_recv() {
+        while let Ok(stats_msg) = stats_recv_chan.try_recv() {
             match stats_msg {
                 StatType::Error(_) => panic!("Received error message: {:?}", stats_msg),
                 _ => println!("Received stats message: {:?}", stats_msg),
@@ -287,12 +285,12 @@ mod tests {
         CFG_TEST_INVALID_PAYLOADS_FLAVOR_2_BAD_TDH_ONE_ERROR
             .set(mock_config)
             .unwrap();
-        let (send_stats_ch, rcv_stats_ch) = flume::unbounded();
+        let (stats_send_chan, stats_recv_chan) = flume::unbounded();
         let (mut link_validator, cdp_tuple_send_ch) = LinkValidator::new(
             CFG_TEST_INVALID_PAYLOADS_FLAVOR_2_BAD_TDH_ONE_ERROR
                 .get()
                 .unwrap(),
-            send_stats_ch,
+            stats_send_chan,
         );
 
         assert!(!link_validator.running_checks);
@@ -316,14 +314,14 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(100));
 
         // Check that the link validator has sent an error
-        let stats_msg = rcv_stats_ch.try_recv().unwrap();
+        let stats_msg = stats_recv_chan.try_recv().unwrap();
         match stats_msg {
             StatType::Error(_) => println!("Received error message: {:?}", stats_msg),
             _ => panic!("Received stats message: {:?}", stats_msg),
         }
 
         // Check that the link validator has not sent any more errors
-        while let Ok(stat) = rcv_stats_ch.try_recv() {
+        while let Ok(stat) = stats_recv_chan.try_recv() {
             match stat {
                 StatType::Error(msg) => panic!("Received error message: {msg}"),
                 _ => println!("Received stats message: {:?}", stat),
@@ -337,7 +335,7 @@ mod tests {
     #[should_panic]
     fn test_init_link_validator_no_checks_enabled() {
         // Should panic because no checks are enabled in the config, doesn't make sense to run the link validator
-        let (send_stats_ch, _) = flume::unbounded();
+        let (stats_send_chan, _) = flume::unbounded();
 
         let mut cfg = MockConfig::new();
         cfg.check = Some(CheckCommands::Sanity { system: None });
@@ -351,7 +349,7 @@ mod tests {
             CFG_TEST_INIT_LINK_VALIDATOR_NO_CHECKS_ENABLED
                 .get()
                 .unwrap(),
-            send_stats_ch,
+            stats_send_chan,
         );
     }
 }

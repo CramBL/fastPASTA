@@ -161,7 +161,7 @@ pub fn spawn_reader<T: RDH + 'static>(
     input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
 ) -> (std::thread::JoinHandle<()>, Receiver<CdpChunk<T>>) {
     let reader_thread = std::thread::Builder::new().name("Reader".to_string());
-    let (send_channel, rcv_channel) = crossbeam_channel::bounded(CHANNEL_CDP_CHUNK_CAPACITY);
+    let (send_chan, recv_chan) = crossbeam_channel::bounded(CHANNEL_CDP_CHUNK_CAPACITY);
     let mut local_stop_on_non_full_chunk = false;
     const CDP_CHUNK_SIZE: usize = 100;
     let thread_handle = reader_thread
@@ -184,14 +184,14 @@ pub fn spawn_reader<T: RDH + 'static>(
                     };
 
                     // Send a chunk to the checker
-                    if send_channel.send(cdps).is_err() {
+                    if send_chan.send(cdps).is_err() {
                         break;
                     }
                 }
             }
         })
         .expect("Failed to spawn reader thread");
-    (thread_handle, rcv_channel)
+    (thread_handle, recv_chan)
 }
 
 /// Attempts to fill a CDP chunk with as many CDPs as possible (up to the chunk size) and returns it

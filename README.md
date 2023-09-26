@@ -14,11 +14,11 @@
 ## fast Protocol Analysis Scanner Tool for ALICE
 fastPASTA uses [Semantic Versioning](https://semver.org/).
 
-For extensive documentation of source code see [documentation](https://docs.rs/fastpasta/latest/fastpasta/index.html) or invoke ```cargo doc --open```.
-
 For an exhaustive list of the data verification done via the `check` subcommand, see [doc/checks_list.md](https://gitlab.cern.ch/mkonig/fastpasta/-/blob/master/doc/checks_list.md).
 
-Releases and associated changelogs can be found at [releases](https://gitlab.cern.ch/mkonig/fastpasta/-/releases) or [CHANGELOG.md](https://gitlab.cern.ch/mkonig/fastpasta/-/blob/master/CHANGELOG.md).
+Releases and associated changelogs can be found at [releases](https://gitlab.cern.ch/mkonig/fastpasta/-/releases) or [CHANGELOG.md](CHANGELOG.md).
+
+Looking for more details? see the [Documentation for developers](#documentation-for-developers) section.
 
 ## Purpose
 
@@ -67,6 +67,7 @@ To verify or view curated content of the scanned raw binary data from the ALICE 
     - [To install the nightly toolchain (and check your installation)](#to-install-the-nightly-toolchain-and-check-your-installation)
     - [Compile the optimized `release-nightly` experimental build profile](#compile-the-optimized-release-nightly-experimental-build-profile)
     - [Path to binary: `/target/release-nightly/fastpasta`](#path-to-binary-targetrelease-nightlyfastpasta)
+  - [Documentation for developers](#documentation-for-developers)
 
 # Quickstart
 ## Prerequisite
@@ -82,7 +83,11 @@ cargo install fastpasta
 ```
 Updating fastpasta simply requires rerunning `cargo install fastpasta`
 ## Building from source
-Run `cargo build -r` and find the binary in /target/release/fastpasta
+`cargo install fastpasta` already builds from source and will simply get the latest published version (on crates.io). If you want to build the latest version of the master branch, clone the repository and run
+```
+cargo build -r
+```
+and find the binary at `target/release/fastpasta`
 ## See help, including examples of use
 
 ```shell
@@ -273,3 +278,9 @@ rustup run nightly rustc --version
 cargo +nightly build --profile release-nightly
 ```
 ### Path to binary: `/target/release-nightly/fastpasta`
+
+## Documentation for developers
+
+To see how data is passed around at runtime, see [data flow documentation](doc/data_flow.md).
+
+For extensive documentation of source code see [documentation](https://docs.rs/fastpasta/latest/fastpasta/index.html) or invoke ```cargo doc --open```.

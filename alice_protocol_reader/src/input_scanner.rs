@@ -339,7 +339,7 @@ mod tests {
             filter_link: Some(0),
             ..Default::default()
         };
-        let (send_controller_channel, recv_controller_channel): (
+        let (controller_send, controller_recv): (
             flume::Sender<InputStatType>,
             flume::Receiver<InputStatType>,
         ) = flume::unbounded();
@@ -351,9 +351,9 @@ mod tests {
         let bufreader = std::io::BufReader::new(reader);
 
         (
-            InputScanner::new(&config, Box::new(bufreader), Some(send_controller_channel)),
+            InputScanner::new(&config, Box::new(bufreader), Some(controller_send)),
             // Has to be returned so it lives long enough for the test. Otherwise it will be dropped, and inputscanner will panic when trying to report stats.
-            recv_controller_channel,
+            controller_recv,
         )
     }
 
@@ -368,13 +368,13 @@ mod tests {
         // Write to file for testing
         std::fs::write(&test_file, test_data.to_byte_slice()).unwrap();
 
-        let rcv_stats: Receiver<InputStatType> = {
-            let (mut scanner, rcv_channel) = setup_scanner_for_file(&test_file);
+        let stats_recv: Receiver<InputStatType> = {
+            let (mut scanner, recv_chan) = setup_scanner_for_file(&test_file);
             let rdh = scanner.load_rdh_cru::<RdhCru<V7>>().unwrap();
             assert_eq!(test_data, rdh);
-            rcv_channel
+            recv_chan
         };
-        assert!(!rcv_stats.is_empty(), "rcv_stats was empty!");
+        assert!(!stats_recv.is_empty(), "stats_recv was empty!");
     }
 
     #[test]
@@ -387,14 +387,14 @@ mod tests {
         let test_file = tmp_d.child("test.raw");
         std::fs::write(&test_file, test_data.to_byte_slice()).unwrap();
 
-        let rcv_stats: Receiver<InputStatType> = {
-            let (mut scanner, rcv_channel) = setup_scanner_for_file(&test_file);
+        let stats_recv: Receiver<InputStatType> = {
+            let (mut scanner, recv_chan) = setup_scanner_for_file(&test_file);
             let rdh = scanner.load_rdh_cru::<RdhCru<V7>>();
             assert!(rdh.is_err());
             assert_eq!(rdh.unwrap_err().kind(), std::io::ErrorKind::UnexpectedEof);
-            rcv_channel
+            recv_chan
         };
-        assert!(!rcv_stats.is_empty(), "rcv_stats was empty!");
+        assert!(!stats_recv.is_empty(), "stats_recv was empty!");
     }
 
     #[test]
@@ -407,13 +407,13 @@ mod tests {
         let test_file = tmp_d.child("test.raw");
         std::fs::write(&test_file, test_data.to_byte_slice()).unwrap();
 
-        let rcv_stats: Receiver<InputStatType> = {
-            let (mut scanner, rcv_channel) = setup_scanner_for_file(&test_file);
+        let stats_recv: Receiver<InputStatType> = {
+            let (mut scanner, recv_chan) = setup_scanner_for_file(&test_file);
             let rdh = scanner.load_rdh_cru::<RdhCru<V6>>().unwrap();
             assert_eq!(test_data, rdh);
-            rcv_channel
+            recv_chan
         };
-        assert!(!rcv_stats.is_empty(), "rcv_stats was empty!");
+        assert!(!stats_recv.is_empty(), "stats_recv was empty!");
     }
 
     #[test]
@@ -426,15 +426,15 @@ mod tests {
         let test_file = tmp_d.child("test.raw");
         std::fs::write(&test_file, test_data.to_byte_slice()).unwrap();
 
-        let rcv_stats: Receiver<InputStatType> = {
-            let (mut scanner, rcv_channel) = setup_scanner_for_file(&test_file);
+        let stats_recv: Receiver<InputStatType> = {
+            let (mut scanner, recv_chan) = setup_scanner_for_file(&test_file);
 
             let rdh = scanner.load_rdh_cru::<RdhCru<V6>>();
             assert!(rdh.is_err());
             assert_eq!(rdh.unwrap_err().kind(), std::io::ErrorKind::UnexpectedEof);
-            rcv_channel
+            recv_chan
         };
-        assert!(!rcv_stats.is_empty(), "rcv_stats was empty!");
+        assert!(!stats_recv.is_empty(), "stats_recv was empty!");
     }
 
     #[test]

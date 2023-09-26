@@ -95,7 +95,7 @@ pub mod write;
 pub fn init_processing(
     config: &'static impl Config,
     mut reader: Box<dyn BufferedReaderWrapper>,
-    stat_send_channel: flume::Sender<StatType>,
+    stat_send: flume::Sender<StatType>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
     // Load the first few bytes that should contain RDH0 and do a basic sanity check before continuing.
@@ -111,9 +111,7 @@ pub fn init_processing(
     let rdh_version = rdh0.header_id;
 
     // Send RDH version to stats thread
-    stat_send_channel
-        .send(StatType::RdhVersion(rdh_version))
-        .unwrap();
+    stat_send.send(StatType::RdhVersion(rdh_version)).unwrap();
 
     // Create a receiver/sender channel for the stats that the InputScanner sends.
     let (input_stats_send, input_stats_recv): (
@@ -135,12 +133,12 @@ pub fn init_processing(
                 config,
                 loader,
                 Some(&input_stats_recv),
-                &stat_send_channel,
+                &stat_send,
                 stop_flag,
             ) {
                 Ok(_) => Ok(()),
                 Err(e) => {
-                    stat_send_channel
+                    stat_send
                         .send(StatType::Fatal(e.to_string().into()))
                         .unwrap();
                     Err(e)
@@ -159,18 +157,18 @@ pub fn init_processing(
 /// Follows these steps:
 /// 1. Setup reading (`file` or `stdin`) using [alice_protocol_reader::spawn_reader].
 /// 2. Depending on [Config] do one of:
-///     - Validate data by dispatching it to validators with [ValidatorDispatcher][crate::analyze::validators::lib::ValidatorDispatcher].
+///     - Validate data by dispatching it to validators with [ValidatorDispatcher][crate::analyze::validators::validator_dispatcher::ValidatorDispatcher].
 ///     - Generate views of data with [analyze::view::lib::generate_view].
 ///     - Write data to `file` or `stdout` with [write::lib::spawn_writer].
 pub fn process<T: RDH + 'static>(
     config: &'static impl Config,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
-    recv_input_stats: Option<&flume::Receiver<InputStatType>>,
-    send_stats_ch: &flume::Sender<StatType>,
+    input_stats_recv: Option<&flume::Receiver<InputStatType>>,
+    stats_send: &flume::Sender<StatType>,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> std::io::Result<()> {
     // 1. Launch reader thread to read data from file or stdin
-    let (reader_handle, reader_rcv_channel): (
+    let (reader_handle, reader_data_recv): (
         std::thread::JoinHandle<()>,
         crossbeam_channel::Receiver<CdpChunk<T>>,
     ) = alice_protocol_reader::spawn_reader(stop_flag.clone(), loader);
@@ -181,8 +179,8 @@ pub fn process<T: RDH + 'static>(
         let handle = analyze::lib::spawn_analysis(
             config,
             stop_flag.clone(),
-            send_stats_ch.clone(),
-            reader_rcv_channel.clone(),
+            stats_send.clone(),
+            reader_data_recv.clone(),
         );
         Some(handle)
     } else {
@@ -197,7 +195,7 @@ pub fn process<T: RDH + 'static>(
         config.output_mode(),
     ) {
         (None, None, true, output_mode) if output_mode != DataOutputMode::None => Some(
-            write::lib::spawn_writer(config, stop_flag, reader_rcv_channel),
+            write::lib::spawn_writer(config, stop_flag, reader_data_recv),
         ),
 
         (Some(_), None, _, output_mode) | (None, Some(_), _, output_mode)
@@ -206,18 +204,18 @@ pub fn process<T: RDH + 'static>(
             log::warn!(
                 "Config: Output destination set when checks or views are also set -> output will be ignored!"
             );
-            drop(reader_rcv_channel);
+            drop(reader_data_recv);
             None
         }
         _ => {
-            drop(reader_rcv_channel);
+            drop(reader_data_recv);
             None
         }
     };
 
     // While loop breaks when an error is received from the channel, which means the channel is disconnected
-    if let Some(recv_input_stats) = recv_input_stats.as_ref() {
-        forward_input_stats_to_stats_collector(recv_input_stats, send_stats_ch);
+    if let Some(input_stats_recv_chan) = input_stats_recv.as_ref() {
+        forward_input_stats_to_stats_collector(input_stats_recv_chan, stats_send);
     }
     reader_handle.join().expect("Error joining reader thread");
 
@@ -236,41 +234,35 @@ pub fn process<T: RDH + 'static>(
 // handles the transformation needed to send them in the format the the stats collector expects
 // and sends them
 fn forward_input_stats_to_stats_collector(
-    recv_input_stats: &flume::Receiver<InputStatType>,
-    send_stats_ch: &flume::Sender<StatType>,
+    input_stats_recv: &flume::Receiver<InputStatType>,
+    stats_send: &flume::Sender<StatType>,
 ) {
-    while let Ok(input_stat) = recv_input_stats.recv() {
+    while let Ok(input_stat) = input_stats_recv.recv() {
         match input_stat {
-            InputStatType::Fatal(e) => send_stats_ch.send(StatType::Fatal(e)).unwrap(),
-            InputStatType::RunTriggerType(val) => send_stats_ch
+            InputStatType::Fatal(e) => stats_send.send(StatType::Fatal(e)).unwrap(),
+            InputStatType::RunTriggerType(val) => stats_send
                 .send(StatType::RunTriggerType((
                     val,
                     crate::analyze::view::lib::trigger_type_string_from_int(val),
                 )))
                 .unwrap(),
-            InputStatType::DataFormat(val) => {
-                send_stats_ch.send(StatType::DataFormat(val)).unwrap()
-            }
+            InputStatType::DataFormat(val) => stats_send.send(StatType::DataFormat(val)).unwrap(),
             InputStatType::LinksObserved(val) => {
-                send_stats_ch.send(StatType::LinksObserved(val)).unwrap()
+                stats_send.send(StatType::LinksObserved(val)).unwrap()
             }
-            InputStatType::FeeId(val) => send_stats_ch.send(StatType::FeeId(val)).unwrap(),
-            InputStatType::RDHSeen(val) => send_stats_ch.send(StatType::RDHSeen(val)).unwrap(),
-            InputStatType::RDHFiltered(val) => {
-                send_stats_ch.send(StatType::RDHFiltered(val)).unwrap()
-            }
-            InputStatType::PayloadSize(val) => {
-                send_stats_ch.send(StatType::PayloadSize(val)).unwrap()
-            }
+            InputStatType::FeeId(val) => stats_send.send(StatType::FeeId(val)).unwrap(),
+            InputStatType::RDHSeen(val) => stats_send.send(StatType::RDHSeen(val)).unwrap(),
+            InputStatType::RDHFiltered(val) => stats_send.send(StatType::RDHFiltered(val)).unwrap(),
+            InputStatType::PayloadSize(val) => stats_send.send(StatType::PayloadSize(val)).unwrap(),
             InputStatType::SystemId(sys_id) => {
                 match stats::SystemId::from_system_id(sys_id) {
                     Ok(id) => {
                         log::info!("{id} detected");
-                        send_stats_ch.send(StatType::SystemId(id)).unwrap()
+                        stats_send.send(StatType::SystemId(id)).unwrap()
                     }
                     Err(e) => {
                         log::error!("Failed to parse system ID: {e}");
-                        send_stats_ch
+                        stats_send
                             .send(StatType::Fatal("Failed to parse system ID".into()))
                             .unwrap();
                     }
