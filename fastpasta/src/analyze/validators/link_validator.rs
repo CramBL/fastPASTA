@@ -79,7 +79,6 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
         while let Ok(cdp) = self.data_recv_chan.recv() {
             self.do_checks(cdp);
         }
-        log::trace!("LinkValidator: No more data to process, shutting down");
     }
 
     fn do_checks(&mut self, cdp_tuple: CdpTuple<T>) {
