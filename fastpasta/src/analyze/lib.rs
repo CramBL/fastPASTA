@@ -1,5 +1,5 @@
 //! Contains the [spawn_analysis] function that spawns the analysis thread for either data validation or view generation.
-use super::validators::lib::ValidatorDispatcher;
+use super::validators::validator_dispatcher::ValidatorDispatcher;
 use crate::config::lib::Config;
 use crate::stats;
 use crate::stats::StatType;

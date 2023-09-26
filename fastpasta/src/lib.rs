@@ -159,7 +159,7 @@ pub fn init_processing(
 /// Follows these steps:
 /// 1. Setup reading (`file` or `stdin`) using [alice_protocol_reader::spawn_reader].
 /// 2. Depending on [Config] do one of:
-///     - Validate data by dispatching it to validators with [ValidatorDispatcher][crate::analyze::validators::lib::ValidatorDispatcher].
+///     - Validate data by dispatching it to validators with [ValidatorDispatcher][crate::analyze::validators::validator_dispatcher::ValidatorDispatcher].
 ///     - Generate views of data with [analyze::view::lib::generate_view].
 ///     - Write data to `file` or `stdout` with [write::lib::spawn_writer].
 pub fn process<T: RDH + 'static>(
