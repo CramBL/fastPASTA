@@ -1,8 +1,14 @@
 # Dataflow in fastPASTA
 - [Dataflow in fastPASTA](#dataflow-in-fastpasta)
+  - [Summary](#summary)
   - [Simple overview](#simple-overview)
   - [Detailed overview](#detailed-overview)
 
+## Summary
+
+this document attempts to explain the way fastPASTA consumes raw data and passes it around at runtime.
+
+>For brevity, most details are omitted, such as how stats are collected, protocol state is tracked, and more.
 
 ## Simple overview
 
