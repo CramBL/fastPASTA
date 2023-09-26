@@ -6,7 +6,7 @@
 
 ## Simple overview
 
-When executing fastPASTA with in  `check`-mode e.g.
+When executing fastPASTA in  `check`-mode e.g.
 ```shell
 fastpasta check all its bin.raw
 ```
