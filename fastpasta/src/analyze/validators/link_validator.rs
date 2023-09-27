@@ -38,13 +38,9 @@ pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator<T, C> {
-    // Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
-    //
-    // Larger capacity means less overhead, but more memory usage
-    // Too small capacity will cause the producer thread to block
-    //const CHANNEL_CDP_CAPACITY: usize = 1000; // associated constant
-
     /// Creates a new [LinkValidator] and the [StatType] sender channel to it, from a config that implements [ChecksOpt] + [FilterOpt].
+    ///
+    /// The sender channel is unbounded
     pub fn new(
         global_config: &'static C,
         stats_send_chan: flume::Sender<StatType>,
@@ -52,6 +48,48 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
         let rdh_sanity_validator = RdhCruSanityValidator::new_from_config(global_config);
 
         let (data_send, data_recv) = crossbeam_channel::unbounded();
+        (
+            Self {
+                config: global_config,
+                running_checks: match global_config.check().unwrap() {
+                    CheckCommands::All { system: _ } => true,
+                    CheckCommands::Sanity { system: _ } => false,
+                },
+
+                stats_send: stats_send_chan.clone(),
+                data_recv_chan: data_recv,
+                its_cdp_validator: its::cdp_running::CdpRunningValidator::new(
+                    global_config,
+                    stats_send_chan,
+                ),
+                rdh_running_validator: RdhCruRunningChecker::default(),
+                rdh_sanity_validator,
+                prev_rdhs: ConstGenericRingBuffer::<_, 2>::new(),
+            },
+            data_send,
+        )
+    }
+
+    /// Creates a new [LinkValidator] and the [StatType] sender channel with a specified capacity, from a config that implements [ChecksOpt] + [FilterOpt].
+    ///
+    /// Creates an unbounded channel if capacity is [None]
+    pub fn with_chan_capacity(
+        global_config: &'static C,
+        stats_send_chan: flume::Sender<StatType>,
+        chan_capacity: Option<usize>,
+    ) -> (Self, crossbeam_channel::Sender<CdpTuple<T>>) {
+        let rdh_sanity_validator = RdhCruSanityValidator::new_from_config(global_config);
+
+        // Capacity of the channel (FIFO) to Link Validator threads in terms of CDPs (RDH, Payload, Memory position)
+        //
+        // Larger capacity means less overhead, but more memory usage
+        // Too small capacity will cause the producer thread to block
+        // Too large capacity CAN cause the consumer thread to block, this scenario is more likely if there's fewer link validator threads
+        let (data_send, data_recv) = match chan_capacity {
+            Some(cap) => crossbeam_channel::bounded(cap),
+            None => crossbeam_channel::unbounded(),
+        };
+
         (
             Self {
                 config: global_config,
