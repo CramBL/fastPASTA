@@ -62,8 +62,21 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
         self.processors.push(id);
 
         // Create a new link validator thread to handle a new ID that should be processed
-        let (link_validator, send_chan) =
-            LinkValidator::<T, C>::new(self.global_config, self.stats_sender.clone());
+        let (link_validator, send_chan) = if self.processors.len() < 2 {
+            // Create the first 2 link validators with a channel capacity of 1000
+            LinkValidator::<T, C>::with_chan_capacity(
+                self.global_config,
+                self.stats_sender.clone(),
+                Some(1000),
+            )
+        } else {
+            // Create the rest of the link validators with an unbounded channel
+            LinkValidator::<T, C>::with_chan_capacity(
+                self.global_config,
+                self.stats_sender.clone(),
+                None,
+            )
+        };
 
         // Add the send channel to the new link validator
         self.process_channels.push(send_chan);
