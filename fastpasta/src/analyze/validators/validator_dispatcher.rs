@@ -88,11 +88,12 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
         // Check if the ID to dispatch by is already in the list of processors
         if let Some(index) = self.processors.iter().position(|&proc_id| proc_id == id) {
             // If the ID was found, use its index to send the data through the correct link validator's channel
-            self.process_channels
-                .get(index)
-                .unwrap()
-                .send((rdh, data, mem_pos))
-                .unwrap();
+            unsafe {
+                self.process_channels
+                    .get_unchecked(index)
+                    .send((rdh, data, mem_pos))
+                    .unwrap();
+            }
         } else {
             // If the ID wasn't found, make a new validator to handle that ID
             let mut validator = self.init_validator(id);
@@ -109,11 +110,13 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
                     .expect("Failed to spawn link validator thread"),
             );
             // Send the data through the newly created link validator's channel, by taking the last element of the vector
-            self.process_channels
-                .last()
-                .unwrap()
-                .send((rdh, data, mem_pos))
-                .unwrap();
+            unsafe {
+                self.process_channels
+                    .last()
+                    .unwrap_unchecked()
+                    .send((rdh, data, mem_pos))
+                    .unwrap();
+            }
         }
     }
 
