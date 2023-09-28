@@ -2,11 +2,11 @@ use crate::{
     analyze::validators::{its::lib::ItsPayloadWord, lib::preprocess_payload},
     analyze::view::lib::format_word_slice,
 };
-use alice_protocol_reader::prelude::*;
+use alice_protocol_reader::{cdp_arr::CdpArr, prelude::*};
 use std::io::Write;
 
-pub(crate) fn its_readout_frame_view<T: RDH>(
-    cdp_chunk: CdpChunk<T>,
+pub(crate) fn its_readout_frame_view<T: RDH, const CAP: usize>(
+    cdp_chunk: CdpArr<T, CAP>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut stdio_lock = std::io::stdout().lock();
     super::print_start_of_its_readout_frame_header_text(&mut stdio_lock)?;

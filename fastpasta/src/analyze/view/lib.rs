@@ -1,11 +1,11 @@
 //! Contains the entry point and dispatcher function [generate_view()] for generating data views.
-use alice_protocol_reader::prelude::*;
+use alice_protocol_reader::{cdp_arr::CdpArr, prelude::*};
 
 /// Calls a specific view generator based on the [View][crate::config::view::ViewCommands] type.
 #[inline]
-pub fn generate_view<T: RDH>(
+pub fn generate_view<T: RDH, const CAP: usize>(
     view: crate::config::view::ViewCommands,
-    cdp_chunk: CdpChunk<T>,
+    cdp_chunk: CdpArr<T, CAP>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use crate::config::view::ViewCommands;
     match view {

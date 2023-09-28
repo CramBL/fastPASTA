@@ -5,6 +5,7 @@
 //! Implements drop to flush the remaining data to the file once processing is done.
 
 use crate::config::inputoutput::InputOutputOpt;
+use alice_protocol_reader::cdp_arr::CdpArr;
 use alice_protocol_reader::prelude::CdpChunk;
 use alice_protocol_reader::prelude::RDH;
 
@@ -18,6 +19,8 @@ pub trait Writer<T: RDH> {
     fn push_payload(&mut self, payload: Vec<u8>);
     /// Push a CDP chunk to the buffer
     fn push_cdp_chunk(&mut self, cdp_chunk: CdpChunk<T>);
+    /// Push a CDP array to the buffer
+    fn push_cdp_arr<const CAP: usize>(&mut self, cdp_arr: CdpArr<T, CAP>);
     /// Flush the buffer to file/stdout
     fn flush(&mut self) -> std::io::Result<()>;
 }
@@ -91,6 +94,19 @@ impl<T: RDH> Writer<T> for BufferedWriter<T> {
             self.flush().expect("Failed to flush buffer");
         }
         cdp_chunk.into_iter().for_each(|(rdh, payload, _)| {
+            self.filtered_rdhs_buffer.push(rdh);
+            self.filtered_payload_buffers.push(payload);
+        });
+    }
+
+    #[inline]
+    fn push_cdp_arr<const CAP: usize>(&mut self, cdp_arr: CdpArr<T, CAP>) {
+        if (self.filtered_rdhs_buffer.len() + cdp_arr.len() >= self.max_buffer_size)
+            || (self.filtered_payload_buffers.len() + cdp_arr.len() >= self.max_buffer_size)
+        {
+            self.flush().expect("Failed to flush buffer");
+        }
+        cdp_arr.into_iter().for_each(|(rdh, payload, _)| {
             self.filtered_rdhs_buffer.push(rdh);
             self.filtered_payload_buffers.push(payload);
         });

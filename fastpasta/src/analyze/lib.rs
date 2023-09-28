@@ -4,15 +4,16 @@ use crate::config::lib::Config;
 use crate::stats;
 use crate::stats::StatType;
 use crate::stats::SystemId;
+use alice_protocol_reader::cdp_arr::CdpArr;
 use alice_protocol_reader::prelude::*;
 use crossbeam_channel::Receiver;
 
 /// Analysis thread that performs checks with the [super::validators] module or generate views with the [super::view::lib::generate_view] function.
-pub fn spawn_analysis<T: RDH + 'static>(
+pub fn spawn_analysis<T: RDH + 'static, const CAP: usize>(
     config: &'static impl Config,
     stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
     stats_send: flume::Sender<StatType>,
-    data_recv: Receiver<CdpChunk<T>>,
+    data_recv: Receiver<CdpArr<T, CAP>>,
 ) -> std::thread::JoinHandle<()> {
     let analysis_thread = std::thread::Builder::new().name("Analysis".to_string());
     let mut system_id: Option<SystemId> = None; // System ID is only set once

@@ -2,7 +2,7 @@
 use super::link_validator::LinkValidator;
 use crate::config::prelude::*;
 use crate::stats::StatType;
-use alice_protocol_reader::prelude::{CdpChunk, RDH};
+use alice_protocol_reader::{cdp_arr::CdpArr, prelude::RDH};
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
@@ -35,7 +35,7 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
     /// Iterates over and consumes a [`CdpChunk<T>`], dispatching the data to the correct thread running an instance of [LinkValidator].
     ///
     /// If a link validator thread does not exist for the link id of the current rdh, a new one is spawned
-    pub fn dispatch_cdp_chunk(&mut self, cdp_chunk: CdpChunk<T>) {
+    pub fn dispatch_cdp_chunk<const CAP: usize>(&mut self, cdp_chunk: CdpArr<T, CAP>) {
         // Iterate over the CDP chunk
         cdp_chunk.into_iter().for_each(|(rdh, data, mem_pos)| {
             // Dispatch by FEE ID if system targeted for checks is ITS Stave (gonna be a lot of data to parse for each stave!)
@@ -152,7 +152,7 @@ mod tests {
 
         let cdp_tuple: CdpTuple<RdhCru<V7>> = (CORRECT_RDH_CRU_V7, vec![0; 100], 0);
 
-        let mut cdp_chunk = CdpChunk::new();
+        let mut cdp_chunk = CdpArr::new();
         cdp_chunk.push_tuple(cdp_tuple);
 
         disp.dispatch_cdp_chunk(cdp_chunk);

@@ -77,7 +77,7 @@
 //! $ fastpasta <input_file> view rdh
 //! ```
 
-use alice_protocol_reader::prelude::*;
+use alice_protocol_reader::{cdp_arr::CdpArr, prelude::*};
 use analyze::validators::rdh::Rdh0Validator;
 use config::prelude::*;
 use stats::StatType;
@@ -129,7 +129,7 @@ pub fn init_processing(
         //      1. Unlikely there will ever be an RDH version higher than that
         //      2. High values decoded from this field (especially 255) is typically a sign that the data is not actually ALICE data so early exit is preferred
         3..=100 => {
-            match process::<RdhCru<u8>>(
+            match process::<RdhCru<u8>, 100>(
                 config,
                 loader,
                 Some(&input_stats_recv),
@@ -160,7 +160,7 @@ pub fn init_processing(
 ///     - Validate data by dispatching it to validators with [ValidatorDispatcher][crate::analyze::validators::validator_dispatcher::ValidatorDispatcher].
 ///     - Generate views of data with [analyze::view::lib::generate_view].
 ///     - Write data to `file` or `stdout` with [write::lib::spawn_writer].
-pub fn process<T: RDH + 'static>(
+pub fn process<T: RDH + 'static, const CAP: usize>(
     config: &'static impl Config,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
     input_stats_recv: Option<&flume::Receiver<InputStatType>>,
@@ -170,8 +170,8 @@ pub fn process<T: RDH + 'static>(
     // 1. Launch reader thread to read data from file or stdin
     let (reader_handle, reader_data_recv): (
         std::thread::JoinHandle<()>,
-        crossbeam_channel::Receiver<CdpChunk<T>>,
-    ) = alice_protocol_reader::spawn_reader(stop_flag.clone(), loader);
+        crossbeam_channel::Receiver<CdpArr<T, CAP>>,
+    ) = alice_protocol_reader::spawn_reader_arr(stop_flag.clone(), loader);
 
     // 2. Launch analysis thread if an analysis action is set (view or check)
     let analysis_handle = if config.check().is_some() || config.view().is_some() {
