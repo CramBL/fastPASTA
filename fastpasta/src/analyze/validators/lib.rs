@@ -1,5 +1,11 @@
 //! Contains utility functions for preprocessing the payload
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum DataFormat {
+    V0,
+    V2,
+}
+
 /// Utility function to preprocess the payload and return an iterator over the GBT words
 ///
 /// Consists of the following steps:
@@ -40,7 +46,7 @@ fn extract_payload_ff_padding(payload: &[u8]) -> Result<Vec<&u8>, String> {
 }
 
 /// Determine if padding is flavor 0 (6 bytes of 0x00 padding following GBT words) or flavor 1 (no padding)
-fn detect_payload_data_format(payload: &[u8]) -> u8 {
+fn detect_payload_data_format(payload: &[u8]) -> DataFormat {
     // Using an iterator approach instead of indexing also supports the case where the payload is smaller than 16 bytes or even empty
     if payload
     .iter() // Create an iterator over the payload
@@ -51,27 +57,27 @@ fn detect_payload_data_format(payload: &[u8]) -> u8 {
     == 6
     {
         log::trace!("Data format 0 detected");
-        0
+        DataFormat::V0
     } else {
         log::trace!("Data format 2 detected");
-        2
+        DataFormat::V2
     }
 }
 
 /// Splits a payload into GBT words sized slices, using chunks_exact to allow more compiler optimizations
 fn chunkify_payload<'a>(
     payload: &'a [u8],
-    data_format: u8,
+    data_format: DataFormat,
     ff_padding: &[&'a u8],
 ) -> std::slice::ChunksExact<'a, u8> {
     match data_format {
-        0 => {
+        DataFormat::V0 => {
             let chunks = payload.chunks_exact(16);
             // If dataformat 0, dividing into 16 byte chunks should cut the payload up with no remainder
             debug_assert!(chunks.remainder().is_empty());
             chunks
         }
-        2 => {
+        DataFormat::V2 => {
             // If dataformat 2, and the padding is more than 9 bytes, padding will be processed as a GBT word, therefor exclude it from the slice
             //    Before calling chunks_exact
             if ff_padding.len() > 9 {
@@ -86,7 +92,6 @@ fn chunkify_payload<'a>(
                 chunks
             }
         }
-        _ => unreachable!("Invalid data format"),
     }
 }
 
@@ -123,7 +128,7 @@ mod tests {
         let detected_data_format_f0 = detect_payload_data_format(&START_PAYLOAD_FLAVOR_0);
         let detected_data_format_f2 = detect_payload_data_format(&START_PAYLOAD_FLAVOR_2);
 
-        assert_eq!(detected_data_format_f0, 0);
-        assert_eq!(detected_data_format_f2, 2);
+        assert_eq!(detected_data_format_f0, DataFormat::V0);
+        assert_eq!(detected_data_format_f2, DataFormat::V2);
     }
 }
