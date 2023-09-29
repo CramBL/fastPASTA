@@ -331,7 +331,6 @@ fn view_its_readout_frame() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
     cmd.arg(FILE_10_RDH).arg("view").arg("its-readout-frames");
-    use predicate::str::contains;
     cmd.assert().success().stdout(
         contains("RDH").count(10).and(
             contains("IHW").count(5).and(
@@ -352,7 +351,7 @@ fn view_its_readout_frame_data() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_10_RDH)
         .arg("view")
         .arg("its-readout-frames-data");
-    use predicate::str::contains;
+
     cmd.assert().success().stdout(
         contains("RDH").count(10).and(
             contains("IHW").count(5).and(
@@ -373,7 +372,6 @@ fn view_its_readout_frame_data() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn check_sanity_stdin() -> Result<(), Box<dyn std::error::Error>> {
-    use assert_cmd::cmd::*;
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
     cmd.pipe_stdin(FILE_10_RDH)?.arg("check").arg("sanity");
@@ -731,6 +729,42 @@ fn test_check_all_its_with_stats_validation() -> Result<(), Box<dyn std::error::
     cmd.assert().failure().code(123);
 
     match_on_out_no_case(&cmd.output()?.stderr, "ERROR -.* mismatch.*11", 1)?;
+
+    Ok(())
+}
+
+// https://gitlab.cern.ch/mkonig/fastpasta/-/issues/45
+// Test that everything up until a faulty payload reading (caused by a faulty RDH offset_to_next field) is processed correctly
+#[test]
+fn view_its_readout_frames_cutoff_last_byte_padding_issue45(
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Read the file into a buffer and discard the last byte
+    let mut file = std::fs::File::open(FILE_10_RDH)?;
+    let mut buffer = Vec::new();
+    std::io::Read::read_to_end(&mut file, &mut buffer)?;
+    _ = buffer.pop();
+
+    // Make a tmp file and write the buffer to it
+    let (_tmp_dir, tmp_file) = make_tmp_dir_w_fpath();
+    tmp_file.write_binary(&buffer)?;
+
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.pipe_stdin(tmp_file)?
+        .arg("view")
+        .arg("its-readout-frames");
+
+    // Expect 10 RDHs but the 10th RDHs payload is read incorrectly and is not processed
+    // The last payload is just a DDW
+    cmd.assert().success().stdout(
+        contains("RDH").count(10).and(
+            contains("IHW").count(5).and(
+                contains("TDH")
+                    .count(5)
+                    .and(contains("TDT").count(5).and(contains("DDW").count(4))),
+            ),
+        ),
+    );
 
     Ok(())
 }
