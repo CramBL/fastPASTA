@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 # [Unreleased]
 
+### Fix
+![45](https://gitlab.cern.ch/mkonig/fastpasta/-/issues/45) Failure to report error if RDH specifies larger payload size than is actually present in the input data.
+
 # v1.16.0 (2023-09-22) Detector field info in all `view` subcommands
 ### Added
 1. Detector field lane status to RDH row in the commands:
