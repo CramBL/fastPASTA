@@ -768,3 +768,25 @@ fn view_its_readout_frames_cutoff_last_byte_padding_issue45(
 
     Ok(())
 }
+
+// https://gitlab.cern.ch/mkonig/fastpasta/-/issues/45
+// Test that the erroneous read of the last RDHs payload is detected
+#[test]
+fn check_sanity_issue45() -> Result<(), Box<dyn std::error::Error>> {
+    let mut file = std::fs::File::open(FILE_10_RDH)?;
+    let mut buffer = Vec::new();
+    std::io::Read::read_to_end(&mut file, &mut buffer)?;
+    _ = buffer.pop();
+
+    // Make a tmp file and write the buffer to it
+    let (_tmp_dir, tmp_file) = make_tmp_dir_w_fpath();
+    tmp_file.write_binary(&buffer)?;
+
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.pipe_stdin(tmp_file)?.arg("check").arg("sanity");
+
+    validate_report_summary(&cmd.output()?.stdout)?;
+    match_on_out_no_case(&cmd.output()?.stderr, "ERROR - 0x4B0.*payload", 1)?;
+
+    Ok(())
+}
