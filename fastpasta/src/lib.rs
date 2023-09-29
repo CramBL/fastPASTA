@@ -239,7 +239,13 @@ fn forward_input_stats_to_stats_collector(
 ) {
     while let Ok(input_stat) = input_stats_recv.recv() {
         match input_stat {
-            InputStatType::Fatal(e) => stats_send.send(StatType::Fatal(e)).unwrap(),
+            InputStatType::LinksObserved(val) => {
+                stats_send.send(StatType::LinksObserved(val)).unwrap()
+            }
+            InputStatType::FeeId(val) => stats_send.send(StatType::FeeId(val)).unwrap(),
+            InputStatType::RDHSeen(val) => stats_send.send(StatType::RDHSeen(val)).unwrap(),
+            InputStatType::PayloadSize(val) => stats_send.send(StatType::PayloadSize(val)).unwrap(),
+            InputStatType::RDHFiltered(val) => stats_send.send(StatType::RDHFiltered(val)).unwrap(),
             InputStatType::RunTriggerType(val) => stats_send
                 .send(StatType::RunTriggerType((
                     val,
@@ -247,13 +253,6 @@ fn forward_input_stats_to_stats_collector(
                 )))
                 .unwrap(),
             InputStatType::DataFormat(val) => stats_send.send(StatType::DataFormat(val)).unwrap(),
-            InputStatType::LinksObserved(val) => {
-                stats_send.send(StatType::LinksObserved(val)).unwrap()
-            }
-            InputStatType::FeeId(val) => stats_send.send(StatType::FeeId(val)).unwrap(),
-            InputStatType::RDHSeen(val) => stats_send.send(StatType::RDHSeen(val)).unwrap(),
-            InputStatType::RDHFiltered(val) => stats_send.send(StatType::RDHFiltered(val)).unwrap(),
-            InputStatType::PayloadSize(val) => stats_send.send(StatType::PayloadSize(val)).unwrap(),
             InputStatType::SystemId(sys_id) => {
                 match stats::SystemId::from_system_id(sys_id) {
                     Ok(id) => {
@@ -269,6 +268,7 @@ fn forward_input_stats_to_stats_collector(
                 };
             }
             InputStatType::Error(e) => stats_send.send(StatType::Error(e)).unwrap(),
+            InputStatType::Fatal(e) => stats_send.send(StatType::Fatal(e)).unwrap(),
         }
     }
 }
