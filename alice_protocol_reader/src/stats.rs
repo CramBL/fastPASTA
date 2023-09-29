@@ -6,6 +6,8 @@
 pub enum InputStatType {
     /// Fatal error, stop processing.
     Fatal(Box<str>),
+    /// Error that can be recovered from, continue processing, reading might stop but the sent data is still valid.
+    Error(Box<str>),
     /// The first trigger type observed is the type of run the data comes from
     ///
     /// Contains the raw value and the string description summarizing the trigger type
