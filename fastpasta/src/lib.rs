@@ -268,6 +268,7 @@ fn forward_input_stats_to_stats_collector(
                     }
                 };
             }
+            InputStatType::Error(e) => stats_send.send(StatType::Error(e)).unwrap(),
         }
     }
 }
