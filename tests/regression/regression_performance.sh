@@ -125,8 +125,8 @@ function bench_two_cmds_return_timings {
     local released_cmd=$2;
 
     hyperfine \
-        "${local_cmd} --mute-errors" \
-        "${released_cmd} --mute-errors" \
+        "${local_cmd} --mute-errors --verbosity 0" \
+        "${released_cmd} --mute-errors --verbosity 0" \
         --warmup 3\
         --style full\
         --time-unit millisecond\
