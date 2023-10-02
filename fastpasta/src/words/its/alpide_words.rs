@@ -161,23 +161,13 @@ impl AlpideWord {
     pub fn from_byte(b: u8) -> Result<AlpideWord, ()> {
         #[allow(clippy::match_single_binding)]
         match b {
-            four_msb => match four_msb & 0xF0 {
-                // Match on the 4 MSB
-                Self::CHIP_HEADER => Ok(AlpideWord::ChipHeader),
-                Self::CHIP_EMPTY_FRAME => Ok(AlpideWord::ChipEmptyFrame),
-                Self::CHIP_TRAILER => Ok(AlpideWord::ChipTrailer),
-                three_msb => match three_msb & 0xE0 {
-                    // Match on the 3 MSB
-                    Self::REGION_HEADER => Ok(AlpideWord::RegionHeader),
-                    two_msb => match two_msb & 0xC0 {
-                        // Match on the 2 MSB
-                        Self::DATA_SHORT => Ok(AlpideWord::DataShort),
-                        Self::DATA_LONG => Ok(AlpideWord::DataLong),
-                        // Still no match, try the more uncommon exact matches including protocol extensions
-                        _ => Self::match_exact(b),
-                    },
-                },
-            },
+            c if c & 0xC0 == Self::DATA_SHORT => Ok(AlpideWord::DataShort),
+            c if c & 0xC0 == Self::DATA_LONG => Ok(AlpideWord::DataLong),
+            c if c & 0xE0 == Self::REGION_HEADER => Ok(AlpideWord::RegionHeader),
+            c if c & 0xF0 == Self::CHIP_EMPTY_FRAME => Ok(AlpideWord::ChipEmptyFrame),
+            c if c & 0xF0 == Self::CHIP_HEADER => Ok(AlpideWord::ChipHeader),
+            c if c & 0xF0 == Self::CHIP_TRAILER => Ok(AlpideWord::ChipTrailer),
+            _ => Self::match_exact(b),
         }
     }
 
