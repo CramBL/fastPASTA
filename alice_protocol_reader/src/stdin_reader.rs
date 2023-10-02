@@ -18,8 +18,18 @@ impl BufferedReaderWrapper for StdInReaderSeeker<std::io::Stdin> {
     fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
         // Seeking is not supported in stdin, so we have to read the bytes and discard them
         let mut buf = vec![0; offset as usize];
-        std::io::stdin().lock().read_exact(&mut buf)?;
-        Ok(())
+        match std::io::stdin().lock().read_exact(&mut buf) {
+            Ok(_) => Ok(()),
+            // If we're seeking the offset amount and reached an unexpected EOF then it's possible that the offset retrieved from the RDH is wrong
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                // Seeking past EOF is InvalidInput in this case
+                Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("Failed to read and discard a payload from stdin of size {offset} (according to previously loaded RDH): {e}"),
+            ))
+            }
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -35,14 +45,13 @@ impl io::Seek for StdInReaderSeeker<std::io::Stdin> {
                 io::ErrorKind::Other,
                 "Cannot seek from start in stdin",
             )),
-            SeekFrom::Current(_) => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Cannot seek from current in stdin, use seek_relative instead",
-            )),
-            SeekFrom::End(_) => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Cannot seek from end in stdin",
-            )),
+            SeekFrom::Current(_) | SeekFrom::End(_) => {
+                debug_assert!(
+                    false,
+                    "Seeking from current or end in stdin is not supported"
+                );
+                unsafe { std::hint::unreachable_unchecked() }
+            }
         }
     }
 }

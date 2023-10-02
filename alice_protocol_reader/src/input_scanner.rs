@@ -120,6 +120,11 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
         self.report(InputStatType::DataFormat(rdh.data_format()));
         self.report(InputStatType::SystemId(rdh.rdh0().system_id));
     }
+
+    fn seek_to_next_rdh(&mut self, offset_to_next: u16) -> Result<(), std::io::Error> {
+        self.reader
+            .seek_relative(self.tracker.next(offset_to_next as u64))
+    }
 }
 
 impl<R> ScanCDP for InputScanner<R>
@@ -207,8 +212,22 @@ where
 
         if self.skip_payload {
             // Only interested in RDHs, seek to next RDH
-            self.reader
-                .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
+            if let Err(e) = self.seek_to_next_rdh(rdh.offset_to_next()) {
+                if e.kind() == std::io::ErrorKind::InvalidInput {
+                    // Report the error and continue, as this is likely due to an invalid offset in the RDH
+                    // But we still want to continue processing the RDH so that we might discover what is wrong with it
+                    self.report(InputStatType::Error(
+                        format!(
+                            "{mem_pos:#X}: [E101] Failed to read payload of size {sz}: {e}",
+                            sz = rdh.payload_size(),
+                            mem_pos = self.current_mem_pos()
+                        )
+                        .into(),
+                    ));
+                } else {
+                    return Err(e);
+                }
+            }
         } else {
             self.tracker.update_mem_address(rdh.offset_to_next() as u64);
         }
@@ -217,7 +236,22 @@ where
         let payload = if self.skip_payload {
             Vec::with_capacity(0)
         } else {
-            self.load_payload_raw(rdh.payload_size() as usize)?
+            match self.load_payload_raw(rdh.payload_size() as usize) {
+                Ok(payload) => payload,
+                Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                    // Report the error and continue. We still want to process the RDH.
+                    self.report(InputStatType::Error(
+                        format!(
+                            "{mem_pos:#X}: [E100] Failed to read payload of size {sz}: {e}",
+                            sz = rdh.payload_size(),
+                            mem_pos = self.current_mem_pos()
+                        )
+                        .into(),
+                    ));
+                    Vec::with_capacity(0)
+                }
+                Err(e) => return Err(e),
+            }
         };
 
         Ok((rdh, payload, loading_at_memory_offset))
@@ -229,8 +263,7 @@ where
         offset_to_next: u16,
         filter_target: FilterTarget,
     ) -> Result<T, std::io::Error> {
-        self.reader
-            .seek_relative(self.tracker.next(offset_to_next as u64))?;
+        self.seek_to_next_rdh(offset_to_next)?;
         loop {
             let rdh: T = SerdeRdh::load(&mut self.reader)?;
             sanity_check_offset_next(
@@ -246,8 +279,7 @@ where
                 }
                 return Ok(rdh);
             }
-            self.reader
-                .seek_relative(self.tracker.next(rdh.offset_to_next() as u64))?;
+            self.seek_to_next_rdh(rdh.offset_to_next())?;
         }
     }
 

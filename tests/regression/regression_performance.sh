@@ -1,6 +1,6 @@
 #!/bin/bash
 ###########
-#### This script runs benchmarks of the local binary vs. the remote one that is installed with `cargo install fastpasta`
+#### This script runs benchmarks of the local binary vs. the latest released one that is installed with `cargo install fastpasta`
 ####
 #### The files used for benchmarking is the same that are used during other system/regression tests.
 ####    To get a file size appropriate for benchmarks, the `binmult` binary is installed and used to `grow` the existing
@@ -22,16 +22,16 @@ declare -i BENCHMARK_FILE_SIZE_MIB=200
 ## Original files before they are `grown` to a reasonable size for benchmarking
 declare -a PRE_TESTS_FILES_ARRAY=(
     "10_rdh.raw"
-    "readout.superpage.1.raw"
-    "rawtf_epn180_l6_1.raw"
+    "12_links_1hbf.raw"
+    "thrs_cdw_links.raw"
 )
 
 if [[ "$1" == "EXTENDED" ]]; then
     println_bright_yellow "Running benchmarks in EXTENDED mode\n"
     BENCHMARK_FILE_SIZE_MIB=$(( BENCHMARK_FILE_SIZE_MIB * 3 ))
-    PRE_TESTS_FILES_ARRAY+=("err_not_hbf.raw")
-    PRE_TESTS_FILES_ARRAY+=("tdh_no_data_ihw.raw")
-    PRE_TESTS_FILES_ARRAY+=("thrs_cdw_links.raw")
+    PRE_TESTS_FILES_ARRAY+=("ci_ols_data_1hbf.raw")
+    PRE_TESTS_FILES_ARRAY+=("tdh_no_data.raw")
+    PRE_TESTS_FILES_ARRAY+=("readout.superpage.1.raw")
 fi
 
 ##### Constants #####
@@ -42,9 +42,9 @@ readonly tmp_file_path="${FILE_PATH}tmp/"
 readonly BENCH_RESULTS_FILE_PATH="bench_comp.md"
 # Regex to extract the mean timings for each tested version of fastpasta (works on the markdown output of a `hyperfine` benchmark comparison)
 readonly REGEX_MEAN_TIMINGS="(?<=\` \| )\d*(?=\.)"
-# Prefixes for the running the local binary vs. remote
+# Prefixes for the running the local binary vs. released
 readonly LOCAL_PRE="target/release/fastpasta"
-readonly REMOTE_PRE="fastpasta"
+readonly RELEASED_PRE="fastpasta"
 
 ## Constant arrays
 declare -a -r test_cmds_array=(
@@ -77,14 +77,14 @@ println_cyan "\nChecking version of local fastpasta build"
 
 target/release/fastpasta --version
 
-println_cyan "Checking version of remote fastpasta installation"
+println_cyan "Checking version of released fastpasta installation"
 
 fastpasta --version
 
 println_magenta "\n===================================================================================================== "
 println_magenta "*********************************************************************************"
 println_magenta "***                                                                           ***"
-println_magenta "*** Benchmarking the local compiled binary vs. the latest remote installation ***"
+println_magenta "*** Benchmarking the local compiled binary vs. the latest released installation ***"
 println_magenta "***                                                                           ***"
 println_magenta "*********************************************************************************\n"
 
@@ -106,29 +106,29 @@ done
 declare -i -r file_count=${#tests_files_array[@]}
 declare -i -r total_test_count=$(( file_count * cmd_count ))
 
-# Stores the mean absolute timings of the local fastpasta vs. the remote (negative values -> the local is faster)
+# Stores the mean absolute timings of the local fastpasta vs. the released (negative values -> the local is faster)
 declare -a bench_results_local_mean_diff_absolute=()
-# The accumulated execution time of the remote version of fastpasta
-declare -i bench_results_remote_total_ms=0
+# The accumulated execution time of the released version of fastpasta
+declare -i bench_results_released_total_ms=0
 
 # Make two arrays with as many 0's as there's test command
-# Use this to store the diff of each test command and the absolute timing of the remote version
+# Use this to store the diff of each test command and the absolute timing of the released version
 declare -a test_cmds_diff=()
-declare -a test_cmds_remote_abs=()
+declare -a test_cmds_released_abs=()
 for ((i=0; i<cmd_count; i++)); do
     test_cmds_diff+=(0)
-    test_cmds_remote_abs+=(0)
+    test_cmds_released_abs+=(0)
 done
 
 
 declare -a mean_timings
 function bench_two_cmds_return_timings {
     local local_cmd=$1;
-    local remote_cmd=$2;
+    local released_cmd=$2;
 
     hyperfine \
         "${local_cmd} --mute-errors" \
-        "${remote_cmd} --mute-errors" \
+        "${released_cmd} --mute-errors" \
         --warmup 3\
         --style full\
         --time-unit millisecond\
@@ -154,18 +154,18 @@ for file in "${tests_files_array[@]}"; do
 
         println_magenta "\n ==> Benchmarking file ${file} with command: ${command}\n"
 
-        bench_two_cmds_return_timings "${LOCAL_PRE} ${file} ${command}" "${REMOTE_PRE} ${file} ${command}"
+        bench_two_cmds_return_timings "${LOCAL_PRE} ${file} ${command}" "${RELEASED_PRE} ${file} ${command}"
         declare -i local_mean=${mean_timings[0]};
-        declare -i remote_mean=${mean_timings[1]};
-        declare -i local_minus_remote=$(( local_mean - remote_mean))
-        bench_results_local_mean_diff_absolute+=("${local_minus_remote}")
-        bench_results_remote_total_ms=$(( bench_results_remote_total_ms + remote_mean ))
-        # Store the absolute timing values for each command run by the remote version
-        (( test_cmds_remote_abs[test_cmd_idx]+=remote_mean ))
+        declare -i released_mean=${mean_timings[1]};
+        declare -i local_minus_released=$(( local_mean - released_mean))
+        bench_results_local_mean_diff_absolute+=("${local_minus_released}")
+        bench_results_released_total_ms=$(( bench_results_released_total_ms + released_mean ))
+        # Store the absolute timing values for each command run by the released version
+        (( test_cmds_released_abs[test_cmd_idx]+=released_mean ))
         (( test_cmd_idx+=1 ))
 
 
-        evaluate_benchmark_test_result "$local_mean" "$remote_mean"
+        evaluate_benchmark_test_result "$local_mean" "$released_mean"
 
         completed_tests=$(( completed_tests + 1 ))
 
@@ -195,14 +195,14 @@ for i in "${bench_results_local_mean_diff_absolute[@]}"; do
 done
 
 
-println_blue "The remote version of fastpasta took a total of ${bench_results_remote_total_ms} ms [sum of means] across ${total_test_count} benchmarks\n"
+println_blue "The released version of fastpasta took a total of ${bench_results_released_total_ms} ms [sum of means] across ${total_test_count} benchmarks\n"
 
 println_magenta "Timing difference in ${total_test_count} tests:"
 println_magenta "\tTotal: ${total_diff} ms"
 
 avg_diff=$( calc_average $total_diff $total_test_count )
 readonly avg_diff
-frac_diff=$( calc_relative_fraction $total_diff $bench_results_remote_total_ms)
+frac_diff=$( calc_relative_fraction $total_diff $bench_results_released_total_ms)
 readonly frac_diff
 percent_diff=$( fraction_to_percent "$frac_diff" )
 readonly percent_diff
@@ -214,7 +214,7 @@ declare -i idx=0
 for timing_diff in "${test_cmds_diff[@]}"; do
 
     cmd_avg_diff=$( calc_average ${timing_diff} $total_test_count )
-    cmd_frac_diff=$( calc_relative_fraction ${timing_diff} ${test_cmds_remote_abs[idx]})
+    cmd_frac_diff=$( calc_relative_fraction ${timing_diff} ${test_cmds_released_abs[idx]})
     cmd_percent_diff=$( fraction_to_percent "$cmd_frac_diff" )
     padded_timing_diff_str=$(left_pad_str "${timing_diff}" 10 ' ')
     padded_cmd_str=$(right_pad_str "${test_cmds_array[idx]}" 19 ' ')

@@ -94,35 +94,35 @@ pub mod util {
     /// Takes a full TDH slice and returns if the no_data field is set
     pub fn tdh_no_data(tdh_slice: &[u8]) -> bool {
         debug_assert!(tdh_slice.len() == 10);
-        tdh_slice[1] & 0b10_0000 != 0
+        unsafe { tdh_slice.get_unchecked(1) & 0b10_0000 != 0 }
     }
     /// Takes a full TDH slice and returns if continuation bit is set
     pub fn tdh_continuation(tdh_slice: &[u8]) -> bool {
         debug_assert!(tdh_slice.len() == 10);
-        tdh_slice[1] & 0b100_0000 != 0
+        unsafe { tdh_slice.get_unchecked(1) & 0b100_0000 != 0 }
     }
 
     /// Takes a full TDH slice and returns if the SOC trigger bit [9] is set
     fn tdh_soc_trigger(tdh_slice: &[u8]) -> bool {
         debug_assert!(tdh_slice.len() == 10);
         const SOC_BIT_MASK: u8 = 0b10;
-        tdh_slice[1] & SOC_BIT_MASK != 0
+        unsafe { tdh_slice.get_unchecked(1) & SOC_BIT_MASK != 0 }
     }
     /// Takes a full TDH slice and returns if the internal trigger bit [12] is set
     fn tdh_internal_trigger(tdh_slice: &[u8]) -> bool {
         debug_assert!(tdh_slice.len() == 10);
-        tdh_slice[1] & 0b1_0000 != 0
+        unsafe { tdh_slice.get_unchecked(1) & 0b1_0000 != 0 }
     }
     /// Takes a full TDH slice and returns if the physics trigger bit [4] is set
     fn tdh_physics_trigger(tdh_slice: &[u8]) -> bool {
         debug_assert!(tdh_slice.len() == 10);
-        tdh_slice[0] & 0b1_0000 != 0
+        unsafe { tdh_slice.get_unchecked(0) & 0b1_0000 != 0 }
     }
 
     /// Takes a full TDT slice and returns if packet_done bit is set
     pub fn tdt_packet_done(tdt_slice: &[u8]) -> bool {
         debug_assert!(tdt_slice.len() == 10);
-        tdt_slice[8] & 0b1 != 0
+        unsafe { tdt_slice.get_unchecked(8) & 0b1 != 0 }
     }
 
     /// Takes a full TDT slice and returns a string description of whether the packet_done bit is set

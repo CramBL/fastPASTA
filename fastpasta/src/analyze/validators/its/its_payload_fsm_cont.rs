@@ -111,6 +111,8 @@ impl ItsPayloadFsmContinuous {
     /// If the ID could not be determined, a best guess is returned wrapped in an error type to be handled by the caller
     pub fn advance(&mut self, gbt_word: &[u8]) -> Result<ItsPayloadWord, AmbigiousError> {
         use crate::words::its::status_words;
+        use status_words::util::tdh_no_data;
+        use status_words::util::tdt_packet_done;
         use ITS_Payload_Continuous as event;
         use ITS_Payload_Continuous::Variant as state;
 
@@ -118,38 +120,47 @@ impl ItsPayloadFsmContinuous {
 
         let (next_state, current_word): (state, Result<ItsPayloadWord, AmbigiousError>) =
             match current_state {
-                state::InitialIHW_(stm) => (
-                    stm.transition(event::_WasIhw).as_enum(),
-                    Ok(ItsPayloadWord::IHW),
-                ),
-
-                state::TDH_By_WasIhw(stm) => match status_words::util::tdh_no_data(gbt_word) {
-                    false => (
-                        stm.transition(event::_NoDataFalse).as_enum(),
-                        Ok(ItsPayloadWord::TDH),
+                state::DATA_By_WasData(stm) => match gbt_word[9] {
+                    // All ranges that are legal data word IDs
+                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => (
+                        stm.transition(event::_WasData).as_enum(),
+                        Ok(ItsPayloadWord::DataWord),
                     ),
-                    true => (
-                        stm.transition(event::_NoDataTrue).as_enum(),
-                        Ok(ItsPayloadWord::TDH),
+                    0xF0 if !tdt_packet_done(gbt_word) => (
+                        stm.transition(event::_WasTDTpacketDoneFalse).as_enum(),
+                        Ok(ItsPayloadWord::TDT),
+                    ),
+                    0xF0 if tdt_packet_done(gbt_word) => (
+                        stm.transition(event::_WasTDTpacketDoneTrue).as_enum(),
+                        Ok(ItsPayloadWord::TDT),
+                    ),
+                    0xF8 => (
+                        stm.transition(event::_WasData).as_enum(),
+                        Ok(ItsPayloadWord::CDW),
+                    ),
+                    // Assume data word but return as error
+                    _ => (
+                        stm.transition(event::_WasData).as_enum(),
+                        Err(AmbigiousError::DW_or_TDT_CDW),
                     ),
                 },
 
                 state::DDW0_or_TDH_or_IHW_By_NoDataTrue(stm) => match gbt_word[9] {
-                    0xE8 if status_words::util::tdh_no_data(gbt_word) => (
+                    0xE8 if tdh_no_data(gbt_word) => (
                         stm.transition(event::_NoDataTrue).as_enum(),
                         Ok(ItsPayloadWord::TDH_after_packet_done),
                     ),
-                    0xE8 if !status_words::util::tdh_no_data(gbt_word) => (
+                    0xE8 if !tdh_no_data(gbt_word) => (
                         stm.transition(event::_NoDataFalse).as_enum(),
                         Ok(ItsPayloadWord::TDH_after_packet_done),
-                    ),
-                    0xE4 => (
-                        stm.transition(event::_WasDdw0).as_enum(),
-                        Ok(ItsPayloadWord::DDW0),
                     ),
                     0xE0 => (
                         stm.transition(event::_WasIhw).as_enum(),
                         Ok(ItsPayloadWord::IHW),
+                    ),
+                    0xE4 => (
+                        stm.transition(event::_WasDdw0).as_enum(),
+                        Ok(ItsPayloadWord::DDW0),
                     ),
                     // Error in ID, assuming TDH to try to stay on track, but return as error to be handled by caller
                     _ => (
@@ -159,22 +170,22 @@ impl ItsPayloadFsmContinuous {
                 },
 
                 state::DATA_By_NoDataFalse(stm) => match gbt_word[9] {
-                    0xF0 if status_words::util::tdt_packet_done(gbt_word) => (
+                    // All ranges that are legal data word IDs
+                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => (
+                        stm.transition(event::_WasData).as_enum(),
+                        Ok(ItsPayloadWord::DataWord),
+                    ),
+                    0xF0 if tdt_packet_done(gbt_word) => (
                         stm.transition(event::_WasTDTpacketDoneTrue).as_enum(),
                         Ok(ItsPayloadWord::TDT),
                     ),
-                    0xF0 if !status_words::util::tdt_packet_done(gbt_word) => (
+                    0xF0 if !tdt_packet_done(gbt_word) => (
                         stm.transition(event::_WasTDTpacketDoneFalse).as_enum(),
                         Ok(ItsPayloadWord::TDT),
                     ),
                     0xF8 => (
                         stm.transition(event::_WasData).as_enum(),
                         Ok(ItsPayloadWord::CDW),
-                    ),
-                    // All ranges that are legal data word IDs
-                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => (
-                        stm.transition(event::_WasData).as_enum(),
-                        Ok(ItsPayloadWord::DataWord),
                     ),
                     // Assume data word but return as error
                     _ => (
@@ -183,108 +194,89 @@ impl ItsPayloadFsmContinuous {
                     ),
                 },
 
-                state::DATA_By_WasData(stm) => match gbt_word[9] {
-                    0xF0 if status_words::util::tdt_packet_done(gbt_word) => (
-                        stm.transition(event::_WasTDTpacketDoneTrue).as_enum(),
-                        Ok(ItsPayloadWord::TDT),
-                    ),
-                    0xF0 if !status_words::util::tdt_packet_done(gbt_word) => (
-                        stm.transition(event::_WasTDTpacketDoneFalse).as_enum(),
-                        Ok(ItsPayloadWord::TDT),
-                    ),
-                    0xF8 => (
-                        stm.transition(event::_WasData).as_enum(),
-                        Ok(ItsPayloadWord::CDW),
-                    ),
-                    // All ranges that are legal data word IDs
-                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => (
-                        stm.transition(event::_WasData).as_enum(),
-                        Ok(ItsPayloadWord::DataWord),
-                    ),
-                    // Assume data word but return as error
-                    _ => (
-                        stm.transition(event::_WasData).as_enum(),
-                        Err(AmbigiousError::DW_or_TDT_CDW),
-                    ),
-                },
-
-                state::c_IHW_By_WasTDTpacketDoneFalse(stm) => (
-                    stm.transition(event::_Next).as_enum(),
-                    Ok(ItsPayloadWord::IHW_continuation),
+                state::TDH_By_WasIhw(stm) => (
+                    stm.transition(event::_NoDataFalse).as_enum(),
+                    Ok(ItsPayloadWord::TDH),
                 ),
+
+                state::c_DATA_By_WasData(stm) => match gbt_word[9] {
+                    // All ranges that are legal data word IDs
+                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => (
+                        stm.transition(event::_WasData).as_enum(),
+                        Ok(ItsPayloadWord::DataWord),
+                    ),
+                    0xF0 if tdt_packet_done(gbt_word) => (
+                        stm.transition(event::_WasTDTpacketDoneTrue).as_enum(),
+                        Ok(ItsPayloadWord::TDT),
+                    ),
+                    0xF0 if !tdt_packet_done(gbt_word) => (
+                        stm.transition(event::_WasTDTpacketDoneFalse).as_enum(),
+                        Ok(ItsPayloadWord::TDT),
+                    ),
+                    0xF8 => (
+                        stm.transition(event::_WasData).as_enum(),
+                        Ok(ItsPayloadWord::CDW),
+                    ),
+                    // Assume data word but return as error
+                    _ => (
+                        stm.transition(event::_WasData).as_enum(),
+                        Err(AmbigiousError::DW_or_TDT_CDW),
+                    ),
+                },
+
+                state::c_DATA_By_Next(stm) => match gbt_word[9] {
+                    // All ranges that are legal data word IDs
+                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => (
+                        stm.transition(event::_WasData).as_enum(),
+                        Ok(ItsPayloadWord::DataWord),
+                    ),
+                    0xF0 if tdt_packet_done(gbt_word) => (
+                        stm.transition(event::_WasTDTpacketDoneTrue).as_enum(),
+                        Ok(ItsPayloadWord::TDT),
+                    ),
+                    0xF0 if !tdt_packet_done(gbt_word) => (
+                        stm.transition(event::_WasTDTpacketDoneFalse).as_enum(),
+                        Ok(ItsPayloadWord::TDT),
+                    ),
+                    0xF8 => (
+                        stm.transition(event::_WasData).as_enum(),
+                        Ok(ItsPayloadWord::CDW),
+                    ),
+                    // Assume data word but return as error
+                    _ => (
+                        stm.transition(event::_WasData).as_enum(),
+                        Err(AmbigiousError::DW_or_TDT_CDW),
+                    ),
+                },
 
                 state::c_TDH_By_Next(stm) => (
                     stm.transition(event::_Next).as_enum(),
                     Ok(ItsPayloadWord::TDH_continuation),
                 ),
 
-                state::c_DATA_By_Next(stm) => match gbt_word[9] {
-                    0xF0 if status_words::util::tdt_packet_done(gbt_word) => (
-                        stm.transition(event::_WasTDTpacketDoneTrue).as_enum(),
-                        Ok(ItsPayloadWord::TDT),
-                    ),
-                    0xF0 if !status_words::util::tdt_packet_done(gbt_word) => (
-                        stm.transition(event::_WasTDTpacketDoneFalse).as_enum(),
-                        Ok(ItsPayloadWord::TDT),
-                    ),
-                    0xF8 => (
-                        stm.transition(event::_WasData).as_enum(),
-                        Ok(ItsPayloadWord::CDW),
-                    ),
-                    // All ranges that are legal data word IDs
-                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => (
-                        stm.transition(event::_WasData).as_enum(),
-                        Ok(ItsPayloadWord::DataWord),
-                    ),
-                    // Assume data word but return as error
-                    _ => (
-                        stm.transition(event::_WasData).as_enum(),
-                        Err(AmbigiousError::DW_or_TDT_CDW),
-                    ),
-                },
-
-                state::c_DATA_By_WasData(stm) => match gbt_word[9] {
-                    0xF0 if status_words::util::tdt_packet_done(gbt_word) => (
-                        stm.transition(event::_WasTDTpacketDoneTrue).as_enum(),
-                        Ok(ItsPayloadWord::TDT),
-                    ),
-                    0xF0 if !status_words::util::tdt_packet_done(gbt_word) => (
-                        stm.transition(event::_WasTDTpacketDoneFalse).as_enum(),
-                        Ok(ItsPayloadWord::TDT),
-                    ),
-                    0xF8 => (
-                        stm.transition(event::_WasData).as_enum(),
-                        Ok(ItsPayloadWord::CDW),
-                    ),
-                    // All ranges that are legal data word IDs
-                    0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => (
-                        stm.transition(event::_WasData).as_enum(),
-                        Ok(ItsPayloadWord::DataWord),
-                    ),
-                    // Assume data word but return as error
-                    _ => (
-                        stm.transition(event::_WasData).as_enum(),
-                        Err(AmbigiousError::DW_or_TDT_CDW),
-                    ),
-                },
+                state::c_IHW_By_WasTDTpacketDoneFalse(stm) => (
+                    stm.transition(event::_Next).as_enum(),
+                    Ok(ItsPayloadWord::IHW_continuation),
+                ),
 
                 state::DDW0_or_TDH_or_IHW_By_WasTDTpacketDoneTrue(stm) => match gbt_word[9] {
-                    0xE8 if status_words::util::tdh_no_data(gbt_word) => (
+                    0xE8 if tdh_no_data(gbt_word) => (
                         stm.transition(event::_NoDataTrue).as_enum(),
                         Ok(ItsPayloadWord::TDH_after_packet_done),
                     ),
-                    0xE8 if !status_words::util::tdh_no_data(gbt_word) => (
+                    0xE8 if !tdh_no_data(gbt_word) => (
                         stm.transition(event::_NoDataFalse).as_enum(),
                         Ok(ItsPayloadWord::TDH_after_packet_done),
-                    ),
-                    0xE4 => (
-                        stm.transition(event::_WasDdw0).as_enum(),
-                        Ok(ItsPayloadWord::DDW0),
                     ),
                     0xE0 => (
                         stm.transition(event::_WasIhw).as_enum(),
                         Ok(ItsPayloadWord::IHW),
                     ),
+                    0xE4 => (
+                        stm.transition(event::_WasDdw0).as_enum(),
+                        Ok(ItsPayloadWord::DDW0),
+                    ),
+
                     // Assume DDW0 but return as error
                     _ => (
                         stm.transition(event::_WasDdw0).as_enum(),
@@ -292,6 +284,10 @@ impl ItsPayloadFsmContinuous {
                     ),
                 },
                 state::IHW_By_WasDdw0(stm) => (
+                    stm.transition(event::_WasIhw).as_enum(),
+                    Ok(ItsPayloadWord::IHW),
+                ),
+                state::InitialIHW_(stm) => (
                     stm.transition(event::_WasIhw).as_enum(),
                     Ok(ItsPayloadWord::IHW),
                 ),

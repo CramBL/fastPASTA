@@ -56,3 +56,78 @@ fn bad_filter_link_value() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+/// Check that a not found file returns a fatal error, with a description of an OS error
+///
+/// Try with all the different verbosity values 0-4
+#[test]
+fn file_doesnt_exist_v0() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg("test/file/doesnt/exist")
+        .arg("check")
+        .arg("sanity")
+        .arg("-v0");
+    cmd.assert().failure().stderr(
+        predicate::str::contains("ERROR - FATAL:").and(predicate::str::contains("os error")),
+    );
+    Ok(())
+}
+#[test]
+fn file_doesnt_exist_v1() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg("test/file/doesnt/exist")
+        .arg("check")
+        .arg("sanity")
+        .arg("-v1");
+
+    cmd.assert().failure().stderr(
+        predicate::str::contains("ERROR - FATAL:").and(predicate::str::contains("os error")),
+    );
+
+    Ok(())
+}
+
+#[test]
+fn file_doesnt_exist_v2() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg("test/file/doesnt/exist")
+        .arg("check")
+        .arg("sanity")
+        .arg("-v2");
+
+    cmd.assert().failure().stderr(
+        predicate::str::contains("ERROR - FATAL:").and(predicate::str::contains("os error")),
+    );
+
+    Ok(())
+}
+
+#[test]
+fn file_doesnt_exist_v3() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg("test/file/doesnt/exist")
+        .arg("check")
+        .arg("sanity")
+        .arg("-v3");
+
+    cmd.assert().failure().stderr(
+        predicate::str::contains("ERROR - FATAL:").and(predicate::str::contains("os error")),
+    );
+    Ok(())
+}
+
+#[test]
+fn file_doesnt_exist_v4() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg("test/file/doesnt/exist")
+        .arg("check")
+        .arg("sanity")
+        .arg("-v4");
+
+    cmd.assert().failure().stderr(
+        predicate::str::contains("ERROR - FATAL:").and(predicate::str::contains("os error")),
+    );
+
+    Ok(())
+}

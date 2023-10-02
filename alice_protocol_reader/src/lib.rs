@@ -214,6 +214,8 @@ fn get_chunk<T: RDH>(
                 break;
             }
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                // This error will always be returned when the input is exhausted
+                //  as we try to read a CDP from the input without knowing if there is one
                 break;
             }
             Err(e) => return Err(e),
