@@ -55,12 +55,9 @@ pub enum StatType {
 impl std::fmt::Display for StatType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            StatType::Fatal(e) => write!(f, "Fatal error: {e}"),
-            StatType::Error(e) => write!(f, "Error: {e}"),
             StatType::RunTriggerType((val, description)) => {
                 write!(f, "Run trigger type: {val}: {description}")
             }
-            StatType::SystemId(s_id) => write!(f, "System ID: {s_id}"),
             StatType::RDHSeen(val) => write!(f, "{val} RDHs seen"),
             StatType::RDHFiltered(val) => write!(f, "{val} RDHs filtered"),
             StatType::PayloadSize(bytes) => write!(f, "Payload size: {bytes}"),
@@ -75,6 +72,9 @@ impl std::fmt::Display for StatType {
             StatType::FeeId(id) => write!(f, "FEE ID: {id}"),
             StatType::TriggerType(trig_val) => write!(f, "Trigger type: {trig_val:#X}"),
             StatType::AlpideStats(alpide_stats) => write!(f, "ALPIDE stats {alpide_stats:?}"),
+            StatType::SystemId(s_id) => write!(f, "System ID: {s_id}"),
+            StatType::Error(e) => write!(f, "Error: {e}"),
+            StatType::Fatal(e) => write!(f, "Fatal error: {e}"),
         }
     }
 }

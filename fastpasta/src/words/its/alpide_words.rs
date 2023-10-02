@@ -6,6 +6,7 @@ use super::{
     Layer,
 };
 use std::fmt::Display;
+use std::ops::RangeInclusive;
 
 /// Struct for storing the contents of data words for a specific lane, in a readout frame
 #[derive(Default)]
@@ -77,7 +78,6 @@ impl AlpideProtocolExtension {
     #[inline]
     fn from_byte(b: u8) -> Result<AlpideWord, ()> {
         match b {
-            Self::APE_PADDING => Ok(AlpideWord::Ape(AlpideProtocolExtension::Padding)),
             Self::APE_STRIP_START => Ok(AlpideWord::Ape(AlpideProtocolExtension::StripStart)),
             Self::APE_DET_TIMEOUT => Ok(AlpideWord::Ape(AlpideProtocolExtension::DetectorTimeout)),
             Self::APE_OOT => Ok(AlpideWord::Ape(AlpideProtocolExtension::OutOfTable)),
@@ -102,6 +102,7 @@ impl AlpideProtocolExtension {
             Self::APE_OOT_DATA_MISSING => {
                 Ok(AlpideWord::Ape(AlpideProtocolExtension::OotDataMissing))
             }
+            Self::APE_PADDING => Ok(AlpideWord::Ape(AlpideProtocolExtension::Padding)),
             _ => Err(()),
         }
     }
@@ -151,33 +152,30 @@ pub(crate) enum AlpideWord {
 
 impl AlpideWord {
     const CHIP_HEADER: u8 = 0xA0; // 1010_<chip_id[3:0]> next 8 bits are bit [10:3] of the bunch counter for the frame
+    const CHIP_HEADER_RANGE: RangeInclusive<u8> = 0xA0..=0xAF;
     const CHIP_EMPTY_FRAME: u8 = 0xE0; // 1110_<chip_id[3:0]> next 8 bits are bit [10:3] of the bunch counter for the frame
+    const CHIP_EMPTY_FRAME_RANGE: RangeInclusive<u8> = 0xE0..=0xEF;
     const CHIP_TRAILER: u8 = 0xB0; // 1011_<readout_flags[3:0]>
+    const CHIP_TRAILER_RANGE: RangeInclusive<u8> = 0xB0..=0xBF;
     const REGION_HEADER: u8 = 0xC0; // 110<region_id[4:0]>
+    const REGION_HEADER_RANGE: RangeInclusive<u8> = 0xC0..=0xDF;
     const DATA_SHORT: u8 = 0b0100_0000; // 01<encoder_id[3:0]> next 10 bits are <addr[9:0]>
+    const DATA_SHORT_RANGE: RangeInclusive<u8> = 0x40..=0x7F;
     const DATA_LONG: u8 = 0b0000_0000; // 00<encoder_id[3:0]> next 18 bits are <addr[9:0]>_0_<hit_map[6:0]>
+    const DATA_LONG_RANGE: RangeInclusive<u8> = 0x00..=0x3F;
     const BUSY_ON: u8 = 0xF0;
     const BUSY_OFF: u8 = 0xF1;
+
+    #[inline]
     pub fn from_byte(b: u8) -> Result<AlpideWord, ()> {
-        #[allow(clippy::match_single_binding)]
         match b {
-            four_msb => match four_msb & 0xF0 {
-                // Match on the 4 MSB
-                Self::CHIP_HEADER => Ok(AlpideWord::ChipHeader),
-                Self::CHIP_EMPTY_FRAME => Ok(AlpideWord::ChipEmptyFrame),
-                Self::CHIP_TRAILER => Ok(AlpideWord::ChipTrailer),
-                three_msb => match three_msb & 0xE0 {
-                    // Match on the 3 MSB
-                    Self::REGION_HEADER => Ok(AlpideWord::RegionHeader),
-                    two_msb => match two_msb & 0xC0 {
-                        // Match on the 2 MSB
-                        Self::DATA_SHORT => Ok(AlpideWord::DataShort),
-                        Self::DATA_LONG => Ok(AlpideWord::DataLong),
-                        // Still no match, try the more uncommon exact matches including protocol extensions
-                        _ => Self::match_exact(b),
-                    },
-                },
-            },
+            c if c & 0xC0 == Self::DATA_SHORT => Ok(AlpideWord::DataShort),
+            c if c & 0xC0 == Self::DATA_LONG => Ok(AlpideWord::DataLong),
+            c if c & 0xE0 == Self::REGION_HEADER => Ok(AlpideWord::RegionHeader),
+            c if c & 0xF0 == Self::CHIP_EMPTY_FRAME => Ok(AlpideWord::ChipEmptyFrame),
+            c if Self::CHIP_HEADER_RANGE.contains(&c) => Ok(AlpideWord::ChipHeader),
+            c if c & 0xF0 == Self::CHIP_TRAILER => Ok(AlpideWord::ChipTrailer),
+            _ => Self::match_exact(b),
         }
     }
 
@@ -238,5 +236,116 @@ impl AlpideFrameChipData {
         }
         self.bunch_counter = Some(bc);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn alpide_word_from_byte_variants() {
+        assert_eq!(AlpideWord::from_byte(0xA0).unwrap(), AlpideWord::ChipHeader);
+        assert_eq!(
+            AlpideWord::from_byte(0xE0).unwrap(),
+            AlpideWord::ChipEmptyFrame
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xB0).unwrap(),
+            AlpideWord::ChipTrailer
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xC0).unwrap(),
+            AlpideWord::RegionHeader
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0b0100_0000).unwrap(),
+            AlpideWord::DataShort
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0b0000_0000).unwrap(),
+            AlpideWord::DataLong
+        );
+        assert_eq!(AlpideWord::from_byte(0xF0).unwrap(), AlpideWord::BusyOn);
+        assert_eq!(AlpideWord::from_byte(0xF1).unwrap(), AlpideWord::BusyOff);
+    }
+
+    #[test]
+    fn alpide_word_from_byte_ape_variants() {
+        // No test for padding as it is state dependent
+        assert_eq!(
+            AlpideWord::from_byte(0xF2).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::StripStart)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xF4).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::DetectorTimeout)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xF5).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::OutOfTable)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xF6).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::ProtocolError)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xF7).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::LaneFifoOverflowError)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xF8).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::FsmError)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xF9).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::PendingDetectorEventLimit)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xFA).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::PendingLaneEventLimit)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xFB).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::O2nError)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xFC).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::RateMissingTriggerError)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xFD).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::PeDataMissing)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xFE).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::OotDataMissing)
+        );
+    }
+
+    #[test]
+    fn alpide_word_from_byte_variants_ranges() {
+        for b in 0xA0..=0xAF {
+            assert_eq!(AlpideWord::from_byte(b).unwrap(), AlpideWord::ChipHeader);
+        }
+        for b in 0xE0..=0xEF {
+            assert_eq!(
+                AlpideWord::from_byte(b).unwrap(),
+                AlpideWord::ChipEmptyFrame
+            );
+        }
+        for b in 0xB0..=0xBF {
+            assert_eq!(AlpideWord::from_byte(b).unwrap(), AlpideWord::ChipTrailer);
+        }
+        for b in 0xC0..=0xDF {
+            assert_eq!(AlpideWord::from_byte(b).unwrap(), AlpideWord::RegionHeader);
+        }
+        for b in 0x40..=0x7F {
+            assert_eq!(AlpideWord::from_byte(b).unwrap(), AlpideWord::DataShort);
+        }
+        for b in 0x00..=0x3F {
+            assert_eq!(AlpideWord::from_byte(b).unwrap(), AlpideWord::DataLong);
+        }
     }
 }

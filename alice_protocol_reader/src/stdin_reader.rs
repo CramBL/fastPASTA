@@ -45,14 +45,13 @@ impl io::Seek for StdInReaderSeeker<std::io::Stdin> {
                 io::ErrorKind::Other,
                 "Cannot seek from start in stdin",
             )),
-            SeekFrom::Current(_) => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Cannot seek from current in stdin, use seek_relative instead",
-            )),
-            SeekFrom::End(_) => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Cannot seek from end in stdin",
-            )),
+            SeekFrom::Current(_) | SeekFrom::End(_) => {
+                debug_assert!(
+                    false,
+                    "Seeking from current or end in stdin is not supported"
+                );
+                unsafe { std::hint::unreachable_unchecked() }
+            }
         }
     }
 }

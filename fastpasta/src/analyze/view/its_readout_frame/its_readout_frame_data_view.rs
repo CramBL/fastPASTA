@@ -61,9 +61,7 @@ fn generate_its_readout_frame_word_view(
 
     let word_slice_str = crate::analyze::view::lib::format_word_slice(gbt_word_slice);
     match word_type {
-        ItsPayloadWord::IHW => {
-            writeln!(stdio_lock, "{mem_pos_str} IHW {word_slice_str}")?;
-        }
+        ItsPayloadWord::DataWord => writeln!(stdio_lock, "{mem_pos_str} DATA {word_slice_str}")?,
         ItsPayloadWord::TDH => {
             let trigger_str = sw_util::tdh_trigger_as_string(gbt_word_slice);
             let continuation_str = sw_util::tdh_continuation_as_string(gbt_word_slice);
@@ -83,6 +81,10 @@ fn generate_its_readout_frame_word_view(
                             "{mem_pos_str} TDT {word_slice_str} {packet_status_str:>18}                             {error_reporting_str}",
                         )?;
         }
+        ItsPayloadWord::IHW => {
+            writeln!(stdio_lock, "{mem_pos_str} IHW {word_slice_str}")?;
+        }
+
         ItsPayloadWord::DDW0 => {
             let error_reporting_str = sw_util::ddw0_tdt_lane_status_as_string(gbt_word_slice);
 
@@ -97,7 +99,6 @@ fn generate_its_readout_frame_word_view(
                             "{mem_pos_str} CDW {word_slice_str}                                                ",
                         )?;
         }
-        ItsPayloadWord::DataWord => writeln!(stdio_lock, "{mem_pos_str} DATA {word_slice_str}")?,
         ItsPayloadWord::IHW_continuation
         | ItsPayloadWord::TDH_continuation
         | ItsPayloadWord::TDH_after_packet_done => {

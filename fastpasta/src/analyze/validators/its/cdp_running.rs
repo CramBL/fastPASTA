@@ -168,16 +168,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         // valid words in the current state and returns it as an error, that is handled below
         match current_word {
             Ok(word) => match word {
-                ItsPayloadWord::IHW => {
-                    self.process_status_word(StatusWordKind::Ihw(gbt_word));
-                    if self.running_checks_enabled {
-                        self.check_rdh_at_initial_ihw(gbt_word);
-                    }
-                }
-                ItsPayloadWord::IHW_continuation => {
-                    self.process_status_word(StatusWordKind::Ihw(gbt_word))
-                }
-
+                // DataWord and CDW are handled together
+                ItsPayloadWord::DataWord | ItsPayloadWord::CDW => self.process_data_word(gbt_word),
                 ItsPayloadWord::TDH => {
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
                     if self.running_checks_enabled {
@@ -185,12 +177,14 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                         self.check_tdh_trigger_interval(gbt_word);
                     }
                 }
-                ItsPayloadWord::TDH_continuation => {
-                    self.process_status_word(StatusWordKind::Tdh(gbt_word));
+                ItsPayloadWord::TDT => self.process_status_word(StatusWordKind::Tdt(gbt_word)),
+                ItsPayloadWord::IHW => {
+                    self.process_status_word(StatusWordKind::Ihw(gbt_word));
                     if self.running_checks_enabled {
-                        self.check_tdh_continuation(gbt_word);
+                        self.check_rdh_at_initial_ihw(gbt_word);
                     }
                 }
+
                 ItsPayloadWord::TDH_after_packet_done => {
                     self.process_status_word(StatusWordKind::Tdh(gbt_word));
                     if self.running_checks_enabled {
@@ -198,11 +192,18 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                         self.check_tdh_trigger_interval(gbt_word);
                     }
                 }
-                ItsPayloadWord::TDT => self.process_status_word(StatusWordKind::Tdt(gbt_word)),
-                // DataWord and CDW are handled together
-                ItsPayloadWord::CDW | ItsPayloadWord::DataWord => self.process_data_word(gbt_word),
 
                 ItsPayloadWord::DDW0 => self.process_status_word(StatusWordKind::Ddw0(gbt_word)),
+
+                ItsPayloadWord::TDH_continuation => {
+                    self.process_status_word(StatusWordKind::Tdh(gbt_word));
+                    if self.running_checks_enabled {
+                        self.check_tdh_continuation(gbt_word);
+                    }
+                }
+                ItsPayloadWord::IHW_continuation => {
+                    self.process_status_word(StatusWordKind::Ihw(gbt_word))
+                }
             },
 
             Err(ambigious_word) => match ambigious_word {
@@ -247,13 +248,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     #[inline]
     fn process_status_word(&mut self, status_word: StatusWordKind) {
         match status_word {
-            StatusWordKind::Ihw(ihw_as_slice) => {
-                let ihw = Ihw::load(&mut <&[u8]>::clone(&ihw_as_slice)).unwrap();
-                if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
-                    self.report_error(&format!("[E30] {e}"), ihw_as_slice);
-                }
-                self.current_ihw = Some(ihw);
-            }
             StatusWordKind::Tdh(tdh_as_slice) => {
                 let tdh = Tdh::load(&mut <&[u8]>::clone(&tdh_as_slice)).unwrap();
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
@@ -277,6 +271,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                 std::mem::swap(&mut self.current_tdh, &mut self.previous_tdh);
                 self.current_tdh = Some(tdh);
             }
+
             StatusWordKind::Tdt(tdt_as_slice) => {
                 let tdt = Tdt::load(&mut <&[u8]>::clone(&tdt_as_slice)).unwrap();
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
@@ -289,6 +284,15 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                     self.process_alpide_data(complete_readout_frame);
                 }
             }
+
+            StatusWordKind::Ihw(ihw_as_slice) => {
+                let ihw = Ihw::load(&mut <&[u8]>::clone(&ihw_as_slice)).unwrap();
+                if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
+                    self.report_error(&format!("[E30] {e}"), ihw_as_slice);
+                }
+                self.current_ihw = Some(ihw);
+            }
+
             StatusWordKind::Ddw0(ddw0_as_slice) => {
                 let ddw0 = Ddw0::load(&mut <&[u8]>::clone(&ddw0_as_slice)).unwrap();
                 if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0) {
@@ -377,8 +381,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         // If there is no readout frame, we are not collecting data.
         if let Some(alpide_readout_frame) = &mut self.alpide_readout_frame {
             let from_layer = match self.from_stave.unwrap() {
-                Stave::MiddleLayer { .. } => Layer::Middle,
                 Stave::OuterLayer { .. } => Layer::Outer,
+                Stave::MiddleLayer { .. } => Layer::Middle,
                 _ => unreachable!(),
             };
             alpide_readout_frame.store_lane_data(ob_slice, from_layer);
