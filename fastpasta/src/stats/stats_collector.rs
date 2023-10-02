@@ -38,25 +38,25 @@ impl StatsCollector {
     /// Record a stat.
     pub fn collect(&mut self, stat: StatType) {
         match stat {
-            StatType::Fatal(m) => self.error_stats.add_fatal_err(m),
-            StatType::Error(m) => self.error_stats.add_err(m),
+            StatType::RDHSeen(e) => self.rdh_stats.add_rdhs_seen(e),
+            StatType::HBFSeen => self.rdh_stats.incr_hbf_seen(),
+            StatType::PayloadSize(sz) => self.rdh_stats.add_payload_size(sz as u64),
+            StatType::LinksObserved(id) => self.rdh_stats.record_link(id),
+            StatType::RdhVersion(v) => self.rdh_stats.record_rdh_version(v),
+            StatType::FeeId(id) => self.rdh_stats.record_fee_observed(id),
             StatType::RunTriggerType((raw_trigger_type, trigger_type_str)) => self
                 .rdh_stats
                 .record_run_trigger_type((raw_trigger_type, trigger_type_str)),
             StatType::TriggerType(t) => self.rdh_stats.record_trigger_type(t),
             StatType::SystemId(id) => self.rdh_stats.record_system_id(id),
-            StatType::RDHSeen(e) => self.rdh_stats.add_rdhs_seen(e),
-            StatType::RDHFiltered(e) => self.rdh_stats.add_rdhs_filtered(e),
-            StatType::PayloadSize(sz) => self.rdh_stats.add_payload_size(sz as u64),
-            StatType::LinksObserved(id) => self.rdh_stats.record_link(id),
-            StatType::RdhVersion(v) => self.rdh_stats.record_rdh_version(v),
             StatType::DataFormat(v) => self.rdh_stats.record_data_format(v),
-            StatType::HBFSeen => self.rdh_stats.incr_hbf_seen(),
             StatType::LayerStaveSeen { layer, stave } => {
                 self.rdh_stats.record_layer_stave_seen((layer, stave))
             }
-            StatType::FeeId(id) => self.rdh_stats.record_fee_observed(id),
+            StatType::RDHFiltered(e) => self.rdh_stats.add_rdhs_filtered(e),
             StatType::AlpideStats(s) => self.alpide_stats.as_mut().unwrap().sum(s),
+            StatType::Error(m) => self.error_stats.add_err(m),
+            StatType::Fatal(m) => self.error_stats.add_fatal_err(m),
         }
     }
 

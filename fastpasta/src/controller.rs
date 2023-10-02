@@ -188,6 +188,33 @@ impl<C: Config + 'static> Controller<C> {
 
     fn update(&mut self, stat: StatType) {
         match stat {
+            StatType::RDHSeen(_)
+            | StatType::RDHFiltered(_)
+            | StatType::PayloadSize(_)
+            | StatType::LinksObserved(_)
+            | StatType::RdhVersion(_)
+            | StatType::DataFormat(_)
+            | StatType::LayerStaveSeen { .. }
+            | StatType::SystemId(_)
+            | StatType::FeeId(_)
+            | StatType::TriggerType(_)
+            | StatType::AlpideStats(_) => {
+                self.stats_collector.collect(stat);
+            }
+            StatType::HBFSeen => {
+                self.stats_collector.collect(stat);
+                if self.spinner.is_some() {
+                    self.spinner.as_mut().unwrap().set_prefix(format!(
+                        "Analyzing {hbfs} HBFs",
+                        hbfs = self.stats_collector.hbfs_seen()
+                    ))
+                };
+            }
+            StatType::RunTriggerType((raw_tt, tt_str)) => {
+                log::debug!("Run trigger type determined to be {raw_tt:#0x}: {tt_str}");
+                self.stats_collector
+                    .collect(StatType::RunTriggerType((raw_tt, tt_str)));
+            }
             StatType::Error(msg) => {
                 // Stop processing any error messages
                 if self.stats_collector.any_fatal_err() {
@@ -215,7 +242,6 @@ impl<C: Config + 'static> Controller<C> {
                     }
                 }
             }
-
             StatType::Fatal(err) => {
                 // Stop processing any error messages
                 if self.stats_collector.any_fatal_err() {
@@ -226,33 +252,6 @@ impl<C: Config + 'static> Controller<C> {
                     .store(true, std::sync::atomic::Ordering::SeqCst);
                 log::error!("FATAL: {err}\nShutting down...");
                 self.stats_collector.collect(StatType::Fatal(err));
-            }
-            StatType::RDHSeen(_)
-            | StatType::RDHFiltered(_)
-            | StatType::PayloadSize(_)
-            | StatType::LinksObserved(_)
-            | StatType::RdhVersion(_)
-            | StatType::DataFormat(_)
-            | StatType::LayerStaveSeen { .. }
-            | StatType::SystemId(_)
-            | StatType::FeeId(_)
-            | StatType::TriggerType(_)
-            | StatType::AlpideStats(_) => {
-                self.stats_collector.collect(stat);
-            }
-            StatType::HBFSeen => {
-                self.stats_collector.collect(stat);
-                if self.spinner.is_some() {
-                    self.spinner.as_mut().unwrap().set_prefix(format!(
-                        "Analyzing {hbfs} HBFs",
-                        hbfs = self.stats_collector.hbfs_seen()
-                    ))
-                };
-            }
-            StatType::RunTriggerType((raw_tt, tt_str)) => {
-                log::debug!("Run trigger type determined to be {raw_tt:#0x}: {tt_str}");
-                self.stats_collector
-                    .collect(StatType::RunTriggerType((raw_tt, tt_str)));
             }
         }
     }

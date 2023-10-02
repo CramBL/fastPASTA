@@ -115,6 +115,18 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
         match AlpideWord::from_byte(alpide_byte) {
             Ok(word) => {
                 match word {
+                    AlpideWord::DataShort => {
+                        self.skip_n_bytes = 1;
+                        log::trace!("{alpide_byte:#02X}: DataShort");
+                    } // Skip the next byte
+                    AlpideWord::DataLong => {
+                        self.skip_n_bytes = 2;
+                        log::trace!("{alpide_byte:#02X}: DataLong");
+                    } // Skip the next 2 bytes
+                    AlpideWord::RegionHeader => {
+                        self.is_header_seen = true;
+                        log::trace!("{alpide_byte:#02X}: RegionHeader");
+                    } // Do nothing at the moment
                     AlpideWord::ChipHeader => {
                         self.is_header_seen = true;
                         self.last_chip_id = alpide_byte & 0b1111;
@@ -132,18 +144,7 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
                         self.alpide_stats.log_readout_flags(alpide_byte);
                         log::trace!("{alpide_byte:#02X}: ChipTrailer");
                     } // Reset the header seen flag
-                    AlpideWord::RegionHeader => {
-                        self.is_header_seen = true;
-                        log::trace!("{alpide_byte:#02X}: RegionHeader");
-                    } // Do nothing at the moment
-                    AlpideWord::DataShort => {
-                        self.skip_n_bytes = 1;
-                        log::trace!("{alpide_byte:#02X}: DataShort");
-                    } // Skip the next byte
-                    AlpideWord::DataLong => {
-                        self.skip_n_bytes = 2;
-                        log::trace!("{alpide_byte:#02X}: DataLong");
-                    } // Skip the next 2 bytes
+
                     AlpideWord::BusyOn => log::trace!("{alpide_byte:#02X}: BusyOn word seen!"),
                     AlpideWord::BusyOff => log::trace!("{alpide_byte:#02X}: BusyOff word seen!"),
                     AlpideWord::Ape(ape) => match ape {
