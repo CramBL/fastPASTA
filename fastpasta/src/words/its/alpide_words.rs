@@ -165,23 +165,18 @@ impl AlpideWord {
     const DATA_LONG_RANGE: RangeInclusive<u8> = 0x00..=0x3F;
     const BUSY_ON: u8 = 0xF0;
     const BUSY_OFF: u8 = 0xF1;
+
+    #[inline]
     pub fn from_byte(b: u8) -> Result<AlpideWord, ()> {
-        let ap = if Self::DATA_SHORT_RANGE.contains(&b) {
-            AlpideWord::DataShort
-        } else if Self::DATA_LONG_RANGE.contains(&b) {
-            AlpideWord::DataLong
-        } else if Self::REGION_HEADER_RANGE.contains(&b) {
-            AlpideWord::RegionHeader
-        } else if Self::CHIP_EMPTY_FRAME_RANGE.contains(&b) {
-            AlpideWord::ChipEmptyFrame
-        } else if Self::CHIP_HEADER_RANGE.contains(&b) {
-            AlpideWord::ChipHeader
-        } else if Self::CHIP_TRAILER_RANGE.contains(&b) {
-            AlpideWord::ChipTrailer
-        } else {
-            Self::match_exact(b)?
-        };
-        Ok(ap)
+        match b {
+            c if c & 0xC0 == Self::DATA_SHORT => Ok(AlpideWord::DataShort),
+            c if c & 0xC0 == Self::DATA_LONG => Ok(AlpideWord::DataLong),
+            c if c & 0xE0 == Self::REGION_HEADER => Ok(AlpideWord::RegionHeader),
+            c if c & 0xF0 == Self::CHIP_EMPTY_FRAME => Ok(AlpideWord::ChipEmptyFrame),
+            c if Self::CHIP_HEADER_RANGE.contains(&c) => Ok(AlpideWord::ChipHeader),
+            c if c & 0xF0 == Self::CHIP_TRAILER => Ok(AlpideWord::ChipTrailer),
+            _ => Self::match_exact(b),
+        }
     }
 
     #[inline]
