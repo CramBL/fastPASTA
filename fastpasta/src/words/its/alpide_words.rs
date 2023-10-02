@@ -77,7 +77,6 @@ impl AlpideProtocolExtension {
     #[inline]
     fn from_byte(b: u8) -> Result<AlpideWord, ()> {
         match b {
-            Self::APE_PADDING => Ok(AlpideWord::Ape(AlpideProtocolExtension::Padding)),
             Self::APE_STRIP_START => Ok(AlpideWord::Ape(AlpideProtocolExtension::StripStart)),
             Self::APE_DET_TIMEOUT => Ok(AlpideWord::Ape(AlpideProtocolExtension::DetectorTimeout)),
             Self::APE_OOT => Ok(AlpideWord::Ape(AlpideProtocolExtension::OutOfTable)),
@@ -102,6 +101,7 @@ impl AlpideProtocolExtension {
             Self::APE_OOT_DATA_MISSING => {
                 Ok(AlpideWord::Ape(AlpideProtocolExtension::OotDataMissing))
             }
+            Self::APE_PADDING => Ok(AlpideWord::Ape(AlpideProtocolExtension::Padding)),
             _ => Err(()),
         }
     }
@@ -238,5 +238,116 @@ impl AlpideFrameChipData {
         }
         self.bunch_counter = Some(bc);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn alpide_word_from_byte_variants() {
+        assert_eq!(AlpideWord::from_byte(0xA0).unwrap(), AlpideWord::ChipHeader);
+        assert_eq!(
+            AlpideWord::from_byte(0xE0).unwrap(),
+            AlpideWord::ChipEmptyFrame
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xB0).unwrap(),
+            AlpideWord::ChipTrailer
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xC0).unwrap(),
+            AlpideWord::RegionHeader
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0b0100_0000).unwrap(),
+            AlpideWord::DataShort
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0b0000_0000).unwrap(),
+            AlpideWord::DataLong
+        );
+        assert_eq!(AlpideWord::from_byte(0xF0).unwrap(), AlpideWord::BusyOn);
+        assert_eq!(AlpideWord::from_byte(0xF1).unwrap(), AlpideWord::BusyOff);
+    }
+
+    #[test]
+    fn alpide_word_from_byte_ape_variants() {
+        // No test for padding as it is state dependent
+        assert_eq!(
+            AlpideWord::from_byte(0xF2).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::StripStart)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xF4).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::DetectorTimeout)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xF5).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::OutOfTable)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xF6).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::ProtocolError)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xF7).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::LaneFifoOverflowError)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xF8).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::FsmError)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xF9).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::PendingDetectorEventLimit)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xFA).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::PendingLaneEventLimit)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xFB).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::O2nError)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xFC).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::RateMissingTriggerError)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xFD).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::PeDataMissing)
+        );
+        assert_eq!(
+            AlpideWord::from_byte(0xFE).unwrap(),
+            AlpideWord::Ape(AlpideProtocolExtension::OotDataMissing)
+        );
+    }
+
+    #[test]
+    fn alpide_word_from_byte_variants_ranges() {
+        for b in 0xA0..=0xAF {
+            assert_eq!(AlpideWord::from_byte(b).unwrap(), AlpideWord::ChipHeader);
+        }
+        for b in 0xE0..=0xEF {
+            assert_eq!(
+                AlpideWord::from_byte(b).unwrap(),
+                AlpideWord::ChipEmptyFrame
+            );
+        }
+        for b in 0xB0..=0xBF {
+            assert_eq!(AlpideWord::from_byte(b).unwrap(), AlpideWord::ChipTrailer);
+        }
+        for b in 0xC0..=0xDF {
+            assert_eq!(AlpideWord::from_byte(b).unwrap(), AlpideWord::RegionHeader);
+        }
+        for b in 0b0100_0000..=0b0111_1111 {
+            assert_eq!(AlpideWord::from_byte(b).unwrap(), AlpideWord::DataShort);
+        }
+        for b in 0b0000_0000..=0b0011_1111 {
+            assert_eq!(AlpideWord::from_byte(b).unwrap(), AlpideWord::DataLong);
+        }
     }
 }
