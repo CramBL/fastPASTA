@@ -31,6 +31,7 @@ pub const FILE_INVALID_LANE_ORDER_1HBF: &str = "../tests/test-data/invalid_lane_
 pub const FILE_CI_OLS_DATA_1HBF: &str = "../tests/test-data/ci_ols_data_1hbf.raw"; // has chip ordering problem because one chip is disabled
 pub const FILE_2_RDH_DET_FIELD_V1_21_0: &str = "../tests/test-data/2_rdh_det_field_v1.21.0.raw"; // has Detector field v1.21.0
 pub const FILE_2_HBF_2ND_BAD_FRAME: &str = "../tests/test-data/2_hbf_2nd_bad_frame.raw"; // First HBF is valid but second lacks data words even though no error has been indicated with APE/TDT/DDW
+pub const FILE_12_LINKS_1HBF: &str = "../tests/test-data/12_links_1hbf.raw"; // 12 links with 1 HBF each
 
 /// Helper function to create a temp dir and a child file path
 ///
