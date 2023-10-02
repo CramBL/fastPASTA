@@ -155,7 +155,7 @@ mod tests {
         let mut cdp_chunk = CdpArr::new();
         cdp_chunk.push_tuple(cdp_tuple);
 
-        disp.dispatch_cdp_chunk(cdp_chunk);
+        disp.dispatch_cdp_chunk::<1>(cdp_chunk);
 
         disp.join();
     }

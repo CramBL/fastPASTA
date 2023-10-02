@@ -279,7 +279,6 @@ mod tests {
     use crate::MockConfig;
     use alice_protocol_reader::init_reader;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use alice_protocol_reader::prelude::CdpChunk;
     use pretty_assertions::{assert_eq, assert_ne};
     use std::path::PathBuf;
     use std::sync::OnceLock;
@@ -351,7 +350,7 @@ mod tests {
             flume::unbounded();
         let (data_sender, data_receiver) = crossbeam_channel::unbounded();
         let stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let mut cdp_chunk: CdpChunk<RdhCru<V7>> = CdpChunk::default();
+        let mut cdp_chunk: CdpArr<RdhCru<V7>, 1> = CdpArr::new();
         cdp_chunk.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);
 
         // Act
