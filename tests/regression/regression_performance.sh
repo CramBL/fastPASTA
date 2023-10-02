@@ -22,16 +22,16 @@ declare -i BENCHMARK_FILE_SIZE_MIB=200
 ## Original files before they are `grown` to a reasonable size for benchmarking
 declare -a PRE_TESTS_FILES_ARRAY=(
     "10_rdh.raw"
-    "readout.superpage.1.raw"
-    "rawtf_epn180_l6_1.raw"
+    "12_links_1hbf.raw"
+    "thrs_cdw_links.raw"
 )
 
 if [[ "$1" == "EXTENDED" ]]; then
     println_bright_yellow "Running benchmarks in EXTENDED mode\n"
     BENCHMARK_FILE_SIZE_MIB=$(( BENCHMARK_FILE_SIZE_MIB * 3 ))
-    PRE_TESTS_FILES_ARRAY+=("err_not_hbf.raw")
-    PRE_TESTS_FILES_ARRAY+=("tdh_no_data_ihw.raw")
-    PRE_TESTS_FILES_ARRAY+=("thrs_cdw_links.raw")
+    PRE_TESTS_FILES_ARRAY+=("ci_ols_data_1hbf.raw")
+    PRE_TESTS_FILES_ARRAY+=("tdh_no_data.raw")
+    PRE_TESTS_FILES_ARRAY+=("readout.superpage.1.raw")
 fi
 
 ##### Constants #####
