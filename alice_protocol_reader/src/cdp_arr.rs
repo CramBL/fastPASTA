@@ -32,14 +32,14 @@ impl<T: RDH, const CAP: usize> CdpArr<T, CAP> {
     }
     /// Construct a new, empty `CdpArr<T: RDH>` with at least the specified capacity.
     ///
-    /// The array will be able to hold at least `capacity` elements without reallocating.
+    /// The array will be able to hold at least `capacity` elements.
     ///
     /// # Examples
     /// ```
-    /// # use alice_protocol_reader::data_wrapper::CdpArr;
+    /// # use alice_protocol_reader::cdp_arr::CdpArr;
     /// # use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
     /// # use alice_protocol_reader::prelude::{RdhCru, V7};
-    /// let mut arrvec = CdpArr::<RdhCru<V7>>::with_capacity(10);
+    /// let mut arrvec = CdpArr::<RdhCru<V7>, 10>::new_const();
     /// assert!(arrvec.len() == 0);
     /// ```
     ///
