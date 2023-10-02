@@ -16,7 +16,7 @@
 source ./tests/regression/utils.sh
 
 # This is how much we'll ask `binmult` to "grow" the test files to in MiB
-declare -i BENCHMARK_FILE_SIZE_MIB=300
+declare -i BENCHMARK_FILE_SIZE_MIB=500
 
 # Files used in benchmarks
 ## Original files before they are `grown` to a reasonable size for benchmarking
@@ -28,7 +28,7 @@ declare -a PRE_TESTS_FILES_ARRAY=(
 
 if [[ "$1" == "EXTENDED" ]]; then
     println_bright_yellow "Running benchmarks in EXTENDED mode\n"
-    BENCHMARK_FILE_SIZE_MIB=$(( BENCHMARK_FILE_SIZE_MIB * 3 ))
+    BENCHMARK_FILE_SIZE_MIB=$(( BENCHMARK_FILE_SIZE_MIB * 2 ))
     PRE_TESTS_FILES_ARRAY+=("tdh_no_data.raw")
 fi
 
