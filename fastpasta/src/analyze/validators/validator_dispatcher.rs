@@ -61,8 +61,8 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
         // Add a new ID to the list of processors
         self.processors.push(id);
         // The first channel will have this capacity, and then exponential backoff will be used
-        const INITIAL_CH_CAP: usize = 128;
-        const UPPER_CH_CAP: usize = INITIAL_CH_CAP << 7; // At this point use the max for the rest of the channels
+        const INITIAL_CHAN_CAP: usize = 128;
+        const UPPER_CHAN_CAP: usize = INITIAL_CHAN_CAP << 7; // At this point use the max for the rest of the channels
 
         // Create a new link validator thread to handle a new ID that should be processed
         let (link_validator, send_chan) = if self.processors.len() == 1 {
@@ -70,7 +70,7 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
             LinkValidator::<T, C>::with_chan_capacity(
                 self.global_config,
                 self.stats_sender.clone(),
-                Some(INITIAL_CH_CAP),
+                Some(INITIAL_CHAN_CAP),
             )
         } else {
             // Create the rest of the link validators using exponential backoff for the channel capacity
@@ -78,10 +78,10 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
             LinkValidator::<T, C>::with_chan_capacity(
                 self.global_config,
                 self.stats_sender.clone(),
-                if (INITIAL_CH_CAP << self.processors.len()) < UPPER_CH_CAP {
-                    Some(INITIAL_CH_CAP << self.processors.len())
+                if (INITIAL_CHAN_CAP << self.processors.len()) < UPPER_CHAN_CAP {
+                    Some(INITIAL_CHAN_CAP << self.processors.len())
                 } else {
-                    Some(UPPER_CH_CAP)
+                    Some(UPPER_CHAN_CAP)
                 },
             )
         };
