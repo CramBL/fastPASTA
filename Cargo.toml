@@ -16,4 +16,3 @@ repository = "https://gitlab.cern.ch/mkonig/fastpasta"
 
 [build]
 rustflags = ["-C", "target-cpu=native"]
-strip = "symbols"
