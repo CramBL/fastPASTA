@@ -181,14 +181,23 @@ test-coverage:
 # Run benchmarks and check for performance regression
 limited-regress-bench:
   stage: test
-  needs: []
   before_script:
     - ls -l tests/regression/
   script:
     - tests/regression/regression_performance.sh
   rules:
-  # Don't create this job if branch suffix is -bench (that unlocks the extended benchmark)
+  # Run this job when a tag is created
+  - if: $CI_COMMIT_TAG
+    when: never
+  # Never create if the suffix is -bench (we're doing extended benchmarks then)
+  - if: $CI_COMMIT_BRANCH =~ /^.*-bench$/
+    when: never
+  # Don't create it in the MR pipeline (only use branch pipelines)
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    when: never
+  # Create this job if branch suffix is not -bench (that unlocks the extended benchmark)
   - if: $CI_COMMIT_BRANCH !~ /^.*-bench$/
+    when: always
   dependencies: []
   cache: []
 
