@@ -6,8 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 # [Unreleased]
 
+### Added
+- By default, compilation now generates specific instructions for the target's CPU.
+- Performance tweaks to certain thread's channel capacity [details](https://gitlab.cern.ch/mkonig/fastpasta/-/commit/005eda799a5f1dc8f67103401b3fec38aaee1e58)
+
+
+# v1.16.1 (2023-10-3) - Fix edge case in reading CDP with RDH with erroneous offset_to_next field
 ### Fix
-![45](https://gitlab.cern.ch/mkonig/fastpasta/-/issues/45) Failure to report error if RDH specifies larger payload size than is actually present in the input data.
+[45](https://gitlab.cern.ch/mkonig/fastpasta/-/issues/45) Failure to report error if RDH specifies larger payload size than is actually present in the input data.
+
+### Added
+Performance tweaks.
 
 # v1.16.0 (2023-09-22) Detector field info in all `view` subcommands
 ### Added

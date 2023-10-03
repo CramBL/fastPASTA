@@ -15,23 +15,24 @@
 # shellcheck disable=SC1091
 source ./tests/regression/utils.sh
 
+# Minimum runs hyperfine performs to benchmark a given command
+declare -i MIN_RUNS=20
+
 # This is how much we'll ask `binmult` to "grow" the test files to in MiB
-declare -i BENCHMARK_FILE_SIZE_MIB=200
+declare -i BENCHMARK_FILE_SIZE_MIB=300
 
 # Files used in benchmarks
 ## Original files before they are `grown` to a reasonable size for benchmarking
 declare -a PRE_TESTS_FILES_ARRAY=(
     "10_rdh.raw"
-    "12_links_1hbf.raw"
+    "12_links_2hbf.raw"
     "thrs_cdw_links.raw"
 )
 
 if [[ "$1" == "EXTENDED" ]]; then
     println_bright_yellow "Running benchmarks in EXTENDED mode\n"
-    BENCHMARK_FILE_SIZE_MIB=$(( BENCHMARK_FILE_SIZE_MIB * 3 ))
-    PRE_TESTS_FILES_ARRAY+=("ci_ols_data_1hbf.raw")
-    PRE_TESTS_FILES_ARRAY+=("tdh_no_data.raw")
-    PRE_TESTS_FILES_ARRAY+=("readout.superpage.1.raw")
+    (( BENCHMARK_FILE_SIZE_MIB*=2 ))
+    (( MIN_RUNS*=2 ))
 fi
 
 ##### Constants #####
@@ -127,12 +128,13 @@ function bench_two_cmds_return_timings {
     local released_cmd=$2;
 
     hyperfine \
-        "${local_cmd} --mute-errors" \
-        "${released_cmd} --mute-errors" \
+        "${local_cmd} --mute-errors --verbosity 0" \
+        "${released_cmd} --mute-errors --verbosity 0" \
         --warmup 3\
         --style full\
         --time-unit millisecond\
         --shell=bash\
+        --min-runs "${MIN_RUNS}"\
         --export-markdown ${BENCH_RESULTS_FILE_PATH}
 
     readarray -t timing_res < <( cat ${BENCH_RESULTS_FILE_PATH} | grep -Po "${REGEX_MEAN_TIMINGS}" | head -n 2 )

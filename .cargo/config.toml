@@ -12,3 +12,6 @@ codegen-units = 1
 rustflags = [
   "-C", "llvm-args=-inline-threshold=335"
 ]
+
+[build]
+rustflags = ["-C", "target-cpu=native"]

@@ -304,10 +304,10 @@ fn file_exists_exit_successful_2_hbf_2nd_bad_frame() -> Result<(), Box<dyn std::
 }
 
 #[test]
-fn file_exists_exit_successful_12_links_1hbf() -> Result<(), Box<dyn std::error::Error>> {
+fn file_exists_exit_successful_12_links_2hbf() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
-    cmd.arg(FILE_12_LINKS_1HBF)
+    cmd.arg(FILE_12_LINKS_2HBF)
         .arg("check")
         .arg("sanity")
         .arg("-v4");

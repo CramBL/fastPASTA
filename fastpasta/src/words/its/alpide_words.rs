@@ -6,6 +6,7 @@ use super::{
     Layer,
 };
 use std::fmt::Display;
+use std::ops::RangeInclusive;
 
 /// Struct for storing the contents of data words for a specific lane, in a readout frame
 #[derive(Default)]
@@ -151,21 +152,28 @@ pub(crate) enum AlpideWord {
 
 impl AlpideWord {
     const CHIP_HEADER: u8 = 0xA0; // 1010_<chip_id[3:0]> next 8 bits are bit [10:3] of the bunch counter for the frame
+    const CHIP_HEADER_RANGE: RangeInclusive<u8> = 0xA0..=0xAF;
     const CHIP_EMPTY_FRAME: u8 = 0xE0; // 1110_<chip_id[3:0]> next 8 bits are bit [10:3] of the bunch counter for the frame
+    const CHIP_EMPTY_FRAME_RANGE: RangeInclusive<u8> = 0xE0..=0xEF;
     const CHIP_TRAILER: u8 = 0xB0; // 1011_<readout_flags[3:0]>
+    const CHIP_TRAILER_RANGE: RangeInclusive<u8> = 0xB0..=0xBF;
     const REGION_HEADER: u8 = 0xC0; // 110<region_id[4:0]>
+    const REGION_HEADER_RANGE: RangeInclusive<u8> = 0xC0..=0xDF;
     const DATA_SHORT: u8 = 0b0100_0000; // 01<encoder_id[3:0]> next 10 bits are <addr[9:0]>
+    const DATA_SHORT_RANGE: RangeInclusive<u8> = 0x40..=0x7F;
     const DATA_LONG: u8 = 0b0000_0000; // 00<encoder_id[3:0]> next 18 bits are <addr[9:0]>_0_<hit_map[6:0]>
+    const DATA_LONG_RANGE: RangeInclusive<u8> = 0x00..=0x3F;
     const BUSY_ON: u8 = 0xF0;
     const BUSY_OFF: u8 = 0xF1;
+
+    #[inline]
     pub fn from_byte(b: u8) -> Result<AlpideWord, ()> {
-        #[allow(clippy::match_single_binding)]
         match b {
             c if c & 0xC0 == Self::DATA_SHORT => Ok(AlpideWord::DataShort),
             c if c & 0xC0 == Self::DATA_LONG => Ok(AlpideWord::DataLong),
             c if c & 0xE0 == Self::REGION_HEADER => Ok(AlpideWord::RegionHeader),
             c if c & 0xF0 == Self::CHIP_EMPTY_FRAME => Ok(AlpideWord::ChipEmptyFrame),
-            c if c & 0xF0 == Self::CHIP_HEADER => Ok(AlpideWord::ChipHeader),
+            c if Self::CHIP_HEADER_RANGE.contains(&c) => Ok(AlpideWord::ChipHeader),
             c if c & 0xF0 == Self::CHIP_TRAILER => Ok(AlpideWord::ChipTrailer),
             _ => Self::match_exact(b),
         }
@@ -333,10 +341,10 @@ mod tests {
         for b in 0xC0..=0xDF {
             assert_eq!(AlpideWord::from_byte(b).unwrap(), AlpideWord::RegionHeader);
         }
-        for b in 0b0100_0000..=0b0111_1111 {
+        for b in 0x40..=0x7F {
             assert_eq!(AlpideWord::from_byte(b).unwrap(), AlpideWord::DataShort);
         }
-        for b in 0b0000_0000..=0b0011_1111 {
+        for b in 0x00..=0x3F {
             assert_eq!(AlpideWord::from_byte(b).unwrap(), AlpideWord::DataLong);
         }
     }
