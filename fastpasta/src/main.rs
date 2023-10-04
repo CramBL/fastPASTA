@@ -1,3 +1,5 @@
+mod cli;
+
 use alice_protocol_reader::init_reader;
 use fastpasta::config::init_config;
 use fastpasta::config::prelude::*;
@@ -6,6 +8,8 @@ use fastpasta::controller::init_controller;
 use fastpasta::stats::StatType;
 
 pub fn main() -> std::process::ExitCode {
+    let _m = cli::build_cli().get_matches();
+
     if let Err(e) = init_config() {
         eprintln!("{e}");
         return std::process::ExitCode::from(1);
