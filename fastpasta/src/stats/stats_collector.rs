@@ -18,7 +18,9 @@ use serde::{Deserialize, Serialize};
 /// Collects stats from analysis.
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct StatsCollector {
-    /// If the stats collection is finalized. If finalized, no more stats can be collected. If it is not finalized, it is not valid to read the stats.
+    /// If the stats collection is finalized.
+    /// If finalized, no more stats can be collected.
+    /// If it is NOT finalized, it is not valid to read the stats.
     pub is_finalized: bool,
     rdh_stats: RdhStats,
     error_stats: ErrorStats,
@@ -193,7 +195,7 @@ impl StatsCollector {
     }
 
     /// Returns a slice of the unique error codes of reported errors.
-    pub fn unique_error_codes_as_slice(&mut self) -> &[u16] {
+    pub fn unique_error_codes_as_slice(&mut self) -> &[String] {
         self.error_stats.unique_error_codes_as_slice()
     }
 
