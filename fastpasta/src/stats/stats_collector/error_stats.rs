@@ -23,9 +23,6 @@ impl ErrorStats {
         mute_errors: bool,
         layer_staves_seen: Option<&[(u8, u8)]>,
     ) {
-        // Extract unique error codes from reported errors
-        self.process_unique_error_codes();
-
         if !mute_errors {
             // Sort stats by memory position where they were found before consuming them
             self.sort_error_msgs_by_mem_pos();
@@ -33,12 +30,13 @@ impl ErrorStats {
         if let Some(layer_staves_seen) = layer_staves_seen {
             self.check_errors_for_stave_id(layer_staves_seen);
         }
+        // Extract unique error codes from reported errors
         self.process_unique_error_codes();
     }
 
     pub(super) fn sort_error_msgs_by_mem_pos(&mut self) {
         // Regex to extract the memory address from the error message
-        let re = regex::Regex::new(r"0x(?P<mem_pos>[0-9a-fA-F]+):").unwrap();
+        let re = regex::Regex::new(r"^0x(?<mem_pos>[0-9A-F]+)").unwrap();
         // Sort the errors by memory address
         if !self.reported_errors.is_empty() {
             self.reported_errors.sort_unstable_by_key(|e| {
