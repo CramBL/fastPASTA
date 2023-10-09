@@ -7,8 +7,8 @@
 //! ```
 //! # use alice_protocol_reader::cdp_wrapper::cdp_vec::CdpVec;
 //! # use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-//! # use alice_protocol_reader::prelude::{RdhCru, V7};
-//! let mut cdp_vec = CdpVec::<RdhCru<V7>>::new();
+//! # use alice_protocol_reader::prelude::RdhCru;
+//! let mut cdp_vec = CdpVec::<RdhCru>::new();
 //! let cdp_tup = (CORRECT_RDH_CRU_V7, vec![0; 10], 0);
 //!
 //! // Push a tuple of (RDH, payload, mem_pos)
@@ -80,8 +80,8 @@ impl<T: RDH> CdpVec<T> {
     /// ```
     /// # use alice_protocol_reader::cdp_wrapper::cdp_vec::CdpVec;
     /// # use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    /// # use alice_protocol_reader::prelude::{RdhCru, V7};
-    /// let mut cdp_vec = CdpVec::<RdhCru<V7>>::with_capacity(10);
+    /// # use alice_protocol_reader::prelude::RdhCru;
+    /// let mut cdp_vec = CdpVec::<RdhCru>::with_capacity(10);
     /// assert!(cdp_vec.len() == 0);
     /// ```
     ///
@@ -231,11 +231,10 @@ mod tests {
     use crate::prelude::test_data::CORRECT_RDH_CRU_V7;
     use crate::prelude::RdhCru;
     use crate::prelude::RDH;
-    use crate::prelude::V7;
 
     #[test]
     fn test_push() {
-        let mut cdp_vec = CdpVec::<RdhCru<V7>>::new();
+        let mut cdp_vec = CdpVec::<RdhCru>::new();
         cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
@@ -246,7 +245,7 @@ mod tests {
 
     #[test]
     fn test_push_tup() {
-        let mut cdp_vec = CdpVec::<RdhCru<V7>>::new();
+        let mut cdp_vec = CdpVec::<RdhCru>::new();
         let tup = (CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         cdp_vec.push_tuple(tup);
         cdp_vec.push_tuple((CORRECT_RDH_CRU_V7, vec![0; 10], 1));
@@ -258,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_clear() {
-        let mut cdp_vec = CdpVec::<RdhCru<V7>>::new();
+        let mut cdp_vec = CdpVec::<RdhCru>::new();
         cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
@@ -275,7 +274,7 @@ mod tests {
 
     #[test]
     fn test_len() {
-        let mut cdp_vec = CdpVec::<RdhCru<V7>>::new();
+        let mut cdp_vec = CdpVec::<RdhCru>::new();
         cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
@@ -284,7 +283,7 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        let mut cdp_vec = CdpVec::<RdhCru<V7>>::new();
+        let mut cdp_vec = CdpVec::<RdhCru>::new();
         assert!(cdp_vec.is_empty());
 
         cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
@@ -293,7 +292,7 @@ mod tests {
 
     #[test]
     fn test_with_capacity() {
-        let cdp_vec = CdpVec::<RdhCru<V7>>::with_capacity(10);
+        let cdp_vec = CdpVec::<RdhCru>::with_capacity(10);
         assert_eq!(cdp_vec.rdhs.capacity(), 10);
         assert_eq!(cdp_vec.payloads.capacity(), 10);
         assert_eq!(cdp_vec.rdh_mem_pos.capacity(), 10);
@@ -301,7 +300,7 @@ mod tests {
 
     #[test]
     fn test_rdh_slice() {
-        let mut cdp_vec = CdpVec::<RdhCru<V7>>::new();
+        let mut cdp_vec = CdpVec::<RdhCru>::new();
         cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 

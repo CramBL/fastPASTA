@@ -23,7 +23,7 @@ fn sanity_check_rdhs(rdh_cru_size_bytes: u64, filename: &str, iterations: usize)
     let mut rdhs = 0;
 
     loop {
-        let tmp_rdh = match RdhCru::<V7>::load(&mut buf_reader) {
+        let tmp_rdh = match RdhCru::load(&mut buf_reader) {
             Ok(rdh) => rdh,
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
                 print!("EOF reached! ");

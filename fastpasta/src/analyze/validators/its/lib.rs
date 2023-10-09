@@ -95,11 +95,10 @@ mod tests {
 
         let (stats_send_chan, stats_recv_chan) = flume::unbounded();
 
-        let mut cdp_validator: CdpRunningValidator<RdhCru<V7>, MockConfig> =
-            CdpRunningValidator::new(
-                CFG_TEST_DO_PAYLOAD_CHECKS.get().unwrap(),
-                stats_send_chan.clone(),
-            );
+        let mut cdp_validator: CdpRunningValidator<RdhCru, MockConfig> = CdpRunningValidator::new(
+            CFG_TEST_DO_PAYLOAD_CHECKS.get().unwrap(),
+            stats_send_chan.clone(),
+        );
         let rdh = CORRECT_RDH_CRU_V7;
         let payload = vec![0x3D; 100];
         let rdh_mem_pos = 0;

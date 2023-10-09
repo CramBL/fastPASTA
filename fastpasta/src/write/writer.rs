@@ -153,7 +153,7 @@ mod tests {
     use crate::config::test_util::MockConfig;
     use crate::config::Cfg;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use alice_protocol_reader::prelude::{RdhCru, V6, V7};
+    use alice_protocol_reader::prelude::RdhCru;
     use clap::Parser;
     use temp_dir::TempDir;
 
@@ -179,7 +179,7 @@ mod tests {
         let test_file_path = tmp_d.child("test.raw");
         let cfg = build_test_config(&test_file_path);
         {
-            let writer = BufferedWriter::<RdhCru<V6>>::new(&cfg, 10);
+            let writer = BufferedWriter::<RdhCru>::new(&cfg, 10);
 
             assert!(writer.buf_writer.is_some());
         }
@@ -202,7 +202,7 @@ mod tests {
         let length = rdhs.len();
         println!("length: {}", length);
         {
-            let mut writer = BufferedWriter::<RdhCru<V7>>::new(&config, 10);
+            let mut writer = BufferedWriter::<RdhCru>::new(&config, 10);
             writer.push_rdhs(rdhs);
             let buf_size = writer.filtered_rdhs_buffer.len();
             println!("buf_size: {}", buf_size);
@@ -227,7 +227,7 @@ mod tests {
 
         let length = cdp_vec.len();
         {
-            let mut writer = BufferedWriter::<RdhCru<V7>>::new(&config, 10);
+            let mut writer = BufferedWriter::<RdhCru>::new(&config, 10);
             writer.push_cdp_vec(cdp_vec);
             let buf_size = writer.filtered_rdhs_buffer.len();
             assert_eq!(buf_size, length);

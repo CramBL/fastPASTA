@@ -16,7 +16,7 @@ use crate::config::check::{CheckCommands, ChecksOpt, System};
 use crate::config::custom_checks::CustomChecksOpt;
 use crate::stats::StatType;
 use alice_protocol_reader::prelude::FilterOpt;
-use alice_protocol_reader::prelude::{RdhCru, RDH, V7};
+use alice_protocol_reader::prelude::{RdhCru, RDH};
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
 
 /// Main validator that handles all checks on a specific link.
@@ -167,7 +167,7 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
 
     fn report_rdh_error(&mut self, rdh: &T, mut error: String, rdh_mem_pos: u64) {
         error.push('\n');
-        error.push_str(RdhCru::<V7>::rdh_header_text_with_indent_to_string(13).as_str());
+        error.push_str(RdhCru::rdh_header_text_with_indent_to_string(13).as_str());
         self.prev_rdhs.iter().for_each(|prev_rdh| {
             error.push_str(&format!("  previous:  {prev_rdh}\n"));
         });
@@ -378,7 +378,7 @@ mod tests {
         let mut cfg = MockConfig::new();
         cfg.check = Some(CheckCommands::Sanity { system: None });
 
-        type RdhV7 = RdhCru<V7>;
+        type RdhV7 = RdhCru;
 
         let (mut _link_validator, _cdp_tuple_send_ch): (
             LinkValidator<RdhV7, MockConfig>,

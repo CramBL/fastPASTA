@@ -38,8 +38,8 @@ impl<T: RDH, const CAP: usize> CdpArray<T, CAP> {
     /// ```
     /// # use alice_protocol_reader::cdp_wrapper::cdp_array::CdpArray;
     /// # use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    /// # use alice_protocol_reader::prelude::{RdhCru, V7};
-    /// let mut arrvec = CdpArray::<RdhCru<V7>, 10>::new_const();
+    /// # use alice_protocol_reader::prelude::RdhCru;
+    /// let mut arrvec = CdpArray::<RdhCru, 10>::new_const();
     /// assert!(arrvec.len() == 0);
     /// ```
     ///
@@ -184,19 +184,16 @@ impl<'a, T: RDH, const CAP: usize> Iterator for CdpArrayIter<'a, T, CAP> {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::V6;
-
     use super::CdpArray;
     use super::*;
     use crate::prelude::test_data::CORRECT_RDH_CRU_V6;
     use crate::prelude::test_data::CORRECT_RDH_CRU_V7;
     use crate::prelude::RdhCru;
     use crate::prelude::RDH;
-    use crate::prelude::V7;
 
     #[test]
     fn test_push() {
-        let mut arrvec = CdpArray::<RdhCru<V7>, 10>::new();
+        let mut arrvec = CdpArray::<RdhCru, 10>::new();
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
@@ -207,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_push_tup() {
-        let mut arrvec = CdpArray::<RdhCru<V7>, 10>::new();
+        let mut arrvec = CdpArray::<RdhCru, 10>::new();
         let tup = (CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         arrvec.push_tuple(tup);
         arrvec.push_tuple((CORRECT_RDH_CRU_V7, vec![0; 10], 1));
@@ -219,7 +216,7 @@ mod tests {
 
     #[test]
     fn test_clear() {
-        let mut arrvec = CdpArray::<RdhCru<V7>, 10>::new();
+        let mut arrvec = CdpArray::<RdhCru, 10>::new();
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
@@ -236,7 +233,7 @@ mod tests {
 
     #[test]
     fn test_len() {
-        let mut arrvec = CdpArray::<RdhCru<V7>, 2>::new();
+        let mut arrvec = CdpArray::<RdhCru, 2>::new();
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
@@ -245,7 +242,7 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        let mut arrvec = CdpArray::<RdhCru<V7>, 1>::new();
+        let mut arrvec = CdpArray::<RdhCru, 1>::new();
         assert!(arrvec.is_empty());
 
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
@@ -254,7 +251,7 @@ mod tests {
 
     #[test]
     fn test_with_capacity() {
-        let arrvec = CdpArray::<RdhCru<V7>, 10>::new_const();
+        let arrvec = CdpArray::<RdhCru, 10>::new_const();
         assert_eq!(arrvec.rdhs.capacity(), 10);
         assert_eq!(arrvec.payloads.capacity(), 10);
         assert_eq!(arrvec.rdh_mem_pos.capacity(), 10);
@@ -262,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_rdh_slice() {
-        let mut arrvec = CdpArray::<RdhCru<V7>, 2>::new();
+        let mut arrvec = CdpArray::<RdhCru, 2>::new();
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
@@ -275,7 +272,7 @@ mod tests {
 
     #[test]
     fn test_consuming_iterator_cdp_array_v7() {
-        let cdp_array = CdpArray::<RdhCru<V7>, 2> {
+        let cdp_array = CdpArray::<RdhCru, 2> {
             rdhs: {
                 let mut a = ArrayVec::new_const();
                 a.push(CORRECT_RDH_CRU_V7);
@@ -298,7 +295,7 @@ mod tests {
 
     #[test]
     fn test_non_consuming_iterator_cdp_array_v7() {
-        let mut cdp_array = CdpArray::<RdhCru<V7>, 2> {
+        let mut cdp_array = CdpArray::<RdhCru, 2> {
             rdhs: ArrayVec::new(),
             payloads: ArrayVec::from([vec![0; 10], vec![0; 10]]),
             rdh_mem_pos: ArrayVec::from([255, 255]),
@@ -316,7 +313,7 @@ mod tests {
 
     #[test]
     fn test_consuming_iterator_cdp_array_v6() {
-        let mut cdp_array = CdpArray::<RdhCru<V6>, 2> {
+        let mut cdp_array = CdpArray::<RdhCru, 2> {
             rdhs: ArrayVec::new_const(),
             payloads: ArrayVec::from([vec![0; 10], vec![0; 10]]),
             rdh_mem_pos: ArrayVec::from([0, 1]),
@@ -339,7 +336,7 @@ mod tests {
     fn test_non_consuming_iterator_cdp_array_v6() {
         let cdp_array = CdpArray {
             rdhs: {
-                let mut a = ArrayVec::<RdhCru<V6>, 2>::new_const();
+                let mut a = ArrayVec::<RdhCru, 2>::new_const();
                 a.push(CORRECT_RDH_CRU_V6);
                 a.push(CORRECT_RDH_CRU_V6);
                 a
@@ -368,7 +365,7 @@ mod tests {
     fn test_fn_borrows_cdp_array() {
         let cdp_array = CdpArray {
             rdhs: {
-                let mut a = ArrayVec::<RdhCru<V6>, 2>::new_const();
+                let mut a = ArrayVec::<RdhCru, 2>::new_const();
                 a.push(CORRECT_RDH_CRU_V6);
                 a.push(CORRECT_RDH_CRU_V6);
                 a
@@ -390,7 +387,7 @@ mod tests {
     fn test_fn_consume_cdp_array() {
         let cdp_array = CdpArray {
             rdhs: {
-                let mut a = ArrayVec::<RdhCru<V6>, 3>::new_const();
+                let mut a = ArrayVec::<RdhCru, 3>::new_const();
                 a.push(CORRECT_RDH_CRU_V6);
                 a.push(CORRECT_RDH_CRU_V6);
                 a

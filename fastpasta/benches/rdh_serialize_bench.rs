@@ -20,9 +20,9 @@ fn write_rdh_manual(fileout: &str) {
         .open(filepath)
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
-    let rdhs: Vec<RdhCru<V7>> = (0..50000)
+    let rdhs: Vec<RdhCru> = (0..50000)
         .map(|_| {
-            let rdh_tmp = RdhCru::<V7>::load(&mut buf_reader).expect("Failed to load RdhCruv7");
+            let rdh_tmp = RdhCru::load(&mut buf_reader).expect("Failed to load RdhCruv7");
             let relative_offset =
                 RelativeOffset::new((rdh_tmp.offset_to_next() as u64) - RDH_CRU_SIZE_BYTES);
             buf_reader

@@ -129,7 +129,7 @@ pub fn init_processing(
         //      1. Unlikely there will ever be an RDH version higher than that
         //      2. High values decoded from this field (especially 255) is typically a sign that the data is not actually ALICE data so early exit is preferred
         3..=100 => {
-            match process::<RdhCru<u8>, 100>(
+            match process::<RdhCru, 100>(
                 config,
                 loader,
                 Some(&input_stats_recv),
@@ -350,7 +350,7 @@ mod tests {
             flume::unbounded();
         let (data_sender, data_receiver) = crossbeam_channel::unbounded();
         let stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let mut cdp_batch: CdpArray<RdhCru<V7>, 1> = CdpArray::new();
+        let mut cdp_batch: CdpArray<RdhCru, 1> = CdpArray::new();
         cdp_batch.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);
 
         // Act

@@ -335,7 +335,7 @@ mod tests {
 
         let mut input_scanner = InputScanner::minimal(reader);
 
-        let rdh = input_scanner.load_rdh_cru::<RdhCru<u8>>().unwrap();
+        let rdh = input_scanner.load_rdh_cru::<RdhCru>().unwrap();
 
         println!("{rdh:?}");
     }
@@ -377,7 +377,7 @@ mod tests {
 
         let mut input_scanner = input_scanner::InputScanner::new(&MyCfg, reader, None);
 
-        let rdh = input_scanner.load_rdh_cru::<RdhCru<u8>>();
+        let rdh = input_scanner.load_rdh_cru::<RdhCru>();
 
         match rdh {
             Ok(rdh) => println!("{rdh:?}"),

@@ -155,10 +155,10 @@ mod tests {
         cfg.check = Some(CheckCommands::Sanity { system: None });
         CFG_TEST_DISPACTER.set(cfg).unwrap();
 
-        let mut disp: ValidatorDispatcher<RdhCru<V7>, MockConfig> =
+        let mut disp: ValidatorDispatcher<RdhCru, MockConfig> =
             ValidatorDispatcher::new(CFG_TEST_DISPACTER.get().unwrap(), flume::unbounded().0);
 
-        let cdp_tuple: CdpTuple<RdhCru<V7>> = (CORRECT_RDH_CRU_V7, vec![0; 100], 0);
+        let cdp_tuple: CdpTuple<RdhCru> = (CORRECT_RDH_CRU_V7, vec![0; 100], 0);
 
         let mut cdp_array = CdpArray::new();
         cdp_array.push_tuple(cdp_tuple);
