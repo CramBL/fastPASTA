@@ -1,7 +1,9 @@
 //! Contains the [AlpideReadoutFrame] struct that stores information about a readout frame from the ALPIDE chips.
 //!
 //! A readout frame should contain data from multiple lanes, and the data from each lane is stored in a [LaneDataFrame].
-use crate::words::its::{alpide_words::LaneDataFrame, data_words::ib_data_word_id_to_lane, Layer};
+use crate::words::its::{
+    data_words::ib_data_word_id_to_lane, lane_data_frame::LaneDataFrame, Layer,
+};
 
 /// Struct for storing the contents of a single ALPIDE readout frame
 #[derive(Default)]

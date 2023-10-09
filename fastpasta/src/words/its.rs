@@ -1,8 +1,9 @@
 //! Data definitions for ITS payload words
 
 use std::fmt::Display;
-pub mod alpide_words;
+pub mod alpide;
 pub mod data_words;
+pub mod lane_data_frame;
 pub mod status_words;
 
 /// Enum for marking if the data is from the inner/middle/outer layer
