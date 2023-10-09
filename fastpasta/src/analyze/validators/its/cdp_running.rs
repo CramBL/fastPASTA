@@ -8,7 +8,7 @@ use super::{
     data_words::DATA_WORD_SANITY_CHECKER,
     its_payload_fsm_cont::{self, ItsPayloadFsmContinuous},
     lib::ItsPayloadWord,
-    status_word::STATUS_WORD_SANITY_CHECKER,
+    status_word::{tdh::TdhValidator, STATUS_WORD_SANITY_CHECKER},
 };
 use crate::analyze::validators::its::alpide::alpide_readout_frame::AlpideReadoutFrame;
 use crate::config::prelude::*;
@@ -549,31 +549,31 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                     .as_ref()
                     .expect("TDH should be set, process words before checks");
 
-                if current_tdh.internal_trigger() == 1 {
-                    let prev_trigger_bc = prev_int_tdh.trigger_bc();
-                    let current_trigger_bc = current_tdh.trigger_bc();
+                // Closure for reporting a trigger interval error
+                let report_tdh_trigger_interval_error = |detected_period: u16| {
+                    let prev_trigger_orbit = prev_int_tdh.trigger_orbit;
+                    let current_trigger_orbit = current_tdh.trigger_orbit;
 
-                    let detected_period = if current_trigger_bc < prev_trigger_bc {
-                        // Bunch Crossing ID wrapped around
-                        let distance_to_max = Tdh::MAX_BC - prev_trigger_bc + 1; // +1 cause of incrementing the Orbit counter
-                        distance_to_max + current_trigger_bc
-                    } else {
-                        current_trigger_bc - prev_trigger_bc
-                    };
-                    // check
-                    if specified_trig_period != detected_period {
-                        let prev_trigger_orbit = prev_int_tdh.trigger_orbit;
-                        let current_trigger_orbit = current_tdh.trigger_orbit;
-                        let mem_pos = self.calc_current_word_mem_pos();
-
-                        self.stats_send_ch
+                    self.stats_send_ch
                             .send(StatType::Error(format!(
-                                "{mem_pos:#X}: {error} ", error = &format!(
+                                "{mem_pos:#X}: {error} ", mem_pos = self.calc_current_word_mem_pos(),
+                                error = &format!(
                                     "[E45] TDH trigger period mismatch with user specified: {specified_trig_period} != {detected_period}\
                                     \n\tPrevious TDH Orbit_BC: {prev_trigger_orbit}_{prev_trigger_bc:>4}\
                                     \n\tCurrent  TDH Orbit_BC: {current_trigger_orbit}_{current_trigger_bc:>4}",
+                                    prev_trigger_bc = prev_int_tdh.trigger_bc(),
+                                    current_trigger_bc = current_tdh.trigger_bc()
                             )).into()))
                             .expect("Failed to send error to stats channel");
+                };
+
+                if current_tdh.internal_trigger() == 1 {
+                    if let Err(erroneous_period) = TdhValidator::matches_trigger_interval(
+                        current_tdh.trigger_bc(),
+                        prev_int_tdh.trigger_bc(),
+                        specified_trig_period,
+                    ) {
+                        report_tdh_trigger_interval_error(erroneous_period);
                     }
                 }
             }

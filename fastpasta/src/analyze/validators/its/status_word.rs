@@ -11,7 +11,7 @@ use tdt::TdtValidator;
 
 mod ddw;
 mod ihw;
-mod tdh;
+pub(super) mod tdh;
 mod tdt;
 
 /// Convenience const for the [StatusWordSanityChecker].

@@ -5,9 +5,10 @@ use super::StatusWordValidator;
 use crate::words::its::status_words::{StatusWord, Tdh};
 
 #[derive(Debug, Copy, Clone)]
-pub(super) struct TdhValidator {
+pub struct TdhValidator {
     valid_id: u8,
 }
+
 impl StatusWordValidator<Tdh> for TdhValidator {
     fn sanity_check(&self, tdh: &Tdh) -> Result<(), String> {
         let mut err_str = String::new();
@@ -56,6 +57,26 @@ impl StatusWordValidator<Tdh> for TdhValidator {
 impl TdhValidator {
     pub const fn new_const() -> Self {
         Self { valid_id: 0xE8 }
+    }
+
+    pub fn matches_trigger_interval(
+        current_trg_bc: u16,
+        previous_trg_bc: u16,
+        specified_period: u16,
+    ) -> Result<(), u16> {
+        let detected_period = if current_trg_bc < previous_trg_bc {
+            // Bunch Crossing ID wrapped around
+            // +1 cause of incrementing the Orbit counter for the rollover
+            let distance_to_max = Tdh::MAX_BC - previous_trg_bc + 1;
+            distance_to_max + current_trg_bc
+        } else {
+            current_trg_bc - previous_trg_bc
+        };
+        if detected_period == specified_period {
+            Ok(())
+        } else {
+            Err(detected_period)
+        }
     }
 }
 
