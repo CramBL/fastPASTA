@@ -5,6 +5,10 @@
 use crate::words::its::status_words::{Ddw0, Ihw, StatusWord, Tdh, Tdt};
 use std::fmt::Write;
 
+use ihw::IhwValidator;
+
+pub mod ihw;
+
 /// Convenience const for the [StatusWordSanityChecker].
 pub const STATUS_WORD_SANITY_CHECKER: StatusWordSanityChecker = StatusWordSanityChecker::new();
 
@@ -48,32 +52,7 @@ trait StatusWordValidator<T: StatusWord> {
     fn sanity_check(&self, status_word: &T) -> Result<(), String>;
 }
 
-const IHW_VALIDATOR: IhwValidator = IhwValidator { valid_id: 0xE0 };
-struct IhwValidator {
-    valid_id: u8,
-}
-impl StatusWordValidator<Ihw> for IhwValidator {
-    fn sanity_check(&self, ihw: &Ihw) -> Result<(), String> {
-        let mut err_str = String::new();
-
-        if ihw.id() != self.valid_id {
-            write!(err_str, "ID is not 0xE0: {:#2X} ", ihw.id()).unwrap();
-            // Early return if ID is wrong
-            return Err(err_str);
-        }
-
-        let mut err_cnt: u8 = 0;
-        if !ihw.is_reserved_0() {
-            err_cnt += 1;
-            write!(err_str, "reserved bits are not 0: {:2X} ", ihw.reserved()).unwrap();
-        }
-        if err_cnt > 0 {
-            Err(err_str)
-        } else {
-            Ok(())
-        }
-    }
-}
+const IHW_VALIDATOR: IhwValidator = IhwValidator::new_const();
 
 const TDH_VALIDATOR: TdhValidator = TdhValidator { valid_id: 0xE8 };
 struct TdhValidator {
