@@ -45,3 +45,30 @@ impl IhwValidator {
         Self { valid_id: 0xE0 }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const IHW_VALIDATOR: IhwValidator = IhwValidator::new_const();
+
+    #[test]
+    fn test_ihw_validator() {
+        let raw_data_ihw = [0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE0];
+        let ihw = Ihw::load(&mut raw_data_ihw.as_slice()).unwrap();
+        assert!(IHW_VALIDATOR.sanity_check(&ihw).is_ok());
+        let raw_data_ihw_bad_reserved =
+            [0xFF, 0x3F, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xE0];
+        let ihw_bad = Ihw::load(&mut raw_data_ihw_bad_reserved.as_slice()).unwrap();
+        assert!(IHW_VALIDATOR.sanity_check(&ihw_bad).is_err());
+    }
+
+    #[test]
+    fn test_invalidate_ihw() {
+        let raw_data_ihw_bad_id = [0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xB0];
+        let ihw = Ihw::load(&mut raw_data_ihw_bad_id.as_slice()).unwrap();
+        let err = IHW_VALIDATOR.sanity_check(&ihw).err();
+        assert!(err.is_some());
+        assert!(err.unwrap().contains("ID is not 0xE0: 0x"));
+    }
+}
