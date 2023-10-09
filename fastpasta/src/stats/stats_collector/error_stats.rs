@@ -11,7 +11,7 @@ pub struct ErrorStats {
     reported_errors: Vec<Box<str>>,
     custom_checks_stats_errors: Vec<Box<str>>,
     total_errors: u64,
-    unique_error_codes: Option<Vec<u16>>,
+    unique_error_codes: Option<Vec<String>>,
     // Only applicable if the data is from ITS
     staves_with_errors: Option<Vec<LayerStave>>,
 }
@@ -23,9 +23,6 @@ impl ErrorStats {
         mute_errors: bool,
         layer_staves_seen: Option<&[(u8, u8)]>,
     ) {
-        // Extract unique error codes from reported errors
-        self.process_unique_error_codes();
-
         if !mute_errors {
             // Sort stats by memory position where they were found before consuming them
             self.sort_error_msgs_by_mem_pos();
@@ -33,12 +30,14 @@ impl ErrorStats {
         if let Some(layer_staves_seen) = layer_staves_seen {
             self.check_errors_for_stave_id(layer_staves_seen);
         }
+        // Extract unique error codes from reported errors
         self.process_unique_error_codes();
     }
 
     pub(super) fn sort_error_msgs_by_mem_pos(&mut self) {
         // Regex to extract the memory address from the error message
-        let re = regex::Regex::new(r"0x(?P<mem_pos>[0-9a-fA-F]+):").unwrap();
+        // State machine: https://regexper.com/#0x%28%5B0-9A-F%5D%2B%29%3A
+        let re = regex::Regex::new(r"^0x(?<mem_pos>[0-9A-F]+)").unwrap();
         // Sort the errors by memory address
         if !self.reported_errors.is_empty() {
             self.reported_errors.sort_unstable_by_key(|e| {
@@ -59,7 +58,7 @@ impl ErrorStats {
 
         // If there's any errors from the custom checks on stats, find the error codes and add them.
         if !self.custom_checks_stats_errors.is_empty() {
-            let unique_custom_error_codes: Vec<u16> =
+            let unique_custom_error_codes: Vec<String> =
                 extract_unique_error_codes(&self.custom_checks_stats_errors);
             if self.unique_error_codes.is_none() {
                 self.unique_error_codes = Some(unique_custom_error_codes);
@@ -78,6 +77,9 @@ impl ErrorStats {
             return;
         }
         let mut staves_with_errors: Vec<LayerStave> = Vec::new();
+
+        // State machine:
+        // https://regexper.com/#FEE%28%3F%3A.%7C%29ID%3A%28%5B1-9%5D%5B0-9%5D%7B0%2C4%7D%29
         let re: regex::Regex =
             regex::Regex::new("FEE(?:.|)ID:(?P<fee_id>[1-9][0-9]{0,4})").unwrap();
 
@@ -129,7 +131,7 @@ impl ErrorStats {
         self.fatal_error.as_ref().unwrap()
     }
 
-    pub(super) fn unique_error_codes_as_slice(&mut self) -> &[u16] {
+    pub(super) fn unique_error_codes_as_slice(&mut self) -> &[String] {
         self.unique_error_codes
             .as_ref()
             .expect("Unique error codes were never set")
@@ -185,21 +187,13 @@ impl ErrorStats {
     );
 }
 
-fn extract_unique_error_codes(error_messages: &[Box<str>]) -> Vec<u16> {
-    let mut error_codes: Vec<u16> = Vec::new();
+fn extract_unique_error_codes(error_messages: &[Box<str>]) -> Vec<String> {
+    let mut error_codes: Vec<String> = Vec::new();
     let re = regex::Regex::new(r"\[E(?P<err_code>[0-9]{2,4})\]").unwrap();
     error_messages.iter().for_each(|err_msg| {
-        let err_code_matches: Vec<u16> = re
-            .find_iter(err_msg)
-            .map(|m| {
-                m.as_str()
-                    .strip_prefix("[E")
-                    .unwrap()
-                    .strip_suffix(']')
-                    .unwrap()
-                    .parse::<u16>()
-                    .unwrap()
-            })
+        let err_code_matches: Vec<String> = re
+            .captures_iter(err_msg)
+            .map(|m| m.name("err_code").unwrap().as_str().into())
             .collect();
 
         err_code_matches.into_iter().for_each(|err_code| {

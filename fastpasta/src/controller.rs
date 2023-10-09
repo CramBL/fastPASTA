@@ -291,7 +291,16 @@ impl<C: Config + 'static> Controller<C> {
         if self.spinner.is_some() {
             self.spinner.as_mut().unwrap().abandon();
         }
-        report.print();
+
+        use std::io::Write;
+        let mut lock = std::io::stdout().lock();
+        if let Err(e) = writeln!(lock, "{}", report.format()) {
+            if e.kind() == std::io::ErrorKind::BrokenPipe {
+                log::warn!("Broken pipe, stdout was closed before report could be written");
+            } else {
+                log::error!("Failed to write report to stdout: {e}");
+            }
+        }
     }
 
     /// Add completed message to current spinner and abandon it

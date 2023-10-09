@@ -61,6 +61,7 @@ pub struct Report {
     filter_stats_table: Option<Table>,
     alpide_stats_table: Option<Table>,
 }
+
 impl Report {
     pub fn new(processing_time: std::time::Duration) -> Self {
         Self {
@@ -97,7 +98,7 @@ impl Report {
         self.fatal_error = Some(error);
     }
 
-    pub fn print(&mut self) {
+    pub fn format(&mut self) -> &Table {
         let mut global_stats_table = Table::new(&self.stats);
         format_global_stats_sub_table(&mut global_stats_table);
         let mut detected_attributes_table = Table::new(&self.detected_attributes);
@@ -167,10 +168,8 @@ impl Report {
                 ));
             self.report_table = Some(error_table);
         }
-        println!(
-            "{final_report}",
-            final_report = self.report_table.as_ref().unwrap()
-        );
+
+        self.report_table.as_ref().unwrap()
     }
 }
 
@@ -217,9 +216,9 @@ mod tests {
 
         let filter_table = Table::new(vec![filtered_links, observed_links]);
         report.add_filter_stats(filter_table);
-        assert_stdout_contains!(report.print(), "Filtered links");
-        assert_stdout_contains!(report.print(), "Total RDHs");
-        assert_stdout_contains!(report.print(), "725800");
+        assert_stdout_contains!(println!("{}", report.format()), "Filtered links");
+        assert_stdout_contains!(println!("{}", report.format()), "Total RDHs");
+        assert_stdout_contains!(println!("{}", report.format()), "725800");
     }
 
     #[ignore = "Uses stdout which prevents concurrent test execution and also break without --nocapture"]
@@ -248,7 +247,7 @@ mod tests {
         let mut report = Report::new(processing_time.elapsed());
         report.add_fatal_error(fatal_error.to_string());
 
-        assert_stdout_contains!(report.print(), "FATAL ERROR");
+        assert_stdout_contains!(println!("{}", report.format()), "FATAL ERROR");
     }
 
     #[test]
