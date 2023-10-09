@@ -2,15 +2,16 @@ use crate::{
     analyze::validators::{its::lib::ItsPayloadWord, lib::preprocess_payload},
     analyze::view::lib::format_word_slice,
 };
-use alice_protocol_reader::{cdp_arr::CdpArr, prelude::*};
+use alice_protocol_reader::cdp_wrapper::cdp_array::CdpArray;
+use alice_protocol_reader::prelude::*;
 use std::io::Write;
 
 pub(crate) fn its_readout_frame_view<T: RDH, const CAP: usize>(
-    cdp_chunk: CdpArr<T, CAP>,
+    cdp_array: CdpArray<T, CAP>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut stdio_lock = std::io::stdout().lock();
     super::print_start_of_its_readout_frame_header_text(&mut stdio_lock)?;
-    for (rdh, payload, rdh_mem_pos) in cdp_chunk.into_iter() {
+    for (rdh, payload, rdh_mem_pos) in cdp_array.into_iter() {
         super::print_rdh_its_readout_frame_view(&rdh, &rdh_mem_pos, &mut stdio_lock)?;
         let gbt_word_chunks = preprocess_payload(&payload)?;
         for (idx, gbt_word) in gbt_word_chunks.enumerate() {

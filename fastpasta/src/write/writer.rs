@@ -5,8 +5,8 @@
 //! Implements drop to flush the remaining data to the file once processing is done.
 
 use crate::config::inputoutput::InputOutputOpt;
-use alice_protocol_reader::cdp_arr::CdpArr;
-use alice_protocol_reader::prelude::CdpChunk;
+use alice_protocol_reader::cdp_wrapper::cdp_array::CdpArray;
+use alice_protocol_reader::prelude::CdpVec;
 use alice_protocol_reader::prelude::RDH;
 
 /// Trait for a writer that can write ALICE readout data to file/stdout.
@@ -17,10 +17,10 @@ pub trait Writer<T: RDH> {
     fn push_rdhs(&mut self, rdhs: Vec<T>);
     /// Push a vector of payloads to the buffer
     fn push_payload(&mut self, payload: Vec<u8>);
-    /// Push a CDP chunk to the buffer
-    fn push_cdp_chunk(&mut self, cdp_chunk: CdpChunk<T>);
+    /// Push a CDP vec to the buffer
+    fn push_cdp_vec(&mut self, cdp_vec: CdpVec<T>);
     /// Push a CDP array to the buffer
-    fn push_cdp_arr<const CAP: usize>(&mut self, cdp_arr: CdpArr<T, CAP>);
+    fn push_cdp_arr<const CAP: usize>(&mut self, cdp_arr: CdpArray<T, CAP>);
     /// Flush the buffer to file/stdout
     fn flush(&mut self) -> std::io::Result<()>;
 }
@@ -87,20 +87,20 @@ impl<T: RDH> Writer<T> for BufferedWriter<T> {
     }
 
     #[inline]
-    fn push_cdp_chunk(&mut self, cdp_chunk: CdpChunk<T>) {
-        if (self.filtered_rdhs_buffer.len() + cdp_chunk.len() >= self.max_buffer_size)
-            || (self.filtered_payload_buffers.len() + cdp_chunk.len() >= self.max_buffer_size)
+    fn push_cdp_vec(&mut self, cdp_vec: CdpVec<T>) {
+        if (self.filtered_rdhs_buffer.len() + cdp_vec.len() >= self.max_buffer_size)
+            || (self.filtered_payload_buffers.len() + cdp_vec.len() >= self.max_buffer_size)
         {
             self.flush().expect("Failed to flush buffer");
         }
-        cdp_chunk.into_iter().for_each(|(rdh, payload, _)| {
+        cdp_vec.into_iter().for_each(|(rdh, payload, _)| {
             self.filtered_rdhs_buffer.push(rdh);
             self.filtered_payload_buffers.push(payload);
         });
     }
 
     #[inline]
-    fn push_cdp_arr<const CAP: usize>(&mut self, cdp_arr: CdpArr<T, CAP>) {
+    fn push_cdp_arr<const CAP: usize>(&mut self, cdp_arr: CdpArray<T, CAP>) {
         if (self.filtered_rdhs_buffer.len() + cdp_arr.len() >= self.max_buffer_size)
             || (self.filtered_payload_buffers.len() + cdp_arr.len() >= self.max_buffer_size)
         {
@@ -220,15 +220,15 @@ mod tests {
 
         let config: Cfg = <Cfg>::parse_from(config_str);
 
-        let mut cdp_chunk = CdpChunk::new();
+        let mut cdp_vec = CdpVec::new();
 
-        cdp_chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
-        cdp_chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0x40);
+        cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
+        cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0x40);
 
-        let length = cdp_chunk.len();
+        let length = cdp_vec.len();
         {
             let mut writer = BufferedWriter::<RdhCru<V7>>::new(&config, 10);
-            writer.push_cdp_chunk(cdp_chunk);
+            writer.push_cdp_vec(cdp_vec);
             let buf_size = writer.filtered_rdhs_buffer.len();
             assert_eq!(buf_size, length);
         }

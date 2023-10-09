@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
 
-use alice_protocol_reader::cdp_arr::CdpArr;
+use alice_protocol_reader::cdp_wrapper::cdp_array::CdpArray;
 use crossbeam_channel::Receiver;
 
 use super::writer::BufferedWriter;
@@ -20,16 +20,16 @@ const BUFFER_SIZE: usize = 1024 * 1024; // 1MB buffer
 pub fn spawn_writer<T: RDH + 'static, const CAP: usize>(
     config: &'static impl InputOutputOpt,
     stop_flag: Arc<AtomicBool>,
-    data_recv: Receiver<CdpArr<T, CAP>>,
+    data_recv: Receiver<CdpArray<T, CAP>>,
 ) -> thread::JoinHandle<()> {
     let writer_thread = thread::Builder::new().name("Writer".to_string());
     writer_thread
         .spawn({
             let mut writer = BufferedWriter::<T>::new(config, BUFFER_SIZE);
             move || loop {
-                // Receive chunk from checker
+                // Receive batch from checker
                 let cdps = match data_recv.recv() {
-                    Ok(cdp) => cdp,
+                    Ok(cdps) => cdps,
                     Err(e) => {
                         debug_assert_eq!(e, crossbeam_channel::RecvError);
                         break;

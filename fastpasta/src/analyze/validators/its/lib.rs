@@ -6,15 +6,15 @@ use alice_protocol_reader::prelude::FilterOpt;
 use alice_protocol_reader::prelude::RDH;
 
 /// # Arguments
-/// * `cdp_chunk_slice` - A tuple containing the RDH, the payload and the RDH memory position
+/// * `cdp` - A tuple containing the RDH, the payload and the RDH memory position
 /// * `stats_send_chan` - The channel to send stats through
 /// * `cdp_validator` - The CDP validator to use, which is an ITS specific [CdpRunningValidator]
 pub fn do_payload_checks<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt>(
-    cdp_chunk_slice: (&T, &[u8], u64),
+    cdp: (&T, &[u8], u64),
     stats_send_chan: &flume::Sender<StatType>,
     cdp_validator: &mut CdpRunningValidator<T, C>,
 ) {
-    let (rdh, payload, rdh_mem_pos) = cdp_chunk_slice;
+    let (rdh, payload, rdh_mem_pos) = cdp;
     cdp_validator.set_current_rdh(rdh, rdh_mem_pos);
     match crate::analyze::validators::lib::preprocess_payload(payload) {
         Ok(gbt_word_chunks) => gbt_word_chunks.for_each(|gbt_word| {
@@ -103,9 +103,9 @@ mod tests {
         let rdh = CORRECT_RDH_CRU_V7;
         let payload = vec![0x3D; 100];
         let rdh_mem_pos = 0;
-        let cdp_chunk_slice = (&rdh, payload.as_slice(), rdh_mem_pos);
+        let cdp_slice = (&rdh, payload.as_slice(), rdh_mem_pos);
 
-        do_payload_checks(cdp_chunk_slice, &stats_send_chan, &mut cdp_validator);
+        do_payload_checks(cdp_slice, &stats_send_chan, &mut cdp_validator);
 
         // Receive and check stats
         while let Ok(stats) = stats_recv_chan.try_recv() {

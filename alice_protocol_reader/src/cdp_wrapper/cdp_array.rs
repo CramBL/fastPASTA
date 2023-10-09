@@ -1,27 +1,27 @@
 //! A convenience vector-like wrapper struct for CDPs. Contains a vector of [RDH]s, a vector of payloads and a vector of memory positions.
 
-use super::rdh::RDH;
+use crate::rdh::RDH;
 use arrayvec::ArrayVec;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 /// The vector-like wrapper struct for CDPs
 #[derive(Debug, Clone, PartialEq)]
-pub struct CdpArr<T: RDH, const CAP: usize> {
+pub struct CdpArray<T: RDH, const CAP: usize> {
     rdhs: ArrayVec<T, CAP>,
     payloads: ArrayVec<Vec<u8>, CAP>,
     rdh_mem_pos: ArrayVec<u64, CAP>,
 }
 
-impl<T: RDH, const CAP: usize> Default for CdpArr<T, CAP> {
+impl<T: RDH, const CAP: usize> Default for CdpArray<T, CAP> {
     #[inline]
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: RDH, const CAP: usize> CdpArr<T, CAP> {
-    /// Construct a new, empty `CdpArr<T: RDH>`.
+impl<T: RDH, const CAP: usize> CdpArray<T, CAP> {
+    /// Construct a new, empty `CdpArray<T: RDH>`.
     #[inline]
     pub fn new() -> Self {
         Self {
@@ -30,16 +30,16 @@ impl<T: RDH, const CAP: usize> CdpArr<T, CAP> {
             rdh_mem_pos: ArrayVec::new(),
         }
     }
-    /// Construct a new, empty `CdpArr<T: RDH>` with at least the specified capacity.
+    /// Construct a new, empty `CdpArray<T: RDH>` with at least the specified capacity.
     ///
     /// The array will be able to hold at least `capacity` elements.
     ///
     /// # Examples
     /// ```
-    /// # use alice_protocol_reader::cdp_arr::CdpArr;
+    /// # use alice_protocol_reader::cdp_wrapper::cdp_array::CdpArray;
     /// # use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
     /// # use alice_protocol_reader::prelude::{RdhCru, V7};
-    /// let mut arrvec = CdpArr::<RdhCru<V7>, 10>::new_const();
+    /// let mut arrvec = CdpArray::<RdhCru<V7>, 10>::new_const();
     /// assert!(arrvec.len() == 0);
     /// ```
     ///
@@ -52,7 +52,7 @@ impl<T: RDH, const CAP: usize> CdpArr<T, CAP> {
         }
     }
 
-    /// Appends an [RDH], payload, and memory position to the back of the CdpArr
+    /// Appends an [RDH], payload, and memory position to the back of the CdpArray
     #[inline]
     pub fn push(&mut self, rdh: T, payload: Vec<u8>, mem_pos: u64) {
         self.rdhs.push(rdh);
@@ -70,7 +70,7 @@ impl<T: RDH, const CAP: usize> CdpArr<T, CAP> {
         self.rdh_mem_pos.push(cdp_tuple.2);
     }
 
-    /// Get the length of the CdpArr, corresponding to the number of CDPs
+    /// Get the length of the CdpArray, corresponding to the number of CDPs
     #[inline]
     pub fn len(&self) -> usize {
         debug_assert!(self.rdhs.len() == self.payloads.len());
@@ -78,7 +78,7 @@ impl<T: RDH, const CAP: usize> CdpArr<T, CAP> {
         self.rdhs.len()
     }
 
-    /// Check if the CdpArr is empty
+    /// Check if the CdpArray is empty
     #[inline]
     pub fn is_empty(&self) -> bool {
         debug_assert!(self.rdhs.len() == self.payloads.len());
@@ -86,7 +86,7 @@ impl<T: RDH, const CAP: usize> CdpArr<T, CAP> {
         self.rdhs.is_empty()
     }
 
-    /// Clear the CdpArr, removing all elements.
+    /// Clear the CdpArray, removing all elements.
     #[inline]
     pub fn clear(&mut self) {
         self.rdhs.clear();
@@ -107,8 +107,8 @@ impl<T: RDH, const CAP: usize> CdpArr<T, CAP> {
     }
 }
 
-/// Implementation of a consuming iterator for CdpArr, with a helper struct
-impl<T: RDH, const CAP: usize> IntoIterator for CdpArr<T, CAP> {
+/// Implementation of a consuming iterator for CdpArray, with a helper struct
+impl<T: RDH, const CAP: usize> IntoIterator for CdpArray<T, CAP> {
     type Item = CdpTuple<T>; // (RDH, payload, mem_pos)
     type IntoIter = IntoIterHelper<T>;
 
@@ -142,14 +142,14 @@ impl<T: RDH> Iterator for IntoIterHelper<T> {
 }
 
 type RefCdpTuple<'a, T> = (&'a T, &'a [u8], u64);
-/// Implementation of a non-consuming iterator for CdpArr, with a helper struct
-impl<'a, T: RDH, const CAP: usize> IntoIterator for &'a CdpArr<T, CAP> {
+/// Implementation of a non-consuming iterator for CdpArray, with a helper struct
+impl<'a, T: RDH, const CAP: usize> IntoIterator for &'a CdpArray<T, CAP> {
     type Item = RefCdpTuple<'a, T>;
-    type IntoIter = CdpArrIter<'a, T, CAP>;
+    type IntoIter = CdpArrayIter<'a, T, CAP>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        CdpArrIter {
+        CdpArrayIter {
             cdp_array: self,
             index: 0,
         }
@@ -158,12 +158,12 @@ impl<'a, T: RDH, const CAP: usize> IntoIterator for &'a CdpArr<T, CAP> {
 
 /// Helper struct for the implementation of a non-consuming iterator
 #[derive(Debug)]
-pub struct CdpArrIter<'a, T: RDH, const CAP: usize> {
-    cdp_array: &'a CdpArr<T, CAP>,
+pub struct CdpArrayIter<'a, T: RDH, const CAP: usize> {
+    cdp_array: &'a CdpArray<T, CAP>,
     index: usize,
 }
 
-impl<'a, T: RDH, const CAP: usize> Iterator for CdpArrIter<'a, T, CAP> {
+impl<'a, T: RDH, const CAP: usize> Iterator for CdpArrayIter<'a, T, CAP> {
     type Item = RefCdpTuple<'a, T>;
 
     #[inline]
@@ -186,17 +186,17 @@ impl<'a, T: RDH, const CAP: usize> Iterator for CdpArrIter<'a, T, CAP> {
 mod tests {
     use crate::prelude::V6;
 
-    use super::super::prelude::test_data::CORRECT_RDH_CRU_V6;
-    use super::super::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use super::super::prelude::RdhCru;
-    use super::super::prelude::RDH;
-    use super::super::prelude::V7;
-    use super::CdpArr;
+    use super::CdpArray;
     use super::*;
+    use crate::prelude::test_data::CORRECT_RDH_CRU_V6;
+    use crate::prelude::test_data::CORRECT_RDH_CRU_V7;
+    use crate::prelude::RdhCru;
+    use crate::prelude::RDH;
+    use crate::prelude::V7;
 
     #[test]
     fn test_push() {
-        let mut arrvec = CdpArr::<RdhCru<V7>, 10>::new();
+        let mut arrvec = CdpArray::<RdhCru<V7>, 10>::new();
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_push_tup() {
-        let mut arrvec = CdpArr::<RdhCru<V7>, 10>::new();
+        let mut arrvec = CdpArray::<RdhCru<V7>, 10>::new();
         let tup = (CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         arrvec.push_tuple(tup);
         arrvec.push_tuple((CORRECT_RDH_CRU_V7, vec![0; 10], 1));
@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn test_clear() {
-        let mut arrvec = CdpArr::<RdhCru<V7>, 10>::new();
+        let mut arrvec = CdpArray::<RdhCru<V7>, 10>::new();
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_len() {
-        let mut arrvec = CdpArr::<RdhCru<V7>, 2>::new();
+        let mut arrvec = CdpArray::<RdhCru<V7>, 2>::new();
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
@@ -245,7 +245,7 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        let mut arrvec = CdpArr::<RdhCru<V7>, 1>::new();
+        let mut arrvec = CdpArray::<RdhCru<V7>, 1>::new();
         assert!(arrvec.is_empty());
 
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn test_with_capacity() {
-        let arrvec = CdpArr::<RdhCru<V7>, 10>::new_const();
+        let arrvec = CdpArray::<RdhCru<V7>, 10>::new_const();
         assert_eq!(arrvec.rdhs.capacity(), 10);
         assert_eq!(arrvec.payloads.capacity(), 10);
         assert_eq!(arrvec.rdh_mem_pos.capacity(), 10);
@@ -262,7 +262,7 @@ mod tests {
 
     #[test]
     fn test_rdh_slice() {
-        let mut arrvec = CdpArr::<RdhCru<V7>, 2>::new();
+        let mut arrvec = CdpArray::<RdhCru<V7>, 2>::new();
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
         arrvec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
@@ -275,7 +275,7 @@ mod tests {
 
     #[test]
     fn test_consuming_iterator_cdp_array_v7() {
-        let cdp_array = CdpArr::<RdhCru<V7>, 2> {
+        let cdp_array = CdpArray::<RdhCru<V7>, 2> {
             rdhs: {
                 let mut a = ArrayVec::new_const();
                 a.push(CORRECT_RDH_CRU_V7);
@@ -298,7 +298,7 @@ mod tests {
 
     #[test]
     fn test_non_consuming_iterator_cdp_array_v7() {
-        let mut cdp_array = CdpArr::<RdhCru<V7>, 2> {
+        let mut cdp_array = CdpArray::<RdhCru<V7>, 2> {
             rdhs: ArrayVec::new(),
             payloads: ArrayVec::from([vec![0; 10], vec![0; 10]]),
             rdh_mem_pos: ArrayVec::from([255, 255]),
@@ -316,7 +316,7 @@ mod tests {
 
     #[test]
     fn test_consuming_iterator_cdp_array_v6() {
-        let mut cdp_array = CdpArr::<RdhCru<V6>, 2> {
+        let mut cdp_array = CdpArray::<RdhCru<V6>, 2> {
             rdhs: ArrayVec::new_const(),
             payloads: ArrayVec::from([vec![0; 10], vec![0; 10]]),
             rdh_mem_pos: ArrayVec::from([0, 1]),
@@ -337,7 +337,7 @@ mod tests {
 
     #[test]
     fn test_non_consuming_iterator_cdp_array_v6() {
-        let cdp_array = CdpArr {
+        let cdp_array = CdpArray {
             rdhs: {
                 let mut a = ArrayVec::<RdhCru<V6>, 2>::new_const();
                 a.push(CORRECT_RDH_CRU_V6);
@@ -358,7 +358,7 @@ mod tests {
         assert_eq!(len, 2);
     }
 
-    fn print_cdp_array<T: RDH, const CAP: usize>(cdp_array: &CdpArr<T, CAP>) {
+    fn print_cdp_array<T: RDH, const CAP: usize>(cdp_array: &CdpArray<T, CAP>) {
         for (rdh, payload, mem_pos) in cdp_array {
             println!("rdh: {rdh}, payload: {:?}, mem_pos: {:?}", payload, mem_pos);
         }
@@ -366,7 +366,7 @@ mod tests {
 
     #[test]
     fn test_fn_borrows_cdp_array() {
-        let cdp_array = CdpArr {
+        let cdp_array = CdpArray {
             rdhs: {
                 let mut a = ArrayVec::<RdhCru<V6>, 2>::new_const();
                 a.push(CORRECT_RDH_CRU_V6);
@@ -380,7 +380,7 @@ mod tests {
         print_cdp_array(&cdp_array);
     }
 
-    fn consume_cdp_array<T: RDH, const CAP: usize>(cdp_array: CdpArr<T, CAP>) {
+    fn consume_cdp_array<T: RDH, const CAP: usize>(cdp_array: CdpArray<T, CAP>) {
         cdp_array.into_iter().for_each(|(rdh, payload, mem_pos)| {
             println!("rdh: {rdh}, payload: {:?}, mem_pos: {:?}", payload, mem_pos);
         });
@@ -388,7 +388,7 @@ mod tests {
 
     #[test]
     fn test_fn_consume_cdp_array() {
-        let cdp_array = CdpArr {
+        let cdp_array = CdpArray {
             rdhs: {
                 let mut a = ArrayVec::<RdhCru<V6>, 3>::new_const();
                 a.push(CORRECT_RDH_CRU_V6);
