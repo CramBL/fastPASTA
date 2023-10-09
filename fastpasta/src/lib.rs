@@ -77,7 +77,7 @@
 //! $ fastpasta <input_file> view rdh
 //! ```
 
-use alice_protocol_reader::prelude::*;
+use alice_protocol_reader::{cdp_wrapper::cdp_array::CdpArray, prelude::*};
 use analyze::validators::rdh::Rdh0Validator;
 use config::prelude::*;
 use stats::StatType;
@@ -129,7 +129,7 @@ pub fn init_processing(
         //      1. Unlikely there will ever be an RDH version higher than that
         //      2. High values decoded from this field (especially 255) is typically a sign that the data is not actually ALICE data so early exit is preferred
         3..=100 => {
-            match process::<RdhCru<u8>>(
+            match process::<RdhCru, 100>(
                 config,
                 loader,
                 Some(&input_stats_recv),
@@ -160,7 +160,7 @@ pub fn init_processing(
 ///     - Validate data by dispatching it to validators with [ValidatorDispatcher][crate::analyze::validators::validator_dispatcher::ValidatorDispatcher].
 ///     - Generate views of data with [analyze::view::lib::generate_view].
 ///     - Write data to `file` or `stdout` with [write::lib::spawn_writer].
-pub fn process<T: RDH + 'static>(
+pub fn process<T: RDH + 'static, const CAP: usize>(
     config: &'static impl Config,
     loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
     input_stats_recv: Option<&flume::Receiver<InputStatType>>,
@@ -170,7 +170,7 @@ pub fn process<T: RDH + 'static>(
     // 1. Launch reader thread to read data from file or stdin
     let (reader_handle, reader_data_recv): (
         std::thread::JoinHandle<()>,
-        crossbeam_channel::Receiver<CdpChunk<T>>,
+        crossbeam_channel::Receiver<CdpArray<T, CAP>>,
     ) = alice_protocol_reader::spawn_reader(stop_flag.clone(), loader);
 
     // 2. Launch analysis thread if an analysis action is set (view or check)
@@ -279,7 +279,6 @@ mod tests {
     use crate::MockConfig;
     use alice_protocol_reader::init_reader;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use alice_protocol_reader::prelude::CdpChunk;
     use pretty_assertions::{assert_eq, assert_ne};
     use std::path::PathBuf;
     use std::sync::OnceLock;
@@ -351,8 +350,8 @@ mod tests {
             flume::unbounded();
         let (data_sender, data_receiver) = crossbeam_channel::unbounded();
         let stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let mut cdp_chunk: CdpChunk<RdhCru<V7>> = CdpChunk::default();
-        cdp_chunk.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);
+        let mut cdp_batch: CdpArray<RdhCru, 1> = CdpArray::new();
+        cdp_batch.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);
 
         // Act
         let handle = analyze::lib::spawn_analysis(
@@ -361,7 +360,7 @@ mod tests {
             stat_sender,
             data_receiver,
         );
-        data_sender.send(cdp_chunk).unwrap();
+        data_sender.send(cdp_batch).unwrap();
         drop(data_sender);
         // Sleep to give the thread time to process the data
         std::thread::sleep(std::time::Duration::from_millis(100));

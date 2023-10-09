@@ -21,14 +21,14 @@
     clippy::maybe_infinite_iter
 )]
 
-//! This module contains mainly the [InputScanner] that reads the input data, and the [CdpChunk] data structure that wraps the data read from the input.
+//! This module contains mainly the [InputScanner] that reads the input data, and the [CdpArray] data structure that wraps the data read from the input.
 //! Additionally it contains a helper function [spawn_reader] that spawns a thread that reads input and sents it to a channel that is returned from the function.
 //!
 //! The [InputScanner] is a generic type that can be instantiated with any type that implements the [BufferedReaderWrapper] trait.
 //! This trait is implemented for the [StdInReaderSeeker] and the [BufReader](std::io::BufReader) types.
 //! Allowing the [InputScanner] to read from both stdin and files, in a convenient and efficient way.
 //!
-//! The [CdpChunk] is a wrapper for the data read from the input, it contains the data and the memory address of the first byte of the data.
+//! The [CdpArray] is a wrapper for the data read from the input, it contains the data and the memory address of the first byte of the data.
 
 //! # Example
 //! First add the `alice_protocol_reader` crate to your project
@@ -107,8 +107,8 @@
 //! ```
 
 pub mod bufreader_wrapper;
+pub mod cdp_wrapper;
 pub mod config;
-pub mod data_wrapper;
 pub mod input_scanner;
 pub mod mem_pos_tracker;
 pub mod prelude;
@@ -117,14 +117,15 @@ pub mod scan_cdp;
 pub mod stats;
 pub mod stdin_reader;
 
+use cdp_wrapper::cdp_array::CdpArray;
 use crossbeam_channel::Receiver;
-use prelude::{BufferedReaderWrapper, CdpChunk, InputScanner, ScanCDP, RDH};
+use prelude::{BufferedReaderWrapper, CdpVec, InputScanner, ScanCDP, RDH};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{io::IsTerminal, path::PathBuf};
 use stdin_reader::StdInReaderSeeker;
 
-/// Depth of the FIFO where the CDP chunks inserted as they are read
-const CHANNEL_CDP_CHUNK_CAPACITY: usize = 100;
+/// Depth of the FIFO where the CDP batches are inserted as they are read
+const CHANNEL_CDP_BATCH_CAPACITY: usize = 100;
 const READER_BUFFER_SIZE: usize = 1024 * 50; // 50KB
 
 /// Initializes the reader based on the input mode (file or stdin) and returns it
@@ -155,26 +156,28 @@ pub fn init_reader(
 /// Spawns a reader thread that reads CDPs from the input and sends them to a producer channel
 ///
 /// Returns the thread handle and the receiver channel
+///
+/// If you want more control of the batch size at runtime, use [spawn_vec_reader] instead.
 #[inline]
-pub fn spawn_reader<T: RDH + 'static>(
+pub fn spawn_reader<T: RDH + 'static, const CAP: usize>(
     stop_flag: std::sync::Arc<AtomicBool>,
     input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
-) -> (std::thread::JoinHandle<()>, Receiver<CdpChunk<T>>) {
+) -> (std::thread::JoinHandle<()>, Receiver<CdpArray<T, CAP>>) {
     let reader_thread = std::thread::Builder::new().name("Reader".to_string());
-    let (send_chan, recv_chan) = crossbeam_channel::bounded(CHANNEL_CDP_CHUNK_CAPACITY);
-    let mut local_stop_on_non_full_chunk = false;
-    const CDP_CHUNK_SIZE: usize = 100;
+    let (send_chan, recv_chan) = crossbeam_channel::bounded(CHANNEL_CDP_BATCH_CAPACITY);
+    let mut local_stop_on_non_full_batch = false;
+
     let thread_handle = reader_thread
         .spawn({
             move || {
                 let mut input_scanner = input_scanner;
 
                 // Automatically extracts link to filter if one is supplied
-                while !stop_flag.load(Ordering::SeqCst) && !local_stop_on_non_full_chunk {
-                    let cdps = match get_chunk::<T>(&mut input_scanner, CDP_CHUNK_SIZE) {
+                while !stop_flag.load(Ordering::SeqCst) && !local_stop_on_non_full_batch {
+                    let cdps = match get_array_batch::<T, CAP>(&mut input_scanner) {
                         Ok(cdp) => {
-                            if cdp.len() < CDP_CHUNK_SIZE {
-                                local_stop_on_non_full_chunk = true; // Stop on non-full chunk, could be InvalidData
+                            if cdp.len() < CAP {
+                                local_stop_on_non_full_batch = true; // Stop on non-full batch, could be InvalidData
                             }
                             cdp
                         }
@@ -183,7 +186,7 @@ pub fn spawn_reader<T: RDH + 'static>(
                         }
                     };
 
-                    // Send a chunk to the checker
+                    // Send a batch to the checker
                     if send_chan.send(cdps).is_err() {
                         break;
                     }
@@ -194,18 +197,94 @@ pub fn spawn_reader<T: RDH + 'static>(
     (thread_handle, recv_chan)
 }
 
-/// Attempts to fill a CDP chunk with as many CDPs as possible (up to the chunk size) and returns it
+/// Attempts to fill a CDP batch with as many CDPs as possible (up to the batch capacity) and returns it
 ///
-/// If an error occurs after one or more CDPs have been read, the CDP chunk is returned with the CDPs read so far
+/// If an error occurs after one or more CDPs have been read, the CDP batch is returned with the CDPs read so far
 /// If the error occurs before any CDPs have been read, the error is returned
 #[inline]
-fn get_chunk<T: RDH>(
+fn get_array_batch<T: RDH, const CAP: usize>(
     file_scanner: &mut InputScanner<impl BufferedReaderWrapper + ?Sized>,
-    chunk_size_cdps: usize,
-) -> Result<CdpChunk<T>, std::io::Error> {
-    let mut cdp_chunk = CdpChunk::with_capacity(chunk_size_cdps);
+) -> Result<CdpArray<T, CAP>, std::io::Error> {
+    let mut cdp_arr = CdpArray::<T, CAP>::new_const();
 
-    for _ in 0..chunk_size_cdps {
+    for _ in 0..CAP {
+        let cdp_tuple = match file_scanner.load_cdp() {
+            Ok(cdp) => cdp,
+            Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
+                break;
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                break;
+            }
+            Err(e) => return Err(e),
+        };
+        cdp_arr.push(cdp_tuple.0, cdp_tuple.1, cdp_tuple.2);
+    }
+
+    if cdp_arr.is_empty() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::UnexpectedEof,
+            "No CDPs found",
+        ));
+    }
+
+    Ok(cdp_arr)
+}
+
+/// Spawns a reader thread that reads CDPs from the input and sends them to a producer channel
+///
+/// Returns the thread handle and the receiver channel
+#[inline]
+pub fn spawn_vec_reader<T: RDH + 'static>(
+    stop_flag: std::sync::Arc<AtomicBool>,
+    input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
+) -> (std::thread::JoinHandle<()>, Receiver<CdpVec<T>>) {
+    let reader_thread = std::thread::Builder::new().name("Reader".to_string());
+    let (send_chan, recv_chan) = crossbeam_channel::bounded(CHANNEL_CDP_BATCH_CAPACITY);
+    let mut local_stop_on_non_full_batch = false;
+    const CDP_BATCH_SIZE: usize = 100;
+    let thread_handle = reader_thread
+        .spawn({
+            move || {
+                let mut input_scanner = input_scanner;
+
+                // Automatically extracts link to filter if one is supplied
+                while !stop_flag.load(Ordering::SeqCst) && !local_stop_on_non_full_batch {
+                    let cdps = match get_vec_batch::<T>(&mut input_scanner, CDP_BATCH_SIZE) {
+                        Ok(cdp) => {
+                            if cdp.len() < CDP_BATCH_SIZE {
+                                local_stop_on_non_full_batch = true; // Stop on non-full batch, could be InvalidData
+                            }
+                            cdp
+                        }
+                        Err(_) => {
+                            break;
+                        }
+                    };
+
+                    // Send a batch to the checker
+                    if send_chan.send(cdps).is_err() {
+                        break;
+                    }
+                }
+            }
+        })
+        .expect("Failed to spawn reader thread");
+    (thread_handle, recv_chan)
+}
+
+/// Attempts to fill a CDP batch with as many CDPs as possible (up to the batch size) and returns it.
+///
+/// If an error occurs after one or more CDPs have been read, the CDP batch is returned with the CDPs read so far
+/// If the error occurs before any CDPs have been read, the error is returned
+#[inline]
+fn get_vec_batch<T: RDH>(
+    file_scanner: &mut InputScanner<impl BufferedReaderWrapper + ?Sized>,
+    batch_size_cdps: usize,
+) -> Result<CdpVec<T>, std::io::Error> {
+    let mut cdp_batch = CdpVec::with_capacity(batch_size_cdps);
+
+    for _ in 0..batch_size_cdps {
         let cdp_tuple = match file_scanner.load_cdp() {
             Ok(cdp) => cdp,
             Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
@@ -218,17 +297,17 @@ fn get_chunk<T: RDH>(
             }
             Err(e) => return Err(e),
         };
-        cdp_chunk.push(cdp_tuple.0, cdp_tuple.1, cdp_tuple.2);
+        cdp_batch.push(cdp_tuple.0, cdp_tuple.1, cdp_tuple.2);
     }
 
-    if cdp_chunk.is_empty() {
+    if cdp_batch.is_empty() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::UnexpectedEof,
             "No CDPs found",
         ));
     }
 
-    Ok(cdp_chunk)
+    Ok(cdp_batch)
 }
 
 #[cfg(test)]
@@ -256,7 +335,7 @@ mod tests {
 
         let mut input_scanner = InputScanner::minimal(reader);
 
-        let rdh = input_scanner.load_rdh_cru::<RdhCru<u8>>().unwrap();
+        let rdh = input_scanner.load_rdh_cru::<RdhCru>().unwrap();
 
         println!("{rdh:?}");
     }
@@ -298,7 +377,7 @@ mod tests {
 
         let mut input_scanner = input_scanner::InputScanner::new(&MyCfg, reader, None);
 
-        let rdh = input_scanner.load_rdh_cru::<RdhCru<u8>>();
+        let rdh = input_scanner.load_rdh_cru::<RdhCru>();
 
         match rdh {
             Ok(rdh) => println!("{rdh:?}"),

@@ -1,5 +1,4 @@
 //! Contains test data for testing functionality on a [RDH CRU][RdhCru].
-use std::marker::PhantomData;
 
 use super::rdh0::*;
 use super::rdh1::*;
@@ -9,7 +8,7 @@ use super::rdh_cru::*;
 
 // For testing
 /// Convenience struct of a [RDH CRU][RdhCru] with the version [V7] used in tests.
-pub const CORRECT_RDH_CRU_V7: RdhCru<V7> = RdhCru::<V7> {
+pub const CORRECT_RDH_CRU_V7: RdhCru = RdhCru {
     rdh0: Rdh0 {
         header_id: 0x7,
         header_size: 0x40,
@@ -41,11 +40,10 @@ pub const CORRECT_RDH_CRU_V7: RdhCru<V7> = RdhCru::<V7> {
         reserved0: 0x0,
     },
     reserved2: 0x0,
-    version: PhantomData,
 };
 
 /// Convenience struct of a [RDH CRU][RdhCru] with the version [V6] used in tests.
-pub const CORRECT_RDH_CRU_V6: RdhCru<V6> = RdhCru::<V6> {
+pub const CORRECT_RDH_CRU_V6: RdhCru = RdhCru {
     rdh0: Rdh0 {
         header_id: 0x6,
         header_size: 0x40,
@@ -77,11 +75,10 @@ pub const CORRECT_RDH_CRU_V6: RdhCru<V6> = RdhCru::<V6> {
         reserved0: 0x0,
     },
     reserved2: 0x0,
-    version: PhantomData,
 };
 
 /// Convenience struct of an [RDH CRU][RdhCru] coming after an initial [RDH CRU][RdhCru] with the version [V7] used in tests.
-pub const CORRECT_RDH_CRU_V7_NEXT: RdhCru<V7> = RdhCru::<V7> {
+pub const CORRECT_RDH_CRU_V7_NEXT: RdhCru = RdhCru {
     rdh0: Rdh0 {
         header_id: 0x7,
         header_size: 0x40,
@@ -113,11 +110,10 @@ pub const CORRECT_RDH_CRU_V7_NEXT: RdhCru<V7> = RdhCru::<V7> {
         reserved0: 0x0,
     },
     reserved2: 0x0,
-    version: PhantomData,
 };
 
 /// Convenience struct of an [RDH CRU][RdhCru] closing an HBF, used in tests.
-pub const CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP: RdhCru<V7> = RdhCru::<V7> {
+pub const CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP: RdhCru = RdhCru {
     rdh0: Rdh0 {
         header_id: 0x7,
         header_size: 0x40,
@@ -149,5 +145,4 @@ pub const CORRECT_RDH_CRU_V7_NEXT_NEXT_STOP: RdhCru<V7> = RdhCru::<V7> {
         reserved0: 0x0,
     },
     reserved2: 0x0,
-    version: PhantomData,
 };

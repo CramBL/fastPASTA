@@ -648,7 +648,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 mod tests {
     use super::*;
     use crate::config::test_util::MockConfig;
-    use alice_protocol_reader::prelude::{test_data::CORRECT_RDH_CRU_V7, RdhCru, V7};
+    use alice_protocol_reader::prelude::{test_data::CORRECT_RDH_CRU_V7, RdhCru};
     use std::sync::OnceLock;
 
     static MOCK_CONFIG_DEFAULT: OnceLock<MockConfig> = OnceLock::new();
@@ -665,7 +665,7 @@ mod tests {
             // Ignore as it just means it was set by another test
         }
 
-        let mut validator: CdpRunningValidator<RdhCru<V7>, MockConfig> =
+        let mut validator: CdpRunningValidator<RdhCru, MockConfig> =
             CdpRunningValidator::new(MOCK_CONFIG_DEFAULT.get().unwrap(), send);
         let rdh_mem_pos = 0;
 
@@ -687,7 +687,7 @@ mod tests {
         }
 
         let (send, stats_recv_ch) = flume::unbounded();
-        let mut validator: CdpRunningValidator<RdhCru<V7>, MockConfig> =
+        let mut validator: CdpRunningValidator<RdhCru, MockConfig> =
             CdpRunningValidator::new(MOCK_CONFIG_DEFAULT.get().unwrap(), send);
         let rdh_mem_pos = 0x0;
 
@@ -716,7 +716,7 @@ mod tests {
         }
 
         let (send, stats_recv_ch) = flume::unbounded();
-        let mut validator: CdpRunningValidator<RdhCru<V7>, MockConfig> =
+        let mut validator: CdpRunningValidator<RdhCru, MockConfig> =
             CdpRunningValidator::new(MOCK_CONFIG_DEFAULT.get().unwrap(), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
@@ -746,7 +746,7 @@ mod tests {
         }
 
         let (send, stats_recv_ch) = flume::unbounded();
-        let mut validator: CdpRunningValidator<RdhCru<V7>, MockConfig> =
+        let mut validator: CdpRunningValidator<RdhCru, MockConfig> =
             CdpRunningValidator::new(MOCK_CONFIG_DEFAULT.get().unwrap(), send);
         let rdh_mem_pos = 0x0; // RDH size is 64 bytes
 
@@ -793,7 +793,7 @@ mod tests {
             .set(mock_config)
             .unwrap();
 
-        let mut validator: CdpRunningValidator<RdhCru<V7>, MockConfig> = CdpRunningValidator::new(
+        let mut validator: CdpRunningValidator<RdhCru, MockConfig> = CdpRunningValidator::new(
             CFG_TEST_EXPECT_IHW_INVALIDATE_TDH_AND_NEXT_NEXT
                 .get()
                 .unwrap(),

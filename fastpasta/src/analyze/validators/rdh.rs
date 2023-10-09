@@ -686,7 +686,7 @@ mod tests {
     fn invalidate_rdh_cru_v7_bad_header_id() {
         let mut validator = RdhCruSanityValidator::default();
         let rdh0 = CORRECT_RDH_CRU_V7.rdh0();
-        let rdh_cru: RdhCru<u8> = RdhCru::new(
+        let rdh_cru: RdhCru = RdhCru::new(
             *rdh0,
             CORRECT_RDH_CRU_V7.offset_to_next(),
             CORRECT_RDH_CRU_V7.payload_size(),
@@ -701,7 +701,7 @@ mod tests {
             CORRECT_RDH_CRU_V7.reserved2(),
         );
         assert!(validator.sanity_check(&rdh_cru).is_ok());
-        let rdh_cru_bad_header: RdhCru<u8> = RdhCru::new(
+        let rdh_cru_bad_header: RdhCru = RdhCru::new(
             Rdh0::new(0, 0, FeeId(9), 0, 20, 0),
             CORRECT_RDH_CRU_V7.offset_to_next(),
             CORRECT_RDH_CRU_V7.payload_size(),
@@ -722,7 +722,7 @@ mod tests {
     #[test]
     fn invalidate_rdh_cru_v7_multiple_errors() {
         let mut validator = RdhCruSanityValidator::default();
-        let rdh_cru_bad_fields: RdhCru<u8> = RdhCru::new(
+        let rdh_cru_bad_fields: RdhCru = RdhCru::new(
             Rdh0::new(0, 0, FeeId(9), 0, 20, 0),
             CORRECT_RDH_CRU_V7.offset_to_next(),
             CORRECT_RDH_CRU_V7.payload_size(),
@@ -745,7 +745,7 @@ mod tests {
     fn allow_rdh_cru_v7_non_its_system_id() {
         let mut validator = RdhCruSanityValidator::default();
         let non_its_system_id = 0x99;
-        let rdh_cru: RdhCru<u8> = RdhCru::new(
+        let rdh_cru: RdhCru = RdhCru::new(
             Rdh0::new(7, 0x40, FeeId(0), 0, non_its_system_id, 0),
             CORRECT_RDH_CRU_V7.offset_to_next(),
             CORRECT_RDH_CRU_V7.payload_size(),
@@ -770,7 +770,7 @@ mod tests {
         let mut validator = RdhCruSanityValidator::default();
         validator.specialize(SpecializeChecks::ITS);
         let non_its_system_id = 0x99;
-        let rdh_cru: RdhCru<u8> = RdhCru::new(
+        let rdh_cru: RdhCru = RdhCru::new(
             Rdh0::new(7, 0x40, FeeId(0), 0, non_its_system_id, 0),
             CORRECT_RDH_CRU_V7.offset_to_next(),
             CORRECT_RDH_CRU_V7.payload_size(),
@@ -800,7 +800,7 @@ mod tests {
     fn invalidate_rdh_cru_v6_bad_header_id() {
         let mut validator = RdhCruSanityValidator::default();
         let non_its_system_id = 0x90;
-        let rdh_cru: RdhCru<u8> = RdhCru::new(
+        let rdh_cru: RdhCru = RdhCru::new(
             Rdh0::new(6, 0x40, FeeId(0), 0, non_its_system_id, 0),
             CORRECT_RDH_CRU_V7.offset_to_next(),
             CORRECT_RDH_CRU_V7.payload_size(),
@@ -817,7 +817,7 @@ mod tests {
         let res = validator.sanity_check(&rdh_cru);
         println!("{res:?}");
         assert!(res.is_ok());
-        let rdh_cru_bad_header_id: RdhCru<u8> = RdhCru::new(
+        let rdh_cru_bad_header_id: RdhCru = RdhCru::new(
             Rdh0::new(1, 0x40, FeeId(0), 0, non_its_system_id, 0),
             CORRECT_RDH_CRU_V7.offset_to_next(),
             CORRECT_RDH_CRU_V7.payload_size(),
@@ -837,7 +837,7 @@ mod tests {
     #[test]
     fn invalidate_rdh_cru_v6_multiple_errors() {
         let mut validator = RdhCruSanityValidator::default();
-        let rdh_cru: RdhCru<u8> = RdhCru::new(
+        let rdh_cru: RdhCru = RdhCru::new(
             Rdh0::new(6, 0, FeeId(0), 0, 0, 0),
             CORRECT_RDH_CRU_V7.offset_to_next(),
             CORRECT_RDH_CRU_V7.payload_size(),

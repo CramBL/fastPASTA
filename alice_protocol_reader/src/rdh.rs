@@ -11,8 +11,6 @@ use rdh1::Rdh1;
 use rdh2::Rdh2;
 use rdh3::Rdh3;
 pub use rdh_cru::RdhCru;
-pub use rdh_cru::V6;
-pub use rdh_cru::V7;
 
 /// The size of a RDH-CRU word in bytes
 pub const RDH_CRU_SIZE_BYTES: u8 = 64;
@@ -219,7 +217,7 @@ impl<T> ByteSlice for &T where T: ByteSlice {}
 impl<T> ByteSlice for &mut T where T: ByteSlice {}
 
 /// Auto implement [ByteSlice] for the following structs.
-impl<Version> ByteSlice for RdhCru<Version> {}
+impl ByteSlice for RdhCru {}
 
 /// # Safety
 /// This function can only be used to serialize a struct if it has the #[repr(packed)] attribute

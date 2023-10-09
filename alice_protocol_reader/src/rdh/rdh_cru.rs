@@ -5,8 +5,8 @@ use super::rdh2::Rdh2;
 use super::rdh3::Rdh3;
 use super::{ByteSlice, RdhSubword, SerdeRdh, RDH, RDH_CRU};
 use byteorder::{ByteOrder, LittleEndian};
+use std::fmt::Debug;
 use std::fmt::{self, Display};
-use std::{fmt::Debug, marker::PhantomData};
 
 /// Represents the `Data format` and `reserved` fields. Using a newtype because the fields are packed in 64 bits, and extracting the values requires some work.
 #[repr(packed)]
@@ -17,19 +17,13 @@ pub struct DataformatReserved(pub u64); // 8 bit data_format, 56 bit reserved0
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 #[repr(packed)]
 pub struct CruidDw(pub u16); // 12 bit cru_id, 4 bit dw
-/// Unit struct to mark a [RdhCru] as version 6.
-#[derive(Debug, Clone, Copy)]
-pub struct V6;
-/// Unit struct to mark a [RdhCru] as version 7.
-#[derive(Debug, Clone, Copy)]
-pub struct V7;
 
 /// The struct definition of the [RDH CRU][RdhCru].
 ///
-/// [PhantomData] is used to mark the version of the [RDH CRU][RdhCru]. It's a zero cost abstraction.
 /// Among other things, it allows to have different implementations of the [RdhCru] for different versions, but prevents the user from mixing them up.
+#[allow(missing_copy_implementations)]
 #[repr(packed)]
-pub struct RdhCru<Version> {
+pub struct RdhCru {
     pub(crate) rdh0: Rdh0,
     pub(crate) offset_new_packet: u16,
     pub(crate) memory_size: u16,
@@ -42,10 +36,9 @@ pub struct RdhCru<Version> {
     pub(crate) reserved1: u64,
     pub(crate) rdh3: Rdh3,
     pub(crate) reserved2: u64,
-    pub(crate) version: PhantomData<Version>,
 }
 
-impl<Version> Display for RdhCru<Version> {
+impl Display for RdhCru {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let tmp_offset = self.offset_new_packet;
         let tmp_link = self.link_id;
@@ -64,7 +57,7 @@ impl<Version> Display for RdhCru<Version> {
     }
 }
 
-impl<Version> RdhCru<Version> {
+impl RdhCru {
     /// Creates a new [RDH](RdhCru).
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -94,7 +87,6 @@ impl<Version> RdhCru<Version> {
             reserved1,
             rdh3,
             reserved2,
-            version: PhantomData,
         }
     }
 
@@ -153,14 +145,14 @@ impl<Version> RdhCru<Version> {
     }
 }
 
-impl<Version> PartialEq for RdhCru<Version> {
+impl PartialEq for RdhCru {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.to_byte_slice() == other.to_byte_slice()
     }
 }
 
-impl<Version> Debug for RdhCru<Version> {
+impl Debug for RdhCru {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let tmp_offset = self.offset_new_packet;
         let tmp_memory = self.memory_size;
@@ -176,9 +168,9 @@ impl<Version> Debug for RdhCru<Version> {
     }
 }
 
-impl<Version: Send + Sync> RDH for RdhCru<Version> {}
+impl RDH for RdhCru {}
 
-impl<Version: Send + Sync> RDH_CRU for RdhCru<Version> {
+impl RDH_CRU for RdhCru {
     #[inline]
     fn link_id(&self) -> u8 {
         self.link_id
@@ -191,6 +183,7 @@ impl<Version: Send + Sync> RDH_CRU for RdhCru<Version> {
     fn offset_to_next(&self) -> u16 {
         self.offset_new_packet
     }
+
     #[inline]
     fn stop_bit(&self) -> u8 {
         self.rdh2.stop_bit
@@ -245,7 +238,7 @@ impl<Version: Send + Sync> RDH_CRU for RdhCru<Version> {
     }
 }
 
-impl<Version: Send + Sync> SerdeRdh for RdhCru<Version> {
+impl SerdeRdh for RdhCru {
     #[inline]
     fn from_rdh0_and_buf(rdh0: Rdh0, buf: &[u8]) -> Result<Self, std::io::Error> {
         Ok(RdhCru {
@@ -261,7 +254,6 @@ impl<Version: Send + Sync> SerdeRdh for RdhCru<Version> {
             reserved1: LittleEndian::read_u64(&buf[32..=39]),
             rdh3: Rdh3::from_buf(&buf[40..=47])?,
             reserved2: LittleEndian::read_u64(&buf[48..=55]),
-            version: PhantomData,
         })
     }
 }
@@ -277,7 +269,7 @@ mod tests {
 
     #[test]
     fn test_header_text() {
-        let header_text = RdhCru::<V7>::rdh_header_text_with_indent_to_string(7);
+        let header_text = RdhCru::rdh_header_text_with_indent_to_string(7);
         println!("{header_text}");
     }
 
@@ -307,7 +299,7 @@ mod tests {
 
     #[test]
     fn test_rdh_v6() {
-        let rdhv6 = RdhCru::<V6> {
+        let rdhv6 = RdhCru {
             rdh0: Rdh0 {
                 header_size: 0,
                 header_id: 0,
@@ -339,7 +331,6 @@ mod tests {
                 reserved0: 0,
             },
             reserved2: 0,
-            version: PhantomData,
         };
         assert_eq!(rdhv6.data_format(), 0);
     }
@@ -348,7 +339,7 @@ mod tests {
     fn test_rdh_v7() {
         let rdh_0 = CORRECT_RDH_CRU_V7.rdh0;
 
-        let rdh_v7 = RdhCru::<V7> {
+        let rdh_v7 = RdhCru {
             rdh0: rdh_0,
             offset_new_packet: 0,
             memory_size: 0x40,
@@ -373,7 +364,6 @@ mod tests {
                 reserved0: 0,
             },
             reserved2: 0,
-            version: PhantomData,
         };
         assert_eq!(rdh_v7.data_format(), 2);
         assert_eq!(rdh_v7.cru_id(), 0);
@@ -383,26 +373,26 @@ mod tests {
 
     #[test]
     fn test_print_generic() {
-        let rdh_v7: RdhCru<V7> = CORRECT_RDH_CRU_V7;
-        let rdh_v6: RdhCru<V6> = CORRECT_RDH_CRU_V6;
-        println!("{}", RdhCru::<V7>::rdh_header_text_with_indent_to_string(7));
+        let rdh_v7: RdhCru = CORRECT_RDH_CRU_V7;
+        let rdh_v6: RdhCru = CORRECT_RDH_CRU_V6;
+        println!("{}", RdhCru::rdh_header_text_with_indent_to_string(7));
         println!("{rdh_v7}");
         println!("{rdh_v6}");
-        let v = rdh_v7.version;
+        let v = rdh_v7.version();
         println!("{v:?}");
         print_rdh_cru_v6(&rdh_v6);
         print_rdh_cru(&rdh_v7);
-        println!("{}", RdhCru::<V7>::rdh_header_text_with_indent_to_string(7));
-        let rdh_v7: RdhCru<V7> = CORRECT_RDH_CRU_V7;
-        let rdh_v6: RdhCru<V6> = CORRECT_RDH_CRU_V6;
-        print_rdh_cru::<V6>(&rdh_v6);
-        print_rdh_cru::<V7>(&rdh_v7);
+        println!("{}", RdhCru::rdh_header_text_with_indent_to_string(7));
+        let rdh_v7: RdhCru = CORRECT_RDH_CRU_V7;
+        let rdh_v6: RdhCru = CORRECT_RDH_CRU_V6;
+        print_rdh_cru(&rdh_v6);
+        print_rdh_cru(&rdh_v7);
     }
 
-    fn print_rdh_cru<V>(rdh: &RdhCru<V>) {
+    fn print_rdh_cru(rdh: &RdhCru) {
         println!("{rdh}");
     }
-    fn print_rdh_cru_v6(rdh: &RdhCru<V6>) {
+    fn print_rdh_cru_v6(rdh: &RdhCru) {
         println!("{rdh}");
     }
 
@@ -412,7 +402,7 @@ mod tests {
     fn test_load_rdhcruv7_from_byte_slice() {
         // Create an instace of an RDH-CRU v7
         // byte slice values taken from a valid rdh from real data
-        let rdhcruv7 = RdhCru::<V7>::load(
+        let rdhcruv7 = RdhCru::load(
             &mut &[
                 0x07, 0x40, 0x2a, 0x50, 0x00, 0x20, 0x00, 0x00, 0xe0, 0x13, 0xe0, 0x13, 0x00, 0x00,
                 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x75, 0xd5, 0x7d, 0x0b, 0x02, 0x00, 0x00, 0x00,
@@ -427,7 +417,7 @@ mod tests {
 
         let rdh_from_old = RdhCru::load(&mut rdhcruv7.to_byte_slice()).unwrap();
         let rdh_inferred_from_old = RdhCru::load(&mut rdhcruv7.to_byte_slice()).unwrap();
-        let rdh_v7_from_old = RdhCru::<V7>::load(&mut rdhcruv7.to_byte_slice()).unwrap();
+        let rdh_v7_from_old = RdhCru::load(&mut rdhcruv7.to_byte_slice()).unwrap();
         println!("{rdh_from_old}");
         assert_eq!(rdhcruv7, rdh_from_old);
         assert_eq!(rdhcruv7.rdh0.header_size, 0x40);

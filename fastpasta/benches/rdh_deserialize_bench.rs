@@ -11,8 +11,7 @@ fn deserialize_rdh_current(filename: &str, iterations: usize) {
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
     for _i in 1..iterations {
-        let _rdh_tmp: RdhCru<V7> =
-            SerdeRdh::load(&mut buf_reader).expect("Failed to load RdhCruv7");
+        let _rdh_tmp: RdhCru = SerdeRdh::load(&mut buf_reader).expect("Failed to load RdhCruv7");
     }
 }
 

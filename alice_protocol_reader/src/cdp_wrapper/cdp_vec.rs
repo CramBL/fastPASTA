@@ -1,69 +1,69 @@
 //! A convenience vector-like wrapper struct for CDPs. Contains a vector of [RDH]s, a vector of payloads and a vector of memory positions.
 //!
-//! [CdpChunk] can be treated similarly to a [`Vec<T>`](std::vec::Vec::<T>) where `T` is a tuple of `(impl RDH, vec<u8>, u64)`
+//! [CdpVec] can be treated similarly to a [`Vec<T>`](std::vec::Vec::<T>) where `T` is a tuple of `(impl RDH, vec<u8>, u64)`
 //!
 //!  # Examples
 //!
 //! ```
-//! # use alice_protocol_reader::data_wrapper::CdpChunk;
+//! # use alice_protocol_reader::cdp_wrapper::cdp_vec::CdpVec;
 //! # use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-//! # use alice_protocol_reader::prelude::{RdhCru, V7};
-//! let mut chunk = CdpChunk::<RdhCru<V7>>::new();
+//! # use alice_protocol_reader::prelude::RdhCru;
+//! let mut cdp_vec = CdpVec::<RdhCru>::new();
 //! let cdp_tup = (CORRECT_RDH_CRU_V7, vec![0; 10], 0);
 //!
 //! // Push a tuple of (RDH, payload, mem_pos)
-//! chunk.push_tuple(cdp_tup);
+//! cdp_vec.push_tuple(cdp_tup);
 //!
 //! // Push a tuple of (RDH, payload, mem_pos) using the push method
 //! let (rdh, payload, mem_pos) = (CORRECT_RDH_CRU_V7, vec![0; 10], 0);
-//! chunk.push(rdh, payload, mem_pos);
+//! cdp_vec.push(rdh, payload, mem_pos);
 //!
-//! // Get the length of the CdpChunk
-//! let len = chunk.len();
+//! // Get the length of the CdpVec
+//! let len = cdp_vec.len();
 //!
-//! // Check if the CdpChunk is empty
-//! let is_empty = chunk.is_empty();
+//! // Check if the CdpVec is empty
+//! let is_empty = cdp_vec.is_empty();
 //!
-//! // Clear the CdpChunk
-//! chunk.clear();
+//! // Clear the CdpVec
+//! cdp_vec.clear();
 //!
 //!
-//! // Iterate over the CdpChunk using an immutable borrow (no copying)
-//! for (rdh, payload, mem_pos) in &chunk {
+//! // Iterate over the CdpVec using an immutable borrow (no copying)
+//! for (rdh, payload, mem_pos) in &cdp_vec {
 //!   // Do something with the tuple
 //! }
 //!
 //! // Get a borrowed slice of the RDHs
-//! let rdh_slice = chunk.rdh_slice();
+//! let rdh_slice = cdp_vec.rdh_slice();
 //!
-//! // Iterate over the CdpChunk using a consuming iterator (no copying)
-//! chunk.into_iter()
+//! // Iterate over the CdpVec using a consuming iterator (no copying)
+//! cdp_vec.into_iter()
 //!         .for_each(|(rdh, payload, mem_pos)| {
 //!            // Do something requiring ownership of the tuple
 //!        });
 //!```
 
-use super::rdh::RDH;
+use crate::rdh::RDH;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
 /// The vector-like wrapper struct for CDPs
 #[derive(Debug, Clone, PartialEq)]
-pub struct CdpChunk<T: RDH> {
+pub struct CdpVec<T: RDH> {
     rdhs: Vec<T>,
     payloads: Vec<Vec<u8>>,
     rdh_mem_pos: Vec<u64>,
 }
 
-impl<T: RDH> Default for CdpChunk<T> {
+impl<T: RDH> Default for CdpVec<T> {
     #[inline]
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: RDH> CdpChunk<T> {
-    /// Construct a new, empty `CdpChunk<T: RDH>`.
+impl<T: RDH> CdpVec<T> {
+    /// Construct a new, empty `CdpVec<T: RDH>`.
     #[inline]
     pub fn new() -> Self {
         Self {
@@ -72,17 +72,17 @@ impl<T: RDH> CdpChunk<T> {
             rdh_mem_pos: Vec::new(),
         }
     }
-    /// Construct a new, empty `CdpChunk<T: RDH>` with at least the specified capacity.
+    /// Construct a new, empty `CdpVec<T: RDH>` with at least the specified capacity.
     ///
-    /// The chunk will be able to hold at least `capacity` elements without reallocating.
+    /// The cdp_vec will be able to hold at least `capacity` elements without reallocating.
     ///
     /// # Examples
     /// ```
-    /// # use alice_protocol_reader::data_wrapper::CdpChunk;
+    /// # use alice_protocol_reader::cdp_wrapper::cdp_vec::CdpVec;
     /// # use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    /// # use alice_protocol_reader::prelude::{RdhCru, V7};
-    /// let mut chunk = CdpChunk::<RdhCru<V7>>::with_capacity(10);
-    /// assert!(chunk.len() == 0);
+    /// # use alice_protocol_reader::prelude::RdhCru;
+    /// let mut cdp_vec = CdpVec::<RdhCru>::with_capacity(10);
+    /// assert!(cdp_vec.len() == 0);
     /// ```
     ///
     #[inline]
@@ -94,7 +94,7 @@ impl<T: RDH> CdpChunk<T> {
         }
     }
 
-    /// Appends an [RDH], payload, and memory position to the back of the CdpChunk
+    /// Appends an [RDH], payload, and memory position to the back of the CdpVec
     #[inline]
     pub fn push(&mut self, rdh: T, payload: Vec<u8>, mem_pos: u64) {
         self.rdhs.push(rdh);
@@ -112,7 +112,7 @@ impl<T: RDH> CdpChunk<T> {
         self.rdh_mem_pos.push(cdp_tuple.2);
     }
 
-    /// Get the length of the CdpChunk, corresponding to the number of CDPs
+    /// Get the length of the CdpVec, corresponding to the number of CDPs
     #[inline]
     pub fn len(&self) -> usize {
         debug_assert!(self.rdhs.len() == self.payloads.len());
@@ -120,7 +120,7 @@ impl<T: RDH> CdpChunk<T> {
         self.rdhs.len()
     }
 
-    /// Check if the CdpChunk is empty
+    /// Check if the CdpVec is empty
     #[inline]
     pub fn is_empty(&self) -> bool {
         debug_assert!(self.rdhs.len() == self.payloads.len());
@@ -128,7 +128,7 @@ impl<T: RDH> CdpChunk<T> {
         self.rdhs.is_empty()
     }
 
-    /// Clear the CdpChunk, removing all elements.
+    /// Clear the CdpVec, removing all elements.
     #[inline]
     pub fn clear(&mut self) {
         self.rdhs.clear();
@@ -149,8 +149,8 @@ impl<T: RDH> CdpChunk<T> {
     }
 }
 
-/// Implementation of a consuming iterator for CdpChunk, with a helper struct
-impl<T: RDH> IntoIterator for CdpChunk<T> {
+/// Implementation of a consuming iterator for CdpVec, with a helper struct
+impl<T: RDH> IntoIterator for CdpVec<T> {
     type Item = CdpTuple<T>; // (RDH, payload, mem_pos)
     type IntoIter = IntoIterHelper<T>;
 
@@ -184,15 +184,15 @@ impl<T: RDH> Iterator for IntoIterHelper<T> {
 }
 
 type RefCdpTuple<'a, T> = (&'a T, &'a [u8], u64);
-/// Implementation of a non-consuming iterator for CdpChunk, with a helper struct
-impl<'a, T: RDH> IntoIterator for &'a CdpChunk<T> {
+/// Implementation of a non-consuming iterator for CdpVec, with a helper struct
+impl<'a, T: RDH> IntoIterator for &'a CdpVec<T> {
     type Item = RefCdpTuple<'a, T>;
-    type IntoIter = CdpChunkIter<'a, T>;
+    type IntoIter = CdpVecIter<'a, T>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        CdpChunkIter {
-            cdp_chunk: self,
+        CdpVecIter {
+            cdp_cdp_vec: self,
             index: 0,
         }
     }
@@ -200,21 +200,21 @@ impl<'a, T: RDH> IntoIterator for &'a CdpChunk<T> {
 
 /// Helper struct for the implementation of a non-consuming iterator
 #[derive(Debug)]
-pub struct CdpChunkIter<'a, T: RDH> {
-    cdp_chunk: &'a CdpChunk<T>,
+pub struct CdpVecIter<'a, T: RDH> {
+    cdp_cdp_vec: &'a CdpVec<T>,
     index: usize,
 }
 
-impl<'a, T: RDH> Iterator for CdpChunkIter<'a, T> {
+impl<'a, T: RDH> Iterator for CdpVecIter<'a, T> {
     type Item = RefCdpTuple<'a, T>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if self.index < self.cdp_chunk.rdhs.len() {
+        if self.index < self.cdp_cdp_vec.rdhs.len() {
             let item = Some((
-                self.cdp_chunk.rdhs.get(self.index)?,
-                self.cdp_chunk.payloads.get(self.index)?.as_slice(),
-                self.cdp_chunk.rdh_mem_pos.get(self.index)?.to_owned(),
+                self.cdp_cdp_vec.rdhs.get(self.index)?,
+                self.cdp_cdp_vec.payloads.get(self.index)?.as_slice(),
+                self.cdp_cdp_vec.rdh_mem_pos.get(self.index)?.to_owned(),
             ));
             self.index += 1;
             item
@@ -226,101 +226,100 @@ impl<'a, T: RDH> Iterator for CdpChunkIter<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::prelude::test_data::CORRECT_RDH_CRU_V6;
-    use super::super::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use super::super::prelude::RdhCru;
-    use super::super::prelude::RDH;
-    use super::super::prelude::V7;
-    use super::CdpChunk;
+    use super::CdpVec;
+    use crate::prelude::test_data::CORRECT_RDH_CRU_V6;
+    use crate::prelude::test_data::CORRECT_RDH_CRU_V7;
+    use crate::prelude::RdhCru;
+    use crate::prelude::RDH;
 
     #[test]
     fn test_push() {
-        let mut chunk = CdpChunk::<RdhCru<V7>>::new();
-        chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
-        chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
+        let mut cdp_vec = CdpVec::<RdhCru>::new();
+        cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
+        cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
-        assert_eq!(chunk.rdhs.len(), 2);
-        assert_eq!(chunk.payloads.len(), 2);
-        assert_eq!(chunk.rdh_mem_pos.len(), 2);
+        assert_eq!(cdp_vec.rdhs.len(), 2);
+        assert_eq!(cdp_vec.payloads.len(), 2);
+        assert_eq!(cdp_vec.rdh_mem_pos.len(), 2);
     }
 
     #[test]
     fn test_push_tup() {
-        let mut chunk = CdpChunk::<RdhCru<V7>>::new();
+        let mut cdp_vec = CdpVec::<RdhCru>::new();
         let tup = (CORRECT_RDH_CRU_V7, vec![0; 10], 0);
-        chunk.push_tuple(tup);
-        chunk.push_tuple((CORRECT_RDH_CRU_V7, vec![0; 10], 1));
+        cdp_vec.push_tuple(tup);
+        cdp_vec.push_tuple((CORRECT_RDH_CRU_V7, vec![0; 10], 1));
 
-        assert_eq!(chunk.rdhs.len(), 2);
-        assert_eq!(chunk.payloads.len(), 2);
-        assert_eq!(chunk.rdh_mem_pos.len(), 2);
+        assert_eq!(cdp_vec.rdhs.len(), 2);
+        assert_eq!(cdp_vec.payloads.len(), 2);
+        assert_eq!(cdp_vec.rdh_mem_pos.len(), 2);
     }
 
     #[test]
     fn test_clear() {
-        let mut chunk = CdpChunk::<RdhCru<V7>>::new();
-        chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
-        chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
+        let mut cdp_vec = CdpVec::<RdhCru>::new();
+        cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
+        cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
-        assert_eq!(chunk.rdhs.len(), 2);
-        assert_eq!(chunk.payloads.len(), 2);
-        assert_eq!(chunk.rdh_mem_pos.len(), 2);
+        assert_eq!(cdp_vec.rdhs.len(), 2);
+        assert_eq!(cdp_vec.payloads.len(), 2);
+        assert_eq!(cdp_vec.rdh_mem_pos.len(), 2);
 
-        chunk.clear();
+        cdp_vec.clear();
 
-        assert_eq!(chunk.rdhs.len(), 0);
-        assert_eq!(chunk.payloads.len(), 0);
-        assert_eq!(chunk.rdh_mem_pos.len(), 0);
+        assert_eq!(cdp_vec.rdhs.len(), 0);
+        assert_eq!(cdp_vec.payloads.len(), 0);
+        assert_eq!(cdp_vec.rdh_mem_pos.len(), 0);
     }
 
     #[test]
     fn test_len() {
-        let mut chunk = CdpChunk::<RdhCru<V7>>::new();
-        chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
-        chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
+        let mut cdp_vec = CdpVec::<RdhCru>::new();
+        cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
+        cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
-        assert_eq!(chunk.len(), 2);
+        assert_eq!(cdp_vec.len(), 2);
     }
 
     #[test]
     fn test_is_empty() {
-        let mut chunk = CdpChunk::<RdhCru<V7>>::new();
-        assert!(chunk.is_empty());
+        let mut cdp_vec = CdpVec::<RdhCru>::new();
+        assert!(cdp_vec.is_empty());
 
-        chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
-        assert!(!chunk.is_empty());
+        cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
+        assert!(!cdp_vec.is_empty());
     }
 
     #[test]
     fn test_with_capacity() {
-        let chunk = CdpChunk::<RdhCru<V7>>::with_capacity(10);
-        assert_eq!(chunk.rdhs.capacity(), 10);
-        assert_eq!(chunk.payloads.capacity(), 10);
-        assert_eq!(chunk.rdh_mem_pos.capacity(), 10);
+        let cdp_vec = CdpVec::<RdhCru>::with_capacity(10);
+        assert_eq!(cdp_vec.rdhs.capacity(), 10);
+        assert_eq!(cdp_vec.payloads.capacity(), 10);
+        assert_eq!(cdp_vec.rdh_mem_pos.capacity(), 10);
     }
 
     #[test]
     fn test_rdh_slice() {
-        let mut chunk = CdpChunk::<RdhCru<V7>>::new();
-        chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
-        chunk.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
+        let mut cdp_vec = CdpVec::<RdhCru>::new();
+        cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 0);
+        cdp_vec.push(CORRECT_RDH_CRU_V7, vec![0; 10], 1);
 
-        for rdh in chunk.rdh_slice() {
+        for rdh in cdp_vec.rdh_slice() {
             println!("{rdh}");
         }
 
-        assert_eq!(chunk.rdh_slice().len(), 2);
+        assert_eq!(cdp_vec.rdh_slice().len(), 2);
     }
 
     #[test]
-    fn test_consuming_iterator_cdp_chunk_v7() {
-        let cdp_chunk = CdpChunk {
+    fn test_consuming_iterator_cdp_cdp_vec_v7() {
+        let cdp_cdp_vec = CdpVec {
             rdhs: vec![CORRECT_RDH_CRU_V7, CORRECT_RDH_CRU_V7],
             payloads: vec![vec![0; 10], vec![0; 10]],
             rdh_mem_pos: vec![0, 1],
         };
 
-        cdp_chunk
+        cdp_cdp_vec
             .into_iter()
             .enumerate()
             .for_each(|(idx, (rdh, payload, mem_pos))| {
@@ -331,14 +330,14 @@ mod tests {
     }
 
     #[test]
-    fn test_non_consuming_iterator_cdp_chunk_v7() {
-        let cdp_chunk = CdpChunk {
+    fn test_non_consuming_iterator_cdp_cdp_vec_v7() {
+        let cdp_cdp_vec = CdpVec {
             rdhs: vec![CORRECT_RDH_CRU_V7, CORRECT_RDH_CRU_V7],
             payloads: vec![vec![0; 10], vec![0; 10]],
             rdh_mem_pos: vec![255, 255],
         };
 
-        for (rdh, payload, mem_pos) in &cdp_chunk {
+        for (rdh, payload, mem_pos) in &cdp_cdp_vec {
             assert_eq!(rdh, &CORRECT_RDH_CRU_V7);
             assert_eq!(payload.len(), 10);
             assert_eq!(mem_pos, 255);
@@ -346,14 +345,14 @@ mod tests {
     }
 
     #[test]
-    fn test_consuming_iterator_cdp_chunk_v6() {
-        let cdp_chunk = CdpChunk {
+    fn test_consuming_iterator_cdp_cdp_vec_v6() {
+        let cdp_cdp_vec = CdpVec {
             rdhs: vec![CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V6],
             payloads: vec![vec![0; 10], vec![0; 10]],
             rdh_mem_pos: vec![0, 1],
         };
 
-        cdp_chunk
+        cdp_cdp_vec
             .into_iter()
             .enumerate()
             .for_each(|(idx, (rdh, payload, mem_pos))| {
@@ -364,57 +363,57 @@ mod tests {
     }
 
     #[test]
-    fn test_non_consuming_iterator_cdp_chunk_v6() {
-        let cdp_chunk = CdpChunk {
+    fn test_non_consuming_iterator_cdp_cdp_vec_v6() {
+        let cdp_cdp_vec = CdpVec {
             rdhs: vec![CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V6],
             payloads: vec![vec![0; 10], vec![0; 10]],
             rdh_mem_pos: vec![0xd, 0xd],
         };
 
-        for (rdh, payload, mem_pos) in &cdp_chunk {
+        for (rdh, payload, mem_pos) in &cdp_cdp_vec {
             assert_eq!(*rdh, CORRECT_RDH_CRU_V6);
             assert_eq!(payload.len(), 10);
             assert_eq!(mem_pos, 0xd);
         }
 
-        let len = cdp_chunk.rdhs.len();
+        let len = cdp_cdp_vec.rdhs.len();
         assert_eq!(len, 2);
     }
 
-    fn print_cdp_chunk<T: RDH>(cdp_chunk: &CdpChunk<T>) {
-        for (rdh, payload, mem_pos) in cdp_chunk {
+    fn print_cdp_cdp_vec<T: RDH>(cdp_cdp_vec: &CdpVec<T>) {
+        for (rdh, payload, mem_pos) in cdp_cdp_vec {
             println!("rdh: {rdh}, payload: {:?}, mem_pos: {:?}", payload, mem_pos);
         }
     }
 
     #[test]
-    fn test_fn_borrows_cdp_chunk() {
-        let cdp_chunk = CdpChunk {
+    fn test_fn_borrows_cdp_cdp_vec() {
+        let cdp_cdp_vec = CdpVec {
             rdhs: vec![CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V6],
             payloads: vec![vec![0; 10], vec![0; 10]],
             rdh_mem_pos: vec![0xd, 0xd],
         };
 
-        print_cdp_chunk(&cdp_chunk);
+        print_cdp_cdp_vec(&cdp_cdp_vec);
     }
 
-    fn consume_cdp_chunk<T: RDH>(cdp_chunk: CdpChunk<T>) {
-        cdp_chunk.into_iter().for_each(|(rdh, payload, mem_pos)| {
+    fn consume_cdp_cdp_vec<T: RDH>(cdp_cdp_vec: CdpVec<T>) {
+        cdp_cdp_vec.into_iter().for_each(|(rdh, payload, mem_pos)| {
             println!("rdh: {rdh}, payload: {:?}, mem_pos: {:?}", payload, mem_pos);
         });
     }
 
     #[test]
-    fn test_fn_consume_cdp_chunk() {
-        let cdp_chunk = CdpChunk {
+    fn test_fn_consume_cdp_cdp_vec() {
+        let cdp_cdp_vec = CdpVec {
             rdhs: vec![CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V6],
             payloads: vec![vec![0; 10], vec![0; 10]],
             rdh_mem_pos: vec![0xd, 0xd],
         };
 
-        consume_cdp_chunk(cdp_chunk);
+        consume_cdp_cdp_vec(cdp_cdp_vec);
 
         // 'Use of moved value' compiler error
-        // println!("cdp_chunk: {:?}", cdp_chunk.rdhs);
+        // println!("cdp_cdp_vec: {:?}", cdp_cdp_vec.rdhs);
     }
 }

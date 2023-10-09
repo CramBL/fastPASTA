@@ -2,6 +2,8 @@
 //!
 //! The [InputScanner] implements the [ScanCDP] trait.
 
+use crate::prelude::RdhCru;
+
 use super::bufreader_wrapper::BufferedReaderWrapper;
 use super::config::filter::{FilterOpt, FilterTarget};
 use super::mem_pos_tracker::MemPosTracker;
@@ -341,10 +343,9 @@ fn sanity_check_offset_next<T: RDH>(
 
 #[inline]
 fn invalid_rdh_offset<T: RDH>(rdh: &T, current_memory_address: u64, offset_to_next: i64) -> String {
-    use super::rdh::{RdhCru, V7};
     let error_string = format!(
         "\n[{current_memory_address:#X}]:\n{rdh_header_text}     {rdh}",
-        rdh_header_text = RdhCru::<V7>::rdh_header_text_with_indent_to_string(5)
+        rdh_header_text = RdhCru::rdh_header_text_with_indent_to_string(5)
     );
     format!("RDH offset to next is {offset_to_next}. {error_string}")
 }
@@ -354,7 +355,7 @@ mod tests {
     use crate::prelude::RDH_CRU;
 
     use super::super::config::mock_config::MockConfig;
-    use super::super::rdh::{ByteSlice, RdhCru, V6, V7};
+    use super::super::rdh::{ByteSlice, RdhCru};
     use flume::Receiver;
     use pretty_assertions::assert_eq;
     use std::{io::BufReader, path::PathBuf};
@@ -402,7 +403,7 @@ mod tests {
 
         let stats_recv: Receiver<InputStatType> = {
             let (mut scanner, recv_chan) = setup_scanner_for_file(&test_file);
-            let rdh = scanner.load_rdh_cru::<RdhCru<V7>>().unwrap();
+            let rdh = scanner.load_rdh_cru::<RdhCru>().unwrap();
             assert_eq!(test_data, rdh);
             recv_chan
         };
@@ -421,7 +422,7 @@ mod tests {
 
         let stats_recv: Receiver<InputStatType> = {
             let (mut scanner, recv_chan) = setup_scanner_for_file(&test_file);
-            let rdh = scanner.load_rdh_cru::<RdhCru<V7>>();
+            let rdh = scanner.load_rdh_cru::<RdhCru>();
             assert!(rdh.is_err());
             assert_eq!(rdh.unwrap_err().kind(), std::io::ErrorKind::UnexpectedEof);
             recv_chan
@@ -441,7 +442,7 @@ mod tests {
 
         let stats_recv: Receiver<InputStatType> = {
             let (mut scanner, recv_chan) = setup_scanner_for_file(&test_file);
-            let rdh = scanner.load_rdh_cru::<RdhCru<V6>>().unwrap();
+            let rdh = scanner.load_rdh_cru::<RdhCru>().unwrap();
             assert_eq!(test_data, rdh);
             recv_chan
         };
@@ -461,7 +462,7 @@ mod tests {
         let stats_recv: Receiver<InputStatType> = {
             let (mut scanner, recv_chan) = setup_scanner_for_file(&test_file);
 
-            let rdh = scanner.load_rdh_cru::<RdhCru<V6>>();
+            let rdh = scanner.load_rdh_cru::<RdhCru>();
             assert!(rdh.is_err());
             assert_eq!(rdh.unwrap_err().kind(), std::io::ErrorKind::UnexpectedEof);
             recv_chan
@@ -484,7 +485,7 @@ mod tests {
         let bufreader = std::io::BufReader::new(reader);
         let mut input_scanner = InputScanner::minimal(Box::new(bufreader));
 
-        let rdh = input_scanner.load_rdh_cru::<RdhCru<u8>>().unwrap();
+        let rdh = input_scanner.load_rdh_cru::<RdhCru>().unwrap();
         let payload = input_scanner.load_payload_raw(rdh.payload_size().into());
 
         assert!(payload.is_err());
@@ -515,7 +516,7 @@ mod tests {
         let bufreader = std::io::BufReader::new(reader);
         let mut input_scanner = InputScanner::minimal(Box::new(bufreader));
 
-        let rdh = input_scanner.load_rdh_cru::<RdhCru<u8>>().unwrap();
+        let rdh = input_scanner.load_rdh_cru::<RdhCru>().unwrap();
         let payload = input_scanner.load_payload_raw(rdh.payload_size().into());
 
         assert!(payload.is_err());
