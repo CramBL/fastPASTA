@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 # [Unreleased]
 
+### Performance
+- [CdpArray] now used to store batches of CDPs during analysis. Replaces the [CdpVec] which was a preallocated vector, with an array backed vector.
+### Other
+- Code refactorings (simplifying).
+
 # v1.16.3 (2023-10-4) - Handle edge case in piping scenario
 ### Fix
 - Handle broken pipe error when encountered during report printing
