@@ -59,6 +59,15 @@ impl MockConfig {
             stats_input_file: None,
         }
     }
+
+    pub fn new_check_all_its() -> Self {
+        Self {
+            check: Some(CheckCommands::All {
+                system: Some(System::ITS),
+            }),
+            ..Default::default()
+        }
+    }
 }
 
 impl Config for MockConfig {}
