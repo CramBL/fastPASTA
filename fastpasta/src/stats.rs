@@ -162,12 +162,12 @@ impl std::fmt::Display for SystemId {
     }
 }
 
-/// Takes an [RDH](RDH) and determines the [SystemId] and collects system specific stats.
+/// Takes an [RDH] and determines the [SystemId] and collects system specific stats.
 /// Uses the received [`Option<SystemId>`] to check if the system ID has already been determined,
 /// otherwise it will determine the [SystemId] and send it via the channel [`flume::Sender<StatType>`].
 ///
 /// ### Arguments
-/// * `rdh` - The [RDH](RDH) to collect stats from.
+/// * `rdh` - The [RDH] to collect stats from.
 /// * `system_id` - The [`Option<SystemId>`] to check if the system ID has already been determined.
 /// * `stats_sender_channel` - The [`flume::Sender<StatType>`] to send the stats through.
 /// ### Returns

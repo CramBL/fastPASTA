@@ -2,14 +2,19 @@
 //!
 //! Analysis consists of decoding the ALPIDE data and then performing checks on the decoded data.
 
+use itertools::Itertools;
+
 use crate::{
     stats::stats_collector::its_stats::alpide_stats::AlpideStats,
     words::its::{
-        alpide_words::{AlpideFrameChipData, LaneDataFrame},
+        alpide::{
+            alpide_word::{AlpideProtocolExtension, AlpideWord},
+            AlpideFrameChipData,
+        },
+        lane_data_frame::LaneDataFrame,
         Layer,
     },
 };
-use itertools::Itertools;
 
 /// Decodes the ALPIDE data from a readout frame for a single lane
 pub struct LaneAlpideFrameAnalyzer<'a> {
@@ -89,7 +94,6 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
 
     /// Takes one ALPIDE byte at a time and decodes information from it.
     fn decode(&mut self, alpide_byte: u8) {
-        use crate::words::its::alpide_words::{AlpideProtocolExtension, AlpideWord};
         log::trace!("Processing {alpide_byte:#02X} ALPIDE byte");
 
         if self.skip_n_bytes > 0 {
@@ -257,8 +261,8 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
         }
     }
 
+    /// Check if the number of chip data matches the expected number of chips
     fn check_chip_count(&self) -> Result<(), String> {
-        // Check if the number of chip data matches the expected number of chips
         if matches!(self.from_layer, Some(Layer::Inner)) {
             if self.chip_data.len() != Self::IL_CHIP_COUNT {
                 return Err(format!(
@@ -285,8 +289,8 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
         Ok(())
     }
 
+    /// Get the chip IDs from the chip data vector
     fn check_chip_id_order(&self) -> Result<(), String> {
-        // Get the chip IDs from the chip data vector
         let chip_ids: Vec<u8> = self.chip_data.iter().map(|cd| cd.chip_id).collect();
         if let Some(data_from) = &self.from_layer {
             match data_from {

@@ -11,4 +11,5 @@ pub mod cdp_running;
 pub mod data_words;
 pub mod its_payload_fsm_cont;
 pub mod lib;
-pub mod status_words;
+pub mod status_word;
+mod util;

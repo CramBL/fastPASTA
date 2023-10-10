@@ -46,26 +46,22 @@ impl<T: RDH> RdhCruRunningChecker<T> {
         }
 
         let mut err_str = String::new();
-        let mut err_cnt: u8 = 0;
 
         if let Err(e) = self.check_stop_bit_and_page_counter(rdh.rdh2()) {
-            err_cnt += 1;
             err_str.push_str(&e);
         };
 
         if let Err(e) = self.check_orbit_counter_changes(rdh.rdh1()) {
-            err_cnt += 1;
             err_str.push_str(&e);
         };
 
         if let Err(e) = self.check_orbit_trigger_det_field_feeid_same_when_page_not_0(rdh) {
-            err_cnt += 1;
             err_str.push_str(&e);
         }
 
         self.last_rdh_cru = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
 
-        if err_cnt != 0 {
+        if !err_str.is_empty() {
             err_str.insert_str(0, "[E11] RDH running check failed: ");
             return Err(err_str);
         }
@@ -87,11 +83,9 @@ impl<T: RDH> RdhCruRunningChecker<T> {
     #[inline]
     fn check_stop_bit_and_page_counter(&mut self, rdh2: &Rdh2) -> Result<(), String> {
         let mut err_str = String::new();
-        let mut err_cnt: u8 = 0;
         match rdh2.stop_bit {
             0 => {
                 if rdh2.pages_counter != self.expect_pages_counter {
-                    err_cnt += 1;
                     let tmp = rdh2.pages_counter;
                     write!(
                         err_str,
@@ -104,7 +98,6 @@ impl<T: RDH> RdhCruRunningChecker<T> {
             }
             1 => {
                 if rdh2.pages_counter != self.expect_pages_counter {
-                    err_cnt += 1;
                     let tmp = rdh2.pages_counter;
                     write!(
                         err_str,
@@ -116,13 +109,12 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                 self.expect_pages_counter = 0;
             }
             _ => {
-                err_cnt += 1;
                 let tmp = rdh2.stop_bit;
                 write!(err_str, "stop_bit = {tmp}.").unwrap();
             }
         };
 
-        if err_cnt != 0 {
+        if !err_str.is_empty() {
             return Err(err_str);
         }
 
@@ -148,12 +140,10 @@ impl<T: RDH> RdhCruRunningChecker<T> {
         rdh_cru: &T,
     ) -> Result<(), String> {
         let mut err_str = String::new();
-        let mut err_cnt: u8 = 0;
 
         if rdh_cru.pages_counter() != 0 {
             if let Some(last_rdh_cru) = &self.last_rdh_cru {
                 if rdh_cru.rdh1().orbit != last_rdh_cru.rdh1().orbit {
-                    err_cnt += 1;
                     let tmp_current_orbit = rdh_cru.rdh1().orbit;
                     let tmp_last_orbit = last_rdh_cru.rdh1().orbit;
                     write!(
@@ -163,7 +153,6 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                     .unwrap()
                 }
                 if rdh_cru.rdh2().trigger_type != last_rdh_cru.rdh2().trigger_type {
-                    err_cnt += 1;
                     let tmp_current_trigger_type = rdh_cru.rdh2().trigger_type;
                     let tmp_last_trigger_type = last_rdh_cru.rdh2().trigger_type;
                     write!(
@@ -173,7 +162,6 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                     .unwrap()
                 }
                 if rdh_cru.rdh3().detector_field != last_rdh_cru.rdh3().detector_field {
-                    err_cnt += 1;
                     let tmp_current_detector_field = rdh_cru.rdh3().detector_field;
                     let tmp_last_detector_field = last_rdh_cru.rdh3().detector_field;
                     write!(
@@ -183,7 +171,6 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                     .unwrap()
                 }
                 if rdh_cru.fee_id() != last_rdh_cru.fee_id() {
-                    err_cnt += 1;
                     let tmp_current_fee_id = rdh_cru.fee_id();
                     let tmp_last_fee_id = last_rdh_cru.fee_id();
                     write!(
@@ -194,7 +181,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                 }
             }
         }
-        if err_cnt == 0 {
+        if err_str.is_empty() {
             Ok(())
         } else {
             Err(err_str)

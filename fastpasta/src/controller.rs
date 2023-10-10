@@ -13,7 +13,7 @@ use owo_colors::OwoColorize;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-/// Spawns a thread with the [Controller](Controller) running, and returns the thread handle, the channel to send stats to, and the stop flag.
+/// Spawns a thread with the [Controller] running, and returns the thread handle, the channel to send stats to, and the stop flag.
 pub fn init_controller<C: Config + 'static>(
     config: &'static C,
 ) -> (
