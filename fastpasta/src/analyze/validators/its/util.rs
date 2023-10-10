@@ -3,6 +3,8 @@ use crate::{
     words::its::status_words::{Cdw, Ddw0, Ihw, Tdh, Tdt},
 };
 
+use super::status_word::StatusWordSanityChecker;
+
 /// Helper function to format and report an error in ITS protocol
 ///
 /// Takes in the error string slice and the word slice
@@ -63,8 +65,8 @@ impl TdhBuffer {
     }
 }
 
-#[derive(Default)]
 pub struct StatusWordContainer {
+    sanity_checker: StatusWordSanityChecker,
     ihw: Option<Ihw>,
     tdhs: TdhBuffer,
     tdt: Option<Tdt>,
@@ -73,6 +75,25 @@ pub struct StatusWordContainer {
 }
 
 impl StatusWordContainer {
+    pub const fn new_const() -> Self {
+        Self {
+            sanity_checker: StatusWordSanityChecker::new(),
+            ihw: None,
+            tdhs: TdhBuffer {
+                current_tdh: None,
+                previous_tdh: None,
+                previous_tdh_with_internal_set: None,
+            },
+            tdt: None,
+            ddw0: None,
+            cdw: None,
+        }
+    }
+
+    pub fn sanity_check_tdh(&self, tdh: &Tdh) -> Result<(), String> {
+        self.sanity_checker.check_tdh(tdh)
+    }
+
     pub fn replace_tdh(&mut self, tdh: Tdh) {
         self.tdhs.replace(tdh);
     }
@@ -89,11 +110,21 @@ impl StatusWordContainer {
         self.tdhs.previous_tdh_with_internal_trg()
     }
 
+    /// Checks if argument is a valid [TDT][Tdt] status word.
+    pub fn sanity_check_tdt(&self, tdt: &Tdt) -> Result<(), String> {
+        self.sanity_checker.check_tdt(tdt)
+    }
+
     pub fn replace_tdt(&mut self, tdt: Tdt) {
         self.tdt = Some(tdt);
     }
     pub fn tdt(&self) -> Option<&Tdt> {
         self.tdt.as_ref()
+    }
+
+    /// Checks if argument is a valid [IHW][Ihw] status word.
+    pub fn sanity_check_ihw(&self, ihw: &Ihw) -> Result<(), String> {
+        self.sanity_checker.check_ihw(ihw)
     }
 
     pub fn replace_ihw(&mut self, ihw: Ihw) {
@@ -102,6 +133,11 @@ impl StatusWordContainer {
 
     pub fn ihw(&self) -> Option<&Ihw> {
         self.ihw.as_ref()
+    }
+
+    /// Checks if argument is a valid [DDW0][Ddw0] status word.
+    pub fn sanity_check_ddw0(&self, ddw0: &Ddw0) -> Result<(), String> {
+        self.sanity_checker.check_ddw0(ddw0)
     }
 
     pub fn replace_ddw(&mut self, ddw0: Ddw0) {

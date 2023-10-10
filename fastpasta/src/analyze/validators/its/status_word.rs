@@ -14,9 +14,6 @@ mod ihw;
 pub(super) mod tdh;
 pub(super) mod tdt;
 
-/// Convenience const for the [StatusWordSanityChecker].
-pub const STATUS_WORD_SANITY_CHECKER: StatusWordSanityChecker = StatusWordSanityChecker::new();
-
 /// Aggregates all status word validators.
 #[derive(Debug, Clone, Copy)]
 pub struct StatusWordSanityChecker {
@@ -38,19 +35,19 @@ impl StatusWordSanityChecker {
     }
 
     /// Checks if argument is a valid [IHW][Ihw] status word.
-    pub fn sanity_check_ihw(&self, ihw: &Ihw) -> Result<(), String> {
+    pub fn check_ihw(&self, ihw: &Ihw) -> Result<(), String> {
         self.ihw_validator.sanity_check(ihw)
     }
     /// Checks if argument is a valid [TDH][Tdh] status word.
-    pub fn sanity_check_tdh(&self, tdh: &Tdh) -> Result<(), String> {
+    pub fn check_tdh(&self, tdh: &Tdh) -> Result<(), String> {
         self.tdh_validator.sanity_check(tdh)
     }
     /// Checks if argument is a valid [TDT][Tdt] status word.
-    pub fn sanity_check_tdt(&self, tdt: &Tdt) -> Result<(), String> {
+    pub fn check_tdt(&self, tdt: &Tdt) -> Result<(), String> {
         self.tdt_validator.sanity_check(tdt)
     }
     /// Checks if argument is a valid [DDW0][Ddw0] status word.
-    pub fn sanity_check_ddw0(&self, ddw0: &Ddw0) -> Result<(), String> {
+    pub fn check_ddw0(&self, ddw0: &Ddw0) -> Result<(), String> {
         self.ddw0_validator.sanity_check(ddw0)
     }
 }
@@ -64,15 +61,15 @@ mod tests {
     use super::*;
     use crate::words::its::status_words::StatusWord;
 
+    const STATUS_WORD_SANITY_CHECKER: StatusWordSanityChecker = StatusWordSanityChecker::new();
+
     #[test]
     #[should_panic]
     fn test_ddw0_invalid() {
         let raw_ddw0_bad_index = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0xE4];
 
         let ddw0_bad = Ddw0::load(&mut raw_ddw0_bad_index.as_slice()).unwrap();
-        STATUS_WORD_SANITY_CHECKER
-            .sanity_check_ddw0(&ddw0_bad)
-            .unwrap();
+        STATUS_WORD_SANITY_CHECKER.check_ddw0(&ddw0_bad).unwrap();
     }
 
     #[test]
@@ -80,9 +77,7 @@ mod tests {
         let raw_ddw0_bad_index = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0xE4];
 
         let ddw0_bad = Ddw0::load(&mut raw_ddw0_bad_index.as_slice()).unwrap();
-        assert!(STATUS_WORD_SANITY_CHECKER
-            .sanity_check_ddw0(&ddw0_bad)
-            .is_err());
+        assert!(STATUS_WORD_SANITY_CHECKER.check_ddw0(&ddw0_bad).is_err());
     }
 
     #[test]
@@ -90,9 +85,7 @@ mod tests {
         let raw_ddw0_bad_index = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0xE4];
 
         let ddw0_bad = Ddw0::load(&mut raw_ddw0_bad_index.as_slice()).unwrap();
-        let err = STATUS_WORD_SANITY_CHECKER
-            .sanity_check_ddw0(&ddw0_bad)
-            .err();
+        let err = STATUS_WORD_SANITY_CHECKER.check_ddw0(&ddw0_bad).err();
         eprintln!("{:?}", err);
         assert!(err.unwrap().contains("index is not 0"));
     }
@@ -101,9 +94,7 @@ mod tests {
         let raw_data_ddw0_bad_id = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14];
 
         let ddw0_bad = Ddw0::load(&mut raw_data_ddw0_bad_id.as_slice()).unwrap();
-        let err = STATUS_WORD_SANITY_CHECKER
-            .sanity_check_ddw0(&ddw0_bad)
-            .err();
+        let err = STATUS_WORD_SANITY_CHECKER.check_ddw0(&ddw0_bad).err();
         eprintln!("{:?}", err);
         assert!(err.unwrap().contains("ID is not 0xE4: 0x"));
     }
