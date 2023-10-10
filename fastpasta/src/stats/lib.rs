@@ -1,9 +1,22 @@
 //! Contains utility related to collecting stats about the input data.
 
-/// Displays an error message if the config doesn't have the mute error flag set.
+/// Displays an error message unless the config doesn't have the mute error flag set
 /// Check for the mute error flag in the config before calling this function.
-pub(crate) fn display_error(error: &str) {
-    log::error!("{error}");
+///
+/// If an error code filter is supplied, only errors matching the filter are displayed
+///
+pub(crate) fn display_error(error: &str, error_code_filter: Option<&[u32]>) {
+    if let Some(filter) = error_code_filter {
+        for ec in filter {
+            let pattern = format!("[E{ec}]");
+            if error.contains(&pattern) {
+                log::error!("{error}");
+                continue;
+            }
+        }
+    } else {
+        log::error!("{error}");
+    }
 }
 
 /// Module containing macros related to stats.

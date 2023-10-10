@@ -174,6 +174,14 @@ pub struct Cfg {
         global = true,
     )]
     input_stats_file: Option<PathBuf>,
+
+    #[arg(
+        short = 'w',
+        long = "show-only-errors-with-codes",
+        visible_aliases = ["error-codes", "errors-with-code", "show-with-code", "show-errors-with-codes"],
+        global = true,
+    )]
+    show_error_codes: Vec<u32>,
 }
 
 impl Cfg {
@@ -333,6 +341,14 @@ impl UtilOpt for Cfg {
     }
     fn mute_errors(&self) -> bool {
         self.mute_errors
+    }
+
+    fn error_code_filter(&self) -> Option<&[u32]> {
+        if self.show_error_codes.is_empty() {
+            None
+        } else {
+            Some(&self.show_error_codes)
+        }
     }
 }
 

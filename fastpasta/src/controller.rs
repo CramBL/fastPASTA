@@ -174,7 +174,11 @@ impl<C: Config + 'static> Controller<C> {
 
             if self
                 .stats_collector
-                .validate_other_stats(&input_stats_collector, self.config.mute_errors())
+                .validate_other_stats(
+                    &input_stats_collector,
+                    self.config.mute_errors(),
+                    self.config.error_code_filter(),
+                )
                 .is_err()
             {
                 self.any_errors_flag
@@ -272,10 +276,14 @@ impl<C: Config + 'static> Controller<C> {
         if !self.config.mute_errors() {
             // Print the errors, limited if there's a max error limit set
             if self.max_tolerate_errors > 0 {
-                self.stats_collector
-                    .display_errors(Some(self.max_tolerate_errors as usize), false);
+                self.stats_collector.display_errors(
+                    Some(self.max_tolerate_errors as usize),
+                    false,
+                    self.config.error_code_filter(),
+                );
             } else {
-                self.stats_collector.display_errors(None, false);
+                self.stats_collector
+                    .display_errors(None, false, self.config.error_code_filter());
             }
         }
     }

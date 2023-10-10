@@ -27,6 +27,7 @@ pub struct MockConfig {
     pub stats_output_mode: DataOutputMode,
     pub stats_output_format: Option<DataOutputFormat>,
     pub stats_input_file: Option<std::path::PathBuf>,
+    pub show_error_codes: Vec<u32>,
 }
 
 impl Default for MockConfig {
@@ -57,6 +58,7 @@ impl MockConfig {
             stats_output_mode: DataOutputMode::None,
             stats_output_format: None,
             stats_input_file: None,
+            show_error_codes: Vec::new(),
         }
     }
 
@@ -130,6 +132,14 @@ impl UtilOpt for MockConfig {
 
     fn mute_errors(&self) -> bool {
         self.mute_errors
+    }
+
+    fn error_code_filter(&self) -> Option<&[u32]> {
+        if self.show_error_codes.is_empty() {
+            None
+        } else {
+            Some(&self.show_error_codes)
+        }
     }
 }
 impl InputOutputOpt for MockConfig {

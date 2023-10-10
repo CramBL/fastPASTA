@@ -90,8 +90,13 @@ impl StatsCollector {
         self.is_finalized = true;
     }
 
-    /// Display the errors reported, optionally limiting the number of errors displayed.
-    pub fn display_errors(&self, display_max: Option<usize>, mute_errors: bool) {
+    /// Display the errors reported, optionally limiting the number of errors displayed, or filtering by error codes
+    pub fn display_errors(
+        &self,
+        display_max: Option<usize>,
+        mute_errors: bool,
+        error_code_filter: Option<&[u32]>,
+    ) {
         if mute_errors {
             return;
         }
@@ -101,7 +106,7 @@ impl StatsCollector {
                 .iter()
                 .take(max)
                 .for_each(|err| {
-                    super::lib::display_error(err);
+                    super::lib::display_error(err, error_code_filter);
                     cnt -= 1;
                 });
 
@@ -110,17 +115,17 @@ impl StatsCollector {
                     .iter()
                     .take(cnt)
                     .for_each(|err| {
-                        super::lib::display_error(err);
+                        super::lib::display_error(err, error_code_filter);
                     });
             }
         } else {
             // Display all
             self.reported_errors_as_slice()
                 .iter()
-                .for_each(|err| super::lib::display_error(err));
+                .for_each(|err| super::lib::display_error(err, error_code_filter));
             self.custom_check_errors_as_slice()
                 .iter()
-                .for_each(|err| super::lib::display_error(err));
+                .for_each(|err| super::lib::display_error(err, error_code_filter));
         }
     }
 
@@ -230,6 +235,7 @@ impl StatsCollector {
         &self,
         other: &Self,
         mute_errors: bool,
+        error_code_filter: Option<&[u32]>,
     ) -> Result<(), std::io::Error> {
         let mut errs = Vec::new();
 
@@ -261,7 +267,7 @@ impl StatsCollector {
         } else {
             if !mute_errors {
                 errs.iter().for_each(|err| {
-                    super::lib::display_error(err);
+                    super::lib::display_error(err, error_code_filter);
                 });
             }
             Err(std::io::Error::new(
@@ -328,7 +334,7 @@ mod tests {
         let other_stats_collector = StatsCollector::default();
 
         assert!(stats_collector
-            .validate_other_stats(&other_stats_collector, false)
+            .validate_other_stats(&other_stats_collector, false, None)
             .is_ok());
     }
 
@@ -338,7 +344,7 @@ mod tests {
         let other_stats_collector = StatsCollector::with_alpide_stats();
 
         assert!(stats_collector
-            .validate_other_stats(&other_stats_collector, false)
+            .validate_other_stats(&other_stats_collector, false, None)
             .is_ok());
     }
 
@@ -347,7 +353,8 @@ mod tests {
         let stats_collector = StatsCollector::with_alpide_stats();
         let other_stats_collector = StatsCollector::default();
 
-        if let Err(msgs) = stats_collector.validate_other_stats(&other_stats_collector, false) {
+        if let Err(msgs) = stats_collector.validate_other_stats(&other_stats_collector, false, None)
+        {
             println!("{:?}", msgs);
         } else {
             panic!("Should have failed");
@@ -355,7 +362,7 @@ mod tests {
 
         // Vice versa is OK (if ALPIDE stats are provided by user, it's OK if the analysis didn't collect ALPIDE stats)
         assert!(other_stats_collector
-            .validate_other_stats(&stats_collector, false)
+            .validate_other_stats(&stats_collector, false, None)
             .is_ok());
         // The user should be warned about this though
     }
@@ -371,7 +378,8 @@ mod tests {
         other_stats_collector.collect(StatType::TriggerType(0xE021));
         other_stats_collector.collect(StatType::SystemId(SystemId::ZDC));
 
-        if let Err(err) = stats_collector.validate_other_stats(&other_stats_collector, false) {
+        if let Err(err) = stats_collector.validate_other_stats(&other_stats_collector, false, None)
+        {
             println!("{:?}", err);
         } else {
             panic!("Should have failed");
@@ -405,8 +413,10 @@ mod tests {
         stats_collector.collect(StatType::AlpideStats(alpide_stats));
         other_stats_collector.collect(StatType::AlpideStats(alpide_stats));
 
+        let error_code_filter: Vec<u32> = vec![10, 32];
+
         assert!(stats_collector
-            .validate_other_stats(&other_stats_collector, false)
+            .validate_other_stats(&other_stats_collector, false, Some(&error_code_filter))
             .is_ok());
     }
 }
