@@ -20,9 +20,7 @@ impl StatusWordValidator<Ddw0> for Ddw0Validator {
             return Err(err_str);
         }
 
-        let mut err_cnt: u8 = 0;
         if !ddw0.is_reserved_0() {
-            err_cnt += 1;
             write!(
                 err_str,
                 "reserved bits are not 0:  {:b} {:b} ",
@@ -33,15 +31,13 @@ impl StatusWordValidator<Ddw0> for Ddw0Validator {
         }
 
         if ddw0.index() != 0 {
-            err_cnt += 1;
             write!(err_str, "index is not 0:  {:#2X} ", ddw0.index()).unwrap();
         }
 
-        if err_cnt > 0 {
-            Err(err_str)
-        } else {
-            Ok(())
+        if !err_str.is_empty() {
+            return Err(err_str);
         }
+        Ok(())
     }
 }
 

@@ -22,9 +22,7 @@ impl StatusWordValidator<Tdh> for TdhValidator {
             return Err(err_str);
         }
 
-        let mut err_cnt: u8 = 0;
         if !tdh.is_reserved_0() {
-            err_cnt += 1;
             write!(
                 err_str,
                 "reserved bits are not 0:  {:X} {:X} {:X} ",
@@ -43,16 +41,15 @@ impl StatusWordValidator<Tdh> for TdhValidator {
         // Trigger Type check (12 lowest bits of trigger type received from CTP)
         // All values are valid except 0x0
         if tdh.trigger_type() == 0 && tdh.internal_trigger() == 0 {
-            err_cnt += 1;
             write!(err_str, "trigger type and internal trigger both 0").unwrap();
         }
 
         debug_assert!(tdh.internal_trigger() < 2);
 
-        if err_cnt > 0 {
-            Err(err_str)
-        } else {
+        if err_str.is_empty() {
             Ok(())
+        } else {
+            Err(err_str)
         }
     }
 }

@@ -20,15 +20,13 @@ impl StatusWordValidator<Ihw> for IhwValidator {
             return Err(err_str);
         }
 
-        let mut err_cnt: u8 = 0;
         if !ihw.is_reserved_0() {
-            err_cnt += 1;
             write!(err_str, "reserved bits are not 0: {:2X} ", ihw.reserved()).unwrap();
         }
-        if err_cnt > 0 {
-            Err(err_str)
-        } else {
+        if err_str.is_empty() {
             Ok(())
+        } else {
+            Err(err_str)
         }
     }
 }
