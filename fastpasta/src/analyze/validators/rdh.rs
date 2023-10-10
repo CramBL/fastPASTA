@@ -300,13 +300,16 @@ struct Rdh1Validator {
     valid_rdh1: Rdh1,
 }
 impl Rdh1Validator {
+    // Max bunch counter is 0xdeb
+    const BC_MAX: u16 = 0xdeb;
+
     pub fn sanity_check(&self, rdh1: &Rdh1) -> Result<(), String> {
         let mut err_str = String::new();
         if rdh1.reserved0() != self.valid_rdh1.reserved0() {
             write!(err_str, "reserved0 = {:#x} ", rdh1.reserved0()).unwrap();
         }
-        // Max bunch counter is 0xdeb
-        if rdh1.bc() > 0xdeb {
+
+        if rdh1.bc() > Self::BC_MAX {
             write!(err_str, "BC = {:#x} ", rdh1.bc()).unwrap();
         }
 

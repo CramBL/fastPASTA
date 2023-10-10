@@ -8,7 +8,7 @@ use super::{
     data_words::DATA_WORD_SANITY_CHECKER,
     its_payload_fsm_cont::{self, ItsPayloadFsmContinuous},
     lib::ItsPayloadWord,
-    status_word::{tdh::TdhValidator, STATUS_WORD_SANITY_CHECKER},
+    status_word::tdh::TdhValidator,
     util::StatusWordContainer,
 };
 use crate::analyze::validators::its::alpide::alpide_readout_frame::AlpideReadoutFrame;
@@ -71,7 +71,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                     .is_some_and(|target| target == System::ITS_Stave)
             }),
             its_state_machine: ItsPayloadFsmContinuous::default(),
-            status_words: StatusWordContainer::default(),
+            status_words: StatusWordContainer::new_const(),
             current_rdh: None,
             gbt_word_counter: 0,
             stats_send_ch,
@@ -239,7 +239,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 
     fn preprocess_tdh(&mut self, tdh_slice: &[u8]) {
         let tdh = Tdh::load(&mut <&[u8]>::clone(&tdh_slice)).unwrap();
-        if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdh(&tdh) {
+        if let Err(e) = self.status_words.sanity_check_tdh(&tdh) {
             self.report_error(&format!("[E40] {e}"), tdh_slice);
         }
 
@@ -262,7 +262,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 
     fn preprocess_tdt(&mut self, tdh_slice: &[u8]) {
         let tdt = Tdt::load(&mut <&[u8]>::clone(&tdh_slice)).unwrap();
-        if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_tdt(&tdt) {
+        if let Err(e) = self.status_words.sanity_check_tdt(&tdt) {
             self.report_error(&format!("[E50] {e}"), tdh_slice);
         }
         // Replace TDT before processing ALPIDE readout frame
@@ -277,7 +277,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 
     fn preprocess_ihw(&mut self, ihw_slice: &[u8]) {
         let ihw = Ihw::load(&mut <&[u8]>::clone(&ihw_slice)).unwrap();
-        if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ihw(&ihw) {
+        if let Err(e) = self.status_words.sanity_check_ihw(&ihw) {
             self.report_error(&format!("[E30] {e}"), ihw_slice);
         }
         self.status_words.replace_ihw(ihw);
@@ -285,7 +285,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 
     fn preprocess_ddw0(&mut self, ddw0_slice: &[u8]) {
         let ddw0 = Ddw0::load(&mut <&[u8]>::clone(&ddw0_slice)).unwrap();
-        if let Err(e) = STATUS_WORD_SANITY_CHECKER.sanity_check_ddw0(&ddw0) {
+        if let Err(e) = self.status_words.sanity_check_ddw0(&ddw0) {
             self.report_error(&format!("[E60] {e}"), ddw0_slice);
         }
 
