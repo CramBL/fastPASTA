@@ -400,17 +400,15 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     /// Checks TDH trigger and continuation following a TDT packet_done = 1
     #[inline]
     fn check_tdh_by_was_tdt_packet_done_true(&mut self, tdh_slice: &[u8]) {
-        if let Some(previous_tdh) = self.status_words.prv_tdh() {
-            if previous_tdh.trigger_bc() > self.status_words.tdh().unwrap().trigger_bc() {
-                self.report_error(
-                    &format!(
-                        "[E440] TDH trigger_bc is not increasing, previous: {:#X}, current: {:#X}.",
-                        previous_tdh.trigger_bc(),
-                        self.status_words.tdh().unwrap().trigger_bc()
-                    ),
-                    tdh_slice,
-                );
-            }
+        if TdhValidator::check_after_tdt_packet_done_true(&self.status_words).is_err() {
+            self.report_error(
+                &format!(
+                    "[E440] TDH trigger_bc is not increasing, previous: {:#X}, current: {:#X}.",
+                    self.status_words.prv_tdh().unwrap().trigger_bc(),
+                    self.status_words.tdh().unwrap().trigger_bc()
+                ),
+                tdh_slice,
+            );
         }
     }
 
@@ -520,6 +518,11 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         }
     }
 
+    /// Checks if the TDH trigger_bc period matches the specified value
+    ///
+    /// reports an error with the detected erroneous period if the check fails
+    ///
+    /// The check is only applicable to consecutive TDHs with internal_trigger set.
     fn check_tdh_trigger_interval(&self, _tdh_slice: &[u8]) {
         if let Some(specified_trig_period) = self.config.check_its_trigger_period() {
             if let Some(prev_int_tdh) = self.status_words.tdh_previous_with_internal_trg() {

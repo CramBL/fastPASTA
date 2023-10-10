@@ -61,11 +61,6 @@ impl TdhBuffer {
     pub(crate) fn previous_tdh_with_internal_trg(&self) -> Option<&Tdh> {
         self.previous_tdh_with_internal_set.as_ref()
     }
-
-    fn is_previous_internal(&self) -> bool {
-        self.previous_tdh
-            .is_some_and(|tdh| tdh.internal_trigger() == 1)
-    }
 }
 
 #[derive(Default)]
@@ -88,10 +83,6 @@ impl StatusWordContainer {
 
     pub fn prv_tdh(&self) -> Option<&Tdh> {
         self.tdhs.previous_tdh()
-    }
-
-    pub fn tdh_previous_has_internal_trg(&self) -> bool {
-        self.tdhs.is_previous_internal()
     }
 
     pub fn tdh_previous_with_internal_trg(&self) -> Option<&Tdh> {

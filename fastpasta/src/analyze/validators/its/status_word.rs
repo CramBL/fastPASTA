@@ -12,7 +12,7 @@ use tdt::TdtValidator;
 mod ddw;
 mod ihw;
 pub(super) mod tdh;
-mod tdt;
+pub(super) mod tdt;
 
 /// Convenience const for the [StatusWordSanityChecker].
 pub const STATUS_WORD_SANITY_CHECKER: StatusWordSanityChecker = StatusWordSanityChecker::new();

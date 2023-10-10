@@ -2,7 +2,10 @@
 use std::fmt::Write;
 
 use super::StatusWordValidator;
-use crate::words::its::status_words::{StatusWord, Tdh};
+use crate::{
+    analyze::validators::its::util::StatusWordContainer,
+    words::its::status_words::{StatusWord, Tdh},
+};
 
 #[derive(Debug, Copy, Clone)]
 pub struct TdhValidator {
@@ -59,6 +62,11 @@ impl TdhValidator {
         Self { valid_id: 0xE8 }
     }
 
+    /// Checks if the period between two TDH trigger_bc values matches a specified value
+    ///
+    /// returns an error with the detected erroneous period if the check fails
+    ///
+    /// The check is only applicable to consecutive TDHs with internal_trigger set.
     pub fn matches_trigger_interval(
         current_trg_bc: u16,
         previous_trg_bc: u16,
@@ -77,6 +85,19 @@ impl TdhValidator {
         } else {
             Err(detected_period)
         }
+    }
+
+    /// Checks TDH trigger_bc following a TDT packet_done = 1
+    ///
+    /// Valid if current TDH trigger_bc >= previous TDH trigger_bc
+    #[inline]
+    pub fn check_after_tdt_packet_done_true(status_words: &StatusWordContainer) -> Result<(), ()> {
+        if let Some(previous_tdh) = status_words.prv_tdh() {
+            if previous_tdh.trigger_bc() > status_words.tdh().unwrap().trigger_bc() {
+                return Err(());
+            }
+        }
+        Ok(())
     }
 }
 
