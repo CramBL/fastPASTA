@@ -195,7 +195,11 @@ impl ItsPayloadFsmContinuous {
                 },
 
                 state::TDH_By_WasIhw(stm) => (
-                    stm.transition(event::_NoDataFalse).as_enum(),
+                    if tdh_no_data(gbt_word) {
+                        stm.transition(event::_NoDataTrue).as_enum()
+                    } else {
+                        stm.transition(event::_NoDataFalse).as_enum()
+                    },
                     Ok(ItsPayloadWord::TDH),
                 ),
 
