@@ -114,7 +114,7 @@ pub const CORRECT_RDH_CRU_V6: RdhCru = RdhCru {
     reserved2: 0x0,
 };
 
-/// Convenience struct of an [RDH CRU][RdhCru] coming after an initial [RDH CRU][RdhCru] with the version [V7] used in tests.
+/// Convenience struct of an [RDH CRU][RdhCru] coming after an initial [RDH CRU][RdhCru] with the version used in tests.
 pub const CORRECT_RDH_CRU_V7_NEXT: RdhCru = RdhCru {
     rdh0: Rdh0 {
         header_id: 0x7,
