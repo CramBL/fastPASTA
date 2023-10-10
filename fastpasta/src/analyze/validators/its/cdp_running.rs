@@ -723,6 +723,8 @@ mod tests {
             }
             _ => unreachable!(),
         }
+        // No more errors
+        assert!(stats_recv_ch.try_recv().is_err());
     }
 
     #[test]
@@ -749,6 +751,47 @@ mod tests {
             }
             _ => unreachable!(),
         }
+    }
+
+    #[test]
+    fn test_tdh_trigger_bc_increasing_fail() {
+        // ARRANGE
+        // RDH -> IHW -> TDH0 no_data -> TDH1
+        let raw_data_ihw = [0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE0];
+        let raw_data_tdh0 = [0x03, 0x3A, 0x01, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x00, 0xE8];
+        let tdh0 = Tdh::load(&mut raw_data_tdh0.as_slice()).unwrap();
+        println!("cont:{}", tdh0.continuation());
+        println!("int:{}", tdh0.internal_trigger());
+        println!("no_data={}", tdh0.no_data());
+        assert_eq!(tdh0.no_data(), 1);
+        let raw_data_tdh1 = [0x03, 0x1A, 0x00, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x00, 0xE8];
+        let tdh1 = Tdh::load(&mut raw_data_tdh1.as_slice()).unwrap();
+        // They are TDH0 is larger than TDH1 which is an error.
+        assert!(tdh0.trigger_bc() > tdh1.trigger_bc());
+
+        let (send, stats_recv_ch) = flume::unbounded();
+        let mut validator: CdpRunningValidator<RdhCru, MockConfig> =
+            CdpRunningValidator::new(get_running_checks_config(), send);
+
+        // ACT
+        validator.set_current_rdh(&CORRECT_RDH_CRU_V7, 0);
+        validator.check(&raw_data_ihw);
+        validator.check(&raw_data_tdh0);
+        validator.check(&raw_data_tdh1);
+
+        // ASSERT (receive message and assert it is expected)
+        // First we get an error that the first TDH trigger_bc doesn't match the RDH bc
+        match stats_recv_ch.recv() {
+            Ok(StatType::Error(msg)) => assert_str_eq!("0x4A: [E445] TDH trigger_bc is not equal to RDH bc, TDH: 0x1, RDH: 0x0. [03 3A 01 00 75 D5 7D 0B 00 E8]", &*msg),
+            _ => unreachable!(),
+        }
+        // Then we get the TDH trigger_bc mismatch
+        match stats_recv_ch.recv() {
+            Ok(StatType::Error(msg)) => assert_str_eq!("0x54: [E440] TDH trigger_bc is not increasing, previous: 0x1, current: 0x0. [03 1A 00 00 75 D5 7D 0B 00 E8]", &*msg),
+            _ => unreachable!(),
+        }
+        // No more errors
+        assert!(stats_recv_ch.try_recv().is_err());
     }
 
     #[test]
@@ -779,15 +822,12 @@ mod tests {
         // ASSERT (receive message and assert it is expected)
         match stats_recv_ch.recv() {
             Ok(StatType::Error(msg)) => {
-                // assert_eq!(
-                //     &*msg,
-                //     "0x40: [E30] ID is not 0xE0: 0xF1  [00 00 00 00 00 00 00 00 01 F1]"
-                // );
                 assert_str_eq!(&*msg, "0x4A: [E44] TDH trigger_type 0xA03 != 0x893 RDH trigger_type[11:0]. [03 1A 00 00 75 D5 7D 0B 00 E8]");
-                println!("{msg}");
             }
             _ => unreachable!(),
         }
+        // No more errors
+        assert!(stats_recv_ch.try_recv().is_err());
     }
 
     #[test]
@@ -826,6 +866,8 @@ mod tests {
             }
             _ => unreachable!(),
         }
+        // No more errors
+        assert!(stats_recv_ch.try_recv().is_err());
     }
 
     #[test]
@@ -899,5 +941,7 @@ mod tests {
             }
             _ => unreachable!(),
         }
+        // No more errors
+        assert!(stats_recv_ch.try_recv().is_err());
     }
 }
