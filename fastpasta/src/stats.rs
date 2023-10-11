@@ -5,6 +5,7 @@ use alice_protocol_reader::prelude::RDH;
 use serde::{Deserialize, Serialize};
 use stats_collector::its_stats::alpide_stats::AlpideStats;
 
+pub mod err_printer;
 pub mod lib;
 pub mod stats_collector;
 pub(super) mod stats_report;
