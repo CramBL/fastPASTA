@@ -8,6 +8,7 @@ use super::stats;
 use super::stats::stats_collector::StatsCollector;
 use super::StatType;
 use crate::config::prelude::*;
+use crate::stats::err_printer::ErrPrinter;
 use indicatif::{ProgressBar, ProgressStyle};
 use owo_colors::OwoColorize;
 use std::sync::atomic::AtomicBool;
@@ -269,14 +270,20 @@ impl<C: Config + 'static> Controller<C> {
         self.stats_collector.finalize(self.config.mute_errors());
         self.spinner.as_mut().unwrap().abandon();
 
-        if !self.config.mute_errors() {
+        if self.stats_collector.any_errors() && !self.config.mute_errors() {
             // Print the errors, limited if there's a max error limit set
-            if self.max_tolerate_errors > 0 {
-                self.stats_collector
-                    .display_errors(Some(self.max_tolerate_errors as usize), false);
-            } else {
-                self.stats_collector.display_errors(None, false);
-            }
+            ErrPrinter::new(
+                if self.config.max_tolerate_errors() > 0 {
+                    Some(self.config.max_tolerate_errors())
+                } else {
+                    None
+                },
+                self.config.error_code_filter(),
+            )
+            .print(
+                self.stats_collector.error_stats().errors_as_slice_iter(),
+                self.stats_collector.unique_error_codes_as_slice(),
+            );
         }
     }
 

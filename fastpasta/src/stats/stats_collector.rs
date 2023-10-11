@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 //! Contains the [StatsCollector] that collects stats from analysis.
 pub mod error_stats;
 pub mod its_stats;
@@ -90,40 +89,6 @@ impl StatsCollector {
         self.is_finalized = true;
     }
 
-    /// Display the errors reported, optionally limiting the number of errors displayed.
-    pub fn display_errors(&self, display_max: Option<usize>, mute_errors: bool) {
-        if mute_errors {
-            return;
-        }
-        if let Some(max) = display_max {
-            let mut cnt: usize = self.err_count() as usize;
-            self.reported_errors_as_slice()
-                .iter()
-                .take(max)
-                .for_each(|err| {
-                    super::lib::display_error(err);
-                    cnt -= 1;
-                });
-
-            if cnt > 0 {
-                self.custom_check_errors_as_slice()
-                    .iter()
-                    .take(cnt)
-                    .for_each(|err| {
-                        super::lib::display_error(err);
-                    });
-            }
-        } else {
-            // Display all
-            self.reported_errors_as_slice()
-                .iter()
-                .for_each(|err| super::lib::display_error(err));
-            self.custom_check_errors_as_slice()
-                .iter()
-                .for_each(|err| super::lib::display_error(err));
-        }
-    }
-
     /// Returns a reference to the [RdhStats].
     pub fn rdh_stats(&self) -> &RdhStats {
         &self.rdh_stats
@@ -179,23 +144,13 @@ impl StatsCollector {
         self.error_stats.any_fatal_err()
     }
 
-    /// Returns a borrowed slice of the reported error messages as read-only strings.
-    pub fn reported_errors_as_slice(&self) -> &[Box<str>] {
-        self.error_stats.reported_errors_as_slice()
-    }
-
-    /// Returns a borrowed slice of the custom checks error messages as read-only strings.
-    pub fn custom_check_errors_as_slice(&self) -> &[Box<str>] {
-        self.error_stats.custom_check_errors_as_slice()
-    }
-
     /// Returns a reference to the fatal error message.
     pub fn fatal_err(&self) -> &str {
         self.error_stats.fatal_err()
     }
 
     /// Returns a slice of the unique error codes of reported errors.
-    pub fn unique_error_codes_as_slice(&mut self) -> &[String] {
+    pub fn unique_error_codes_as_slice(&self) -> &[String] {
         self.error_stats.unique_error_codes_as_slice()
     }
 
@@ -261,7 +216,7 @@ impl StatsCollector {
         } else {
             if !mute_errors {
                 errs.iter().for_each(|err| {
-                    super::lib::display_error(err);
+                    log::error!("{err}");
                 });
             }
             Err(std::io::Error::new(

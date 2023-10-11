@@ -32,6 +32,25 @@ fn check_sanity() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+// Test with error code filter, should have no effect as there are no errors
+// But still a scenario that needs a test
+fn check_sanity_with_error_code_filter() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+
+    cmd.arg(FILE_CI_OLS_DATA_1HBF)
+        .arg("check")
+        .arg("sanity")
+        .args(["--show-only-errors-with-codes", "10", "0", "200"]);
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    Ok(())
+}
+
+#[test]
 fn check_all_its_stave_custom_chip_id_order_errors() -> Result<(), Box<dyn std::error::Error>> {
     // Check that errors are present when a custom check on the chip id order is used
     // The trigger count is also wrong and will cause an error

@@ -131,7 +131,7 @@ impl ErrorStats {
         self.fatal_error.as_ref().unwrap()
     }
 
-    pub(super) fn unique_error_codes_as_slice(&mut self) -> &[String] {
+    pub(super) fn unique_error_codes_as_slice(&self) -> &[String] {
         self.unique_error_codes
             .as_ref()
             .expect("Unique error codes were never set")
@@ -152,13 +152,12 @@ impl ErrorStats {
         Some(self.staves_with_errors.as_ref().unwrap())
     }
 
-    // Only includes reported errors, not custom check errors
-    pub(super) fn reported_errors_as_slice(&self) -> &[Box<str>] {
-        &self.reported_errors
-    }
-
-    pub(super) fn custom_check_errors_as_slice(&self) -> &[Box<str>] {
-        &self.custom_checks_stats_errors
+    /// Return an iterator over all error messages
+    pub fn errors_as_slice_iter(&self) -> impl Iterator<Item = &Box<str>> {
+        self.reported_errors
+            .iter()
+            .chain(self.fatal_error.iter())
+            .chain(self.custom_checks_stats_errors.iter())
     }
 
     pub(super) fn validate_other(&self, other: &Self) -> Result<(), Vec<String>> {

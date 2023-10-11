@@ -1,11 +1,5 @@
 //! Contains utility related to collecting stats about the input data.
 
-/// Displays an error message if the config doesn't have the mute error flag set.
-/// Check for the mute error flag in the config before calling this function.
-pub(crate) fn display_error(error: &str) {
-    log::error!("{error}");
-}
-
 /// Module containing macros related to stats.
 pub mod macros {
     /// Macro to generate the `validate_fields` function for a struct
