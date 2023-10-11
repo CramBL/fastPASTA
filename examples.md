@@ -75,7 +75,7 @@ Click to see example `custom_checks.toml`
 </details>
 <br>
 
-Then edit the `custom_checks.toml` to enable the checks you want and then run fastpasta with the `--checks-toml` option e.g.
+Then edit the `custom_checks.toml` to enable the checks you want and run fastpasta with the `--checks-toml` option e.g.
 ```shell
 fastpasta datafile.raw check all its-stave --checks-toml my_custom_checks.toml
 ```
@@ -118,7 +118,7 @@ By using `--output-stats <file_name>` in combination with `--stats-format <JSON/
 ```shell
 fastpasta MYDATAFILE.raw check sanity --output-stats mystats.json --stats-format json
 ```
-TOML is also supported, and is usually much more readbale than JSON.
+TOML is also supported, and is usually much more readable than JSON.
 
 </details>
 
@@ -244,7 +244,7 @@ Change `--verbosity 1` to `--verbosity 0`
 Use an ANSI to HTML converter like [aha](https://github.com/theZiz/aha) (available through `apt` and `dnf`) or [ansi2html](https://pypi.org/project/ansi2html/) (`pip`).
 Then alter the command to pipe to the converter e.g. with `ansi2html`:
 ```shell
-find tests/test-data -type f -name "*.raw" -exec sh -c 'echo -e "\n\n--- {} ---\n" >> my.log; fastpasta check all its-stave --verbosity 1 {} 2>&1 | ansi2html >> my.log.html ' {} \;
+find MY_DIRECTORY -type f -name "*.raw" -exec sh -c 'echo -e "\n\n--- {} ---\n" >> my.log; fastpasta check all its-stave --verbosity 1 {} 2>&1 | ansi2html >> my.log.html ' {} \;
 ```
 It can now be viewed in any browser.
 > `aha --black` gives the same result as `ansi2html`.
@@ -252,13 +252,13 @@ It can now be viewed in any browser.
 #### 3. No summary report in the file, just errors/warnings
 Redirect `stderr` to my.log by removing `2>&1` and put `2` in front of the file appending `>>` i.e.
 ```shell
-find tests/test-data -type f -name "*.raw" -exec sh -c 'echo -e "\n\n--- {} ---\n" >> my.log; fastpasta check all its-stave --verbosity 1 {} 2>> my.log' {} \;
+find MY_DIRECTORY -type f -name "*.raw" -exec sh -c 'echo -e "\n\n--- {} ---\n" >> my.log; fastpasta check all its-stave --verbosity 1 {} 2>> my.log' {} \;
 ```
 This will instead print the summaries to the terminal (stdout).
 
 If you completely want to ignore the report summaries, different platforms have a way to mute stdout such as `/dev/null` on Unix-like. Below command is platform independent and just redirects stdout to `ignore.txt` (truncating).
 ```shell
-find tests/test-data -type f -name "*.raw" -exec sh -c 'echo -e "\n\n--- {} ---\n" >> my.log; fastpasta check all its-stave --verbosity 1 {} 2>> my.log' {} > ignore.txt \;
+find MY_DIRECTORY -type f -name "*.raw" -exec sh -c 'echo -e "\n\n--- {} ---\n" >> my.log; fastpasta check all its-stave --verbosity 1 {} 2>> my.log' {} > ignore.txt \;
 ```
 </details>
 </details>
@@ -281,5 +281,5 @@ fastpasta MYGOLDENFILE.raw check all its-stave --output-stats myGoldenStats.json
 # Use it to check against the other file
 fastpasta MYOTHERFILE.raw check all its-stave --input-stats-file myGoldenStats.json
 ```
-For each mismatching statistics, an error will be displayed. TOML format is also supported which is usually much more readbale than JSON.
+For each mismatching statistics, an error will be displayed. TOML format is also supported which is usually much more readable than JSON.
 </details>
