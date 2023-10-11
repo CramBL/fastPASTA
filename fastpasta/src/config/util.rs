@@ -11,7 +11,7 @@ pub trait UtilOpt {
     /// If set, error messages are not displayed
     fn mute_errors(&self) -> bool;
     /// Allows specifying any number of error codes to filter by
-    fn error_code_filter(&self) -> Option<&[u32]>;
+    fn error_code_filter(&self) -> Option<&[String]>;
 }
 
 impl<T> UtilOpt for &T
@@ -33,7 +33,7 @@ where
         (*self).mute_errors()
     }
 
-    fn error_code_filter(&self) -> Option<&[u32]> {
+    fn error_code_filter(&self) -> Option<&[String]> {
         (*self).error_code_filter()
     }
 }
@@ -54,7 +54,7 @@ where
     fn mute_errors(&self) -> bool {
         (**self).mute_errors()
     }
-    fn error_code_filter(&self) -> Option<&[u32]> {
+    fn error_code_filter(&self) -> Option<&[String]> {
         (**self).error_code_filter()
     }
 }
@@ -77,7 +77,7 @@ where
     fn mute_errors(&self) -> bool {
         (**self).mute_errors()
     }
-    fn error_code_filter(&self) -> Option<&[u32]> {
+    fn error_code_filter(&self) -> Option<&[String]> {
         (**self).error_code_filter()
     }
 }
@@ -101,7 +101,7 @@ where
     fn mute_errors(&self) -> bool {
         (**self).mute_errors()
     }
-    fn error_code_filter(&self) -> Option<&[u32]> {
+    fn error_code_filter(&self) -> Option<&[String]> {
         (**self).error_code_filter()
     }
 }
