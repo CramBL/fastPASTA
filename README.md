@@ -18,6 +18,8 @@ For an exhaustive list of the data verification done via the `check` subcommand,
 
 Releases and associated changelogs can be found at [releases](https://gitlab.cern.ch/mkonig/fastpasta/-/releases) or [CHANGELOG.md](CHANGELOG.md).
 
+See more example including advanced senarios in [examples document](examples.md).
+
 Looking for more details? see the [Documentation for developers](#documentation-for-developers) section.
 
 ## Purpose
