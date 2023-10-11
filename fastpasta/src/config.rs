@@ -175,13 +175,17 @@ pub struct Cfg {
     )]
     input_stats_file: Option<PathBuf>,
 
+    /// Show only error with the specified error codes, e.g. `-w 32 002 5` to only show errors with error codes 32, 002 and 5
+    /// Note: ALPIDE errors cannot be filtered this way as they are connected to a lane eror code.
     #[arg(
         short = 'w',
         long = "show-only-errors-with-codes",
         visible_aliases = ["error-codes", "errors-with-code", "show-with-code", "show-errors-with-codes"],
         global = true,
+        value_delimiter = ' ',
+        num_args = 1..
     )]
-    show_error_codes: Vec<u32>,
+    show_error_codes: Vec<String>,
 }
 
 impl Cfg {
@@ -343,7 +347,7 @@ impl UtilOpt for Cfg {
         self.mute_errors
     }
 
-    fn error_code_filter(&self) -> Option<&[u32]> {
+    fn error_code_filter(&self) -> Option<&[String]> {
         if self.show_error_codes.is_empty() {
             None
         } else {
