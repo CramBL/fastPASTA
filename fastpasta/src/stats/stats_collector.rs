@@ -283,7 +283,7 @@ mod tests {
         let other_stats_collector = StatsCollector::default();
 
         assert!(stats_collector
-            .validate_other_stats(&other_stats_collector, false, None)
+            .validate_other_stats(&other_stats_collector, false)
             .is_ok());
     }
 
@@ -293,7 +293,7 @@ mod tests {
         let other_stats_collector = StatsCollector::with_alpide_stats();
 
         assert!(stats_collector
-            .validate_other_stats(&other_stats_collector, false, None)
+            .validate_other_stats(&other_stats_collector, false)
             .is_ok());
     }
 
@@ -302,8 +302,7 @@ mod tests {
         let stats_collector = StatsCollector::with_alpide_stats();
         let other_stats_collector = StatsCollector::default();
 
-        if let Err(msgs) = stats_collector.validate_other_stats(&other_stats_collector, false, None)
-        {
+        if let Err(msgs) = stats_collector.validate_other_stats(&other_stats_collector, false) {
             println!("{:?}", msgs);
         } else {
             panic!("Should have failed");
@@ -311,7 +310,7 @@ mod tests {
 
         // Vice versa is OK (if ALPIDE stats are provided by user, it's OK if the analysis didn't collect ALPIDE stats)
         assert!(other_stats_collector
-            .validate_other_stats(&stats_collector, false, None)
+            .validate_other_stats(&stats_collector, false)
             .is_ok());
         // The user should be warned about this though
     }
@@ -327,8 +326,7 @@ mod tests {
         other_stats_collector.collect(StatType::TriggerType(0xE021));
         other_stats_collector.collect(StatType::SystemId(SystemId::ZDC));
 
-        if let Err(err) = stats_collector.validate_other_stats(&other_stats_collector, false, None)
-        {
+        if let Err(err) = stats_collector.validate_other_stats(&other_stats_collector, false) {
             println!("{:?}", err);
         } else {
             panic!("Should have failed");
@@ -362,10 +360,8 @@ mod tests {
         stats_collector.collect(StatType::AlpideStats(alpide_stats));
         other_stats_collector.collect(StatType::AlpideStats(alpide_stats));
 
-        let error_code_filter: Vec<String> = vec!["10".into(), "32".into()];
-
         assert!(stats_collector
-            .validate_other_stats(&other_stats_collector, false, Some(&error_code_filter))
+            .validate_other_stats(&other_stats_collector, false)
             .is_ok());
     }
 }

@@ -175,11 +175,7 @@ impl<C: Config + 'static> Controller<C> {
 
             if self
                 .stats_collector
-                .validate_other_stats(
-                    &input_stats_collector,
-                    self.config.mute_errors(),
-                    self.config.error_code_filter(),
-                )
+                .validate_other_stats(&input_stats_collector, self.config.mute_errors())
                 .is_err()
             {
                 self.any_errors_flag
