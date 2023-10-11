@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 # [Unreleased]
 
+
+# v1.17.0 (2013-10-11) - Add error code filter, fix valid state that generated error, performance improvements
 ### Added
 - `--show-only-errors-with-codes X Y Z...` allows specifying a list of error codes, only error messages that matches any of the specified error codes are displayed.
 
@@ -13,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The initial TDH in an ITS payload was always interpreted as `no_data = 0`, now also allows `no_data = 1` which allows trigger echoing immediately after an IHW.
 
 ### Performance
-- [CdpArray] now used to store batches of CDPs during analysis. Replaces the [CdpVec] which was a preallocated vector, with an array backed vector.
+- [CdpArray](https://docs.rs/alice_protocol_reader/0.12.0/alice_protocol_reader/cdp_wrapper/cdp_array/struct.CdpArray.html) from [ALICE Protocol Reader](alice_protocol_reader/README.md) now used to store batches of CDPs during analysis. Replaces the `CdpVec` (preallocated vector), with an array backed vector.
 ### Other
 - Code refactorings (simplifying).
 
