@@ -1,4 +1,6 @@
 //! Contains the [ValidatorDispatcher], that manages [LinkValidator]s and iterates over and consumes a [`CdpArray<T>`], dispatching the data to the correct thread based on the Link ID running an instance of [LinkValidator].
+use std::fmt::Display;
+
 use super::link_validator::LinkValidator;
 use crate::config::prelude::*;
 use crate::stats::StatType;
@@ -15,20 +17,56 @@ pub struct ValidatorDispatcher<T: RDH, C: Config + 'static> {
     validator_thread_handles: Vec<std::thread::JoinHandle<()>>,
     stats_sender: flume::Sender<StatType>,
     global_config: &'static C,
+    dispatch_by: DispatchId,
 }
 
 #[derive(PartialEq, Clone, Copy)]
-struct DispatchId(u16);
+enum DispatchId {
+    FeeId(u16),
+    GbtLink(u16),
+}
+
+impl DispatchId {
+    /// Returns the integer value of the ID
+    pub fn number(&self) -> u16 {
+        match self {
+            DispatchId::FeeId(x) | DispatchId::GbtLink(x) => *x,
+        }
+    }
+}
+
+impl Display for DispatchId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DispatchId::FeeId(id) => write!(f, "FEE ID {id}"),
+            DispatchId::GbtLink(id) => write!(f, "GBT Link {id}"),
+        }
+    }
+}
 
 impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
     /// Create a new ValidatorDispatcher from a Config and a stats sender channel
     pub fn new(global_config: &'static C, stats_sender: flume::Sender<StatType>) -> Self {
+        // Dispatch by FEE ID if system targeted for checks is ITS Stave (gonna be a lot of data to parse for each stave!)
+        let dispatch_by = if global_config.check().is_some_and(|c| {
+            if let CheckCommands::All { system } = c {
+                system.is_some_and(|s| s == System::ITS_Stave)
+            } else {
+                false
+            }
+        }) {
+            DispatchId::FeeId(0)
+        } else {
+            DispatchId::GbtLink(0)
+        };
+
         Self {
             processors: Vec::new(),
             process_channels: Vec::new(),
             validator_thread_handles: Vec::new(),
             stats_sender,
             global_config,
+            dispatch_by,
         }
     }
 
@@ -39,18 +77,9 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
         // Iterate over the CDP array
         cdp_array.into_iter().for_each(|(rdh, data, mem_pos)| {
             // Dispatch by FEE ID if system targeted for checks is ITS Stave (gonna be a lot of data to parse for each stave!)
-            let id = if self.global_config.check().is_some_and(|c| {
-                if let CheckCommands::All { system } = c {
-                    system.is_some_and(|s| s == System::ITS_Stave)
-                } else {
-                    false
-                }
-            }) {
-                // Dispatch by FEE ID which will effectively dispatch by link AND stave
-                DispatchId(rdh.fee_id())
-            } else {
-                // Dispatch by link ID
-                DispatchId(rdh.link_id() as u16)
+            let id = match self.dispatch_by {
+                DispatchId::FeeId(_) => DispatchId::FeeId(rdh.fee_id()),
+                DispatchId::GbtLink(_) => DispatchId::GbtLink(rdh.link_id() as u16),
             };
 
             self.dispatch_by_id(rdh, data, mem_pos, id);
@@ -102,7 +131,12 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
                 self.process_channels
                     .get_unchecked(index)
                     .send((rdh, data, mem_pos))
-                    .unwrap();
+                    .unwrap_or_else(|_|
+                        self.stats_sender.send(
+                            StatType::Fatal(
+                            format!("Validator #{id} has prematurely disconnected from the receiver channel and is no longer processing data from {id_desc}", id  = id.number(), id_desc = id)
+                            .into_boxed_str()))
+                            .unwrap());
             }
         } else {
             // If the ID wasn't found, make a new validator to handle that ID
@@ -111,7 +145,7 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
             // Spawn a thread where the newly created link validator will run
             self.validator_thread_handles.push(
                 std::thread::Builder::new()
-                    .name(format!("Validator #{}", id.0))
+                    .name(format!("Validator #{}", id.number()))
                     .spawn({
                         move || {
                             validator.run();
@@ -125,7 +159,12 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
                     .last()
                     .unwrap_unchecked()
                     .send((rdh, data, mem_pos))
-                    .unwrap();
+                    .unwrap_or_else(|_|
+                        self.stats_sender.send(
+                            StatType::Fatal(
+                            format!("Validator #{id} has prematurely disconnected from the receiver channel and is no longer processing data from {id_desc}", id  = id.number(), id_desc = id)
+                            .into_boxed_str()))
+                            .unwrap());
             }
         }
     }
