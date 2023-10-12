@@ -28,6 +28,9 @@
   - [Use the analysis of one raw data file as a golden reference for analysis of other files](#use-the-analysis-of-one-raw-data-file-as-a-golden-reference-for-analysis-of-other-files)
     - [Scenario](#scenario-3)
     - [Command](#command-3)
+  - [Check all files in a directory in parallel (using GNU parallel)](#check-all-files-in-a-directory-in-parallel-using-gnu-parallel)
+    - [Scenario](#scenario-4)
+    - [Command](#command-4)
 
 # Basic features
 ## Enable custom checks
@@ -283,3 +286,18 @@ fastpasta MYOTHERFILE.raw check all its-stave --input-stats-file myGoldenStats.j
 ```
 For each mismatching statistics, an error will be displayed. TOML format is also supported which is usually much more readable than JSON.
 </details>
+
+
+## Check all files in a directory in parallel (using GNU parallel)
+
+### Scenario
+- I have `MY_DIRECTORY` with raw ITS readout data files with the `.raw` extension.
+- I want to check all ITS data on the stave level (includes ALPIDE checks).
+- Any errors for a given file should be stored in a file named `FILE_WITH_ERRORS.errors`
+- No `.errors` file should be present if a file passed checks with no errors.
+
+### Command
+```shell
+find tests/test-data -type f -name "*.raw" -print | parallel 'target/release/fastpasta {} check all its-stave --verbosity 0 2>{/}.errors && [ -s {/}.errors ] || rm -f {/}.errors'
+
+```
