@@ -254,10 +254,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             self.alpide_readout_frame =
                 Some(AlpideReadoutFrame::new(self.calc_current_word_mem_pos()));
         }
-
-        // Swap current and last TDH, then replace current with the new TDH
-        // std::mem::swap(&mut self.current_tdh, &mut self.previous_tdh);
-        // self.current_tdh = Some(tdh);
     }
 
     fn preprocess_tdt(&mut self, tdh_slice: &[u8]) {
@@ -270,8 +266,14 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 
         if self.alpide_checks_enabled && self.status_words.tdt().unwrap().packet_done() {
             self.is_readout_frame = false;
-            let complete_readout_frame = self.alpide_readout_frame.take().unwrap();
-            self.process_alpide_data(complete_readout_frame);
+            if let Some(complete_readout_frame) = self.alpide_readout_frame.take() {
+                self.process_alpide_data(complete_readout_frame);
+            } else {
+                let err_msg = format!("{mem_pos:#X}: [E59] TDT with packet done marked the end of a readout frame, but a start of readout frame was never seen (TDH with continuation = 0)", mem_pos = self.calc_current_word_mem_pos());
+                self.stats_send_ch
+                    .send(StatType::Error(err_msg.into()))
+                    .unwrap();
+            }
         }
     }
 
