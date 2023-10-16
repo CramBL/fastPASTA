@@ -22,7 +22,7 @@ use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
 /// Main validator that handles all checks on a specific link.
 ///
 /// A [LinkValidator] is created for each link that is being checked.
-pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
+pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt + 'static> {
     config: &'static C,
     running_checks: bool,
     /// Producer channel to send stats through.

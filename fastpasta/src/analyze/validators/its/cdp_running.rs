@@ -2,7 +2,9 @@
 //!
 //! [CdpRunningValidator] delegates sanity checks to word specific sanity checkers.
 
-use itertools::Itertools;
+mod readout_frame;
+
+use self::readout_frame::ItsReadoutFrameValidator;
 
 use super::{
     data_words::DATA_WORD_SANITY_CHECKER,
@@ -11,17 +13,15 @@ use super::{
     status_word::tdh::TdhValidator,
     util::StatusWordContainer,
 };
-use crate::analyze::validators::its::alpide::alpide_readout_frame::AlpideReadoutFrame;
 use crate::config::prelude::*;
 use crate::stats::StatType;
-use crate::words::its::data_words::lane_id_to_lane_number;
 use crate::words::its::data_words::ob_data_word_id_to_input_number_connector;
 use crate::words::its::data_words::ob_data_word_id_to_lane;
 use crate::words::its::status_words::util::is_lane_active;
 use crate::words::its::status_words::{
     cdw::Cdw, ddw::Ddw0, ihw::Ihw, tdh::Tdh, tdt::Tdt, StatusWord,
 };
-use crate::words::its::{Layer, Stave};
+use crate::words::its::Stave;
 use alice_protocol_reader::prelude::FilterOpt;
 use alice_protocol_reader::prelude::RDH;
 
@@ -34,10 +34,9 @@ enum StatusWordKind<'a> {
 }
 
 /// Checks the CDP payload and reports any errors.
-pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
+pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt + 'static> {
     config: &'static C,
     running_checks_enabled: bool,
-    alpide_checks_enabled: bool,
     its_state_machine: ItsPayloadFsmContinuous,
     status_words: StatusWordContainer,
     current_rdh: Option<T>,
@@ -47,15 +46,7 @@ pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + 'static> {
     gbt_word_padding_size_bytes: u8,
     is_new_data: bool, // Flag used to indicate start of new CDP payload where a CDW is valid
     // Stores the ALPIDE data from an ITS readout frame, if the config is set to check ALPIDE data, and a filter for a stave is set.
-    alpide_readout_frame: Option<AlpideReadoutFrame>,
-    // Flag to start storing ALPIDE data, if the config is set to check ALPIDE data, and a filter for a stave is set.
-    // Set to true when a TDH with internal trigger bit set is found.
-    // Set to false when it's true and a TDT is found.
-    is_readout_frame: bool,
-    // If the config is set to check ALPIDE data, the data is collected for a stave.
-    from_stave: Option<Stave>,
-    // If any lane is in FATAL state (and correctly reported it through the ITS protocol), then store the lane ids here.
-    fatal_lanes: Option<Vec<u8>>,
+    readout_frame_validator: Option<ItsReadoutFrameValidator<C>>,
 }
 
 impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, C> {
@@ -67,11 +58,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                 config.check(),
                 Some(CheckCommands::All { system: _ })
             ),
-            alpide_checks_enabled: config.check().is_some_and(|check| {
-                check
-                    .target()
-                    .is_some_and(|target| target == System::ITS_Stave)
-            }),
             its_state_machine: ItsPayloadFsmContinuous::default(),
             status_words: StatusWordContainer::new_const(),
             current_rdh: None,
@@ -80,11 +66,15 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             payload_mem_pos: 0,
             gbt_word_padding_size_bytes: 0,
             is_new_data: false,
-            // If the config is set to check ALPIDE data, and a filter for a stave is set, then allocate space for ALPIDE data.
-            alpide_readout_frame: None,
-            is_readout_frame: false,
-            from_stave: None,
-            fatal_lanes: None,
+            readout_frame_validator: if config.check().is_some_and(|check| {
+                check
+                    .target()
+                    .is_some_and(|target| target == System::ITS_Stave)
+            }) {
+                Some(ItsReadoutFrameValidator::new(config))
+            } else {
+                None
+            },
         }
     }
 
@@ -127,11 +117,20 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         }
         self.is_new_data = true;
         self.gbt_word_counter = 0;
-        // If the config is set to check ALPIDE data and the stave the data is from is not known yet, then set the stave.
-        if self.from_stave.is_none() && self.alpide_checks_enabled {
-            self.from_stave = Some(Stave::from_feeid(
-                self.current_rdh.as_ref().unwrap().fee_id(),
-            ));
+
+        // If the an ItsReadoutFrameValidator is present
+        // and the stave the data is from is not known yet, then set the stave.
+        if self
+            .readout_frame_validator
+            .as_ref()
+            .is_some_and(|rfv| rfv.stave().is_none())
+        {
+            self.readout_frame_validator
+                .as_mut()
+                .unwrap()
+                .set_stave(Stave::from_feeid(
+                    self.current_rdh.as_ref().unwrap().fee_id(),
+                ));
         }
     }
 
@@ -248,13 +247,17 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         self.status_words.replace_tdh(tdh);
 
         // If the current TDH does not have continuation set, then it is the start of a new readout frame
-        if self.alpide_checks_enabled
-            && !self.is_readout_frame
+        if self
+            .readout_frame_validator
+            .as_ref()
+            .is_some_and(|rvf| !rvf.is_in_frame())
             && self.status_words.tdh().unwrap().continuation() == 0
         {
-            self.is_readout_frame = true;
-            self.alpide_readout_frame =
-                Some(AlpideReadoutFrame::new(self.calc_current_word_mem_pos()));
+            let start_mem_pos = self.calc_current_word_mem_pos();
+            self.readout_frame_validator
+                .as_mut()
+                .unwrap()
+                .new_frame(start_mem_pos);
         }
     }
 
@@ -266,16 +269,9 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         // Replace TDT before processing ALPIDE readout frame
         self.status_words.replace_tdt(tdt);
 
-        if self.alpide_checks_enabled && self.status_words.tdt().unwrap().packet_done() {
-            self.is_readout_frame = false;
-            if let Some(complete_readout_frame) = self.alpide_readout_frame.take() {
-                self.process_alpide_data(complete_readout_frame);
-            } else {
-                let err_msg = format!("{mem_pos:#X}: [E59] TDT with packet done marked the end of a readout frame, but a start of readout frame was never seen (TDH with continuation = 0)", mem_pos = self.calc_current_word_mem_pos());
-                self.stats_send_ch
-                    .send(StatType::Error(err_msg.into()))
-                    .unwrap();
-            }
+        if self.readout_frame_validator.is_some() && self.status_words.tdt().unwrap().packet_done()
+        {
+            self.process_readout_frame();
         }
     }
 
@@ -340,9 +336,10 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                 ib_slice,
             );
         }
-        // Matches if there is an alpide_readout_frame. If not we are not collecting data ie. ALPIDE checks are not enabled.
-        if let Some(alpide_readout_frame) = &mut self.alpide_readout_frame {
-            alpide_readout_frame.store_lane_data(ib_slice, Layer::Inner);
+        // Matches if there is an ITS readout frame validator.
+        // If not we are not collecting data ie. ALPIDE checks are not enabled.
+        if let Some(frame_validator) = &mut self.readout_frame_validator {
+            frame_validator.store_lane_data(ib_slice);
         }
     }
 
@@ -371,13 +368,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             );
         }
         // If there is no readout frame, we are not collecting data.
-        if let Some(alpide_readout_frame) = &mut self.alpide_readout_frame {
-            let from_layer = match self.from_stave.unwrap() {
-                Stave::OuterLayer { .. } => Layer::Outer,
-                Stave::MiddleLayer { .. } => Layer::Middle,
-                _ => unreachable!(),
-            };
-            alpide_readout_frame.store_lane_data(ob_slice, from_layer);
+        if let Some(rvf) = self.readout_frame_validator.as_mut() {
+            rvf.store_lane_data(ob_slice);
         }
     }
 
@@ -566,105 +558,32 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         }
     }
 
-    /// Process ALPIDE data for a readout frame. Includes checks across lanes and within a lane.
-    fn process_alpide_data(&mut self, mut alpide_readout_frame: AlpideReadoutFrame) {
-        // First close/end the frame by setting the end memory position to the current word position
-        alpide_readout_frame.close_frame(self.calc_current_word_mem_pos());
-        debug_assert!(!self.is_readout_frame);
-        debug_assert!(
-            alpide_readout_frame.start_mem_pos() != 0,
-            "Frame start mem pos not set"
-        );
-
-        let mem_pos_start = alpide_readout_frame.start_mem_pos();
-        let mem_pos_end = alpide_readout_frame.end_mem_pos();
-
-        if alpide_readout_frame.is_empty() {
-            // No data in a full readout frame is a protocol error unless lanes in error has been reported by the TDT/DDW.
-            self.report_empty_alpide_frame_error(&alpide_readout_frame);
-            // No data, nothing to process (and erroneous to do so) early return
-            return;
-        }
-
-        let is_ib = alpide_readout_frame.from_layer() == Layer::Inner;
-
-        // Process the data frame
-        let (lanes_in_error_ids, lane_error_msgs, alpide_stats, fatal_lanes) =
-            super::alpide::check_alpide_data_frame(&alpide_readout_frame, self.config);
-
-        // Add the fatal lanes to the running list of fatal lanes
-        if let Some(new_fatal_lanes) = fatal_lanes {
-            if let Some(current_fatal_lanes) = &mut self.fatal_lanes {
-                current_fatal_lanes.extend(new_fatal_lanes);
-            } else {
-                self.fatal_lanes = Some(new_fatal_lanes);
-            }
-        }
-
-        // Check if the frame is valid in terms of lanes in the data.
-        if let Err(err_msg) =
-            alpide_readout_frame.check_frame_lanes_valid(self.fatal_lanes.as_deref())
+    /// Close a readout frame by supplying the current memory position
+    ///
+    /// And start the processing by the [ItsReadoutFrameValidator]
+    fn process_readout_frame(&mut self) {
+        let frame_end_pos = self.calc_current_word_mem_pos();
+        if self
+            .readout_frame_validator
+            .as_mut()
+            .unwrap()
+            .try_close_frame(frame_end_pos)
+            .is_ok()
         {
-            // Format and send error message
-            let err_code = if is_ib { "E72" } else { "E73" };
-            let err_msg = format!(
-                "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} {err_msg}. Lanes: {lanes:?}",
-                feeid=self.current_rdh.as_ref().unwrap().fee_id(),
-                lanes = alpide_readout_frame.lane_data_frames_as_slice().iter().map(|lane|
-                    lane_id_to_lane_number(lane.lane_id, is_ib)).collect::<Vec<u8>>(),
-            );
+            self.readout_frame_validator
+                .as_mut()
+                .unwrap()
+                .process_frame(
+                    &self.stats_send_ch,
+                    &self.status_words,
+                    self.current_rdh.as_ref().unwrap(),
+                );
+        } else {
+            let err_msg = format!("{mem_pos:#X}: [E59] TDT with packet done marked the end of a readout frame, but a start of readout frame was never seen (TDH with continuation = 0)", mem_pos = self.calc_current_word_mem_pos());
             self.stats_send_ch
                 .send(StatType::Error(err_msg.into()))
-                .expect("Failed to send error to stats channel");
+                .unwrap();
         }
-
-        self.stats_send_ch
-            .send(StatType::AlpideStats(alpide_stats))
-            .expect("Failed to send error to stats channel");
-
-        // Format and send all errors
-        if !lane_error_msgs.is_empty() {
-            let err_code = if is_ib { "E74" } else { "E75" };
-            let lane_error_numbers = lanes_in_error_ids
-                .iter()
-                .map(|lane_id| lane_id_to_lane_number(*lane_id, is_ib))
-                .collect_vec();
-            let mut error_string = format!(
-                "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has errors in lane {lane_error_numbers:?}:", feeid=self.current_rdh.as_ref().unwrap().fee_id()
-            );
-            for lane_error_msg in lane_error_msgs {
-                error_string.push_str(&lane_error_msg);
-            }
-            self.stats_send_ch
-                .send(StatType::Error(error_string.into()))
-                .expect("Failed to send error to stats channel");
-        }
-    }
-
-    fn report_empty_alpide_frame_error(&self, frame: &AlpideReadoutFrame) {
-        // No data in a full readout frame is a protocol error unless lanes in error has been reported by the TDT/DDW.
-        let (mem_pos_start, mem_pos_end) = (frame.start_mem_pos(), frame.end_mem_pos());
-        log::warn!("ALPIDE data frame at {mem_pos_start:#X} - {mem_pos_end:#X} is empty",);
-        // TODO: Check lane errors in TDT and DDW
-        let ddw_lane_status_str = if self.status_words.ddw().is_some() {
-            let ddw0 = self.status_words.ddw().unwrap();
-            format!("Last DDW [{ddw0}] lane status: {:#X}", ddw0.lane_status())
-        } else {
-            "No DDW seen yet".to_string()
-        };
-
-        let tdt_lane_status_str = {
-            let curr_tdt = self.status_words.tdt().unwrap();
-            format!("Frame closing TDT [{curr_tdt}] lane status: 0:15={lane_0_15:#X} 16:23={lane_16_23:#X} 24:27={lane_24_27:#X}", lane_0_15 = curr_tdt.lane_status_15_0(),
-            lane_16_23 = curr_tdt.lane_status_23_16(), lane_24_27 = curr_tdt.lane_status_27_24())
-        };
-
-        let error_string = format!(
-            "{mem_pos_start:#X}: [E701] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has no data words. \n\t Additional information:\n\t\t - Lanes in error (as indicated by APEs): {fatal_lanes:?}\n\t\t - {ddw_lane_status_str}\n\t\t - {tdt_lane_status_str}", feeid=self.current_rdh.as_ref().unwrap().fee_id(), fatal_lanes = self.fatal_lanes
-        );
-        self.stats_send_ch
-            .send(StatType::Error(error_string.into()))
-            .expect("Failed to send error to stats channel");
     }
 }
 
