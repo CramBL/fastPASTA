@@ -2,6 +2,7 @@
 
 - [fastPASTA examples](#fastpasta-examples)
 - [Basic features](#basic-features)
+  - [Show at most N error messages (and stop processing once N errors are encountered)](#show-at-most-n-error-messages-and-stop-processing-once-n-errors-are-encountered)
   - [Enable custom checks](#enable-custom-checks)
   - [Dump statistics to a file](#dump-statistics-to-a-file)
   - [Use a statistics file to verify a match with the analyzed data](#use-a-statistics-file-to-verify-a-match-with-the-analyzed-data)
@@ -17,22 +18,45 @@
     - [Variations](#variations-1)
       - [1. View ITS payload around a memory position](#1-view-its-payload-around-a-memory-position)
       - [2. View ITS payload and ALPIDE data around a memory position](#2-view-its-payload-and-alpide-data-around-a-memory-position)
-- [Advanced scenarios](#advanced-scenarios)
-  - [Get summaries and errors/warnings of all files in a directory arranged in a single file](#get-summaries-and-errorswarnings-of-all-files-in-a-directory-arranged-in-a-single-file)
+  - [Save all errors and warnings to a file](#save-all-errors-and-warnings-to-a-file)
     - [Scenario](#scenario-2)
     - [Command](#command-2)
     - [Variations](#variations-2)
+      - [Also save the final report](#also-save-the-final-report)
+- [Advanced scenarios](#advanced-scenarios)
+  - [Get summaries and errors/warnings of all files in a directory arranged in a single file](#get-summaries-and-errorswarnings-of-all-files-in-a-directory-arranged-in-a-single-file)
+    - [Scenario](#scenario-3)
+    - [Command](#command-3)
+    - [Variations](#variations-3)
       - [1. I don't want warnings, only errors](#1-i-dont-want-warnings-only-errors)
       - [2. I want to view my.log in a text viewer but ANSI escape codes ruins the summary layout.](#2-i-want-to-view-mylog-in-a-text-viewer-but-ansi-escape-codes-ruins-the-summary-layout)
       - [3. No summary report in the file, just errors/warnings](#3-no-summary-report-in-the-file-just-errorswarnings)
   - [Use the analysis of one raw data file as a golden reference for analysis of other files](#use-the-analysis-of-one-raw-data-file-as-a-golden-reference-for-analysis-of-other-files)
-    - [Scenario](#scenario-3)
-    - [Command](#command-3)
-  - [Check all files in a directory in parallel (using GNU parallel)](#check-all-files-in-a-directory-in-parallel-using-gnu-parallel)
     - [Scenario](#scenario-4)
     - [Command](#command-4)
+  - [Check all files in a directory in parallel](#check-all-files-in-a-directory-in-parallel)
+    - [Scenario](#scenario-5)
+    - [Command](#command-5)
+    - [Variations](#variations-4)
+      - [Using GNU parallel](#using-gnu-parallel)
 
 # Basic features
+
+## Show at most N error messages (and stop processing once N errors are encountered)
+<details>
+<summary>
+Click to expand
+</summary>
+
+Use the `--max-tolerate-errors` option
+>alias: `-e`, `--max-errors`, `--tolerate-errors`, `--stop-at-error-count`
+
+```shell
+fastpasta MYDATA.raw check all --max-tolerate-errors 42
+```
+
+</details>
+
 ## Enable custom checks
 <details>
 <summary>
@@ -212,6 +236,36 @@ fastpasta view its-readout-frames-data | less
 </details>
 </details>
 
+## Save all errors and warnings to a file
+<details>
+<summary>
+Click to expand
+</summary>
+
+### Scenario
+- I have `MYDATA.raw`
+- I want to check it at the ITS payload level and save all errors in `mylog.txt`
+
+### Command
+```shell
+fastpasta MYDATA.raw check all its --verbosity 0 2>mylog.txt
+```
+<details>
+
+<summary>Show 1 variation of this scenario</summary>
+
+### Variations
+
+#### Also save the final report
+```shell
+fastpasta MYDATA.raw check all its --verbosity 0 2>mylog.txt >>mylog.txt
+```
+If you want the report to appear at the top of the file instead of the bottom, use this command:
+```shell
+fastpasta MYDATA.raw check all its --verbosity 0 2>mylog.txt >mylog.txt
+```
+</details>
+</details>
 
 <br><br>
 
@@ -222,6 +276,8 @@ fastpasta view its-readout-frames-data | less
 <summary>
 Click to expand
 </summary>
+
+You might be looking for [check parallel](#check-all-files-in-a-directory-in-parallel)
 
 ### Scenario
 - I have `MY_DIRECTORY` with raw ITS readout data files with the `.raw` extension.
@@ -288,7 +344,11 @@ For each mismatching statistics, an error will be displayed. TOML format is also
 </details>
 
 
-## Check all files in a directory in parallel (using GNU parallel)
+## Check all files in a directory in parallel
+<details>
+<summary>
+Click to expand
+</summary>
 
 ### Scenario
 - I have `MY_DIRECTORY` with raw ITS readout data files with the `.raw` extension.
@@ -298,6 +358,19 @@ For each mismatching statistics, an error will be displayed. TOML format is also
 
 ### Command
 ```shell
-find tests/test-data -type f -name "*.raw" -print | parallel 'target/release/fastpasta {} check all its-stave --verbosity 0 2>{/}.errors && [ -s {/}.errors ] || rm -f {/}.errors'
-
+for file in MY_DIRECTORY/*.raw; do fastpasta "$file" check all its-stave --verbosity 0 2>"$file".errors && [ -s "$file".errors ] || rm -f "$file".errors & done; wait
 ```
+
+<details>
+<summary>Show 1 variation of this scenario</summary>
+
+### Variations
+
+#### Using GNU parallel
+Make sure you have installed GNU parallel with `sudo [apt/apt-get/dnf/yum] install parallel`
+
+```shell
+find MY_DIRECTORY -type f -name "*.raw" -print | parallel 'fastpasta {} check all its-stave --verbosity 0 2>{.}.errors && [ -s {.}.errors ] || rm -f {.}.errors'
+```
+</details>
+</details>
