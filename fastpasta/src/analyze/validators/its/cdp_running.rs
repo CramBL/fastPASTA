@@ -17,8 +17,10 @@ use crate::stats::StatType;
 use crate::words::its::data_words::lane_id_to_lane_number;
 use crate::words::its::data_words::ob_data_word_id_to_input_number_connector;
 use crate::words::its::data_words::ob_data_word_id_to_lane;
-use crate::words::its::status_words::is_lane_active;
-use crate::words::its::status_words::{Cdw, Ddw0, Ihw, StatusWord, Tdh, Tdt};
+use crate::words::its::status_words::util::is_lane_active;
+use crate::words::its::status_words::{
+    cdw::Cdw, ddw::Ddw0, ihw::Ihw, tdh::Tdh, tdt::Tdt, StatusWord,
+};
 use crate::words::its::{Layer, Stave};
 use alice_protocol_reader::prelude::FilterOpt;
 use alice_protocol_reader::prelude::RDH;
@@ -579,27 +581,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 
         if alpide_readout_frame.is_empty() {
             // No data in a full readout frame is a protocol error unless lanes in error has been reported by the TDT/DDW.
-            log::warn!("ALPIDE data frame at {mem_pos_start:#X} - {mem_pos_end:#X} is empty",);
-            // TODO: Check lane errors in TDT and DDW
-            let ddw_lane_status_str = if self.status_words.ddw().is_some() {
-                let ddw0 = self.status_words.ddw().unwrap();
-                format!("Last DDW [{ddw0}] lane status: {:#X}", ddw0.lane_status())
-            } else {
-                "No DDW seen yet".to_string()
-            };
-
-            let tdt_lane_status_str = {
-                let curr_tdt = self.status_words.tdt().unwrap();
-                format!("Frame closing TDT [{curr_tdt}] lane status: 0:15={lane_0_15:#X} 16:23={lane_16_23:#X} 24:27={lane_24_27:#X}", lane_0_15 = curr_tdt.lane_status_15_0(),
-                lane_16_23 = curr_tdt.lane_status_23_16(), lane_24_27 = curr_tdt.lane_status_27_24())
-            };
-
-            let error_string = format!(
-                "{mem_pos_start:#X}: [E701] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has no data words. \n\t Additional information:\n\t\t - Lanes in error (as indicated by APEs): {fatal_lanes:?}\n\t\t - {ddw_lane_status_str}\n\t\t - {tdt_lane_status_str}", feeid=self.current_rdh.as_ref().unwrap().fee_id(), fatal_lanes = self.fatal_lanes
-            );
-            self.stats_send_ch
-                .send(StatType::Error(error_string.into()))
-                .expect("Failed to send error to stats channel");
+            self.report_empty_alpide_frame_error(&alpide_readout_frame);
             // No data, nothing to process (and erroneous to do so) early return
             return;
         }
@@ -657,6 +639,32 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                 .send(StatType::Error(error_string.into()))
                 .expect("Failed to send error to stats channel");
         }
+    }
+
+    fn report_empty_alpide_frame_error(&self, frame: &AlpideReadoutFrame) {
+        // No data in a full readout frame is a protocol error unless lanes in error has been reported by the TDT/DDW.
+        let (mem_pos_start, mem_pos_end) = (frame.start_mem_pos(), frame.end_mem_pos());
+        log::warn!("ALPIDE data frame at {mem_pos_start:#X} - {mem_pos_end:#X} is empty",);
+        // TODO: Check lane errors in TDT and DDW
+        let ddw_lane_status_str = if self.status_words.ddw().is_some() {
+            let ddw0 = self.status_words.ddw().unwrap();
+            format!("Last DDW [{ddw0}] lane status: {:#X}", ddw0.lane_status())
+        } else {
+            "No DDW seen yet".to_string()
+        };
+
+        let tdt_lane_status_str = {
+            let curr_tdt = self.status_words.tdt().unwrap();
+            format!("Frame closing TDT [{curr_tdt}] lane status: 0:15={lane_0_15:#X} 16:23={lane_16_23:#X} 24:27={lane_24_27:#X}", lane_0_15 = curr_tdt.lane_status_15_0(),
+            lane_16_23 = curr_tdt.lane_status_23_16(), lane_24_27 = curr_tdt.lane_status_27_24())
+        };
+
+        let error_string = format!(
+            "{mem_pos_start:#X}: [E701] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has no data words. \n\t Additional information:\n\t\t - Lanes in error (as indicated by APEs): {fatal_lanes:?}\n\t\t - {ddw_lane_status_str}\n\t\t - {tdt_lane_status_str}", feeid=self.current_rdh.as_ref().unwrap().fee_id(), fatal_lanes = self.fatal_lanes
+        );
+        self.stats_send_ch
+            .send(StatType::Error(error_string.into()))
+            .expect("Failed to send error to stats channel");
     }
 }
 

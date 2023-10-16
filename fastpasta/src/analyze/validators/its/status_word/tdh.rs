@@ -4,7 +4,7 @@ use std::fmt::Write;
 use super::StatusWordValidator;
 use crate::{
     analyze::validators::its::util::StatusWordContainer,
-    words::its::status_words::{StatusWord, Tdh},
+    words::its::status_words::{tdh::Tdh, StatusWord},
 };
 
 #[derive(Debug, Copy, Clone)]

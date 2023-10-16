@@ -2,7 +2,7 @@
 use std::fmt::Write;
 
 use super::StatusWordValidator;
-use crate::words::its::status_words::{Ddw0, StatusWord};
+use crate::words::its::status_words::{ddw::Ddw0, StatusWord};
 
 /// Validator for [Ddw0]
 #[derive(Debug, Copy, Clone)]
