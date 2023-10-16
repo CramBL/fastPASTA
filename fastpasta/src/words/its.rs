@@ -27,6 +27,17 @@ impl Display for Layer {
     }
 }
 
+impl Layer {
+    /// Get the [Layer] from a [Stave] (which layer a given stave is from)
+    pub fn from_stave(stave: &Stave) -> Self {
+        match stave {
+            Stave::InnerLayer { .. } => Layer::Inner,
+            Stave::MiddleLayer { .. } => Layer::Middle,
+            Stave::OuterLayer { .. } => Layer::Outer,
+        }
+    }
+}
+
 /// Enum for marking if the data is from the inner/middle/outer layer along with the stave number
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Stave {
