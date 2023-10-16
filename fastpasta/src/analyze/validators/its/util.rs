@@ -1,6 +1,6 @@
 use crate::{
     stats::StatType,
-    words::its::status_words::{Cdw, Ddw0, Ihw, Tdh, Tdt},
+    words::its::status_words::{cdw::Cdw, ddw::Ddw0, ihw::Ihw, tdh::Tdh, tdt::Tdt},
 };
 
 use super::status_word::StatusWordSanityChecker;
