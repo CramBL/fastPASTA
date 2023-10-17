@@ -1,4 +1,4 @@
-//! Holds the validator for outer barrel data words
+//! Contains the validator for outer barrel data words
 
 use crate::words::its::{
     data_words::{ob_data_word_id_to_input_number_connector, ob_data_word_id_to_lane},

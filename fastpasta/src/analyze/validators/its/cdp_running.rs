@@ -7,14 +7,13 @@ mod readout_frame;
 use self::readout_frame::ItsReadoutFrameValidator;
 
 use super::{
-    data_words::{ob::ObDataWordValidator, DATA_WORD_SANITY_CHECKER},
+    data_words::{ib::IbDataWordValidator, ob::ObDataWordValidator, DATA_WORD_SANITY_CHECKER},
     its_payload_fsm_cont::{self, ItsPayloadFsmContinuous},
     lib::ItsPayloadWord,
     status_word::{tdh::TdhValidator, util::StatusWordContainer},
 };
 use crate::config::prelude::*;
 use crate::stats::StatType;
-use crate::words::its::status_words::util::is_lane_active;
 use crate::words::its::status_words::{
     cdw::Cdw, ddw::Ddw0, ihw::Ihw, tdh::Tdh, tdt::Tdt, StatusWord,
 };
@@ -324,15 +323,13 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         if !self.running_checks_enabled {
             return;
         }
-        let lane_id = ib_slice[9] & 0x1F;
-        // lane in active_lanes
-        let active_lanes = self.status_words.ihw().unwrap().active_lanes();
-        if !is_lane_active(lane_id, active_lanes) {
-            self.report_error(
-                &format!("[E72] IB lane {lane_id} is not active according to IHW active_lanes: {active_lanes:#X}."),
-                ib_slice,
-            );
+
+        if let Err(err_msg) =
+            IbDataWordValidator::check(ib_slice, self.status_words.ihw().unwrap().active_lanes())
+        {
+            self.report_error(&err_msg, ib_slice);
         }
+
         // Matches if there is an ITS readout frame validator.
         // If not we are not collecting data ie. ALPIDE checks are not enabled.
         if let Some(frame_validator) = &mut self.readout_frame_validator {
