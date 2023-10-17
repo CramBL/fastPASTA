@@ -6,7 +6,10 @@ mod cdp_tracker;
 mod rdh_validator;
 mod readout_frame;
 
-use self::{cdp_tracker::CdpTracker, readout_frame::ItsReadoutFrameValidator};
+use self::{
+    cdp_tracker::CdpTracker, rdh_validator::ItsRdhValidator,
+    readout_frame::ItsReadoutFrameValidator,
+};
 
 use super::{
     data_words::{ib::IbDataWordValidator, ob::ObDataWordValidator, DATA_WORD_SANITY_CHECKER},
@@ -34,11 +37,11 @@ enum StatusWordKind<'a> {
 /// Checks the CDP payload and reports any errors.
 pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt + 'static> {
     config: &'static C,
-    tracker: CdpTracker,
     running_checks_enabled: bool,
     its_state_machine: ItsPayloadFsmContinuous,
+    tracker: CdpTracker,
+    rdh_validator: ItsRdhValidator<T>,
     status_words: StatusWordContainer,
-    current_rdh: Option<T>,
     pub(crate) stats_send_ch: flume::Sender<StatType>,
     // Stores the ALPIDE data from an ITS readout frame, if the config is set to check ALPIDE data, and a filter for a stave is set.
     readout_frame_validator: Option<ItsReadoutFrameValidator<C>>,
@@ -50,13 +53,13 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         Self {
             config,
             tracker: CdpTracker::default(),
+            rdh_validator: ItsRdhValidator::default(),
             running_checks_enabled: matches!(
                 config.check(),
                 Some(CheckCommands::All { system: _ })
             ),
             its_state_machine: ItsPayloadFsmContinuous::default(),
             status_words: StatusWordContainer::new_const(),
-            current_rdh: None,
             stats_send_ch,
             readout_frame_validator: if config.check().is_some_and(|check| {
                 check
@@ -100,9 +103,9 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     /// It uses the RDH to determine size of padding
     #[inline]
     pub fn set_current_rdh(&mut self, rdh: &T, rdh_mem_pos: u64) {
+        // Initialize a new tracker and RDH validator for the current CDP
         self.tracker = CdpTracker::new(rdh, rdh_mem_pos);
-
-        self.current_rdh = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
+        self.rdh_validator = ItsRdhValidator::new(rdh);
 
         // If the an ItsReadoutFrameValidator is present
         // and the stave the data is from is not known yet, then set the stave.
@@ -114,9 +117,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             self.readout_frame_validator
                 .as_mut()
                 .unwrap()
-                .set_stave(Stave::from_feeid(
-                    self.current_rdh.as_ref().unwrap().fee_id(),
-                ));
+                .set_stave(Stave::from_feeid(self.rdh_validator.rdh().fee_id()));
         }
     }
 
@@ -126,12 +127,10 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         debug_assert!(gbt_word.len() == 10);
         self.tracker.incr_word_count(); // Tracks the number of GBT words seen in the current CDP
 
-        let current_word = self.its_state_machine.advance(gbt_word);
-
         // Match the result of the FSM trying to determine the word
         // If the ID is not recognized as valid, the FSM takes a best guess among the
         // valid words in the current state and returns it as an error, that is handled below
-        match current_word {
+        match self.its_state_machine.advance(gbt_word) {
             Ok(word) => match word {
                 // DataWord and CDW are handled together
                 ItsPayloadWord::DataWord | ItsPayloadWord::CDW => {
@@ -371,18 +370,20 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     /// Checks RDH stop_bit and pages_counter when a DDW0 is observed
     #[inline]
     fn check_rdh_at_ddw0(&mut self, ddw0_slice: &[u8]) {
-        if self.current_rdh.as_ref().unwrap().stop_bit() != 1 {
-            self.report_error("[E110] DDW0 observed but RDH stop bit is not 1", ddw0_slice);
-        }
-        if self.current_rdh.as_ref().unwrap().pages_counter() == 0 {
-            self.report_error("[E111] DDW0 observed but RDH page counter is 0", ddw0_slice);
+        if let Err(err_msgs) = self.rdh_validator.check_at_ddw0() {
+            err_msgs
+                .into_iter()
+                .for_each(|err| self.report_error(err.as_str(), ddw0_slice));
         }
     }
+
     /// Checks RDH stop_bit and pages_counter when an initial IHW is observed (not IHW during continuation)
     #[inline]
     fn check_rdh_at_initial_ihw(&mut self, ihw_slice: &[u8]) {
-        if self.current_rdh.as_ref().unwrap().stop_bit() != 0 {
-            self.report_error("[E12] IHW observed but RDH stop bit is not 0", ihw_slice);
+        if let Err(err_msgs) = self.rdh_validator.check_at_initial_ihw() {
+            err_msgs
+                .into_iter()
+                .for_each(|err| self.report_error(&err, ihw_slice));
         }
     }
 
@@ -401,14 +402,10 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     /// Checks TDH fields: continuation, orbit, when the TDH immediately follows an IHW
     #[inline]
     fn check_tdh_no_continuation(&mut self, tdh_slice: &[u8]) {
-        // 1. let bindings to RDH and TDH
-        let current_rdh = self.current_rdh.as_ref().expect("RDH should be set");
-        let current_tdh = self
-            .status_words
-            .tdh()
-            .expect("TDH should be set, process words before checks");
-
-        if let Err(errs) = TdhValidator::check_tdh_no_continuation(current_tdh, current_rdh) {
+        if let Err(errs) = TdhValidator::check_tdh_no_continuation(
+            self.status_words.tdh().unwrap(),
+            self.rdh_validator.rdh(),
+        ) {
             errs.into_iter()
                 .for_each(|err| self.report_error(&err, tdh_slice));
         }
@@ -466,7 +463,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                 .process_frame(
                     &self.stats_send_ch,
                     &self.status_words,
-                    self.current_rdh.as_ref().unwrap(),
+                    self.rdh_validator.rdh(),
                 );
         } else {
             let err_msg = format!("{mem_pos:#X}: [E59] TDT with packet done marked the end of a readout frame, but a start of readout frame was never seen (TDH with continuation = 0)",
