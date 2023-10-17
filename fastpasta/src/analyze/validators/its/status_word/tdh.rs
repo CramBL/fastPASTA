@@ -1,11 +1,10 @@
 //! Validator for [Ddw0]
 use std::fmt::Write;
 
-use super::StatusWordValidator;
-use crate::{
-    analyze::validators::its::util::StatusWordContainer,
-    words::its::status_words::{tdh::Tdh, StatusWord},
-};
+use alice_protocol_reader::rdh::RDH;
+
+use super::{util::StatusWordContainer, StatusWordValidator};
+use crate::words::its::status_words::{tdh::Tdh, StatusWord};
 
 #[derive(Debug, Copy, Clone)]
 pub struct TdhValidator {
@@ -59,12 +58,43 @@ impl TdhValidator {
         Self { valid_id: 0xE8 }
     }
 
+    /// Checks if the TDH trigger_bc period matches the specified value
+    ///
+    /// reports an error with the detected erroneous period if the check fails
+    ///
+    /// The check is only applicable to consecutive TDHs with internal_trigger set.
+    pub fn check_trigger_interval(
+        tdh: &Tdh,
+        prev_int_tdh: &Tdh,
+        expect_period: u16,
+    ) -> Result<(), String> {
+        debug_assert!(tdh.internal_trigger() == 1 && prev_int_tdh.internal_trigger() == 1);
+        if let Err(err_period) = Self::matches_trigger_interval(
+            tdh.trigger_bc(),
+            prev_int_tdh.trigger_bc(),
+            expect_period,
+        ) {
+            Err(format!(
+                "[E45] TDH trigger period mismatch with user specified: {expect_period} != {err_period}\
+                                    \n\tPrevious TDH Orbit_BC: {prev_trigger_orbit}_{prev_trigger_bc:>4}\
+                                    \n\tCurrent  TDH Orbit_BC: {current_trigger_orbit}_{current_trigger_bc:>4}",
+                                    prev_trigger_orbit = prev_int_tdh.trigger_orbit(),
+                                    prev_trigger_bc = prev_int_tdh.trigger_bc(),
+                                    current_trigger_orbit = tdh.trigger_orbit(),
+                                    current_trigger_bc = tdh.trigger_bc()
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
     /// Checks if the period between two TDH trigger_bc values matches a specified value
     ///
     /// returns an error with the detected erroneous period if the check fails
     ///
     /// The check is only applicable to consecutive TDHs with internal_trigger set.
-    pub fn matches_trigger_interval(
+    #[inline]
+    fn matches_trigger_interval(
         current_trg_bc: u16,
         previous_trg_bc: u16,
         specified_period: u16,
@@ -95,6 +125,90 @@ impl TdhValidator {
             }
         }
         Ok(())
+    }
+
+    /// Checks TDH fields: continuation, orbit, when the TDH immediately follows an IHW.
+    ///
+    /// If any checks fail, returns `Err(Vec<ErrMsgs>)`
+    #[inline]
+    pub fn check_tdh_no_continuation(tdh: &Tdh, rdh: &impl RDH) -> Result<(), Vec<String>> {
+        let mut errors = Vec::<String>::new();
+
+        if tdh.continuation() != 0 {
+            errors.push("[E42] TDH continuation is not 0".into());
+        }
+
+        if tdh.trigger_orbit() != rdh.rdh1().orbit {
+            errors.push("[E444] TDH trigger_orbit is not equal to RDH orbit".into());
+        }
+
+        if rdh.pages_counter() == 0 && (tdh.internal_trigger() == 1 || rdh.rdh2().is_pht_trigger())
+        {
+            // check BC and trigger type match
+            Self::check_tdh_rdh_bc_trigger_type_match(tdh, rdh, &mut errors);
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+
+    /// A TDH immediately following an IHW should have trigger and BC match the last seen RDH
+    #[inline]
+    fn check_tdh_rdh_bc_trigger_type_match(tdh: &Tdh, rdh: &impl RDH, errors: &mut Vec<String>) {
+        // Check that the BC of the TDH and RDH match
+        if tdh.trigger_bc() != rdh.rdh1().bc() {
+            errors.push(format!("[E445] TDH trigger_bc is not equal to RDH bc, TDH: {tdh_trig_bc:#X}, RDH: {rdh_bc:#X}.",
+                        tdh_trig_bc = tdh.trigger_bc(),
+                    rdh_bc = rdh.rdh1().bc()));
+        }
+
+        // Now check that the trigger_type matches
+
+        // TDH only has the 12 LSB of the trigger type
+        let rdh_trigger_type_12_lsb = rdh.rdh2().trigger_type as u16 & 0xFFF;
+
+        if rdh_trigger_type_12_lsb != tdh.trigger_type() {
+            errors.push(format!(
+                "[E44] TDH trigger_type {tdh_tt:#X} != {rdh_tt:#X} RDH trigger_type[11:0].",
+                tdh_tt = tdh.trigger_type(),
+                rdh_tt = rdh_trigger_type_12_lsb
+            ));
+        }
+    }
+
+    /// Checks TDH when expecting continuation (Previous TDT packet_done = 0).
+    ///
+    /// If there's a previous TDH, it is cross-checked with the current TDH.
+    ///
+    /// If any checks fail, returns [Err] containing a vector of error messages
+    #[inline]
+    pub fn check_continuation(tdh: &Tdh, prev_tdh: Option<&Tdh>) -> Result<(), Vec<String>> {
+        let mut errors = Vec::<String>::new();
+
+        if tdh.continuation() != 1 {
+            errors.push("[E41] TDH continuation is not 1".into());
+        }
+
+        if let Some(prev_tdh) = prev_tdh {
+            if tdh.trigger_bc() != prev_tdh.trigger_bc() {
+                errors.push("[E441] TDH trigger_bc is not the same".into());
+            }
+            if tdh.trigger_orbit() != prev_tdh.trigger_orbit() {
+                errors.push("[E442] TDH trigger_orbit is not the same".into());
+            }
+            if tdh.trigger_type() != prev_tdh.trigger_type() {
+                errors.push("[E443] TDH trigger_type is not the same".into());
+            }
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
 

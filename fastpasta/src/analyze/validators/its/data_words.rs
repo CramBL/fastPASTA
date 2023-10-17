@@ -2,6 +2,9 @@
 use crate::words::its::data_words as dw;
 use std::fmt::Write;
 
+pub mod ib;
+pub mod ob;
+
 /// Convenience const struct to avoid having to instantiate the struct elsewhere
 pub const DATA_WORD_SANITY_CHECKER: DataWordSanityChecker = DataWordSanityChecker {};
 /// Performs sanity checks on data words
