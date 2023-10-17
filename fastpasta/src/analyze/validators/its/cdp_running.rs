@@ -42,7 +42,7 @@ pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOp
     tracker: CdpTracker,
     rdh_validator: ItsRdhValidator<T>,
     status_words: StatusWordContainer,
-    pub(crate) stats_send_ch: flume::Sender<StatType>,
+    stats_send_ch: flume::Sender<StatType>,
     // Stores the ALPIDE data from an ITS readout frame, if the config is set to check ALPIDE data, and a filter for a stave is set.
     readout_frame_validator: Option<ItsReadoutFrameValidator<C>>,
 }
