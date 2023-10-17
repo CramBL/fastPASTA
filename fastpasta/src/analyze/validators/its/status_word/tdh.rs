@@ -181,6 +181,38 @@ impl TdhValidator {
             ));
         }
     }
+
+    /// Checks TDH when expecting continuation (Previous TDT packet_done = 0).
+    ///
+    /// If there's a previous TDH, it is cross-checked with the current TDH.
+    ///
+    /// If any checks fail, returns [Err] containing a vector of error messages
+    #[inline]
+    pub fn check_continuation(tdh: &Tdh, prev_tdh: Option<&Tdh>) -> Result<(), Vec<String>> {
+        let mut errors = Vec::<String>::new();
+
+        if tdh.continuation() != 1 {
+            errors.push("[E41] TDH continuation is not 1".into());
+        }
+
+        if let Some(prev_tdh) = prev_tdh {
+            if tdh.trigger_bc() != prev_tdh.trigger_bc() {
+                errors.push("[E441] TDH trigger_bc is not the same".into());
+            }
+            if tdh.trigger_orbit() != prev_tdh.trigger_orbit() {
+                errors.push("[E442] TDH trigger_orbit is not the same".into());
+            }
+            if tdh.trigger_type() != prev_tdh.trigger_type() {
+                errors.push("[E443] TDH trigger_type is not the same".into());
+            }
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
 }
 
 #[cfg(test)]

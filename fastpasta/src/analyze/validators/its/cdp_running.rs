@@ -427,22 +427,14 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     }
 
     /// Checks TDH when continuation is expected (Previous TDT packet_done = 0)
-    #[inline]
     fn check_tdh_continuation(&mut self, tdh_slice: &[u8]) {
-        if self.status_words.tdh().unwrap().continuation() != 1 {
-            self.report_error("[E41] TDH continuation is not 1", tdh_slice);
-        }
-
-        if let Some(previous_tdh) = self.status_words.prv_tdh() {
-            if previous_tdh.trigger_bc() != self.status_words.tdh().unwrap().trigger_bc() {
-                self.report_error("[E441] TDH trigger_bc is not the same", tdh_slice);
-            }
-            if previous_tdh.trigger_orbit() != self.status_words.tdh().unwrap().trigger_orbit() {
-                self.report_error("[E442] TDH trigger_orbit is not the same", tdh_slice);
-            }
-            if previous_tdh.trigger_type() != self.status_words.tdh().unwrap().trigger_type() {
-                self.report_error("[E443] TDH trigger_type is not the same", tdh_slice);
-            }
+        if let Err(err_msgs) = TdhValidator::check_continuation(
+            self.status_words.tdh().unwrap(),
+            self.status_words.prv_tdh(),
+        ) {
+            err_msgs.into_iter().for_each(|msg| {
+                self.report_error(&msg, tdh_slice);
+            })
         }
     }
 
