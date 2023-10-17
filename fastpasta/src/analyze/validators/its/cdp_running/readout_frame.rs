@@ -4,13 +4,16 @@ use itertools::Itertools;
 use crate::{
     analyze::validators::its::{
         alpide::{self, alpide_readout_frame::AlpideReadoutFrame},
-        util::StatusWordContainer,
+        status_word::util::StatusWordContainer,
     },
     config::custom_checks::CustomChecksOpt,
     stats::StatType,
     words::its::{data_words::lane_id_to_lane_number, Layer, Stave},
 };
 
+/// Manages the state of the analyzed readout frames.
+///
+/// When they start, when they end, and makes the call to analyze them after they end.
 pub struct ItsReadoutFrameValidator<C: CustomChecksOpt + 'static> {
     custom_checks_config: &'static C,
     // Stores the ALPIDE data from an ITS readout frame, if the config is set to check ALPIDE data, and a filter for a stave is set.

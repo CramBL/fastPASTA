@@ -13,6 +13,7 @@ mod ddw;
 mod ihw;
 pub(super) mod tdh;
 pub(super) mod tdt;
+pub(super) mod util;
 
 /// Aggregates all status word validators.
 #[derive(Debug, Clone, Copy)]

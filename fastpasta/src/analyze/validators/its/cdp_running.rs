@@ -10,8 +10,7 @@ use super::{
     data_words::DATA_WORD_SANITY_CHECKER,
     its_payload_fsm_cont::{self, ItsPayloadFsmContinuous},
     lib::ItsPayloadWord,
-    status_word::tdh::TdhValidator,
-    util::StatusWordContainer,
+    status_word::{tdh::TdhValidator, util::StatusWordContainer},
 };
 use crate::config::prelude::*;
 use crate::stats::StatType;

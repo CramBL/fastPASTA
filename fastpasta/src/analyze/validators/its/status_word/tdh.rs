@@ -3,11 +3,8 @@ use std::fmt::Write;
 
 use alice_protocol_reader::rdh::RDH;
 
-use super::StatusWordValidator;
-use crate::{
-    analyze::validators::its::util::StatusWordContainer,
-    words::its::status_words::{tdh::Tdh, StatusWord},
-};
+use super::{util::StatusWordContainer, StatusWordValidator};
+use crate::words::its::status_words::{tdh::Tdh, StatusWord};
 
 #[derive(Debug, Copy, Clone)]
 pub struct TdhValidator {
