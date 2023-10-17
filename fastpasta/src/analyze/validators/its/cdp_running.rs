@@ -437,7 +437,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             if previous_tdh.trigger_bc() != self.status_words.tdh().unwrap().trigger_bc() {
                 self.report_error("[E441] TDH trigger_bc is not the same", tdh_slice);
             }
-            if previous_tdh.trigger_orbit != self.status_words.tdh().unwrap().trigger_orbit {
+            if previous_tdh.trigger_orbit() != self.status_words.tdh().unwrap().trigger_orbit() {
                 self.report_error("[E442] TDH trigger_orbit is not the same", tdh_slice);
             }
             if previous_tdh.trigger_type() != self.status_words.tdh().unwrap().trigger_type() {
@@ -476,31 +476,21 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                     .tdh()
                     .expect("TDH should be set, process words before checks");
 
-                // Closure for reporting a trigger interval error
-                let report_tdh_trigger_interval_error = |detected_period: u16| {
-                    let prev_trigger_orbit = prev_int_tdh.trigger_orbit;
-                    let current_trigger_orbit = current_tdh.trigger_orbit;
-
-                    self.stats_send_ch
-                            .send(StatType::Error(format!(
-                                "{mem_pos:#X}: {error} ", mem_pos = self.calc_current_word_mem_pos(),
-                                error = &format!(
-                                    "[E45] TDH trigger period mismatch with user specified: {specified_trig_period} != {detected_period}\
-                                    \n\tPrevious TDH Orbit_BC: {prev_trigger_orbit}_{prev_trigger_bc:>4}\
-                                    \n\tCurrent  TDH Orbit_BC: {current_trigger_orbit}_{current_trigger_bc:>4}",
-                                    prev_trigger_bc = prev_int_tdh.trigger_bc(),
-                                    current_trigger_bc = current_tdh.trigger_bc()
-                            )).into()))
-                            .expect("Failed to send error to stats channel");
-                };
-
                 if current_tdh.internal_trigger() == 1 {
-                    if let Err(erroneous_period) = TdhValidator::matches_trigger_interval(
-                        current_tdh.trigger_bc(),
-                        prev_int_tdh.trigger_bc(),
+                    if let Err(err_msg) = TdhValidator::check_trigger_interval(
+                        current_tdh,
+                        prev_int_tdh,
                         specified_trig_period,
                     ) {
-                        report_tdh_trigger_interval_error(erroneous_period);
+                        self.stats_send_ch
+                            .send(StatType::Error(
+                                format!(
+                                    "{mem_pos:#X}: {err_msg} ",
+                                    mem_pos = self.calc_current_word_mem_pos()
+                                )
+                                .into(),
+                            ))
+                            .expect("Failed to send error to stats channel")
                     }
                 }
             }

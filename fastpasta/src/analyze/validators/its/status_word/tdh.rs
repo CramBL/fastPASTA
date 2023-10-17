@@ -61,12 +61,43 @@ impl TdhValidator {
         Self { valid_id: 0xE8 }
     }
 
+    /// Checks if the TDH trigger_bc period matches the specified value
+    ///
+    /// reports an error with the detected erroneous period if the check fails
+    ///
+    /// The check is only applicable to consecutive TDHs with internal_trigger set.
+    pub fn check_trigger_interval(
+        tdh: &Tdh,
+        prev_int_tdh: &Tdh,
+        expect_period: u16,
+    ) -> Result<(), String> {
+        debug_assert!(tdh.internal_trigger() == 1 && prev_int_tdh.internal_trigger() == 1);
+        if let Err(err_period) = Self::matches_trigger_interval(
+            tdh.trigger_bc(),
+            prev_int_tdh.trigger_bc(),
+            expect_period,
+        ) {
+            Err(format!(
+                "[E45] TDH trigger period mismatch with user specified: {expect_period} != {err_period}\
+                                    \n\tPrevious TDH Orbit_BC: {prev_trigger_orbit}_{prev_trigger_bc:>4}\
+                                    \n\tCurrent  TDH Orbit_BC: {current_trigger_orbit}_{current_trigger_bc:>4}",
+                                    prev_trigger_orbit = prev_int_tdh.trigger_orbit(),
+                                    prev_trigger_bc = prev_int_tdh.trigger_bc(),
+                                    current_trigger_orbit = tdh.trigger_orbit(),
+                                    current_trigger_bc = tdh.trigger_bc()
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
     /// Checks if the period between two TDH trigger_bc values matches a specified value
     ///
     /// returns an error with the detected erroneous period if the check fails
     ///
     /// The check is only applicable to consecutive TDHs with internal_trigger set.
-    pub fn matches_trigger_interval(
+    #[inline]
+    fn matches_trigger_interval(
         current_trg_bc: u16,
         previous_trg_bc: u16,
         specified_period: u16,
@@ -110,7 +141,7 @@ impl TdhValidator {
             errors.push("[E42] TDH continuation is not 0".into());
         }
 
-        if tdh.trigger_orbit != rdh.rdh1().orbit {
+        if tdh.trigger_orbit() != rdh.rdh1().orbit {
             errors.push("[E444] TDH trigger_orbit is not equal to RDH orbit".into());
         }
 
