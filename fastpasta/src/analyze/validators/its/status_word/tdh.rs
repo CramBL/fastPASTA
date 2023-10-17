@@ -1,6 +1,8 @@
 //! Validator for [Ddw0]
 use std::fmt::Write;
 
+use alice_protocol_reader::rdh::RDH;
+
 use super::StatusWordValidator;
 use crate::{
     analyze::validators::its::util::StatusWordContainer,
@@ -95,6 +97,58 @@ impl TdhValidator {
             }
         }
         Ok(())
+    }
+
+    /// Checks TDH fields: continuation, orbit, when the TDH immediately follows an IHW.
+    ///
+    /// If any checks fail, returns `Err(Vec<ErrMsgs>)`
+    #[inline]
+    pub fn check_tdh_no_continuation(tdh: &Tdh, rdh: &impl RDH) -> Result<(), Vec<String>> {
+        let mut errors = Vec::<String>::new();
+
+        if tdh.continuation() != 0 {
+            errors.push("[E42] TDH continuation is not 0".into());
+        }
+
+        if tdh.trigger_orbit != rdh.rdh1().orbit {
+            errors.push("[E444] TDH trigger_orbit is not equal to RDH orbit".into());
+        }
+
+        if rdh.pages_counter() == 0 && (tdh.internal_trigger() == 1 || rdh.rdh2().is_pht_trigger())
+        {
+            // check BC and trigger type match
+            Self::check_tdh_rdh_bc_trigger_type_match(tdh, rdh, &mut errors);
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+
+    /// A TDH immediately following an IHW should have trigger and BC match the last seen RDH
+    #[inline]
+    fn check_tdh_rdh_bc_trigger_type_match(tdh: &Tdh, rdh: &impl RDH, errors: &mut Vec<String>) {
+        // Check that the BC of the TDH and RDH match
+        if tdh.trigger_bc() != rdh.rdh1().bc() {
+            errors.push(format!("[E445] TDH trigger_bc is not equal to RDH bc, TDH: {tdh_trig_bc:#X}, RDH: {rdh_bc:#X}.",
+                        tdh_trig_bc = tdh.trigger_bc(),
+                    rdh_bc = rdh.rdh1().bc()));
+        }
+
+        // Now check that the trigger_type matches
+
+        // TDH only has the 12 LSB of the trigger type
+        let rdh_trigger_type_12_lsb = rdh.rdh2().trigger_type as u16 & 0xFFF;
+
+        if rdh_trigger_type_12_lsb != tdh.trigger_type() {
+            errors.push(format!(
+                "[E44] TDH trigger_type {tdh_tt:#X} != {rdh_tt:#X} RDH trigger_type[11:0].",
+                tdh_tt = tdh.trigger_type(),
+                rdh_tt = rdh_trigger_type_12_lsb
+            ));
+        }
     }
 }
 

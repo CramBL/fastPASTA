@@ -447,11 +447,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     }
 
     /// Checks TDH fields: continuation, orbit, when the TDH immediately follows an IHW
-    ///
-    /// 3 steps for readability:
-    ///     1. Declare let bindings to borrowed `RDH` and `TDH`
-    ///     2. Declare closures to report verbose errors
-    ///     3. Perform the checks, reporting errors if checks fail
     #[inline]
     fn check_tdh_no_continuation(&mut self, tdh_slice: &[u8]) {
         // 1. let bindings to RDH and TDH
@@ -461,56 +456,10 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             .tdh()
             .expect("TDH should be set, process words before checks");
 
-        // 2. Closures to report verbose errors
-        // Define a closure to report BC-related errors
-        let report_bc_error = || {
-            self.report_error(
-                &format!(
-                    "[E445] TDH trigger_bc is not equal to RDH bc, TDH: {:#X}, RDH: {:#X}.",
-                    current_tdh.trigger_bc(),
-                    current_rdh.rdh1().bc()
-                ),
-                tdh_slice,
-            );
-        };
-
-        // Define a closure to report trigger_type-related errors
-        let report_trigger_type_error = || {
-            self.report_error(
-                &format!(
-                    "[E44] TDH trigger_type {:#X} != {:#X} RDH trigger_type[11:0].",
-                    current_tdh.trigger_type(),
-                    current_rdh.rdh2().trigger_type as u16 & 0xFFF
-                ),
-                tdh_slice,
-            );
-        };
-
-        // 3. Check are performed
-        if current_tdh.continuation() != 0 {
-            self.report_error("[E42] TDH continuation is not 0", tdh_slice);
-        }
-
-        if current_tdh.trigger_orbit != current_rdh.rdh1().orbit {
-            self.report_error(
-                "[E444] TDH trigger_orbit is not equal to RDH orbit",
-                tdh_slice,
-            );
-        }
-
-        if current_rdh.pages_counter() == 0
-            && (current_tdh.internal_trigger() == 1 || current_rdh.rdh2().is_pht_trigger())
-        {
-            // In this case the bc and trigger_type of the TDH and RDH should match
-            if current_rdh.rdh1().bc() != current_tdh.trigger_bc() {
-                report_bc_error();
-            }
-            // TDH only has the 12 LSB of the trigger type
-            let rdh_trigger_type_12_lsb = current_rdh.rdh2().trigger_type as u16 & 0xFFF;
-
-            if rdh_trigger_type_12_lsb != current_tdh.trigger_type() {
-                report_trigger_type_error();
-            }
+        if let Err(errs) = TdhValidator::check_tdh_no_continuation(current_tdh, current_rdh) {
+            errs.into_iter().for_each(|err| {
+                self.report_error(&err, tdh_slice);
+            })
         }
     }
 
