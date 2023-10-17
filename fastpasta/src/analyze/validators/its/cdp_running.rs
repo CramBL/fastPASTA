@@ -2,9 +2,11 @@
 //!
 //! [CdpRunningValidator] delegates sanity checks to word specific sanity checkers.
 
+mod cdp_tracker;
+mod rdh_validator;
 mod readout_frame;
 
-use self::readout_frame::ItsReadoutFrameValidator;
+use self::{cdp_tracker::CdpTracker, readout_frame::ItsReadoutFrameValidator};
 
 use super::{
     data_words::{ib::IbDataWordValidator, ob::ObDataWordValidator, DATA_WORD_SANITY_CHECKER},
@@ -32,15 +34,12 @@ enum StatusWordKind<'a> {
 /// Checks the CDP payload and reports any errors.
 pub struct CdpRunningValidator<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt + 'static> {
     config: &'static C,
+    tracker: CdpTracker,
     running_checks_enabled: bool,
     its_state_machine: ItsPayloadFsmContinuous,
     status_words: StatusWordContainer,
     current_rdh: Option<T>,
-    gbt_word_counter: u16,
     pub(crate) stats_send_ch: flume::Sender<StatType>,
-    payload_mem_pos: u64,
-    gbt_word_padding_size_bytes: u8,
-    is_new_data: bool, // Flag used to indicate start of new CDP payload where a CDW is valid
     // Stores the ALPIDE data from an ITS readout frame, if the config is set to check ALPIDE data, and a filter for a stave is set.
     readout_frame_validator: Option<ItsReadoutFrameValidator<C>>,
 }
@@ -50,6 +49,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     pub fn new(config: &'static C, stats_send_ch: flume::Sender<StatType>) -> Self {
         Self {
             config,
+            tracker: CdpTracker::default(),
             running_checks_enabled: matches!(
                 config.check(),
                 Some(CheckCommands::All { system: _ })
@@ -57,11 +57,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             its_state_machine: ItsPayloadFsmContinuous::default(),
             status_words: StatusWordContainer::new_const(),
             current_rdh: None,
-            gbt_word_counter: 0,
             stats_send_ch,
-            payload_mem_pos: 0,
-            gbt_word_padding_size_bytes: 0,
-            is_new_data: false,
             readout_frame_validator: if config.check().is_some_and(|check| {
                 check
                     .target()
@@ -82,7 +78,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     #[inline]
     fn report_error(&self, error: &str, word_slice: &[u8]) {
         super::util::report_error(
-            self.calc_current_word_mem_pos(),
+            self.tracker.current_word_mem_pos(),
             error,
             word_slice,
             &self.stats_send_ch,
@@ -104,15 +100,9 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     /// It uses the RDH to determine size of padding
     #[inline]
     pub fn set_current_rdh(&mut self, rdh: &T, rdh_mem_pos: u64) {
+        self.tracker = CdpTracker::new(rdh, rdh_mem_pos);
+
         self.current_rdh = Some(T::load(&mut rdh.to_byte_slice()).unwrap());
-        self.payload_mem_pos = rdh_mem_pos + 64;
-        if rdh.data_format() == 0 {
-            self.gbt_word_padding_size_bytes = 6; // Data format 0
-        } else {
-            self.gbt_word_padding_size_bytes = 0; // Data format 2
-        }
-        self.is_new_data = true;
-        self.gbt_word_counter = 0;
 
         // If the an ItsReadoutFrameValidator is present
         // and the stave the data is from is not known yet, then set the stave.
@@ -134,7 +124,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     #[inline]
     pub fn check(&mut self, gbt_word: &[u8]) {
         debug_assert!(gbt_word.len() == 10);
-        self.gbt_word_counter += 1; // Tracks the number of GBT words seen in the current CDP
+        self.tracker.incr_word_count(); // Tracks the number of GBT words seen in the current CDP
 
         let current_word = self.its_state_machine.advance(gbt_word);
 
@@ -203,20 +193,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         }
     }
 
-    /// Calculates the current position in the memory of the current word.
-    ///
-    /// Current payload position is the first byte after the current RDH
-    /// The gbt word position then relative to the current payload is then:
-    /// relative_mem_pos = gbt_word_counter * (10 + gbt_word_padding_size_bytes)
-    /// And the absolute position in the memory is then:
-    /// gbt_word_mem_pos = payload_mem_pos + relative_mem_pos
-    #[inline]
-    fn calc_current_word_mem_pos(&self) -> u64 {
-        let gbt_word_memory_size_bytes: u64 = 10 + self.gbt_word_padding_size_bytes as u64;
-        let relative_mem_pos = (self.gbt_word_counter - 1) as u64 * gbt_word_memory_size_bytes;
-        relative_mem_pos + self.payload_mem_pos
-    }
-
     /// Takes a slice of bytes wrapped in an enum of the expected status word then:
     /// 1. Deserializes the slice as the expected status word and checks it for sanity.
     /// 2. If the sanity check fails, the error is sent to the stats channel
@@ -249,7 +225,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             .is_some_and(|rvf| !rvf.is_in_frame())
             && self.status_words.tdh().unwrap().continuation() == 0
         {
-            let start_mem_pos = self.calc_current_word_mem_pos();
+            let start_mem_pos = self.tracker.current_word_mem_pos();
             self.readout_frame_validator
                 .as_mut()
                 .unwrap()
@@ -296,7 +272,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     #[inline]
     fn preprocess_data_word(&mut self, data_word_slice: &[u8]) {
         const ID_INDEX: usize = 9;
-        if self.is_new_data && data_word_slice[ID_INDEX] == 0xF8 {
+        if self.tracker.start_of_data() && data_word_slice[ID_INDEX] == 0xF8 {
             // CDW
             self.process_cdw(data_word_slice);
         } else {
@@ -315,7 +291,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             }
         }
 
-        self.is_new_data = false;
+        self.tracker.set_data_seen();
     }
 
     #[inline]
@@ -461,7 +437,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                             .send(StatType::Error(
                                 format!(
                                     "{mem_pos:#X}: {err_msg} ",
-                                    mem_pos = self.calc_current_word_mem_pos()
+                                    mem_pos = self.tracker.current_word_mem_pos()
                                 )
                                 .into(),
                             ))
@@ -476,7 +452,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     ///
     /// And start the processing by the [ItsReadoutFrameValidator]
     fn process_readout_frame(&mut self) {
-        let frame_end_pos = self.calc_current_word_mem_pos();
+        let frame_end_pos = self.tracker.current_word_mem_pos();
         if self
             .readout_frame_validator
             .as_mut()
@@ -493,7 +469,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
                     self.current_rdh.as_ref().unwrap(),
                 );
         } else {
-            let err_msg = format!("{mem_pos:#X}: [E59] TDT with packet done marked the end of a readout frame, but a start of readout frame was never seen (TDH with continuation = 0)", mem_pos = self.calc_current_word_mem_pos());
+            let err_msg = format!("{mem_pos:#X}: [E59] TDT with packet done marked the end of a readout frame, but a start of readout frame was never seen (TDH with continuation = 0)",
+            mem_pos = self.tracker.current_word_mem_pos());
             self.stats_send_ch
                 .send(StatType::Error(err_msg.into()))
                 .unwrap();
