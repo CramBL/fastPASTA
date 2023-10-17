@@ -7,15 +7,13 @@ mod readout_frame;
 use self::readout_frame::ItsReadoutFrameValidator;
 
 use super::{
-    data_words::DATA_WORD_SANITY_CHECKER,
+    data_words::{ob::ObDataWordValidator, DATA_WORD_SANITY_CHECKER},
     its_payload_fsm_cont::{self, ItsPayloadFsmContinuous},
     lib::ItsPayloadWord,
     status_word::{tdh::TdhValidator, util::StatusWordContainer},
 };
 use crate::config::prelude::*;
 use crate::stats::StatType;
-use crate::words::its::data_words::ob_data_word_id_to_input_number_connector;
-use crate::words::its::data_words::ob_data_word_id_to_lane;
 use crate::words::its::status_words::util::is_lane_active;
 use crate::words::its::status_words::{
     cdw::Cdw, ddw::Ddw0, ihw::Ihw, tdh::Tdh, tdt::Tdt, StatusWord,
@@ -348,24 +346,14 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             return;
         }
 
-        let lane_id = ob_data_word_id_to_lane(ob_slice[9]);
-        // lane in active_lanes
-        let active_lanes = self.status_words.ihw().unwrap().active_lanes();
-        if !is_lane_active(lane_id, active_lanes) {
-            self.report_error(
-                &format!("[E71] OB lane {lane_id} is not active according to IHW active_lanes: {active_lanes:#X}."),
-                ob_slice,
-            );
+        if let Err(err_msgs) =
+            ObDataWordValidator::check(ob_slice, self.status_words.ihw().unwrap().active_lanes())
+        {
+            err_msgs
+                .into_iter()
+                .for_each(|msg| self.report_error(msg.as_str(), ob_slice));
         }
 
-        // lane in connector <= 6
-        let input_number_connector = ob_data_word_id_to_input_number_connector(ob_slice[9]);
-        if input_number_connector > 6 {
-            self.report_error(
-                &format!("[E73] OB Data Word has input connector {input_number_connector} > 6."),
-                ob_slice,
-            );
-        }
         // If there is no readout frame, we are not collecting data.
         if let Some(rvf) = self.readout_frame_validator.as_mut() {
             rvf.store_lane_data(ob_slice);
@@ -431,9 +419,9 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             self.status_words.tdh().unwrap(),
             self.status_words.prv_tdh(),
         ) {
-            err_msgs.into_iter().for_each(|msg| {
-                self.report_error(&msg, tdh_slice);
-            })
+            err_msgs
+                .into_iter()
+                .for_each(|msg| self.report_error(&msg, tdh_slice));
         }
     }
 
@@ -448,9 +436,8 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             .expect("TDH should be set, process words before checks");
 
         if let Err(errs) = TdhValidator::check_tdh_no_continuation(current_tdh, current_rdh) {
-            errs.into_iter().for_each(|err| {
-                self.report_error(&err, tdh_slice);
-            })
+            errs.into_iter()
+                .for_each(|err| self.report_error(&err, tdh_slice));
         }
     }
 
