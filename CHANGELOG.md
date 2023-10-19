@@ -6,12 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 # [Unreleased]
 
+# v1.17.2 (2023-10-19) - minor fixes and QoL improvements
+
 ### Fix
 - Error handling for TDTs signaling `end of readout frame` when the state is `start of readout frame` was never signaled.
 - Now allow specifying a file path in the position of the optional `target system` check subcommand, e.g. `check all bin.raw`
 - Improve formatting of some error messages.
 
-# v1.17.0 (2013-10-11) - Add error code filter, fix valid state that generated error, performance improvements
+# v1.17.0 (2023-10-11) - Add error code filter, fix valid state that generated error, performance improvements
 ### Added
 - `--show-only-errors-with-codes X Y Z...` allows specifying a list of error codes, only error messages that matches any of the specified error codes are displayed.
 
