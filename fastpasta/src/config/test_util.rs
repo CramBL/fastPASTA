@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 
+use super::check::CheckModeArgs;
 use super::custom_checks::CustomChecks;
 use super::inputoutput::DataOutputFormat;
 use super::prelude::*;
@@ -64,9 +65,10 @@ impl MockConfig {
 
     pub fn new_check_all_its() -> Self {
         Self {
-            check: Some(CheckCommands::All {
-                system: Some(System::ITS),
-            }),
+            check: Some(CheckCommands::All(CheckModeArgs {
+                target: Some(System::ITS),
+                ..Default::default()
+            })),
             ..Default::default()
         }
     }
@@ -76,7 +78,7 @@ impl Config for MockConfig {}
 
 impl ChecksOpt for MockConfig {
     fn check(&self) -> Option<CheckCommands> {
-        self.check
+        self.check.clone()
     }
     fn check_its_trigger_period(&self) -> Option<u16> {
         self.its_trigger_period

@@ -21,8 +21,7 @@ where
     fn validate_args(&self) -> Result<(), String> {
         if let Some(check) = self.check() {
             if let Some(target) = check.target() {
-                if matches!(check, CheckCommands::Sanity { system } if matches!(system, Some(System::ITS_Stave)))
-                {
+                if matches!(check, CheckCommands::Sanity(_)) && target == System::ITS_Stave {
                     return Err("Invalid config: Cannot check ITS stave with `check sanity`, instead use `check all its-stave`".to_string());
                 }
                 if !matches!(target, System::ITS_Stave) && self.check_its_trigger_period().is_some()
@@ -70,7 +69,8 @@ where
 
     /// Check if the config has the `check all its-stave` command set, which is currently the only way to enable ALPIDE checks
     fn alpide_checks_enabled(&self) -> bool {
-        matches!(self.check(), Some(CheckCommands::All { system }) if matches!(system, Some(System::ITS_Stave)))
+        self.check()
+            .is_some_and(|c| c.target().is_some_and(|s| s == System::ITS_Stave))
     }
 }
 

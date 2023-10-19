@@ -78,6 +78,7 @@ impl ItsPayloadWord {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::check::CheckModeArgs;
     use crate::config::test_util::MockConfig;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
     use alice_protocol_reader::prelude::*;
@@ -88,9 +89,10 @@ mod tests {
     #[test]
     fn test_do_payload_checks_bad_payload() {
         let mut mock_config = MockConfig::new();
-        mock_config.check = Some(CheckCommands::All {
-            system: Some(System::ITS),
-        });
+        mock_config.check = Some(CheckCommands::All(CheckModeArgs {
+            target: Some(System::ITS),
+            ..Default::default()
+        }));
         CFG_TEST_DO_PAYLOAD_CHECKS.set(mock_config).unwrap();
 
         let (stats_send_chan, stats_recv_chan) = flume::unbounded();

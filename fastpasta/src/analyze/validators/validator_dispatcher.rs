@@ -49,8 +49,8 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
     pub fn new(global_config: &'static C, stats_sender: flume::Sender<StatType>) -> Self {
         // Dispatch by FEE ID if system targeted for checks is ITS Stave (gonna be a lot of data to parse for each stave!)
         let dispatch_by = if global_config.check().is_some_and(|c| {
-            if let CheckCommands::All { system } = c {
-                system.is_some_and(|s| s == System::ITS_Stave)
+            if let CheckCommands::All(arg) = c {
+                arg.target.is_some_and(|s| s == System::ITS_Stave)
             } else {
                 false
             }
@@ -180,7 +180,7 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::check::CheckCommands;
+    use crate::config::check::{CheckCommands, CheckModeArgs};
     use crate::config::test_util::MockConfig;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
     use alice_protocol_reader::prelude::*;
@@ -193,7 +193,7 @@ mod tests {
     #[test]
     fn test_dispacter() {
         let mut cfg = MockConfig::new();
-        cfg.check = Some(CheckCommands::Sanity { system: None });
+        cfg.check = Some(CheckCommands::Sanity(CheckModeArgs::default()));
         CFG_TEST_DISPACTER.set(cfg).unwrap();
 
         let mut disp: ValidatorDispatcher<RdhCru, MockConfig> =

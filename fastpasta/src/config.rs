@@ -48,7 +48,7 @@ Project home page: https://gitlab.cern.ch/mkonig/fastpasta"
 #[command(propagate_version = true)]
 pub struct Cfg {
     /// Input file (default: stdin)
-    #[arg(name = "Raw Data", global = true)]
+    #[arg(name = "Raw Data", global = true, value_hint = clap::ValueHint::FilePath)]
     file: Option<PathBuf>,
 
     /// Commands such as `Check` or `View` that accepts further subcommands
@@ -230,9 +230,8 @@ impl FilterOpt for Cfg {
         match (self.view(), self.check(), self.output_mode()) {
             // Skip payload in these cases
             (Some(ViewCommands::Rdh), _, _) => true,
-            (_, Some(CheckCommands::All { system: sys }), _)
-            | (_, Some(CheckCommands::Sanity { system: sys }), _)
-                if sys.is_none() =>
+            (_, Some(CheckCommands::All(arg)), _) | (_, Some(CheckCommands::Sanity(arg)), _)
+                if arg.target.is_none() =>
             {
                 true
             }
@@ -270,9 +269,9 @@ impl ChecksOpt for Cfg {
     fn check(&self) -> Option<CheckCommands> {
         if let Some(sub_cmd) = &self.cmd {
             match sub_cmd {
-                Command::Check(checks) => match checks.cmd {
-                    CheckCommands::All { system } => Some(CheckCommands::All { system }),
-                    CheckCommands::Sanity { system } => Some(CheckCommands::Sanity { system }),
+                Command::Check(checks) => match checks.cmd.clone() {
+                    CheckCommands::All(arg) => Some(CheckCommands::All(arg)),
+                    CheckCommands::Sanity(arg) => Some(CheckCommands::Sanity(arg)),
                 },
                 Command::View(_) => None,
             }
@@ -423,7 +422,7 @@ impl CustomChecksOpt for Cfg {
 }
 
 /// Holds the [CheckCommands] subcommands
-#[derive(Debug, Args, Clone, Copy)]
+#[derive(Debug, Args, Clone)]
 #[command(args_conflicts_with_subcommands = true)]
 #[command(arg_required_else_help = true)]
 pub struct CheckArgs {
@@ -439,13 +438,13 @@ pub struct ViewArgs {
     cmd: ViewCommands,
 }
 
-#[derive(Debug, Subcommand, Clone, Copy)]
-/// Subcommand to enable checks or views, needs to be followed by a [CheckCommands] (and optionally a target system) or [ViewCommands] subcommand.
+#[derive(Debug, Subcommand, Clone)]
+/// Subcommands to enable checks or views, needs to be followed by a [CheckCommands] (and optionally a target system) or [ViewCommands] subcommand.
 pub enum Command {
-    /// Subcommand to enable checks, needs to be followed by a [CheckCommands] type subcommand and a target system
+    /// Enable check mode, requires a `check mode` subcommand [all/sanity] and optionally a target system
     #[command(arg_required_else_help = true)]
     Check(CheckArgs),
-    /// Subcommand to enable views, needs to be followed by a [ViewCommands] type subcommand
+    /// Enable view mode, requires a `focus` type subcommand e.g. `rdh` or `its-readout-frames`
     #[command(arg_required_else_help = true)]
     View(ViewArgs),
 }
@@ -454,8 +453,7 @@ impl CheckCommands {
     /// Get the target system for the check
     pub fn target(&self) -> Option<check::System> {
         match self {
-            CheckCommands::All { system: sys } => *sys,
-            CheckCommands::Sanity { system: sys } => *sys,
+            CheckCommands::All(arg) | CheckCommands::Sanity(arg) => arg.target,
         }
     }
 }

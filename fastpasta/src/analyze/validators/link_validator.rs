@@ -52,8 +52,8 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
             Self {
                 config: global_config,
                 running_checks: match global_config.check().unwrap() {
-                    CheckCommands::All { system: _ } => true,
-                    CheckCommands::Sanity { system: _ } => false,
+                    CheckCommands::All(_) => true,
+                    CheckCommands::Sanity(_) => false,
                 },
 
                 stats_send: stats_send_chan.clone(),
@@ -94,8 +94,8 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
             Self {
                 config: global_config,
                 running_checks: match global_config.check().unwrap() {
-                    CheckCommands::All { system: _ } => true,
-                    CheckCommands::Sanity { system: _ } => false,
+                    CheckCommands::All(_) => true,
+                    CheckCommands::Sanity(_) => false,
                 },
 
                 stats_send: stats_send_chan.clone(),
@@ -184,7 +184,7 @@ mod tests {
     use std::sync::OnceLock;
 
     use super::*;
-    use crate::config::check::System;
+    use crate::config::check::{CheckModeArgs, CmdPathArg, System};
     use crate::config::test_util::MockConfig;
     use crate::words::its::test_payloads::*;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
@@ -195,7 +195,10 @@ mod tests {
     fn test_run_link_validator() {
         let (stats_send_chan, stats_recv_chan) = flume::unbounded();
         let mut mock_config = MockConfig::new();
-        mock_config.check = Some(CheckCommands::Sanity { system: None });
+        mock_config.check = Some(CheckCommands::Sanity(CheckModeArgs {
+            target: None,
+            path: CmdPathArg::default(),
+        }));
         CFG_TEST_RUN_LINK_VALIDATOR.set(mock_config).unwrap();
 
         let (mut link_validator, _cdp_tuple_send_ch) =
@@ -228,9 +231,10 @@ mod tests {
     #[test]
     fn test_valid_payloads_flavor_0() {
         let mut mock_config = MockConfig::new();
-        mock_config.check = Some(CheckCommands::Sanity {
-            system: Some(System::ITS),
-        });
+        mock_config.check = Some(CheckCommands::Sanity(CheckModeArgs {
+            target: Some(System::ITS),
+            ..Default::default()
+        }));
         CFG_TEST_VALID_PAYLOADS_FLAVOR_0.set(mock_config).unwrap();
 
         let (stats_send_chan, stats_recv_chan) = flume::unbounded();
@@ -272,9 +276,10 @@ mod tests {
     #[test]
     fn test_valid_payloads_flavor_2() {
         let mut mock_config = MockConfig::new();
-        mock_config.check = Some(CheckCommands::Sanity {
-            system: Some(System::ITS),
-        });
+        mock_config.check = Some(CheckCommands::Sanity(CheckModeArgs {
+            target: Some(System::ITS),
+            ..Default::default()
+        }));
         CFG_TEST_VALID_PAYLOADS_FLAVOR_2.set(mock_config).unwrap();
         let (stats_send_chan, stats_recv_chan) = flume::unbounded();
 
@@ -317,9 +322,10 @@ mod tests {
     #[test]
     fn test_invalid_payloads_flavor_2_bad_tdh_one_error() {
         let mut mock_config = MockConfig::new();
-        mock_config.check = Some(CheckCommands::Sanity {
-            system: Some(System::ITS),
-        });
+        mock_config.check = Some(CheckCommands::Sanity(CheckModeArgs {
+            target: Some(System::ITS),
+            ..Default::default()
+        }));
         CFG_TEST_INVALID_PAYLOADS_FLAVOR_2_BAD_TDH_ONE_ERROR
             .set(mock_config)
             .unwrap();
@@ -376,7 +382,7 @@ mod tests {
         let (stats_send_chan, _) = flume::unbounded();
 
         let mut cfg = MockConfig::new();
-        cfg.check = Some(CheckCommands::Sanity { system: None });
+        cfg.check = Some(CheckCommands::Sanity(CheckModeArgs::default()));
 
         type RdhV7 = RdhCru;
 
