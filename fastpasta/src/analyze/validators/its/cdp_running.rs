@@ -54,10 +54,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             config,
             tracker: CdpTracker::default(),
             rdh_validator: ItsRdhValidator::default(),
-            running_checks_enabled: matches!(
-                config.check(),
-                Some(CheckCommands::All { system: _ })
-            ),
+            running_checks_enabled: matches!(config.check(), Some(CheckCommands::All(_))),
             its_state_machine: ItsPayloadFsmContinuous::default(),
             status_words: StatusWordContainer::new_const(),
             stats_send_ch,

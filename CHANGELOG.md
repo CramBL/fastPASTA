@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # [Unreleased]
 
 ### Fix
-- Error handling for TDTs signaling end of readout frame when start of readout frame was never signaled.
+- Error handling for TDTs signaling `end of readout frame` when the state is `start of readout frame` was never signaled.
+- Now allow specifying a file path in the position of the optional `target system` check subcommand, e.g. `check all bin.raw`
+- Improve formatting of some error messages.
 
 # v1.17.0 (2013-10-11) - Add error code filter, fix valid state that generated error, performance improvements
 ### Added

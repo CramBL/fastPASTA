@@ -148,7 +148,7 @@ impl<T: RDH> Drop for BufferedWriter<T> {
 mod tests {
     use std::vec;
 
-    use crate::config::check::CheckCommands;
+    use crate::config::check::{CheckCommands, CheckModeArgs};
     use crate::config::inputoutput::DataOutputMode;
     use crate::config::test_util::MockConfig;
     use crate::config::Cfg;
@@ -165,7 +165,7 @@ mod tests {
 
     fn build_test_config(output_path: &std::path::Path) -> MockConfig {
         let mut cfg = MockConfig::new();
-        cfg.check = Some(CheckCommands::Sanity { system: None });
+        cfg.check = Some(CheckCommands::Sanity(CheckModeArgs::default()));
         cfg.output = Some(output_path.to_owned());
         cfg.output_mode = DataOutputMode::File(output_path.into());
         cfg.input_file = Some(std::path::PathBuf::from(INPUT_FILE_STR));

@@ -89,7 +89,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                     let tmp = rdh2.pages_counter;
                     write!(
                         err_str,
-                        "pages_counter = {tmp} expected: {}.",
+                        "pages_counter = {tmp} expected: {}. ",
                         self.expect_pages_counter
                     )
                     .unwrap();
@@ -101,7 +101,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                     let tmp = rdh2.pages_counter;
                     write!(
                         err_str,
-                        "pages_counter = {tmp} expected: {}.",
+                        "pages_counter = {tmp} expected: {}. ",
                         self.expect_pages_counter
                     )
                     .unwrap();
@@ -110,7 +110,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
             }
             _ => {
                 let tmp = rdh2.stop_bit;
-                write!(err_str, "stop_bit = {tmp}.").unwrap();
+                write!(err_str, "stop_bit = {tmp}. ").unwrap();
             }
         };
 
@@ -128,7 +128,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
             last_rdh_cru.stop_bit() == 1 && last_rdh_cru.rdh1().orbit == rdh1.orbit
         }) {
             let current_orbit = rdh1.orbit;
-            return Err(format!("Orbit same as previous {current_orbit}."));
+            return Err(format!("Orbit same as previous {current_orbit}. "));
         }
         Ok(())
     }
@@ -148,7 +148,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                     let tmp_last_orbit = last_rdh_cru.rdh1().orbit;
                     write!(
                         err_str,
-                        "Orbit changed from {tmp_last_orbit:#X} to {tmp_current_orbit:#X}."
+                        "Orbit changed from {tmp_last_orbit:#X} to {tmp_current_orbit:#X}. "
                     )
                     .unwrap()
                 }
@@ -157,7 +157,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                     let tmp_last_trigger_type = last_rdh_cru.rdh2().trigger_type;
                     write!(
                         err_str,
-                        "Trigger type changed from {tmp_last_trigger_type:#X} to {tmp_current_trigger_type:#X}."
+                        "Trigger type changed from {tmp_last_trigger_type:#X} to {tmp_current_trigger_type:#X}. "
                     )
                     .unwrap()
                 }
@@ -166,7 +166,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                     let tmp_last_detector_field = last_rdh_cru.rdh3().detector_field;
                     write!(
                         err_str,
-                        "Detector field changed from {tmp_last_detector_field:#X} to {tmp_current_detector_field:#X}."
+                        "Detector field changed from {tmp_last_detector_field:#X} to {tmp_current_detector_field:#X}. "
                     )
                     .unwrap()
                 }
@@ -175,7 +175,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                     let tmp_last_fee_id = last_rdh_cru.fee_id();
                     write!(
                         err_str,
-                        "FeeId changed from {tmp_last_fee_id:#X} to {tmp_current_fee_id:#X}."
+                        "FeeId changed from {tmp_last_fee_id:#X} to {tmp_current_fee_id:#X}. "
                     )
                     .unwrap()
                 }

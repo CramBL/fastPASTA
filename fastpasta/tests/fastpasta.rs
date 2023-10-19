@@ -27,7 +27,7 @@ fn fastpasta_help() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg("--help").arg("-v2");
     cmd.assert().success().stdout(
         predicate::str::contains("Arguments").and(
-            predicate::str::contains("Subcommand").and(
+            predicate::str::contains("Enable check mode").and(
                 predicate::str::contains("Options").and(
                     predicate::str::contains("Commands").and(
                         predicate::str::contains("Usage")
