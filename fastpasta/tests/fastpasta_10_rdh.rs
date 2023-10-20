@@ -790,3 +790,33 @@ fn check_sanity_issue45() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+/// Checks that now you can supply the path to a file in the position where a subcmd (target system) would otherwise be expected
+///
+/// This was not possible earlier, where an error would be raised "<path> not a valid command expected <target system variants>"
+#[test]
+fn check_sanity_path_instead_of_subcmd() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg("check").arg("sanity").arg(FILE_10_RDH);
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    Ok(())
+}
+
+/// Checks that now you can supply the path to a file in the position where a subcmd (target system) would otherwise be expected
+///
+/// This was not possible earlier, where an error would be raised "<path> not a valid command expected <target system variants>"
+#[test]
+fn check_all_path_instead_of_subcmd() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("fastpasta")?;
+    cmd.arg("check").arg("all").arg(FILE_10_RDH);
+    cmd.assert().success();
+
+    assert_no_errors_or_warn(&cmd.output()?.stderr)?;
+    validate_report_summary(&cmd.output()?.stdout)?;
+
+    Ok(())
+}
