@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 # [Unreleased]
 
+# v1.17.3 (2023-10-23) - Detector field value change within HBF downgraded to warning
+
 ### Fix
 - [MR128](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/128) Detector field changing within an HBF is now a warning instead of error.
 
