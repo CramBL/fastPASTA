@@ -38,7 +38,7 @@ Uses the value of the stop_bit to determine if the page_counter is expected to i
 * `If page_counter != 0` check that these fields are same as previous RDH:
   * orbit
   * trigger
-  * detector field
+  * detector field (emits a warning, NOT error)
   * FeeID
 
 

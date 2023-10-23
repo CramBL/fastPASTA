@@ -164,11 +164,7 @@ impl<T: RDH> RdhCruRunningChecker<T> {
                 if rdh_cru.rdh3().detector_field != last_rdh_cru.rdh3().detector_field {
                     let tmp_current_detector_field = rdh_cru.rdh3().detector_field;
                     let tmp_last_detector_field = last_rdh_cru.rdh3().detector_field;
-                    write!(
-                        err_str,
-                        "Detector field changed from {tmp_last_detector_field:#X} to {tmp_current_detector_field:#X}. "
-                    )
-                    .unwrap()
+                    log::warn!("Detector field changed from {tmp_last_detector_field:#X} to {tmp_current_detector_field:#X}.");
                 }
                 if rdh_cru.fee_id() != last_rdh_cru.fee_id() {
                     let tmp_current_fee_id = rdh_cru.fee_id();
@@ -304,7 +300,6 @@ mod tests {
         let err_str = res2.unwrap_err();
         assert!(err_str.contains("Orbit"));
         assert!(err_str.contains("Trigger"));
-        assert!(err_str.contains("Detector"));
         assert!(err_str.contains("FeeId"));
     }
 }
