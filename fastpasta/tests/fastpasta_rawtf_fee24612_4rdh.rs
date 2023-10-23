@@ -34,21 +34,21 @@ fn check_sanity() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-/// Errors because the detector field of the 2nd RDH changes from 0x0 -> 0xD because of fatal lane errors
+/// Warns because the detector field of the 2nd RDH changes from 0x0 -> 0xD because of fatal lane errors
 fn check_all() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
     cmd.arg(FILE_RAWTF_FEE_24612_4RDHS).arg("check").arg("all");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output()?.stderr, "ERROR - 0x360", 1)?;
+    match_on_out_no_case(&cmd.output()?.stderr, "WARN - Detector field changed", 1)?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())
 }
 
 #[test]
-/// Errors because the detector field of the 2nd RDH changes from 0x0 -> 0xD because of fatal lane errors
+/// Warns because the detector field of the 2nd RDH changes from 0x0 -> 0xD because of fatal lane errors
 fn check_all_its() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("fastpasta")?;
 
@@ -59,7 +59,7 @@ fn check_all_its() -> Result<(), Box<dyn std::error::Error>> {
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output()?.stderr, "ERROR - 0x360", 1)?;
+    match_on_out_no_case(&cmd.output()?.stderr, "WARN - Detector field changed", 1)?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())
