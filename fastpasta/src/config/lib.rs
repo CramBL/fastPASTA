@@ -17,10 +17,10 @@ use clap::builder::{
 // Styles for the help message
 pub(crate) fn styles() -> Styles {
     Styles::styled()
-        .header(AnsiColor::Red.on_default() | Effects::BOLD)
-        .usage(AnsiColor::Yellow.on_default() | Effects::BOLD)
+        .usage(AnsiColor::Yellow.on_default() | Effects::BOLD | Effects::ITALIC)
+        .header(AnsiColor::BrightMagenta.on_default() | Effects::BOLD | Effects::UNDERLINE)
         .literal(AnsiColor::Green.on_default() | Effects::BOLD)
-        .placeholder(AnsiColor::Blue.on_default())
+        .placeholder(AnsiColor::BrightCyan.on_default())
 }
 
 /// Super trait for all the traits that needed to be implemented by the config struct
