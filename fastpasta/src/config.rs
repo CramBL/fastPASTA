@@ -46,6 +46,7 @@ readable way, or filter the data.\n\
 Project home page: https://gitlab.cern.ch/mkonig/fastpasta"
 )]
 #[command(propagate_version = true)]
+#[command(styles = lib::styles())]
 pub struct Cfg {
     /// Input file (default: stdin)
     #[arg(name = "Raw Data", global = true, value_hint = clap::ValueHint::FilePath)]
