@@ -12,7 +12,6 @@
 
 
 ## fast Protocol Analysis Scanner Tool for ALICE
-fastPASTA uses [Semantic Versioning](https://semver.org/).
 
 For an exhaustive list of the data verification done via the `check` subcommand, see [doc/checks_list.md](https://gitlab.cern.ch/mkonig/fastpasta/-/blob/master/doc/checks_list.md).
 
@@ -38,6 +37,7 @@ To verify or view curated content of the scanned raw binary data from the ALICE 
 - [Quickstart](#quickstart)
   - [Prerequisite](#prerequisite)
   - [Install via cargo (comes with Rust)](#install-via-cargo-comes-with-rust)
+  - [Add shell completions](#add-shell-completions)
   - [Building from source](#building-from-source)
   - [See help, including examples of use](#see-help-including-examples-of-use)
   - [Examples of use](#examples-of-use)
@@ -84,6 +84,14 @@ and follow the on-screen instructions.
 cargo install fastpasta
 ```
 Updating fastpasta simply requires rerunning `cargo install fastpasta`
+
+## Add shell completions
+
+Generate completion script for bash/zsh/fish/powershell/elvish with:
+```shell
+fastpasta --generate-completions <SHELL> > path/to/your/completion/scripts/_fastpasta
+```
+
 ## Building from source
 `cargo install fastpasta` already builds from source and will simply get the latest published version (on crates.io). If you want to build the latest version of the master branch, clone the repository and run
 ```
@@ -223,8 +231,8 @@ The following is a list of error codes and their meaning, `x` is a placeholder f
 
 ## Verbosity levels
 - 0: Errors
-- 1: Errors and warnings
-- 2: Errors, warnings and info **[default]**
+- 1: Errors and warnings **[default]**
+- 2: Errors, warnings and info
 - 3: Errors, warnings, info and debug
 - 4: Errors, warnings, info, debug and trace
 

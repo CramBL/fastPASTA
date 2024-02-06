@@ -16,6 +16,7 @@ use self::{
 use crate::words::its::layer_stave_string_to_feeid;
 use alice_protocol_reader::prelude::FilterOpt;
 use clap::{Args, Parser, Subcommand};
+use clap_complete::Shell;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
@@ -139,6 +140,7 @@ pub struct Cfg {
         long,
         global = true,
         visible_aliases = ["custom-checks", "checks-file"],
+        value_hint = clap::ValueHint::FilePath
       )]
     checks_toml: Option<PathBuf>,
 
@@ -150,7 +152,7 @@ pub struct Cfg {
         default_value_t = DataOutputMode::None,
         visible_aliases = ["output-stats-report","output-final-stats"],
         global = true,
-        requires = "STATS FORMAT"
+        requires = "STATS FORMAT",
     )]
     stats_output: DataOutputMode,
 
@@ -173,6 +175,7 @@ pub struct Cfg {
         long = "input-stats-file",
         visible_aliases = ["input-stats", "stats-file", "verify-stats"],
         global = true,
+        value_hint = clap::ValueHint::FilePath
     )]
     input_stats_file: Option<PathBuf>,
 
@@ -187,6 +190,15 @@ pub struct Cfg {
         num_args = 1..
     )]
     show_error_codes: Vec<String>,
+
+    /// Generate completion scripts for the specified shell.
+    /// Note: The completion script is printed to stdout
+    #[arg(
+        long = "generate-completions",
+        value_hint = clap::ValueHint::Other,
+        value_name = "SHELL"
+    )]
+    pub generate_completions: Option<clap_complete::Shell>,
 }
 
 impl Cfg {
@@ -206,6 +218,18 @@ impl Cfg {
         } else if self.generate_custom_checks_toml_enabled() {
             self.generate_custom_checks_toml("custom_checks.toml");
         }
+    }
+}
+
+impl Cfg {
+    /// Generate completion scripts for the specified shell.
+    pub fn generate_completion_script(shell: Shell) {
+        clap_complete::generate(
+            shell,
+            &mut <Cfg as clap::CommandFactory>::command(),
+            "fastpasta",
+            &mut std::io::stdout(),
+        );
     }
 }
 

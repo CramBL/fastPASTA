@@ -14,7 +14,13 @@ pub fn main() -> std::process::ExitCode {
     fastpasta::util::lib::init_error_logger(Cfg::global());
 
     if Cfg::global().generate_custom_checks_toml_enabled() {
-        log::info!("'custom_checks.toml' file generated in current directory. Use it to customize checks. Exiting...");
+        log::warn!("'custom_checks.toml' file generated in current directory. Use it to customize checks. Exiting...");
+        return std::process::ExitCode::from(0);
+    }
+
+    if let Some(shell) = Cfg::global().generate_completions {
+        Cfg::generate_completion_script(shell);
+        log::warn!("Completions generated for {shell:?}. Exiting...");
         return std::process::ExitCode::from(0);
     }
 
