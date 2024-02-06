@@ -7,7 +7,7 @@ fn deserialize_rdh_current(filename: &str, iterations: usize) {
     let filepath = std::path::PathBuf::from(filename);
     let file = std::fs::OpenOptions::new()
         .read(true)
-        .open(&filepath)
+        .open(filepath)
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
     for _i in 1..iterations {
@@ -34,7 +34,7 @@ fn rdh0_deserialize(filename: &str, iterations: usize) {
     let filepath = std::path::PathBuf::from(filename);
     let file = std::fs::OpenOptions::new()
         .read(true)
-        .open(&filepath)
+        .open(filepath)
         .expect("File not found");
     let mut buf_reader = std::io::BufReader::new(file);
     for _i in 1..iterations {
@@ -48,7 +48,7 @@ fn _rdh0_deserialize_alternative(filename: &str, iterations: usize) {
     let filepath = std::path::PathBuf::from(filename);
     let file = std::fs::OpenOptions::new()
         .read(true)
-        .open(&filepath)
+        .open(filepath)
         .expect("File not found");
     let mut _buf_reader = std::io::BufReader::new(file);
     for _i in 1..iterations {
