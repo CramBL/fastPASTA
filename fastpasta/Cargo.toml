@@ -53,6 +53,7 @@ toml = "0.8.0"
 descriptive_toml_derive = "0.1.0"
 alice_protocol_reader = { version = "0.12.1", path = "../alice_protocol_reader"}
 serde_json = "1.0.107"
+clap_complete = "4.4.10"
 
 [[bench]]
 name = "benchmarks"
