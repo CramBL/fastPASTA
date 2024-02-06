@@ -1,5 +1,5 @@
 use crate::util::*;
-use predicates::str::contains;
+use predicates::str::{contains, is_match};
 mod util;
 
 // Asserts that the end of processing report summary contains correct information

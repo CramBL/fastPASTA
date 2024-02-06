@@ -1,4 +1,4 @@
-use predicates::str::contains;
+use predicates::str::{contains, is_match};
 
 use crate::util::*;
 mod util;

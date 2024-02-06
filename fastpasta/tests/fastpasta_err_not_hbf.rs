@@ -1,3 +1,5 @@
+use predicates::str::is_match;
+
 use crate::util::*;
 mod util;
 
