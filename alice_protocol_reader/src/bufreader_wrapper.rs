@@ -7,12 +7,12 @@ use std::io;
 /// and as such all other methods can be left unimplemented (return not implemented error)
 pub trait BufferedReaderWrapper: io::Read + io::Seek + Send {
     /// Seek relative to the current position
-    fn seek_relative(&mut self, offset: i64) -> io::Result<()>;
+    fn seek_relative_offset(&mut self, offset: i64) -> io::Result<()>;
 }
 
 impl BufferedReaderWrapper for io::BufReader<File> {
     #[inline]
-    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
+    fn seek_relative_offset(&mut self, offset: i64) -> io::Result<()> {
         self.seek_relative(offset)
     }
 }
@@ -22,8 +22,8 @@ where
     T: BufferedReaderWrapper + std::marker::Sync,
 {
     #[inline]
-    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
-        (*self).seek_relative(offset)
+    fn seek_relative_offset(&mut self, offset: i64) -> io::Result<()> {
+        (*self).seek_relative_offset(offset)
     }
 }
 
@@ -32,7 +32,7 @@ where
     T: BufferedReaderWrapper + std::marker::Sync,
 {
     #[inline]
-    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
-        (**self).seek_relative(offset)
+    fn seek_relative_offset(&mut self, offset: i64) -> io::Result<()> {
+        (**self).seek_relative_offset(offset)
     }
 }

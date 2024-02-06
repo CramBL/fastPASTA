@@ -6,7 +6,6 @@ pub use assert_fs::fixture::ChildPath;
 // Get the methods for the Commands struct
 pub use assert_fs::prelude::*;
 pub use assert_fs::TempDir;
-pub use predicate::str::is_match;
 pub use predicates::prelude::*; // Used for writing assertions // Create temporary directories
 #[allow(unused_imports)]
 use pretty_assertions::{assert_eq, assert_ne, assert_str_eq};

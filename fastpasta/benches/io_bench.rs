@@ -26,7 +26,7 @@ fn buffered_read_custom_capacity(n: usize) {
     let path = std::path::PathBuf::from(BENCH_FILE_PATH);
     let file = std::fs::OpenOptions::new()
         .read(true)
-        .open(&path)
+        .open(path)
         .expect("File not found");
     let mut buf_reader = buf_reader_with_capacity(file, n);
     let mut ten_mb_vec = vec![0; 1024 * 1024 * 10];
