@@ -15,7 +15,7 @@ pub struct StdInReaderSeeker<R> {
 
 /// Specialization for [std::io::Stdin]
 impl BufferedReaderWrapper for StdInReaderSeeker<std::io::Stdin> {
-    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
+    fn seek_relative_offset(&mut self, offset: i64) -> io::Result<()> {
         // Seeking is not supported in stdin, so we have to read the bytes and discard them
         let mut buf = vec![0; offset as usize];
         match std::io::stdin().lock().read_exact(&mut buf) {

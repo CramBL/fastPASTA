@@ -125,7 +125,7 @@ impl<R: ?Sized + BufferedReaderWrapper> InputScanner<R> {
 
     fn seek_to_next_rdh(&mut self, offset_to_next: u16) -> Result<(), std::io::Error> {
         self.reader
-            .seek_relative(self.tracker.next(offset_to_next as u64))
+            .seek_relative_offset(self.tracker.next(offset_to_next as u64))
     }
 }
 
