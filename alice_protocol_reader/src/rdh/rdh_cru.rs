@@ -142,11 +142,15 @@ impl RdhCru {
                 .for_each(|(idx, (bot, top))| {
                     // Alternate between on_green and on_blue and append 2 spaces
                     if idx % 2 == 0 {
-                        top_text.push_str(&format!("{}  ", top.white().on_green()));
-                        bot_text.push_str(&format!("{}  ", bot.white().on_green()));
+                        top_text
+                            .push_str(&format!("{}  ", top.white().bold().bg_rgb::<0, 99, 0>()));
+                        bot_text
+                            .push_str(&format!("{}  ", bot.white().bold().bg_rgb::<0, 99, 0>()));
                     } else {
-                        top_text.push_str(&format!("{}  ", top.white().on_blue()));
-                        bot_text.push_str(&format!("{}  ", bot.white().on_blue()));
+                        top_text
+                            .push_str(&format!("{}  ", top.white().bold().bg_rgb::<0, 0, 99>()));
+                        bot_text
+                            .push_str(&format!("{}  ", bot.white().bold().bg_rgb::<0, 0, 99>()));
                     }
                 });
             (top_text, bot_text)
