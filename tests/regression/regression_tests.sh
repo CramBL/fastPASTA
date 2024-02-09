@@ -21,7 +21,7 @@ readonly CMD_PREFIX="cargo run -- ./tests/test-data/"
 ## Matches the EOF and Exit Successful messages
 readonly REGEX_EXIT_SUCCESS="(DEBUG -).*Exit success"
 ## Matches the RDHs in the `view rdh` command, by going from the `:` in the memory offset to the version, header size, and data format.
-readonly REGEX_RDHS_IN_RDH_VIEW=": .* (7|6) .* 64 .* (0|2)"
+readonly REGEX_RDHS_IN_RDH_VIEW=":.*(7|6).*64.*(0|2)"
 
 
 # Tests are structured in an array of arrays
