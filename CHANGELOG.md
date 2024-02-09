@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 # [Unreleased]
 
+### Added
+Shell completion for bash, zsh, fish, powershell, elvish. Generate the completion scripts with `fastpasta --generate-completions <SHELL>`.
+
+### Misc
+maintenance.
+
+
 # v1.18.0 (2023-12-28) - Colored styling of help text
 
 ### Added
