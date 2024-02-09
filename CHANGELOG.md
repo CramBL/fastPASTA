@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # [Unreleased]
 
 ### Added
-Shell completion for bash, zsh, fish, powershell, elvish. Generate the completion scripts with `fastpasta --generate-completions <SHELL>`.
+- Shell completion for bash, zsh, fish, powershell, elvish. Generate the completion scripts with `fastpasta --generate-completions <SHELL>`.
+- Style for `view rdh`. The output is styled with bold and/or background colors to make it easier to parse.
+- Flag `--disable-styled-views`/`-d` disables text/color styling for views
 
 ### Misc
 maintenance.
