@@ -127,8 +127,9 @@ impl RdhCru {
     ///
     /// Can be used to print a header for a table of [RDH CRU][RdhCru]s.
     /// Takes an [usize] as an argument, which is the number of spaces to indent the 2 lines by.
+    /// the columns are styled with alternating background colors.
     #[inline]
-    pub fn rdh_header_text_with_indent_to_string(indent: usize) -> String {
+    pub fn rdh_header_styled_text_with_indent_to_string(indent: usize) -> String {
         use owo_colors::OwoColorize;
 
         let (top_text, bot_text) = {
@@ -158,6 +159,24 @@ impl RdhCru {
             indent2 = indent,
         )
     }
+
+    /// Formats a [String] containing 2 lines that serve as a header, describing columns of key values for an [RDH CRU][RdhCru].
+    ///
+    /// Can be used to print a header for a table of [RDH CRU][RdhCru]s.
+    /// Takes an [usize] as an argument, which is the number of spaces to indent the 2 lines by.
+    #[inline]
+    pub fn rdh_header_text_with_indent_to_string(indent: usize) -> String {
+        let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop  Detector";
+        let header_text_bot = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit   field";
+        format!(
+            "{:indent$}{header_text_top}\n{:indent2$}{header_text_bot}\n",
+            "",
+            "",
+            indent = indent,
+            indent2 = indent
+        )
+    }
+
     /// Returns the value of the CRU ID field.
     #[inline]
     pub fn cru_id(&self) -> u16 {
