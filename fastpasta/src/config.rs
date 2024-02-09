@@ -201,7 +201,7 @@ pub struct Cfg {
     pub generate_completions: Option<clap_complete::Shell>,
 
     /// Output from view commands is styled by default, set this flag to disable styled views
-    #[arg(long, global = true, default_value_t = false)]
+    #[arg(short = 'd', long, global = true, default_value_t = false)]
     disable_styled_views: bool,
 }
 
