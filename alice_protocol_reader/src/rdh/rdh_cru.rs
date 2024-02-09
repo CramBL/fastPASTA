@@ -247,7 +247,7 @@ impl RDH for RdhCru {
         let tmp_packet_cnt = self.packet_counter;
         let detector_field = self.rdh3.detector_field;
         format!(
-            "{rdh0}{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}{rdh1}{data_format:<11}{rdh2} {det_field:#x}",
+            "{rdh0}{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}{rdh1}{data_format:<11}{rdh2}{det_field:#x}",
             rdh0 = self.rdh0.to_styled_row_view(),
             tmp_offset = tmp_offset.white().bg_rgb::<0, 99, 0>(),
             tmp_link = tmp_link.white().bg_rgb::<0, 0, 99>(),

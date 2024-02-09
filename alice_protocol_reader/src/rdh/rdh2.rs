@@ -52,10 +52,12 @@ impl RdhSubword for Rdh2 {
         let tmp_pages_counter = self.pages_counter;
         let trigger_type_as_hex = format!("{tmp_trigger_type:#x}");
         format!(
-            "{:<10}{:<9}{:<5}",
+            "{:<10}{:<9}{}",
             trigger_type_as_hex.white().bg_rgb::<0, 99, 0>(),
             tmp_pages_counter.white().bg_rgb::<0, 0, 99>(),
-            self.stop_bit.white().bg_rgb::<0, 99, 0>()
+            format_args!("{:<5} ", self.stop_bit)
+                .white()
+                .bg_rgb::<0, 99, 0>()
         )
     }
 }
@@ -67,7 +69,7 @@ impl Display for Rdh2 {
         let trigger_type_as_hex = format!("{tmp_trigger_type:#x}");
         write!(
             f,
-            "{:<10}{:<9}{:<5}",
+            "{:<10}{:<9}{:<5} ",
             trigger_type_as_hex, tmp_pages_counter, self.stop_bit
         )
     }
