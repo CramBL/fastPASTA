@@ -143,6 +143,10 @@ impl UtilOpt for MockConfig {
             Some(&self.show_error_codes)
         }
     }
+
+    fn disable_styled_views(&self) -> bool {
+        true
+    }
 }
 impl InputOutputOpt for MockConfig {
     fn input_file(&self) -> Option<&std::path::PathBuf> {

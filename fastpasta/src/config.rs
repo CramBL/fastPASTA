@@ -199,6 +199,10 @@ pub struct Cfg {
         value_name = "SHELL"
     )]
     pub generate_completions: Option<clap_complete::Shell>,
+
+    /// Output from view commands is styled by default, set this flag to disable styled views
+    #[arg(long, global = true, default_value_t = false)]
+    disable_styled_views: bool,
 }
 
 impl Cfg {
@@ -377,6 +381,11 @@ impl UtilOpt for Cfg {
         } else {
             Some(&self.show_error_codes)
         }
+    }
+
+    #[inline]
+    fn disable_styled_views(&self) -> bool {
+        self.disable_styled_views
     }
 }
 

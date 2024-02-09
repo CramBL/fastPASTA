@@ -12,6 +12,8 @@ pub trait UtilOpt {
     fn mute_errors(&self) -> bool;
     /// Allows specifying any number of error codes to filter by
     fn error_code_filter(&self) -> Option<&[String]>;
+    /// Sets whether view output should be styled or not
+    fn disable_styled_views(&self) -> bool;
 }
 
 impl<T> UtilOpt for &T
@@ -36,6 +38,10 @@ where
     fn error_code_filter(&self) -> Option<&[String]> {
         (*self).error_code_filter()
     }
+
+    fn disable_styled_views(&self) -> bool {
+        (*self).disable_styled_views()
+    }
 }
 
 impl<T> UtilOpt for &mut T
@@ -56,6 +62,9 @@ where
     }
     fn error_code_filter(&self) -> Option<&[String]> {
         (**self).error_code_filter()
+    }
+    fn disable_styled_views(&self) -> bool {
+        (**self).disable_styled_views()
     }
 }
 
@@ -80,6 +89,9 @@ where
     fn error_code_filter(&self) -> Option<&[String]> {
         (**self).error_code_filter()
     }
+    fn disable_styled_views(&self) -> bool {
+        (**self).disable_styled_views()
+    }
 }
 
 impl<T> UtilOpt for std::sync::Arc<T>
@@ -103,5 +115,8 @@ where
     }
     fn error_code_filter(&self) -> Option<&[String]> {
         (**self).error_code_filter()
+    }
+    fn disable_styled_views(&self) -> bool {
+        (**self).disable_styled_views()
     }
 }
