@@ -29,6 +29,9 @@ pub trait RdhSubword: Sized + PartialEq + std::fmt::Debug + std::fmt::Display {
     }
     /// Deserializes the GBT word from a byte slice
     fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error>;
+
+    /// Returns a styled row view of the [RDH] `subword`.
+    fn to_styled_row_view(&self) -> String;
 }
 
 /// Trait that all [RDH] words must implement
@@ -43,6 +46,8 @@ pub trait RDH: PartialEq + Sized + std::fmt::Display + std::fmt::Debug + Sync + 
 where
     Self: SerdeRdh + RDH_CRU,
 {
+    /// Returns a styled row view of the [RDH] word.
+    fn to_styled_row_view(&self) -> String;
 }
 
 #[allow(non_camel_case_types)]

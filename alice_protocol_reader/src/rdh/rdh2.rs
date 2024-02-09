@@ -1,6 +1,7 @@
 //! Struct definition of the `RDH` subword `RDH2`
 use super::RdhSubword;
 use byteorder::{ByteOrder, LittleEndian};
+use owo_colors::OwoColorize;
 use std::fmt::{self, Debug, Display};
 
 /// Represents the `RDH2` subword of the [RDH](super::RdhCru).
@@ -44,6 +45,18 @@ impl RdhSubword for Rdh2 {
             stop_bit: buf[6],
             reserved0: buf[7],
         })
+    }
+
+    fn to_styled_row_view(&self) -> String {
+        let tmp_trigger_type = self.trigger_type;
+        let tmp_pages_counter = self.pages_counter;
+        let trigger_type_as_hex = format!("{tmp_trigger_type:#x}");
+        format!(
+            "{:<10}{:<9}{:<5}",
+            trigger_type_as_hex.white().bg_rgb::<0, 99, 0>(),
+            tmp_pages_counter.white().bg_rgb::<0, 0, 99>(),
+            self.stop_bit.white().bg_rgb::<0, 99, 0>()
+        )
     }
 }
 

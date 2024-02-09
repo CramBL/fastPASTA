@@ -23,8 +23,9 @@ pub(crate) fn rdh_view<T: RDH, const CAP: usize>(
         for (rdh, _, mem_pos) in cdp_array {
             writeln!(
                 stdio_lock,
-                "{memory_position}       {rdh}",
-                memory_position = format_args!("{mem_pos:>8X}:").on_purple().bold()
+                "{memory_position}       {styled_rdh}",
+                memory_position = format_args!("{mem_pos:>8X}:").bg_rgb::<51, 0, 51>().bold(),
+                styled_rdh = rdh.to_styled_row_view()
             )?;
         }
     }

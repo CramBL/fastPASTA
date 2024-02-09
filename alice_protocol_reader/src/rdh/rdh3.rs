@@ -35,6 +35,13 @@ impl RdhSubword for Rdh3 {
             reserved0: LittleEndian::read_u16(&buf[6..=7]),
         })
     }
+
+    fn to_styled_row_view(&self) -> String {
+        let tmp_df = self.detector_field;
+        let tmp_par = self.par_bit;
+        let tmp_res = self.reserved0;
+        format!("{:<10}{:<9}{:<5}", format!("{tmp_df:#x}"), tmp_par, tmp_res)
+    }
 }
 
 impl Display for Rdh3 {

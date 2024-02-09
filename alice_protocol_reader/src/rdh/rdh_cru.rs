@@ -9,36 +9,36 @@ use std::fmt::Debug;
 use std::fmt::{self, Display};
 
 const HEADER_TEXT_TOP: [&str; 14] = [
-    "RDH",
-    "Header",
-    "FEE  ",
-    "Sys ",
-    "Offset",
-    "Link",
-    "Packet  ",
-    "BC ",
-    "Orbit     ",
-    "Data     ",
-    "Trigger ",
-    "Pages  ",
-    "Stop",
-    "Detector",
+    "RDH   ",
+    "Header ",
+    "FEE    ",
+    "Sys   ",
+    "Offset  ",
+    "Link  ",
+    "Packet    ",
+    "BC   ",
+    "Orbit       ",
+    "Data       ",
+    "Trigger   ",
+    "Pages    ",
+    "Stop  ",
+    "Detector  ",
 ];
 const HEADER_TEXT_BOT: [&str; 14] = [
-    "ver",
-    "size  ",
-    "ID   ",
-    "ID  ",
-    "next  ",
-    "ID  ",
-    "counter ",
-    "   ",
+    "ver   ",
+    "size   ",
+    "ID     ",
+    "ID    ",
+    "next    ",
+    "ID    ",
     "counter   ",
-    "format   ",
-    "type    ",
-    "counter",
-    "bit ",
-    "field   ",
+    "     ",
+    "counter     ",
+    "format     ",
+    "type      ",
+    "counter  ",
+    "bit   ",
+    "field     ",
 ];
 
 /// Represents the `Data format` and `reserved` fields. Using a newtype because the fields are packed in 64 bits, and extracting the values requires some work.
@@ -142,15 +142,11 @@ impl RdhCru {
                 .for_each(|(idx, (bot, top))| {
                     // Alternate between on_green and on_blue and append 2 spaces
                     if idx % 2 == 0 {
-                        top_text
-                            .push_str(&format!("{}  ", top.white().bold().bg_rgb::<0, 99, 0>()));
-                        bot_text
-                            .push_str(&format!("{}  ", bot.white().bold().bg_rgb::<0, 99, 0>()));
+                        top_text.push_str(&format!("{}", top.white().bold().bg_rgb::<0, 99, 0>()));
+                        bot_text.push_str(&format!("{}", bot.white().bold().bg_rgb::<0, 99, 0>()));
                     } else {
-                        top_text
-                            .push_str(&format!("{}  ", top.white().bold().bg_rgb::<0, 0, 99>()));
-                        bot_text
-                            .push_str(&format!("{}  ", bot.white().bold().bg_rgb::<0, 0, 99>()));
+                        top_text.push_str(&format!("{}", top.white().bold().bg_rgb::<0, 0, 99>()));
+                        bot_text.push_str(&format!("{}", bot.white().bold().bg_rgb::<0, 0, 99>()));
                     }
                 });
             (top_text, bot_text)
@@ -243,7 +239,26 @@ impl Debug for RdhCru {
     }
 }
 
-impl RDH for RdhCru {}
+impl RDH for RdhCru {
+    fn to_styled_row_view(&self) -> String {
+        use owo_colors::OwoColorize;
+        let tmp_offset = self.offset_new_packet;
+        let tmp_link = self.link_id;
+        let tmp_packet_cnt = self.packet_counter;
+        let detector_field = self.rdh3.detector_field;
+        format!(
+            "{rdh0}{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}{rdh1}{data_format:<11}{rdh2} {det_field:#x}",
+            rdh0 = self.rdh0.to_styled_row_view(),
+            tmp_offset = tmp_offset.white().bg_rgb::<0, 99, 0>(),
+            tmp_link = tmp_link.white().bg_rgb::<0, 0, 99>(),
+            tmp_packet_cnt = tmp_packet_cnt.white().bg_rgb::<0, 99, 0>(),
+            rdh1 = self.rdh1.to_styled_row_view(),
+            data_format = self.data_format().white().bg_rgb::<0, 0, 99>(),
+            rdh2 = self.rdh2.to_styled_row_view(),
+            det_field = detector_field.white().bg_rgb::<0, 0, 99>()
+        )
+    }
+}
 
 impl RDH_CRU for RdhCru {
     #[inline]
