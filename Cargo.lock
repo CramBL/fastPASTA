@@ -19,6 +19,7 @@ dependencies = [
  "byteorder",
  "crossbeam-channel",
  "flume",
+ "owo-colors",
  "pretty_assertions",
  "temp-dir",
 ]

@@ -8,6 +8,39 @@ use byteorder::{ByteOrder, LittleEndian};
 use std::fmt::Debug;
 use std::fmt::{self, Display};
 
+const HEADER_TEXT_TOP: [&str; 14] = [
+    "RDH",
+    "Header",
+    "FEE  ",
+    "Sys ",
+    "Offset",
+    "Link",
+    "Packet  ",
+    "BC ",
+    "Orbit     ",
+    "Data     ",
+    "Trigger ",
+    "Pages  ",
+    "Stop",
+    "Detector",
+];
+const HEADER_TEXT_BOT: [&str; 14] = [
+    "ver",
+    "size  ",
+    "ID   ",
+    "ID  ",
+    "next  ",
+    "ID  ",
+    "counter ",
+    "   ",
+    "counter   ",
+    "format   ",
+    "type    ",
+    "counter",
+    "bit ",
+    "field   ",
+];
+
 /// Represents the `Data format` and `reserved` fields. Using a newtype because the fields are packed in 64 bits, and extracting the values requires some work.
 #[repr(packed)]
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
@@ -96,14 +129,33 @@ impl RdhCru {
     /// Takes an [usize] as an argument, which is the number of spaces to indent the 2 lines by.
     #[inline]
     pub fn rdh_header_text_with_indent_to_string(indent: usize) -> String {
-        let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop  Detector";
-        let header_text_bot = "ver   size    ID    ID    next    ID    counter        counter     format     type      counter  bit   field";
+        use owo_colors::OwoColorize;
+
+        let (top_text, bot_text) = {
+            let mut top_text = String::new();
+            let mut bot_text = String::new();
+            HEADER_TEXT_BOT
+                .iter()
+                .zip(HEADER_TEXT_TOP.iter())
+                .enumerate()
+                .for_each(|(idx, (bot, top))| {
+                    // Alternate between on_green and on_blue and append 2 spaces
+                    if idx % 2 == 0 {
+                        top_text.push_str(&format!("{}  ", top.white().on_green()));
+                        bot_text.push_str(&format!("{}  ", bot.white().on_green()));
+                    } else {
+                        top_text.push_str(&format!("{}  ", top.white().on_blue()));
+                        bot_text.push_str(&format!("{}  ", bot.white().on_blue()));
+                    }
+                });
+            (top_text, bot_text)
+        };
         format!(
-            "{:indent$}{header_text_top}\n{:indent2$}{header_text_bot}\n",
+            "{:indent$}{top_text}\n{:indent2$}{bot_text}\n",
             "",
             "",
             indent = indent,
-            indent2 = indent
+            indent2 = indent,
         )
     }
     /// Returns the value of the CRU ID field.
