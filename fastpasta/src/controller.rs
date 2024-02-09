@@ -258,17 +258,21 @@ impl<C: Config + 'static> Controller<C> {
     }
 
     fn process_stats(&mut self) {
-        // New spinner/progress bar
-        self.new_spinner_with_prefix(
-            format!(
-                "Processing {err_count} error messages",
-                err_count = self.stats_collector.err_count()
-            )
-            .yellow()
-            .to_string(),
-        );
-        self.stats_collector.finalize(self.config.mute_errors());
-        self.spinner.as_mut().unwrap().abandon();
+        // New spinner/progress bar if there's any errors
+        if self.stats_collector.err_count() > 0 {
+            self.new_spinner_with_prefix(
+                format!(
+                    "Processing {err_count} error messages",
+                    err_count = self.stats_collector.err_count()
+                )
+                .yellow()
+                .to_string(),
+            );
+            self.stats_collector.finalize(self.config.mute_errors());
+            self.spinner.as_mut().unwrap().abandon();
+        } else {
+            self.stats_collector.finalize(self.config.mute_errors());
+        }
 
         if self.stats_collector.any_errors() && !self.config.mute_errors() {
             // Print the errors, limited if there's a max error limit set
