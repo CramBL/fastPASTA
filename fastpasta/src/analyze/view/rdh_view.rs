@@ -3,15 +3,13 @@ use alice_protocol_reader::prelude::*;
 use owo_colors::OwoColorize;
 use std::io::Write;
 
-use crate::config::Cfg;
-use crate::UtilOpt;
-
 pub(crate) fn rdh_view<T: RDH, const CAP: usize>(
     cdp_array: &CdpArray<T, CAP>,
+    disable_styled_view: bool,
 ) -> Result<(), std::io::Error> {
     let mut stdio_lock = std::io::stdout().lock();
 
-    if Cfg::global().disable_styled_views() {
+    if disable_styled_view {
         let header_text = RdhCru::rdh_header_text_with_indent_to_string(11);
         writeln!(stdio_lock, "{header_text}")?;
         for (rdh, _, mem_pos) in cdp_array {

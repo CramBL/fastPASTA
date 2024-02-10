@@ -9,9 +9,10 @@ use std::io::Write;
 
 pub(crate) fn its_readout_frame_data_view<T: RDH, const CAP: usize>(
     cdp_array: &CdpArray<T, CAP>,
+    disable_styled_view: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut stdio_lock = std::io::stdout().lock();
-    super::print_start_of_its_readout_frame_header_text(&mut stdio_lock)?;
+    super::print_start_of_its_readout_frame_header_text(&mut stdio_lock, disable_styled_view)?;
     for (rdh, payload, rdh_mem_pos) in cdp_array.iter() {
         super::print_rdh_its_readout_frame_view(rdh, rdh_mem_pos, &mut stdio_lock)?;
         let gbt_word_chunks = preprocess_payload(payload)?;

@@ -1,6 +1,8 @@
 //! Contains the entry point and dispatcher function [generate_view()] for generating data views.
 use alice_protocol_reader::{cdp_wrapper::cdp_array::CdpArray, prelude::*};
 
+use crate::{config::Cfg, UtilOpt};
+
 /// Calls a specific view generator based on the [View][crate::config::view::ViewCommands] type.
 #[inline]
 pub fn generate_view<T: RDH, const CAP: usize>(
@@ -8,14 +10,19 @@ pub fn generate_view<T: RDH, const CAP: usize>(
     cdp_array: &CdpArray<T, CAP>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use crate::config::view::ViewCommands;
+    let disable_styled_view = Cfg::global().disable_styled_views();
     match view {
-        ViewCommands::Rdh => super::rdh_view::rdh_view(cdp_array)?,
+        ViewCommands::Rdh => super::rdh_view::rdh_view(cdp_array, disable_styled_view)?,
         ViewCommands::ItsReadoutFrames => {
-            super::its_readout_frame::its_readout_frame_view::its_readout_frame_view(cdp_array)?
+            super::its_readout_frame::its_readout_frame_view::its_readout_frame_view(
+                cdp_array,
+                disable_styled_view,
+            )?
         }
         ViewCommands::ItsReadoutFramesData => {
             super::its_readout_frame::its_readout_frame_data_view::its_readout_frame_data_view(
                 cdp_array,
+                disable_styled_view,
             )?
         }
     }
