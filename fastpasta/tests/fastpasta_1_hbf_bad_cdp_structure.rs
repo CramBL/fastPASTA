@@ -47,8 +47,8 @@ fn check_all_its() -> Result<(), Box<dyn std::error::Error>> {
         .arg("-v4");
 
     // 1 Error from a stateful check
-    cmd.assert().stderr(is_match("ERROR -")?.count(1));
-    cmd.assert().stderr(is_match("WARN -")?.count(0));
+    cmd.assert().stderr(is_match("ERROR ")?.count(1));
+    cmd.assert().stderr(is_match("WARN ")?.count(0));
 
     Ok(())
 }
@@ -67,7 +67,12 @@ fn check_all_its_err_msg() -> Result<(), Box<dyn std::error::Error>> {
 
     // 1 Error from a stateful check
     // Eror message should indicate: In position 0xE0, something about DDW0 and RDH
-    match_on_out_no_case(&cmd.output()?.stderr, "0xe0.*(DDW0|RDH).*(DDW0|RDH)", 1)?;
+    match_on_out(
+        false,
+        &cmd.output()?.stderr,
+        "0xe0.*(DDW0|RDH).*(DDW0|RDH)",
+        1,
+    )?;
 
     Ok(())
 }
@@ -87,7 +92,12 @@ fn check_all_its_err_msg_custom_exit_code() -> Result<(), Box<dyn std::error::Er
 
     // 1 Error from a stateful check
     // Eror message should indicate: In position 0xE0, something about DDW0 and RDH
-    match_on_out_no_case(&cmd.output()?.stderr, "0xe0.*(DDW0|RDH).*(DDW0|RDH)", 1)?;
+    match_on_out(
+        false,
+        &cmd.output()?.stderr,
+        "0xe0.*(DDW0|RDH).*(DDW0|RDH)",
+        1,
+    )?;
 
     Ok(())
 }

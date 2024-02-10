@@ -31,7 +31,7 @@ fn check_all_its_max_error_1() -> Result<(), Box<dyn std::error::Error>> {
         .args(["-v", "3"])
         .args(["-e", &expect_err_cnt.to_string()]);
 
-    cmd.assert().success().stderr(contains("ERROR - ").count(1));
+    cmd.assert().success().stderr(contains("ERROR ").count(1));
 
     Ok(())
 }
@@ -50,7 +50,7 @@ fn check_all_its_max_error_2() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert()
         .success()
-        .stderr(contains("ERROR - ").count(expect_err_cnt));
+        .stderr(contains("ERROR ").count(expect_err_cnt));
 
     Ok(())
 }
@@ -68,7 +68,7 @@ fn check_all_its_max_error_3() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert()
         .success()
-        .stderr(contains("ERROR - ").count(expect_err_cnt));
+        .stderr(contains("ERROR ").count(expect_err_cnt));
 
     Ok(())
 }
@@ -86,7 +86,7 @@ fn check_all_its_max_error_4() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert()
         .success()
-        .stderr(contains("ERROR - ").count(expect_err_cnt));
+        .stderr(contains("ERROR ").count(expect_err_cnt));
 
     Ok(())
 }
@@ -104,7 +104,7 @@ fn check_all_its_max_error_5() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert()
         .success()
-        .stderr(contains("ERROR - ").count(expect_err_cnt));
+        .stderr(contains("ERROR ").count(expect_err_cnt));
 
     Ok(())
 }
@@ -118,7 +118,7 @@ fn view_its_readout_frame() -> Result<(), Box<dyn std::error::Error>> {
         .arg("its-readout-frames");
     use predicate::str::contains;
     // A Dataword and DDW0 has bad ID.
-    cmd.assert().success().stderr(contains("ERROR - ").count(2));
+    cmd.assert().success().stderr(contains("ERROR ").count(2));
     cmd.assert().success().stdout(
         contains("RDH").count(2).and(
             contains("IHW").count(1).and(

@@ -11,7 +11,7 @@ fn validate_report_summary(byte_output: &[u8]) -> Result<(), Box<dyn std::error:
         "((layers)|(staves)).*((layers)|(staves)).*L5_42",
     ];
     for pattern in match_patterns {
-        match_on_out_no_case(byte_output, pattern, 1)?;
+        match_on_out(false, byte_output, pattern, 1)?;
     }
 
     Ok(())
@@ -87,8 +87,13 @@ chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output()?.stderr, r"\[E9005\] chip id order", 1)?;
-    match_on_out_no_case(&cmd.output()?.stderr, "error.*expected.*PhT trigger", 1)?;
+    match_on_out(false, &cmd.output()?.stderr, r"\[E9005\] chip id order", 1)?;
+    match_on_out(
+        false,
+        &cmd.output()?.stderr,
+        "error.*expected.*PhT trigger",
+        1,
+    )?;
 
     let stats_toml = read_stats_from_file(&tmp_fpath_stats, "toml")?;
 
@@ -113,7 +118,7 @@ chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 
     cmd.assert().success();
     // No errors mentioning a mismatch between the expected and the collected stats
-    match_on_out_no_case(&cmd.output()?.stderr, r"ERROR - .*mismatch", 0)?;
+    match_on_out(false, &cmd.output()?.stderr, r"ERROR .*mismatch", 0)?;
 
     // Now run it back without the custom checks, now there should be no errors in the data processing
     // But there's now a mismatch between the expected and the collected stats as errors are expected
@@ -127,9 +132,10 @@ chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 
     cmd.assert().success();
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stderr,
-        r"ERROR - .*total_errors.*mismatch",
+        r"ERROR .*total_errors.*mismatch",
         1,
     )?;
 
@@ -167,9 +173,14 @@ chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14], [0, 2, 3, 4
         .arg(tmp_custom_checks_path);
 
     cmd.assert().success();
-    match_on_out_no_case(&cmd.output()?.stderr, r"\[E9005\] chip id order", 0)?;
+    match_on_out(false, &cmd.output()?.stderr, r"\[E9005\] chip id order", 0)?;
     // Trigger error is still present
-    match_on_out_no_case(&cmd.output()?.stderr, "error.*expected.*PhT trigger", 1)?;
+    match_on_out(
+        false,
+        &cmd.output()?.stderr,
+        "error.*expected.*PhT trigger",
+        1,
+    )?;
 
     Ok(())
 }
@@ -208,8 +219,13 @@ chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14], [0, 2, 3, 4
     cmd.assert().success();
 
     // Both errors accounted for with the new custom checks
-    match_on_out_no_case(&cmd.output()?.stderr, r"\[E9005\] chip id order", 0)?;
-    match_on_out_no_case(&cmd.output()?.stderr, "error.*expected.*PhT trigger", 0)?;
+    match_on_out(false, &cmd.output()?.stderr, r"\[E9005\] chip id order", 0)?;
+    match_on_out(
+        false,
+        &cmd.output()?.stderr,
+        "error.*expected.*PhT trigger",
+        0,
+    )?;
 
     Ok(())
 }

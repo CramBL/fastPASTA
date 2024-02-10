@@ -18,7 +18,7 @@ fn check_sanity() -> Result<(), Box<dyn std::error::Error>> {
     cmd.assert().success();
 
     for pattern in REPORT_MATCH_PATTERNS {
-        match_on_out_no_case(&cmd.output()?.stdout, pattern, 1)?;
+        match_on_out(false, &cmd.output()?.stdout, pattern, 1)?;
     }
 
     Ok(())
@@ -37,7 +37,7 @@ fn check_all_its() -> Result<(), Box<dyn std::error::Error>> {
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
 
     for pattern in REPORT_MATCH_PATTERNS {
-        match_on_out_no_case(&cmd.output()?.stdout, pattern, 1)?;
+        match_on_out(false, &cmd.output()?.stdout, pattern, 1)?;
     }
 
     Ok(())
@@ -78,14 +78,20 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
     cmd.assert().success();
 
     // The lanes have mismatching bunch counters between datalanes, which should be reported as an error
-    match_on_out_no_case(&cmd.output()?.stderr, "ERROR - 0x.*lane", 3)?;
-    match_on_out_no_case(
+    match_on_out(
+        false,
+        &cmd.output()?.stderr,
+        prefix_and_then(ERROR_PREFIX, "0x.*lane"),
+        3,
+    )?;
+    match_on_out(
+        false,
         &cmd.output()?.stderr,
         "lane.*error.*mismatch.*between.*lanes",
         3,
     )?;
-    match_on_out_no_case(&cmd.output()?.stdout, "total errors.*3", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l1_6", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, "total errors.*3", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, "its stave.*l1_6", 1)?;
     assert_alpide_stats_report(&cmd.output()?.stdout, 0, 0, 0, 0, 0, 0, 0)?;
 
     Ok(())

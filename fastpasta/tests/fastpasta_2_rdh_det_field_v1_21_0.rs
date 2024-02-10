@@ -11,7 +11,7 @@ fn validate_report_summary(byte_output: &[u8]) -> Result<(), Box<dyn std::error:
         "((layers)|(staves)).*((layers)|(staves)).*L0_0",
     ];
     for pattern in match_patterns {
-        match_on_out_no_case(byte_output, pattern, 1)?;
+        match_on_out(false, byte_output, pattern, 1)?;
     }
 
     Ok(())

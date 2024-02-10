@@ -11,7 +11,7 @@ fn validate_report_summary(byte_output: &[u8]) -> Result<(), Box<dyn std::error:
         "((layers)|(staves)).*((layers)|(staves)).*L1_8",
     ];
     for pattern in match_patterns {
-        match_on_out_no_case(byte_output, pattern, 1)?;
+        match_on_out(false, byte_output, pattern, 1)?;
     }
 
     Ok(())
@@ -73,12 +73,13 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stderr,
-        r"ERROR - 0x.*[E701]",
+        prefix_and_then(ERROR_PREFIX, "0x.*[E701]"),
         expect_error_count,
     )?;
-    match_on_out_no_case(&cmd.output()?.stdout, "total errors.*198.*E701", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, "total errors.*198.*E701", 1)?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())
@@ -102,12 +103,13 @@ fn check_all_its_stave_error_messages_filtered_out_by_error_code_filter(
         .arg("70");
     cmd.assert().success();
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stderr,
-        r"ERROR - 0x.*[E701]",
+        r"ERROR 0x.*[E701]",
         expect_error_count,
     )?;
-    match_on_out_no_case(&cmd.output()?.stdout, "total errors.*198.*E701", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, "total errors.*198.*E701", 1)?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())
@@ -136,12 +138,13 @@ fn check_all_its_stave_100_error_message_matching_err_code_filter_and_maximum_al
         .arg(max_err_msg);
     cmd.assert().success();
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stderr,
-        r"ERROR - 0x.*[E701]",
+        prefix_and_then(ERROR_PREFIX, "0x.*[E701]"),
         expect_error_count,
     )?;
-    match_on_out_no_case(&cmd.output()?.stdout, "total errors.*198.*E701", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, "total errors.*198.*E701", 1)?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())
