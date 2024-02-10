@@ -9,8 +9,9 @@ fn fastpasta_version() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg("--version").arg("-v2");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output().unwrap().stdout, "fastpasta", 1)?;
-    match_on_out_no_case(
+    match_on_out(false, &cmd.output().unwrap().stdout, "fastpasta", 1)?;
+    match_on_out(
+        false,
         &cmd.output().unwrap().stdout,
         r"fastpasta.*[1-9]{1,2}\.[0-9]{1,4}\.[0-9]{1,10}", // Match first number from 1-9 as major version 1 is already out
         1,
@@ -51,7 +52,7 @@ fn file_exists_exit_successful_10_rdh() -> Result<(), Box<dyn std::error::Error>
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -66,7 +67,7 @@ fn file_exists_exit_successful_err_not_hbf() -> Result<(), Box<dyn std::error::E
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -81,7 +82,7 @@ fn file_exists_exit_successful_thrs_cdw_links() -> Result<(), Box<dyn std::error
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -96,7 +97,7 @@ fn file_exists_exit_successful_readout_superpage_1() -> Result<(), Box<dyn std::
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -111,7 +112,7 @@ fn file_exists_exit_successful_1_hbf_bad_cdp_structure() -> Result<(), Box<dyn s
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -126,7 +127,7 @@ fn file_exists_exit_successful_1_hbf_bad_dw_ddw0() -> Result<(), Box<dyn std::er
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -141,7 +142,7 @@ fn file_exists_exit_successful_1_hbf_bad_ihw_tdh() -> Result<(), Box<dyn std::er
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -156,7 +157,7 @@ fn file_exists_exit_successful_1_hbf_bad_its_payload() -> Result<(), Box<dyn std
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -171,7 +172,7 @@ fn file_exists_exit_successful_1_hbf_bad_tdt() -> Result<(), Box<dyn std::error:
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -187,7 +188,7 @@ fn file_exists_exit_successful_tdh_no_data() -> Result<(), Box<dyn std::error::E
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -203,7 +204,7 @@ fn file_exists_exit_successful_tdh_no_data_ihw() -> Result<(), Box<dyn std::erro
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -219,7 +220,7 @@ fn file_exists_exit_successful_rawtf_epn180_l6_1() -> Result<(), Box<dyn std::er
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -235,7 +236,7 @@ fn file_exists_exit_successful_rawtf_fee_24612_4rdhs() -> Result<(), Box<dyn std
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -250,7 +251,7 @@ fn file_exists_exit_successful_invalid_lane_order_1rdh() -> Result<(), Box<dyn s
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -266,7 +267,7 @@ fn file_exists_exit_successful_ci_ols_data_1hbf() -> Result<(), Box<dyn std::err
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -282,7 +283,7 @@ fn file_exists_exit_successful_2_rdh_det_field_v1_21_0() -> Result<(), Box<dyn s
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -298,7 +299,7 @@ fn file_exists_exit_successful_2_hbf_2nd_bad_frame() -> Result<(), Box<dyn std::
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }
@@ -314,7 +315,7 @@ fn file_exists_exit_successful_12_links_2hbf() -> Result<(), Box<dyn std::error:
     cmd.assert().success();
 
     // Take the output of stderr and match it with a pattern once
-    match_on_out_no_case(&cmd.output().unwrap().stderr, "exit success", 1)?;
+    match_on_out(false, &cmd.output().unwrap().stderr, "exit success", 1)?;
 
     Ok(())
 }

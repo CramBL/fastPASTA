@@ -105,6 +105,12 @@ impl<T: RDH, const CAP: usize> CdpArray<T, CAP> {
     pub fn rdh_mem_pos_slice(&self) -> &[u64] {
         &self.rdh_mem_pos
     }
+
+    /// Create an iterator over the CdpArray that yields borrowed references to the CDPs
+    #[inline]
+    pub fn iter(&self) -> CdpArrayIter<T, CAP> {
+        self.into_iter()
+    }
 }
 
 /// Implementation of a consuming iterator for CdpArray, with a helper struct
@@ -345,11 +351,11 @@ mod tests {
             rdh_mem_pos: ArrayVec::from([0xd, 0xd]),
         };
 
-        for (rdh, payload, mem_pos) in &cdp_array {
+        cdp_array.iter().for_each(|(rdh, payload, mem_pos)| {
             assert_eq!(*rdh, CORRECT_RDH_CRU_V6);
             assert_eq!(payload.len(), 10);
             assert_eq!(mem_pos, 0xd);
-        }
+        });
 
         let len = cdp_array.rdhs.len();
         assert_eq!(len, 2);
@@ -359,6 +365,9 @@ mod tests {
         for (rdh, payload, mem_pos) in cdp_array {
             println!("rdh: {rdh}, payload: {:?}, mem_pos: {:?}", payload, mem_pos);
         }
+        cdp_array.iter().for_each(|(rdh, payload, mem_pos)| {
+            println!("rdh: {rdh}, payload: {:?}, mem_pos: {:?}", payload, mem_pos);
+        });
     }
 
     #[test]

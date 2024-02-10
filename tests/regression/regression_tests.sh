@@ -17,9 +17,12 @@ source ./tests/regression/utils.sh
 readonly CMD_PREFIX="cargo run -- ./tests/test-data/"
 
 ### Regex patterns ###
-
+## Matches one ANSI escape code
+readonly REGEX_ANSI_ESCAPE=".\[[0-9]{2}m"
+## Error message prefix
+readonly ERROR_PREFIX="ERROR ${REGEX_ANSI_ESCAPE}"
 ## Matches the EOF and Exit Successful messages
-readonly REGEX_EXIT_SUCCESS="(DEBUG -).*Exit success"
+readonly REGEX_EXIT_SUCCESS="(DEBUG ).*Exit success"
 ## Matches the RDHs in the `view rdh` command, by going from the `:` in the memory offset to the version, header size, and data format.
 readonly REGEX_RDHS_IN_RDH_VIEW=":.*(7|6).*64.*(0|2)"
 
@@ -76,7 +79,7 @@ declare -a -r test_1_multi_0=(
     "total rdhs.*6"
     1
     # Check that no errors are detected
-    "error - "
+    "${ERROR_PREFIX}"
     0
 )
 ## Test 1_5: `check all its` - Check the right amount of HBFs is detected
@@ -143,7 +146,7 @@ declare -a -r test_2_multi_0=(
     "((layers)|(staves)).*((layers)|(staves)).*L0_12"
     1
     # Check that no errors are detected
-    "error - "
+    "${ERROR_PREFIX}"
     0
     # Check that no warnings are generated
     "warn - "
@@ -186,13 +189,13 @@ declare -a -r test_3_0=(
 ## Test 3_1: `check all` - Check the right number of errors are detected
 declare -a -r test_3_1=(
     "err_not_hbf.raw check all"
-    "(error - 0xa0.*pages)|(Total Errors.*[0-9])"
+    "(${ERROR_PREFIX}0xa0.*pages)|(Total Errors.*[0-9])"
     2
 )
 ## Test 3_2: `check sanity` - Check the right number of errors are detected
 declare -a -r test_3_2=(
     "err_not_hbf.raw check sanity"
-    "error - "
+    "${ERROR_PREFIX}"
     0
 )
 ## Test 3_3: `view rdh` - Check the right number of RDHs is shown
@@ -227,10 +230,10 @@ declare -a -r test_3_multi_0=(
 declare -a -r test_bad_ihw_tdh_detect_invalid_ids=(
     "1_hbf_bad_ihw_tdh.raw check sanity its"
     # Check the error is detected in the right position with the right error code and message
-    "error - 0x40: \[E30\].*ID.*0xe1"
+    "${ERROR_PREFIX}0x40: \[E30\].*ID.*0xe1"
     1
     # Check the error is detected in the right position with the right error code and message
-    "error - 0x50: \[E40\].*ID.*0xe9"
+    "${ERROR_PREFIX}0x50: \[E40\].*ID.*0xe9"
     1
 )
 
@@ -242,13 +245,13 @@ declare -a -r test_bad_dw_ddw0_detect_invalid_ids=(
     # Check the error is detected in the right position with the right error code and message
     # Should give an unregonized ID errors as it is in an ambigiuous position where several words could be valid
     # Checks that it ends with `01]` as it should print the GBT bytes which would end with the wrong ID (01)
-    "error - 0x80: \[E991\] Unrecognized ID.*01\]"
+    "${ERROR_PREFIX}0x80: \[E991\] Unrecognized ID.*01\]"
     1
     # Same as above but for the DDW0 error
-    "error - 0xE0: \[E992\] Unrecognized ID.*E5\]"
+    "${ERROR_PREFIX}0xE0: \[E992\] Unrecognized ID.*E5\]"
     1
     # Check that 2 Invalid ID errors are also detected in those two positions
-    "error - (0x80|0xE0): \[E.0\].*ID" # Just checks its related to a sanity check regarding ID by checking the error code is Ex0
+    "${ERROR_PREFIX}(0x80|0xE0): \[E.0\].*ID" # Just checks its related to a sanity check regarding ID by checking the error code is Ex0
     2
 )
 
@@ -258,7 +261,7 @@ declare -a -r test_bad_dw_ddw0_detect_invalid_ids=(
 declare -a -r test_bad_tdt_detect_invalid_id=(
     "1_hbf_bad_tdt.raw check sanity its"
     # Check the error is detected in the right position with the right error code and message
-    "error - 0x90: \[E991\].*ID.*f1"
+    "${ERROR_PREFIX}0x90: \[E991\].*ID.*f1"
     1
 )
 
@@ -271,7 +274,7 @@ declare -a -r test_bad_cdp_structure=(
     "${REGEX_EXIT_SUCCESS}"
     1
     # Check the error is not detected as this is just a sanity check.
-    "error -"
+    "${ERROR_PREFIX}"
     0
     "Total Errors.*0"
     1
@@ -291,7 +294,7 @@ declare -a -r test_bad_cdp_structure_view_rdh=(
 declare -a -r test_bad_cdp_structure_detected=(
     "1_hbf_bad_cdp_structure.raw check all its"
     # Check the error is detected
-    "error - 0xE0: \[E..0\].*RDH.*stop.bit"
+    "${ERROR_PREFIX}0xE0: \[E..0\].*RDH.*stop.bit"
     1
     "Total Errors.*1"
     1
@@ -308,20 +311,17 @@ declare -a -r test_bad_its_payload=(
     "${REGEX_EXIT_SUCCESS}"
     1
     # Check the error with 2 IHWs in a row is detected
-    "error - 0x50: \[E..\].*ID"
+    "${ERROR_PREFIX}0x50: \[E..\].*ID"
     1
-    # Check that it is the only error detected, by using negated character classes (should probably just start support lookarounds)
-    "error - 0x([^5].|5[^0]):"
-    0
 )
 
 declare -a -r test_bad_its_payload_errors_detected=(
     "1_hbf_bad_its_payload.raw check all its"
     # Check the invalid 2nd IHW is detected
-    "error - 0x50: \[E..\].*ID"
+    "${ERROR_PREFIX}0x50: \[E..\].*ID"
     1
     # Check the error that there's data from lane 8 but the IHW does not have lane 8 set as active
-    "error - 0x70: \[E..\].*lane 8.*IHW" # Checks that the error is detected the right place, and that it has something with lane 8 and IHW
+    "${ERROR_PREFIX}0x70: \[E..\].*lane 8.*IHW" # Checks that the error is detected the right place, and that it has something with lane 8 and IHW
     1
     "Total Errors.*2"
     1

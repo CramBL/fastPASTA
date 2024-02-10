@@ -5,11 +5,11 @@ use alice_protocol_reader::{cdp_wrapper::cdp_array::CdpArray, prelude::*};
 #[inline]
 pub fn generate_view<T: RDH, const CAP: usize>(
     view: crate::config::view::ViewCommands,
-    cdp_array: CdpArray<T, CAP>,
+    cdp_array: &CdpArray<T, CAP>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use crate::config::view::ViewCommands;
     match view {
-        ViewCommands::Rdh => super::rdh_view::rdh_view(&cdp_array)?,
+        ViewCommands::Rdh => super::rdh_view::rdh_view(cdp_array)?,
         ViewCommands::ItsReadoutFrames => {
             super::its_readout_frame::its_readout_frame_view::its_readout_frame_view(cdp_array)?
         }

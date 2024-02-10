@@ -17,9 +17,9 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
 
     let (stdout, stderr) = (cmd.output()?.stdout, cmd.output()?.stderr);
 
-    match_on_out_no_case(&stdout, "errors.*0", 1)?;
-    match_on_out_no_case(&stdout, "total hbfs.*24", 1)?;
-    match_on_out_no_case(&stderr, "error", 0)?;
+    match_on_out(false, &stdout, "errors.*0", 1)?;
+    match_on_out(false, &stdout, "total hbfs.*24", 1)?;
+    match_on_out(false, &stderr, "error", 0)?;
 
     Ok(())
 }

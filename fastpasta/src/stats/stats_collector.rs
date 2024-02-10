@@ -11,6 +11,7 @@ use super::stats_validation::validate_custom_stats;
 use super::{StatType, SystemId};
 use error_stats::ErrorStats;
 use its_stats::alpide_stats::AlpideStats;
+
 use rdh_stats::RdhStats;
 use serde::{Deserialize, Serialize};
 
@@ -216,7 +217,7 @@ impl StatsCollector {
         } else {
             if !mute_errors {
                 errs.iter().for_each(|err| {
-                    log::error!("{err}");
+                    crate::display_error(err);
                 });
             }
             Err(std::io::Error::new(

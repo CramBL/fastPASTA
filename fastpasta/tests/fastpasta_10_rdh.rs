@@ -13,7 +13,7 @@ fn validate_report_summary(byte_output: &[u8]) -> Result<(), Box<dyn std::error:
         "((layers)|(staves)).*((layers)|(staves)).*L0_12",
     ];
     for pattern in match_patterns {
-        match_on_out_no_case(byte_output, pattern, 1)?;
+        match_on_out(false, byte_output, pattern, 1)?;
     }
     Ok(())
 }
@@ -121,7 +121,12 @@ fn check_all_its_trigger_period_stave_not_found() -> Result<(), Box<dyn std::err
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
 
-    match_on_out_no_case(&cmd.output()?.stdout, "its stave.*none.*not found.*l3_2", 1)?;
+    match_on_out(
+        false,
+        &cmd.output()?.stdout,
+        "its stave.*none.*not found.*l3_2",
+        1,
+    )?;
 
     Ok(())
 }
@@ -140,11 +145,11 @@ fn check_all_its_trigger_period_mismatch() -> Result<(), Box<dyn std::error::Err
         .arg("L0_12");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output()?.stderr, "error - ", 4)?;
-    match_on_out_no_case(&cmd.output()?.stderr, "warn - ", 0)?;
+    match_on_out(true, &cmd.output()?.stderr, "ERROR ", 4)?;
+    match_on_out(true, &cmd.output()?.stderr, "WARN ", 0)?;
 
-    match_on_out_no_case(&cmd.output()?.stderr, r"period.*mismatch.*1 !=", 4)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l0_12", 1)?;
+    match_on_out(false, &cmd.output()?.stderr, r"period.*mismatch.*1 !=", 4)?;
+    match_on_out(false, &cmd.output()?.stdout, "its stave.*l0_12", 1)?;
 
     Ok(())
 }
@@ -166,7 +171,7 @@ fn check_all_its_trigger_period() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
 
-    match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l0_12", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, "its stave.*l0_12", 1)?;
 
     assert_alpide_stats_report(&cmd.output()?.stdout, 15, 0, 0, 0, 0, 0, 0)?;
 
@@ -187,7 +192,7 @@ fn check_all_its_stave_filter() -> Result<(), Box<dyn std::error::Error>> {
     cmd.assert().success();
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "its stave.*l0_12", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, "its stave.*l0_12", 1)?;
     assert_alpide_stats_report(&cmd.output()?.stdout, 15, 0, 0, 0, 0, 0, 0)?;
 
     Ok(())
@@ -224,13 +229,13 @@ fn filter_its_stave() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     // Asserts on stdout
-    match_on_out_no_case(&cmd.output()?.stdout, r"filter.*stats", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, r"filter.*stats", 1)?;
 
     // Checking the filtered stats
-    match_on_out_no_case(&cmd.output()?.stdout, r".*filter.*stats", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, r"\|.*RDHs.*10", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, r".*filter.*stats", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, r"\|.*RDHs.*10", 1)?;
 
-    match_on_out_no_case(&cmd.output()?.stdout, r".*L0_12", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, r".*L0_12", 1)?;
 
     Ok(())
 }
@@ -251,12 +256,13 @@ fn filter_its_stave_not_found() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     // Asserts on stdout
-    match_on_out_no_case(&cmd.output()?.stdout, "Total.*RDHs.*10", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, "Total.*RDHs.*10", 1)?;
     // Checking the filtered stats
-    match_on_out_no_case(&cmd.output()?.stdout, r".*filter.*stats", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, r"\|.* RDHs.*0", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, r".*filter.*stats", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, r"\|.* RDHs.*0", 1)?;
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stdout,
         &(r".*not found:.*".to_string() + stave_to_filter),
         1,
@@ -281,17 +287,18 @@ fn filter_fee() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     // Asserts on stdout
-    match_on_out_no_case(&cmd.output()?.stdout, "Total.*RDHs.*10", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, "Total.*RDHs.*10", 1)?;
     // Checking the filtered stats
-    match_on_out_no_case(&cmd.output()?.stdout, r".*filter.*stats", 1)?;
-    match_on_out_no_case(
+    match_on_out(false, &cmd.output()?.stdout, r".*filter.*stats", 1)?;
+    match_on_out(
+        false,
         &cmd.output()?.stdout,
         &(r"FEE ID.*".to_string() + fee_id_to_filter),
         // Expect 2 occurences, one in the global stats and one in the filtered stats
         2,
     )?;
 
-    match_on_out_no_case(&cmd.output()?.stdout, r"\|.* RDHs.*10", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, r"\|.* RDHs.*10", 1)?;
 
     Ok(())
 }
@@ -312,16 +319,17 @@ fn filter_fee_not_found() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     // Asserts on stdout
-    match_on_out_no_case(&cmd.output()?.stdout, "Total.*RDHs.*10", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, "Total.*RDHs.*10", 1)?;
     // Checking the filtered stats
-    match_on_out_no_case(&cmd.output()?.stdout, r".*filter.*stats", 1)?;
-    match_on_out_no_case(
+    match_on_out(false, &cmd.output()?.stdout, r".*filter.*stats", 1)?;
+    match_on_out(
+        false,
         &cmd.output()?.stdout,
         &(r"FEE.*not found.*".to_string() + fee_id_to_filter),
         1,
     )?;
 
-    match_on_out_no_case(&cmd.output()?.stdout, r"\|.* RDHs.* 0 ", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, r"\|.* RDHs.* 0 ", 1)?;
 
     Ok(())
 }
@@ -363,9 +371,9 @@ fn view_its_readout_frame_data() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // 3 data lanes, expect to see data from all of them 5 times.
-    match_on_out_no_case(&cmd.output()?.stdout, "data.*26]", 5)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "data.*27]", 5)?;
-    match_on_out_no_case(&cmd.output()?.stdout, "data.*28]", 5)?;
+    match_on_out(false, &cmd.output()?.stdout, "data.*26]", 5)?;
+    match_on_out(false, &cmd.output()?.stdout, "data.*27]", 5)?;
+    match_on_out(false, &cmd.output()?.stdout, "data.*28]", 5)?;
 
     Ok(())
 }
@@ -480,7 +488,12 @@ cdps = 0
     cmd.assert().success();
 
     // There's 10 CDPs in the file, but the custom checks file expects 0
-    match_on_out_no_case(&cmd.output()?.stderr, "ERROR.*expect.*0.*found.*10", 1)?;
+    match_on_out(
+        false,
+        &cmd.output()?.stderr,
+        "ERROR.*expect.*0.*found.*10",
+        1,
+    )?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())
@@ -562,7 +575,12 @@ rdh_version = 6
 
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output()?.stderr, "ERROR -.*rdh.*sanity.*fail", 10)?;
+    match_on_out(
+        false,
+        &cmd.output()?.stderr,
+        "ERROR .*rdh.*sanity.*fail",
+        10,
+    )?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())
@@ -728,7 +746,7 @@ fn test_check_all_its_with_stats_validation() -> Result<(), Box<dyn std::error::
 
     cmd.assert().failure().code(123);
 
-    match_on_out_no_case(&cmd.output()?.stderr, "ERROR -.* mismatch.*11", 1)?;
+    match_on_out(false, &cmd.output()?.stderr, "ERROR .* mismatch.*11", 1)?;
 
     Ok(())
 }
@@ -786,7 +804,7 @@ fn check_sanity_issue45() -> Result<(), Box<dyn std::error::Error>> {
     cmd.pipe_stdin(tmp_file)?.arg("check").arg("sanity");
 
     validate_report_summary(&cmd.output()?.stdout)?;
-    match_on_out_no_case(&cmd.output()?.stderr, "ERROR - 0x4B0.*payload", 1)?;
+    match_on_out(false, &cmd.output()?.stderr, "ERROR.*0x4B0.*payload", 1)?;
 
     Ok(())
 }

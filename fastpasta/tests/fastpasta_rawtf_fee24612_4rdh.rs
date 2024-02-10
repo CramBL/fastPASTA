@@ -11,7 +11,7 @@ fn validate_report_summary(byte_output: &[u8]) -> Result<(), Box<dyn std::error:
         "((layers)|(staves)).*((layers)|(staves)).*L6_36",
     ];
     for pattern in match_patterns {
-        match_on_out_no_case(byte_output, pattern, 1)?;
+        match_on_out(false, byte_output, pattern, 1)?;
     }
 
     Ok(())
@@ -41,7 +41,12 @@ fn check_all() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg(FILE_RAWTF_FEE_24612_4RDHS).arg("check").arg("all");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output()?.stderr, "WARN - Detector field changed", 1)?;
+    match_on_out(
+        false,
+        &cmd.output()?.stderr,
+        "WARN Detector field changed",
+        1,
+    )?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())
@@ -59,7 +64,12 @@ fn check_all_its() -> Result<(), Box<dyn std::error::Error>> {
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output()?.stderr, "WARN - Detector field changed", 1)?;
+    match_on_out(
+        false,
+        &cmd.output()?.stderr,
+        "WARN Detector field changed",
+        1,
+    )?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())
@@ -77,8 +87,8 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out_no_case(&cmd.output()?.stderr, "ERROR - Analysis thread", 0)?;
-    match_on_out_no_case(&cmd.output()?.stderr, "thread.*panicked", 0)?;
+    match_on_out(true, &cmd.output()?.stderr, "ERROR Analysis thread", 0)?;
+    match_on_out(false, &cmd.output()?.stderr, "thread.*panicked", 0)?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
     Ok(())

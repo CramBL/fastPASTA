@@ -48,7 +48,7 @@ ringbuffer = "0.15"
 serde = { version = "1.0.166", features = ["serde_derive"]}
 serde_derive = "1.0.166"
 sm = "0.9.0"
-stderrlog = "0.5.4"
+stderrlog = "0.6.0"
 tabled = { version = "0.14.0", features = ["color"]}
 toml = "0.8.0"
 descriptive_toml_derive = "0.1.0"

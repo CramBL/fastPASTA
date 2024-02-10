@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+use std::fmt::Display;
+
 /// Re-export some common utilities for system tests
 pub use assert_cmd::prelude::*; // Add methods on commands
 pub use assert_cmd::Command;
@@ -6,6 +8,7 @@ pub use assert_fs::fixture::ChildPath;
 // Get the methods for the Commands struct
 pub use assert_fs::prelude::*;
 pub use assert_fs::TempDir;
+#[allow(unused_imports)]
 pub use predicates::prelude::*; // Used for writing assertions // Create temporary directories
 #[allow(unused_imports)]
 use pretty_assertions::{assert_eq, assert_ne, assert_str_eq};
@@ -31,6 +34,20 @@ pub const FILE_CI_OLS_DATA_1HBF: &str = "../tests/test-data/ci_ols_data_1hbf.raw
 pub const FILE_2_RDH_DET_FIELD_V1_21_0: &str = "../tests/test-data/2_rdh_det_field_v1.21.0.raw"; // has Detector field v1.21.0
 pub const FILE_2_HBF_2ND_BAD_FRAME: &str = "../tests/test-data/2_hbf_2nd_bad_frame.raw"; // First HBF is valid but second lacks data words even though no error has been indicated with APE/TDT/DDW
 pub const FILE_12_LINKS_2HBF: &str = "../tests/test-data/12_links_2hbf.raw"; // 12 links with 1 HBF each
+
+/// matches a single ANSI escape code
+pub const ANSI_ESCAPE_REGEX: &str = r"(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]";
+/// WARN prefix with an ANSI escape code
+pub const WARN_PREFIX: &str = concat!("WARN ", r"(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]");
+pub const ERROR_PREFIX: &str = concat!("ERROR ", r"(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]");
+
+/// Helper function to create a regex pattern with a prefix and a suffix
+pub fn prefix_and_then<S>(prefix: &'static str, suffix: S) -> String
+where
+    S: AsRef<str> + Display,
+{
+    format!("{prefix}{suffix}")
+}
 
 /// Regex pattern that should match as many times as there are RDHs in the file
 /// Matches the RDH version (7 or 6), the header size (64), and the data format (0 or 2).
@@ -71,39 +88,31 @@ pub fn read_stats_from_file(
     Ok(stats)
 }
 
-/// Helper function to match the raw output of stderr or stdout, with a pattern a fixed amount of times
-pub fn match_on_output(
-    byte_output: &[u8],
-    re_str: &str,
-    match_count: usize,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // Build regex pattern
-    let re = fancy_regex::Regex::new(re_str).unwrap();
-    // Make the predicate function
-    let pred_regex = predicate::function(|&x| re.find_iter(x).count() == match_count);
-    // Convert the output to string as utf-8
-    let str_res = std::str::from_utf8(byte_output).expect("invalid utf-8 sequence");
-    // Evaluate the output with the predicate
-    assert!(pred_regex.eval(&str_res));
-    Ok(())
-}
-
 /// Helper function to match the raw output of stderr or stdout, with a pattern a fixed amount of times, case insensitive
-pub fn match_on_out_no_case(
+pub fn match_on_out<S>(
+    case_sensitive: bool,
     byte_output: &[u8],
-    re_str: &str,
+    re: S,
     expect_match: usize,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    S: AsRef<str> + ToOwned + Display + Into<String>,
+{
     // Convert the output to string as utf-8
     let str_res = std::str::from_utf8(byte_output).expect("invalid utf-8 sequence");
     // Build regex pattern
-    let re = fancy_regex::Regex::new(&("(?i)".to_owned() + re_str)).unwrap();
+    let regex_pattern = if case_sensitive {
+        re.to_string()
+    } else {
+        format!("(?i){re}")
+    };
+    let re = fancy_regex::Regex::new(&regex_pattern).unwrap();
     // Count the number of matches
     let match_count = re.find_iter(str_res).count();
     // Assert that the number of matches is equal to the expected number of matches
     assert_eq!(
         match_count, expect_match,
-        "regex: {re_str} - expected match count: {expect_match}, got {match_count}\nFailed to match on:\n{str_res}"
+        "regex: {re} - expected match count: {expect_match}, got {match_count}\nFailed to match on:\n{str_res}"
     );
     Ok(())
 }
@@ -112,9 +121,9 @@ pub fn match_on_out_no_case(
 pub fn assert_no_errors_or_warn(
     stderr_byte_output: &[u8],
 ) -> Result<(), Box<dyn std::error::Error>> {
-    match_on_out_no_case(stderr_byte_output, "error - ", 0)?;
-    match_on_out_no_case(stderr_byte_output, "warn - ", 0)?;
-    match_on_out_no_case(stderr_byte_output, "thread.*panicked", 0)?;
+    match_on_out(true, stderr_byte_output, ERROR_PREFIX, 0)?;
+    match_on_out(true, stderr_byte_output, WARN_PREFIX, 0)?;
+    match_on_out(false, stderr_byte_output, "thread.*panicked", 0)?;
     Ok(())
 }
 

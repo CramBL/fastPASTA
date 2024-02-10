@@ -13,7 +13,7 @@ fn validate_report_summary(byte_output: &[u8]) -> Result<(), Box<dyn std::error:
         "((layers)|(staves)).*((layers)|(staves)).*L6_1",
     ];
     for pattern in match_patterns {
-        match_on_out_no_case(byte_output, pattern, 1)?;
+        match_on_out(false, byte_output, pattern, 1)?;
     }
 
     Ok(())
@@ -47,8 +47,8 @@ fn check_all_its_stave_not_found() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
 
-    match_on_out_no_case(&cmd.output()?.stdout, "errors.*0", 1)?;
-    match_on_out_no_case(&cmd.output()?.stdout, ".*not found.*l0_0", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, "errors.*0", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, ".*not found.*l0_0", 1)?;
 
     Ok(())
 }
@@ -67,19 +67,24 @@ fn check_all_its_stave_filter() -> Result<(), Box<dyn std::error::Error>> {
         .arg("L6_1");
     cmd.assert().success();
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stdout,
         &format!("errors.*{EXPECTED_ALPIDE_ERRORS}"),
         1,
     )?;
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stderr,
         // Errors that have ALPIDE and lane 66 in them
-        &format!("error - 0x.*alpide.*lane.*{LANE_WITH_ERRORS}"),
+        prefix_and_then(
+            ERROR_PREFIX,
+            format!("0x.*alpide.*lane.*{LANE_WITH_ERRORS}"),
+        ),
         EXPECTED_ALPIDE_ERRORS.into(),
     )?;
-    match_on_out_no_case(&cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
 
     Ok(())
 }
@@ -101,12 +106,13 @@ fn check_all_its_stave_trigger_period() -> Result<(), Box<dyn std::error::Error>
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stderr,
-        "error - 0x",
+        prefix_and_then(ERROR_PREFIX, "0x"),
         EXPECTED_ALPIDE_ERRORS.into(),
     )?;
-    match_on_out_no_case(&cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
 
     Ok(())
 }
@@ -129,12 +135,13 @@ fn check_all_its_stave_bad_trigger_period() -> Result<(), Box<dyn std::error::Er
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stderr,
-        "error - 0x",
+        prefix_and_then(ERROR_PREFIX, "0x"),
         (EXPECTED_ALPIDE_ERRORS + EXPECTED_TRIGGER_PERIOD_ERRORS).into(),
     )?;
-    match_on_out_no_case(&cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
 
     Ok(())
 }
@@ -173,19 +180,24 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
         .arg("its-stave");
     cmd.assert().success();
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stdout,
-        &format!("errors.*{EXPECTED_ALPIDE_ERRORS}"),
+        format!("errors.*{EXPECTED_ALPIDE_ERRORS}"),
         1,
     )?;
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stderr,
         // Errors that have ALPIDE and lane 66 in them
-        &format!("error - 0x.*alpide.*lane.*{LANE_WITH_ERRORS}"),
+        prefix_and_then(
+            ERROR_PREFIX,
+            format!("0x.*alpide.*lane.*{LANE_WITH_ERRORS}"),
+        ),
         EXPECTED_ALPIDE_ERRORS.into(),
     )?;
-    match_on_out_no_case(&cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
 
     assert_alpide_stats_report(&cmd.output()?.stdout, 24, 0, 0, 0, 0, 0, 0)?;
 
@@ -205,20 +217,22 @@ fn check_all_its_stave_mute_errors() -> Result<(), Box<dyn std::error::Error>> {
         .arg("--mute-errors");
     cmd.assert().success();
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stdout,
         &format!("errors.*{EXPECTED_ALPIDE_ERRORS}"),
         1,
     )?;
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stderr,
         // Errors that have ALPIDE and lane 66 in them
-        "error - 0x.*alpide.*lane.*66",
+        "error 0x.*alpide.*lane.*66",
         // Expect 0 error messages as they are muted
         0,
     )?;
-    match_on_out_no_case(&cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, ".*stave.*l6_1", 1)?;
 
     Ok(())
 }
@@ -236,13 +250,14 @@ fn check_all_its_stave_no_chip_order_errors() -> Result<(), Box<dyn std::error::
         .arg("its-stave");
     cmd.assert().success();
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stdout,
         &format!("errors.*{EXPECTED_ALPIDE_ERRORS}"),
         1,
     )?;
 
-    match_on_out_no_case(&cmd.output()?.stderr, "chip id order", 0)?;
+    match_on_out(false, &cmd.output()?.stderr, "chip id order", 0)?;
 
     Ok(())
 }
@@ -279,13 +294,14 @@ chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 
     cmd.assert().success();
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stdout,
         &format!("errors.*{EXPECTED_ALPIDE_ERRORS}"),
         1,
     )?;
 
-    match_on_out_no_case(&cmd.output()?.stderr, "chip id order", 18)?;
+    match_on_out(false, &cmd.output()?.stderr, "chip id order", 18)?;
 
     Ok(())
 }
@@ -314,13 +330,14 @@ chip_count_ob = 7
 
     cmd.assert().success();
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stdout,
         &format!("errors.*{EXPECTED_ALPIDE_ERRORS}"),
         1,
     )?;
 
-    match_on_out_no_case(&cmd.output()?.stderr, "chip id count", 0)?;
+    match_on_out(false, &cmd.output()?.stderr, "chip id count", 0)?;
 
     Ok(())
 }
@@ -355,13 +372,14 @@ chip_count_ob = 6
 
     cmd.assert().success();
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stdout,
         &format!("errors.*{EXPECTED_ALPIDE_ERRORS}"),
         1,
     )?;
 
-    match_on_out_no_case(&cmd.output()?.stderr, "chip id count", 252)?;
+    match_on_out(false, &cmd.output()?.stderr, "chip id count", 252)?;
 
     let stats = read_stats_from_file(&tmp_stats_path, "json")?;
 

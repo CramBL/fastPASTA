@@ -11,7 +11,7 @@ fn validate_report_summary(byte_output: &[u8]) -> Result<(), Box<dyn std::error:
         "((layers)|(staves)).*((layers)|(staves)).*L0_12",
     ];
     for pattern in match_patterns {
-        match_on_out_no_case(byte_output, pattern, 1)?;
+        match_on_out(false, byte_output, pattern, 1)?;
     }
 
     Ok(())
@@ -67,18 +67,20 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
         .arg("its-stave");
     cmd.assert().success();
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stdout,
         &format!("errors.*{EXPECTED_ERRORS}"),
         1,
     )?;
 
-    match_on_out_no_case(
+    match_on_out(
+        false,
         &cmd.output()?.stderr,
-        "error - 0x.*lane.*5",
+        prefix_and_then(ERROR_PREFIX, "0x.*lane.*5"),
         EXPECTED_ERRORS.into(),
     )?;
-    match_on_out_no_case(&cmd.output()?.stderr, "chip id order", 1)?;
+    match_on_out(false, &cmd.output()?.stderr, "chip id order", 1)?;
 
     assert_alpide_stats_report(&cmd.output()?.stdout, 3, 0, 0, 0, 0, 0, 0)?;
 

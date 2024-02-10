@@ -13,9 +13,9 @@ fn bad_file_input_check_sanity_its() -> Result<(), Box<dyn std::error::Error>> {
     cmd.assert().failure();
 
     // Check that an error is printed to stderr showing the file is not a valid input
-    match_on_out_no_case(&cmd.output()?.stderr, "processing failed", 1)?;
+    match_on_out(false, &cmd.output()?.stderr, "processing failed", 1)?;
     // No mention of RDH in stdout as the file is not a valid input
-    match_on_out_no_case(&cmd.output()?.stdout, "rdh", 0)?;
+    match_on_out(false, &cmd.output()?.stdout, "rdh", 0)?;
 
     Ok(())
 }
@@ -31,9 +31,9 @@ fn bad_file_input_view_its_readout_frames() -> Result<(), Box<dyn std::error::Er
     cmd.assert().failure();
 
     // Check that an error is printed to stderr showing the file is not a valid input
-    match_on_out_no_case(&cmd.output()?.stderr, "processing failed", 1)?;
+    match_on_out(false, &cmd.output()?.stderr, "processing failed", 1)?;
     // No mention of RDH in stdout as the file is not a valid input
-    match_on_out_no_case(&cmd.output()?.stdout, "rdh", 0)?;
+    match_on_out(false, &cmd.output()?.stdout, "rdh", 0)?;
 
     Ok(())
 }
@@ -50,9 +50,9 @@ fn bad_filter_link_value() -> Result<(), Box<dyn std::error::Error>> {
     cmd.assert().failure();
 
     // Check that an error is printed to stderr showing the file is not a valid input
-    match_on_out_no_case(&cmd.output()?.stderr, "invalid value", 1)?;
+    match_on_out(false, &cmd.output()?.stderr, "invalid value", 1)?;
     // No mention of RDH in stdout as the file is not a valid input
-    match_on_out_no_case(&cmd.output()?.stdout, "rdh", 0)?;
+    match_on_out(false, &cmd.output()?.stdout, "rdh", 0)?;
 
     Ok(())
 }
@@ -68,9 +68,9 @@ fn file_doesnt_exist_v0() -> Result<(), Box<dyn std::error::Error>> {
         .arg("check")
         .arg("sanity")
         .arg("-v0");
-    cmd.assert().failure().stderr(
-        predicate::str::contains("ERROR - FATAL:").and(predicate::str::contains("os error")),
-    );
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("ERROR FATAL:").and(predicate::str::contains("os error")));
     Ok(())
 }
 #[test]
@@ -81,9 +81,9 @@ fn file_doesnt_exist_v1() -> Result<(), Box<dyn std::error::Error>> {
         .arg("sanity")
         .arg("-v1");
 
-    cmd.assert().failure().stderr(
-        predicate::str::contains("ERROR - FATAL:").and(predicate::str::contains("os error")),
-    );
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("ERROR FATAL:").and(predicate::str::contains("os error")));
 
     Ok(())
 }
@@ -96,9 +96,9 @@ fn file_doesnt_exist_v2() -> Result<(), Box<dyn std::error::Error>> {
         .arg("sanity")
         .arg("-v2");
 
-    cmd.assert().failure().stderr(
-        predicate::str::contains("ERROR - FATAL:").and(predicate::str::contains("os error")),
-    );
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("ERROR FATAL:").and(predicate::str::contains("os error")));
 
     Ok(())
 }
@@ -111,9 +111,9 @@ fn file_doesnt_exist_v3() -> Result<(), Box<dyn std::error::Error>> {
         .arg("sanity")
         .arg("-v3");
 
-    cmd.assert().failure().stderr(
-        predicate::str::contains("ERROR - FATAL:").and(predicate::str::contains("os error")),
-    );
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("ERROR FATAL:").and(predicate::str::contains("os error")));
     Ok(())
 }
 
@@ -125,9 +125,9 @@ fn file_doesnt_exist_v4() -> Result<(), Box<dyn std::error::Error>> {
         .arg("sanity")
         .arg("-v4");
 
-    cmd.assert().failure().stderr(
-        predicate::str::contains("ERROR - FATAL:").and(predicate::str::contains("os error")),
-    );
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("ERROR FATAL:").and(predicate::str::contains("os error")));
 
     Ok(())
 }

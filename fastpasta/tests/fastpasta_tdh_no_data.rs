@@ -13,7 +13,7 @@ fn validate_report_summary(byte_output: &[u8]) -> Result<(), Box<dyn std::error:
         "((layers)|(staves)).*((layers)|(staves)).*L0_0",
     ];
     for pattern in match_patterns {
-        match_on_out_no_case(byte_output, pattern, 1)?;
+        match_on_out(false, byte_output, pattern, 1)?;
     }
 
     Ok(())
@@ -47,7 +47,7 @@ fn check_sanity_its_issue_26() -> Result<(), Box<dyn std::error::Error>> {
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
-    match_on_out_no_case(&cmd.output()?.stdout, "errors.*0", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, "errors.*0", 1)?;
 
     Ok(())
 }
@@ -63,7 +63,7 @@ fn check_all_its_issue_26() -> Result<(), Box<dyn std::error::Error>> {
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
     validate_report_summary(&cmd.output()?.stdout)?;
 
-    match_on_out_no_case(&cmd.output()?.stdout, "errors.*0", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, "errors.*0", 1)?;
 
     Ok(())
 }
@@ -108,7 +108,7 @@ fn check_all_its_stave() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;
 
-    match_on_out_no_case(&cmd.output()?.stdout, "errors.*0", 1)?;
+    match_on_out(false, &cmd.output()?.stdout, "errors.*0", 1)?;
 
     Ok(())
 }

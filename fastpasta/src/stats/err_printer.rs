@@ -40,13 +40,13 @@ impl<'a> ErrPrinter<'a> {
             // Filter the error messages and take the first `max_errors` if set
             let err_msgs = self.filter_error_msgs(self.max_errors, &filter, err_msgs);
             for err_msg in err_msgs {
-                self.display_error(err_msg);
+                crate::display_error(err_msg);
             }
         } else {
             // Take the first `max_errors` if set
             let err_msgs = err_msgs.take(self.max_errors.unwrap_or(u32::MAX) as usize);
             for err_msg in err_msgs {
-                self.display_error(err_msg);
+                crate::display_error(err_msg);
             }
         };
     }
@@ -118,11 +118,6 @@ impl<'a> ErrPrinter<'a> {
                 false
             })
             .take(max_errors.unwrap_or(u32::MAX) as usize)
-    }
-
-    #[inline]
-    fn display_error(&self, err_msg: &str) {
-        log::error!("{err_msg}");
     }
 }
 
