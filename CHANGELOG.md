@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 # [Unreleased]
 
+# v1.20.0 (2023-2-10) - Styled views, performance, shell completion, & SEC fix
 ### Added
 [MR131](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/131) Shell completion for bash, zsh, fish, powershell, elvish. Generate the completion scripts with `fastpasta --generate-completions <SHELL>`.
 
