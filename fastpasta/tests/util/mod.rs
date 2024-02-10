@@ -32,6 +32,10 @@ pub const FILE_2_RDH_DET_FIELD_V1_21_0: &str = "../tests/test-data/2_rdh_det_fie
 pub const FILE_2_HBF_2ND_BAD_FRAME: &str = "../tests/test-data/2_hbf_2nd_bad_frame.raw"; // First HBF is valid but second lacks data words even though no error has been indicated with APE/TDT/DDW
 pub const FILE_12_LINKS_2HBF: &str = "../tests/test-data/12_links_2hbf.raw"; // 12 links with 1 HBF each
 
+/// Regex pattern that should match as many times as there are RDHs in the file
+/// Matches the RDH version (7 or 6), the header size (64), and the data format (0 or 2).
+pub const VIEW_RDH_REGEX_SANITY: &str = ":.*(7|6).*64.*(0|2)";
+
 /// Helper function to create a temp dir and a child file path
 ///
 /// It's important to return the directory because the directory must be kept alive (don't match dir with '_' it will drop it immediately)

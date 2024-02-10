@@ -46,7 +46,7 @@ fn view_rdh() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert()
         .success()
-        .stdout(is_match(": .* (7|6) .* 64 .* (0|2)")?.count(2));
+        .stdout(is_match(VIEW_RDH_REGEX_SANITY)?.count(2));
 
     Ok(())
 }
