@@ -38,7 +38,6 @@ To verify or view curated content of the scanned raw binary data from the ALICE 
   - [Prerequisite](#prerequisite)
   - [Install via cargo (comes with Rust)](#install-via-cargo-comes-with-rust)
   - [Add shell completions](#add-shell-completions)
-  - [Building from source](#building-from-source)
   - [See help, including examples of use](#see-help-including-examples-of-use)
   - [Examples of use](#examples-of-use)
     - [Read from stdin -\> filter link -\> view RDHs](#read-from-stdin---filter-link---view-rdhs)
@@ -91,13 +90,6 @@ Generate completion script for bash/zsh/fish/powershell/elvish with:
 ```shell
 fastpasta --generate-completions <SHELL> > path/to/your/completion/scripts/_fastpasta
 ```
-
-## Building from source
-`cargo install fastpasta` already builds from source and will simply get the latest published version (on crates.io). If you want to build the latest version of the master branch, clone the repository and run
-```
-cargo build -r
-```
-and find the binary at `target/release/fastpasta`
 ## See help, including examples of use
 
 ```shell
