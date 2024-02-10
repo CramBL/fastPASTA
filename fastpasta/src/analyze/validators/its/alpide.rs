@@ -10,7 +10,9 @@ use itertools::Itertools;
 use lane_alpide_frame_analyzer::LaneAlpideFrameAnalyzer;
 
 use crate::config::custom_checks::CustomChecksOpt;
+use crate::config::Cfg;
 use crate::stats::stats_collector::its_stats::alpide_stats::AlpideStats;
+use crate::UtilOpt;
 
 // Helper struct to group lanes and bunch counters, used for comparing bunch counters between lanes
 struct ValidatedLane {
@@ -117,17 +119,27 @@ fn validate_lane_bcs(
                     .collect::<Vec<u8>>(),
             ));
         });
-        // Add the lanes to the error string
-        lanes_to_bunch_counter
-            .iter()
-            .for_each(|(bunch_counter, lanes)| {
-                error_string.push_str(&format!(
-                    "\n\t\tBunch counter: {bunch_counter:>3?} | Lanes: {lanes:?}",
-                    bunch_counter = bunch_counter,
-                    lanes = lanes
-                ));
-            });
+        if !Cfg::global().mute_errors() {
+            add_context_to_unique_bc_error_msg(&lanes_to_bunch_counter, &mut error_string);
+        }
+
         lane_error_msgs.push(error_string);
         lane_error_ids.extend(lanes_to_bunch_counter.iter().flat_map(|(_, lanes)| lanes));
     }
+}
+
+fn add_context_to_unique_bc_error_msg(
+    lanes_to_bunch_counter: &[(u8, Vec<u8>)],
+    error_string: &mut String,
+) {
+    // Add the lanes to the error string
+    lanes_to_bunch_counter
+        .iter()
+        .for_each(|(bunch_counter, lanes)| {
+            error_string.push_str(&format!(
+                "\n\t\tBunch counter: {bunch_counter:>3?} | Lanes: {lanes:?}",
+                bunch_counter = bunch_counter,
+                lanes = lanes
+            ));
+        });
 }
