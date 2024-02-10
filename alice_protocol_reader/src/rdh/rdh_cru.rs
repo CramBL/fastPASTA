@@ -5,41 +5,30 @@ use super::rdh2::Rdh2;
 use super::rdh3::Rdh3;
 use super::{ByteSlice, RdhSubword, SerdeRdh, RDH, RDH_CRU};
 use byteorder::{ByteOrder, LittleEndian};
+use owo_colors::OwoColorize;
 use std::fmt::Debug;
 use std::fmt::{self, Display};
 
-const HEADER_TEXT_TOP: [&str; 14] = [
-    "RDH   ",
-    "Header ",
-    "FEE    ",
-    "Sys   ",
-    "Offset  ",
-    "Link  ",
-    "Packet    ",
-    "BC   ",
-    "Orbit       ",
-    "Data       ",
-    "Trigger   ",
-    "Pages    ",
-    "Stop  ",
-    "Detector  ",
+// Contains the header text for printing a column view of the [RDH CRU][RdhCru].
+// each tuple contains the top and bottom text for a column.
+const HEADER_TEXT_TOP_BOT: [(&str, &str); 14] = [
+    ("RDH   ", "ver   "),
+    ("Header ", "size   "),
+    ("FEE    ", "ID     "),
+    ("Sys   ", "ID    "),
+    ("Offset  ", "next    "),
+    ("Link  ", "ID    "),
+    ("Packet    ", "counter   "),
+    ("BC   ", "     "),
+    ("Orbit       ", "counter     "),
+    ("Data       ", "format     "),
+    ("Trigger   ", "type      "),
+    ("Pages    ", "counter  "),
+    ("Stop  ", "bit   "),
+    ("Detector", "field   "),
 ];
-const HEADER_TEXT_BOT: [&str; 14] = [
-    "ver   ",
-    "size   ",
-    "ID     ",
-    "ID    ",
-    "next    ",
-    "ID    ",
-    "counter   ",
-    "     ",
-    "counter     ",
-    "format     ",
-    "type      ",
-    "counter  ",
-    "bit   ",
-    "field     ",
-];
+// The width of the header text column (characters)
+const HEADER_TEXT_COLUMN_WIDTH: usize = 111;
 
 /// Represents the `Data format` and `reserved` fields. Using a newtype because the fields are packed in 64 bits, and extracting the values requires some work.
 #[repr(packed)]
@@ -130,24 +119,24 @@ impl RdhCru {
     /// the columns are styled with alternating background colors.
     #[inline]
     pub fn rdh_header_styled_text_with_indent_to_string(indent: usize) -> String {
-        use owo_colors::OwoColorize;
-
         let (top_text, bot_text) = {
-            let mut top_text = String::new();
-            let mut bot_text = String::new();
-            HEADER_TEXT_BOT
+            let mut top_text = String::with_capacity(HEADER_TEXT_COLUMN_WIDTH);
+            let mut bot_text = String::with_capacity(HEADER_TEXT_COLUMN_WIDTH);
+            HEADER_TEXT_TOP_BOT
                 .iter()
-                .zip(HEADER_TEXT_TOP.iter())
                 .enumerate()
-                .for_each(|(idx, (bot, top))| {
-                    // Alternate between on_green and on_blue and append 2 spaces
-                    if idx % 2 == 0 {
-                        top_text.push_str(&format!("{}", top.white().bold().bg_rgb::<0, 99, 0>()));
-                        bot_text.push_str(&format!("{}", bot.white().bold().bg_rgb::<0, 99, 0>()));
-                    } else {
-                        top_text.push_str(&format!("{}", top.white().bold().bg_rgb::<0, 0, 99>()));
-                        bot_text.push_str(&format!("{}", bot.white().bold().bg_rgb::<0, 0, 99>()));
-                    }
+                .for_each(|(idx, (top, bot))| {
+                    // Alternate between green and blue background colors
+                    let is_even = idx % 2 == 0;
+                    let format_string = |txt: &str, is_even: bool| -> String {
+                        if is_even {
+                            format!("{}", txt.white().bold().bg_rgb::<0, 99, 0>())
+                        } else {
+                            format!("{}", txt.white().bold().bg_rgb::<0, 0, 99>())
+                        }
+                    };
+                    top_text.push_str(&format_string(top, is_even));
+                    bot_text.push_str(&format_string(bot, is_even));
                 });
             (top_text, bot_text)
         };
@@ -241,7 +230,6 @@ impl Debug for RdhCru {
 
 impl RDH for RdhCru {
     fn to_styled_row_view(&self) -> String {
-        use owo_colors::OwoColorize;
         let tmp_offset = self.offset_new_packet;
         let tmp_link = self.link_id;
         let tmp_packet_cnt = self.packet_counter;
