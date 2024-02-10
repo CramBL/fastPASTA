@@ -28,7 +28,7 @@ fn print_start_of_its_readout_frame_header_text(
 
 fn print_rdh_its_readout_frame_view<T: RDH>(
     rdh: &T,
-    rdh_mem_pos: &u64,
+    rdh_mem_pos: u64,
     stdio_lock: &mut std::io::StdoutLock,
 ) -> Result<(), std::io::Error> {
     let orbit = rdh.rdh1().orbit; // Packed field

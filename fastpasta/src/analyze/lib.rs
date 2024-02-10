@@ -55,7 +55,7 @@ pub fn spawn_analysis<T: RDH + 'static, const CAP: usize>(
                     if config.check().is_some() {
                         validator_dispatcher.dispatch_cdp_batch(cdp_batch);
                     } else if let Some(view) = config.view() {
-                        if let Err(e) = super::view::lib::generate_view(view, cdp_batch) {
+                        if let Err(e) = super::view::lib::generate_view(view, &cdp_batch) {
                             stats_send
                                 .send(StatType::Fatal(e.to_string().into()))
                                 .expect("Couldn't send to Controller");
