@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # [Unreleased]
 
 ### Added
-- [MR131](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/131) Shell completion for bash, zsh, fish, powershell, elvish. Generate the completion scripts with `fastpasta --generate-completions <SHELL>`.
-- [MR132](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/132) Style for `view rdh`. The output is styled with bold and/or background colors to make it easier to parse.
-- [MR132](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/132) Flag `--disable-styled-views`/`-d` disables text/color styling for views
+[MR131](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/131) Shell completion for bash, zsh, fish, powershell, elvish. Generate the completion scripts with `fastpasta --generate-completions <SHELL>`.
+
+[MR132](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/132) Style for `view rdh`. The output is styled with bold and/or background colors to make it easier to parse.
+
+[MR132](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/132) Flag `--disable-styled-views`/`-d` disables text/color styling for views
 
 ### Changed
 [MR134](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/134) When the `--mute-errors` flag is set, validators now provide much less context to error messages which leads to dramatic performance increase for data with a large amount of errors.
