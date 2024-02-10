@@ -174,11 +174,11 @@ fn view_its_readout_frames() -> Result<(), Box<dyn std::error::Error>> {
     cmd.assert().success();
 
     assert_no_errors_or_warn(&cmd.output().unwrap().stderr)?;
-    match_on_out(true, &cmd.output().unwrap().stdout, ": RDH", 2)?;
+    match_on_out(true, &cmd.output().unwrap().stdout, "RDH", 2)?;
     // It's an error that two IHW IDs appear in a row, but this view should show two IHWs
-    match_on_out(true, &cmd.output().unwrap().stdout, ": IHW", 2)?;
-    match_on_out(true, &cmd.output().unwrap().stdout, ": TDT", 1)?;
-    match_on_out(true, &cmd.output().unwrap().stdout, ": DDW", 1)?;
+    match_on_out(true, &cmd.output().unwrap().stdout, "IHW", 2)?;
+    match_on_out(true, &cmd.output().unwrap().stdout, "TDT", 1)?;
+    match_on_out(true, &cmd.output().unwrap().stdout, "DDW", 1)?;
 
     Ok(())
 }

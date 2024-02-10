@@ -76,7 +76,8 @@ fn check_view_its_readout_frames_issue_29() -> Result<(), Box<dyn std::error::Er
 
     cmd.arg(FILE_TDH_NO_DATA_IHW)
         .arg("view")
-        .arg("its-readout-frames");
+        .arg("its-readout-frames")
+        .arg("--disable-styled-views");
     cmd.assert().success();
 
     assert_no_errors_or_warn(&cmd.output()?.stderr)?;

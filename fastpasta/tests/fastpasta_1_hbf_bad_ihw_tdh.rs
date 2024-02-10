@@ -84,9 +84,9 @@ fn view_its_readout_frames() -> Result<(), Box<dyn std::error::Error>> {
         .arg("-v4");
     cmd.assert().success();
 
-    match_on_out(true, &cmd.output().unwrap().stdout, ": RDH", 2)?;
-    match_on_out(true, &cmd.output().unwrap().stdout, ": DDW", 1)?;
-    match_on_out(true, &cmd.output().unwrap().stdout, ": TDT", 1)?;
+    match_on_out(true, &cmd.output().unwrap().stdout, "RDH", 2)?;
+    match_on_out(true, &cmd.output().unwrap().stdout, "DDW", 1)?;
+    match_on_out(true, &cmd.output().unwrap().stdout, "TDT", 1)?;
 
     Ok(())
 }
