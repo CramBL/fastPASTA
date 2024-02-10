@@ -167,16 +167,16 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt + UtilOpt> Lin
     }
 
     fn report_rdh_error(&mut self, rdh: &T, mut error: String, rdh_mem_pos: u64) {
-        error.push('\n');
-        if self.config.disable_styled_views() {
+        // Add additional context unless errors are muted
+        if !self.config.mute_errors() {
+            error.push('\n');
             error.push_str(RdhCru::rdh_header_text_with_indent_to_string(13).as_str());
-        } else {
-            error.push_str(RdhCru::rdh_header_styled_text_with_indent_to_string(13).as_str());
+
+            self.prev_rdhs.iter().for_each(|prev_rdh| {
+                error.push_str(&format!("  previous:  {prev_rdh}\n"));
+            });
+            error.push_str(&format!("  current :  {rdh} <--- Error detected here\n"));
         }
-        self.prev_rdhs.iter().for_each(|prev_rdh| {
-            error.push_str(&format!("  previous:  {prev_rdh}\n"));
-        });
-        error.push_str(&format!("  current :  {rdh} <--- Error detected here\n"));
 
         self.stats_send
             .send(StatType::Error(format!("{rdh_mem_pos:#X}: {error}").into()))
