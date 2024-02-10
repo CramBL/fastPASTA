@@ -208,7 +208,7 @@ fn get_array_batch<T: RDH, const CAP: usize>(
     let mut cdp_arr = CdpArray::<T, CAP>::new_const();
 
     for _ in 0..CAP {
-        let cdp_tuple = match file_scanner.load_cdp() {
+        let (rdh, payload, mem_pos) = match file_scanner.load_cdp() {
             Ok(cdp) => cdp,
             Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
                 break;
@@ -218,7 +218,7 @@ fn get_array_batch<T: RDH, const CAP: usize>(
             }
             Err(e) => return Err(e),
         };
-        cdp_arr.push(cdp_tuple.0, cdp_tuple.1, cdp_tuple.2);
+        cdp_arr.push(rdh, payload, mem_pos);
     }
 
     if cdp_arr.is_empty() {
