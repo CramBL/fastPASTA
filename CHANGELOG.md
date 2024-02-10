@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [MR132](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/132) Flag `--disable-styled-views`/`-d` disables text/color styling for views
 
 ### Changed
-[MR134](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/134) When the `--mute-errors` flag is set, validators now provide much less context to error messages which leads to dramatic performance increase for data with a large amount of errors.
+[MR134](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/134) When the `--mute-errors` flag is set, validators now provide much less context to error messages which leads to [dramatic performance increase](https://gitlab.cern.ch/mkonig/fastpasta/-/jobs/36002848) for data with a large amount of errors.
 
 ### Fixed
 [MR133](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/133) Upgrade stderrlog to address [vulnerability RUSTSEC-2021-0145](https://rustsec.org/advisories/RUSTSEC-2021-0145)
