@@ -2,17 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 # [Unreleased]
 
 ### Added
-- Shell completion for bash, zsh, fish, powershell, elvish. Generate the completion scripts with `fastpasta --generate-completions <SHELL>`.
-- Style for `view rdh`. The output is styled with bold and/or background colors to make it easier to parse.
-- Flag `--disable-styled-views`/`-d` disables text/color styling for views
+[MR131](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/131) Shell completion for bash, zsh, fish, powershell, elvish. Generate the completion scripts with `fastpasta --generate-completions <SHELL>`.
+
+[MR132](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/132) Style for `view rdh`. The output is styled with bold and/or background colors to make it easier to parse.
+
+[MR132](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/132) Flag `--disable-styled-views`/`-d` disables text/color styling for views
+
+### Changed
+[MR134](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/134) When the `--mute-errors` flag is set, validators now provide much less context to error messages which leads to dramatic performance increase for data with a large amount of errors.
+
+### Fixed
+[MR133](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/133) Upgrade stderrlog to address [vulnerability RUSTSEC-2021-0145](https://rustsec.org/advisories/RUSTSEC-2021-0145)
+
 
 ### Misc
-maintenance.
+[MR130](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/130/diffs) maintenance.
 
 
 # v1.18.0 (2023-12-28) - Colored styling of help text

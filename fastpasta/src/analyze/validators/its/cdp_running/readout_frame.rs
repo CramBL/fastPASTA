@@ -6,9 +6,10 @@ use crate::{
         alpide::{self, alpide_readout_frame::AlpideReadoutFrame},
         status_word::util::StatusWordContainer,
     },
-    config::custom_checks::CustomChecksOpt,
+    config::{custom_checks::CustomChecksOpt, Cfg},
     stats::StatType,
     words::its::{data_words::lane_id_to_lane_number, Layer, Stave},
+    UtilOpt,
 };
 
 /// Manages the state of the analyzed readout frames.
@@ -151,8 +152,12 @@ impl<C: CustomChecksOpt> ItsReadoutFrameValidator<C> {
             let mut error_string = format!(
                 "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has errors in lane {lane_error_numbers:?}:", feeid=current_rdh.fee_id()
             );
-            for lane_error_msg in lane_error_msgs {
-                error_string.push_str(&lane_error_msg);
+            // Don't add the error messages to the error string if the config is set to mute errors
+            // (these error messages are context so it doesn't change the amount of errors reported)
+            if !Cfg::global().mute_errors() {
+                lane_error_msgs.into_iter().for_each(|lane_error_msg| {
+                    error_string.push_str(&lane_error_msg);
+                });
             }
             err_chan
                 .send(StatType::Error(error_string.into()))
