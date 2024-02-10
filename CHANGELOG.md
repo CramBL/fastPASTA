@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [MR131](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/131) Shell completion for bash, zsh, fish, powershell, elvish. Generate the completion scripts with `fastpasta --generate-completions <SHELL>`.
 
 [MR132](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/132) Style for `view rdh`. The output is styled with bold and/or background colors to make it easier to parse.
+[MR135](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/135#d2e48963ba2eafcab39943aefa19fd915cff03c9) Style for `view its-readout-frames` and `view its-readout-frames-data`.
 
 [MR132](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/132) Flag `--disable-styled-views`/`-d` disables text/color styling for views
 

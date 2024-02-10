@@ -104,16 +104,16 @@ declare -a -r test_1_5=(
 declare -a -r test_1_multi_1=(
     "readout.superpage.1.raw view its-readout-frames"
     # Check the right amount of IHWs is shown
-    ": IHW "
+    "IHW "
     3
     # Check the right amount of TDH is shown
-    ": TDH "
+    "TDH "
     3
     # Check the right amount of TDT is shown
-    ": TDT "
+    "TDT "
     3
     # Check the right amount of DDW is shown
-    ": DDW "
+    "DDW "
     3
 )
 
@@ -162,19 +162,19 @@ declare -a -r test_2_1=(
 declare -a -r test_2_multi_1=(
     "10_rdh.raw view its-readout-frames"
     # Check the right number of RDHs is shown
-    ": RDH"
+    "RDH"
     10
     # Check the right number of IHWs is shown
-    ": IHW"
+    "IHW"
     5
     # Check the right number of TDHs is shown
-    ": TDH"
+    "TDH"
     5
     # Check the right number of TDTs is shown
-    ": TDT"
+    "TDT"
     5
     # Check the right number of DDWs is shown
-    ": DDW"
+    "DDW"
     5
 )
 
@@ -208,19 +208,19 @@ declare -a -r test_3_3=(
 declare -a -r test_3_multi_0=(
     "err_not_hbf.raw view its-readout-frames"
     # Check the right number of RDHs is shown
-    ": RDH "
+    "RDH "
     2
     # Check the right number of IHWs is shown
-    ": IHW "
+    "IHW "
     2
     # Check the right number of TDHs is shown
-    ": TDH "
+    "TDH "
     2
     # Check the right number of TDTs is shown
-    ": TDT "
+    "TDT "
     2
     # Check the right number of DDWs is shown
-    ": DDW "
+    "DDW "
     0 # There are no DDWs in this file as it is an erroneous file
 )
 
