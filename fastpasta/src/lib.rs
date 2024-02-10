@@ -82,6 +82,13 @@ use analyze::validators::rdh::Rdh0Validator;
 use config::prelude::*;
 use stats::StatType;
 
+/// Write an error message to stderr.
+/// All error messages should be written through this function to ensure consistency.
+#[inline]
+pub fn display_error(err_msg: &str) {
+    log::error!("{}", owo_colors::OwoColorize::red(&err_msg));
+}
+
 pub mod analyze;
 pub mod config;
 pub mod controller;
