@@ -11,17 +11,18 @@ fn mem_pos_calc_to_string(idx: usize, data_format: u8, rdh_mem_pos: u64) -> Stri
     format!("{current_mem_pos:>8X}:")
 }
 
-const RDH_RED: u8 = 50;
-const MEM_POS_RED: u8 = 80;
-const TRIG_TYPE_BLUE: u8 = 30;
-const WORD_TYPE_GREEN: u8 = 20;
-const PACKET_STATUS_YELLOW_R: u8 = 40;
-const PACKET_STATUS_YELLOW_G: u8 = 40;
-const EXPECT_DATA_BLUE: u8 = 30;
-const LINK_ID_GREEN: u8 = 30;
-const LANE_FAULTS_RED: u8 = 40;
-const TRIGGER_ORBIT_BC_YELLOW_R: u8 = 50;
-const TRIGGER_ORBIT_BC_YELLOW_G: u8 = 50;
+pub const RDH_RED: u8 = 50;
+pub const MEM_POS_RED: u8 = 80;
+pub const TRIG_TYPE_BLUE: u8 = 30;
+pub const WORD_TYPE_GREEN: u8 = 20;
+pub const PACKET_STATUS_YELLOW_R: u8 = 40;
+pub const PACKET_STATUS_YELLOW_G: u8 = 40;
+pub const EXPECT_DATA_BLUE: u8 = 30;
+pub const LINK_ID_GREEN: u8 = 30;
+pub const LANE_FAULTS_RED: u8 = 40;
+pub const TRIGGER_ORBIT_BC_YELLOW_R: u8 = 50;
+pub const TRIGGER_ORBIT_BC_YELLOW_G: u8 = 50;
+
 fn print_start_of_its_readout_frame_header_text(
     stdio_lock: &mut std::io::StdoutLock,
     disable_styled_view: bool,
@@ -77,19 +78,34 @@ fn print_rdh_its_readout_frame_view<T: RDH>(
     rdh: &T,
     rdh_mem_pos: u64,
     stdio_lock: &mut std::io::StdoutLock,
+    disable_styled_view: bool,
 ) -> Result<(), std::io::Error> {
     let orbit = rdh.rdh1().orbit; // Packed field
 
-    writeln!(stdio_lock,
-        "{rdh_mem_pos:>8X}: RDH v{version} stop={stop} stave: {stave:<15}{trig_str:<35} #{link:>2} {lane_status:>14}{orbit_bc_str:>19}",
-        version = rdh.version(),
-        stop = rdh.stop_bit(),
-        stave = Stave::from_feeid(rdh.fee_id()).to_string(),
-        trig_str = super::lib::rdh_trigger_type_as_string(rdh),
-        link = rdh.link_id().to_string(),
-        lane_status = super::lib::rdh_detector_field_lane_status_as_string(rdh),
-        orbit_bc_str = format!("{orbit}_{bc:>4}", bc = rdh.rdh1().bc()),
-    )?;
+    let rdh_info_row = format!(
+        "{mem_pos} {rdh_v} {stop} {stave}{trig} {link} {lane_status}{orbit_bc}",
+        mem_pos = format_args!("{:>8X}:", rdh_mem_pos),
+        rdh_v = format_args!("RDH v{version}", version = rdh.version()),
+        stop = format_args!("stop={}", rdh.stop_bit()),
+        stave = format_args!("stave: {:<15}", Stave::from_feeid(rdh.fee_id()).to_string()),
+        trig = format_args!("{:<35}", super::lib::rdh_trigger_type_as_string(rdh)),
+        link = format_args!("#{:>2}", rdh.link_id().to_string()),
+        lane_status = format_args!(
+            "{:>14}",
+            super::lib::rdh_detector_field_lane_status_as_string(rdh)
+        ),
+        orbit_bc = format_args!("{orbit:>14}_{bc:>4}", bc = rdh.rdh1().bc()),
+    );
+
+    if disable_styled_view {
+        writeln!(stdio_lock, "{}", rdh_info_row)?;
+    } else {
+        writeln!(
+            stdio_lock,
+            "{}",
+            rdh_info_row.white().bold().bg_rgb::<RDH_RED, 0, 0>()
+        )?;
+    }
 
     Ok(())
 }

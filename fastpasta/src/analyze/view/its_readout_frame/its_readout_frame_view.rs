@@ -13,7 +13,12 @@ pub(crate) fn its_readout_frame_view<T: RDH, const CAP: usize>(
     let mut stdio_lock = std::io::stdout().lock();
     super::print_start_of_its_readout_frame_header_text(&mut stdio_lock, disable_styled_view)?;
     for (rdh, payload, rdh_mem_pos) in cdp_array.iter() {
-        super::print_rdh_its_readout_frame_view(rdh, rdh_mem_pos, &mut stdio_lock)?;
+        super::print_rdh_its_readout_frame_view(
+            rdh,
+            rdh_mem_pos,
+            &mut stdio_lock,
+            disable_styled_view,
+        )?;
         let gbt_word_chunks = preprocess_payload(payload)?;
         for (idx, gbt_word) in gbt_word_chunks.enumerate() {
             let word = &gbt_word[..10];
