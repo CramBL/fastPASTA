@@ -12,6 +12,11 @@ use rdh2::Rdh2;
 use rdh3::Rdh3;
 pub use rdh_cru::RdhCru;
 
+/// Value for the green in the RGB color of the background of the header text.
+pub const GREEN: u8 = 99;
+/// Value for the blue in the RGB color of the background of the header text.
+pub const BLUE: u8 = 99;
+
 /// The size of a RDH-CRU word in bytes
 pub const RDH_CRU_SIZE_BYTES: u8 = 64;
 

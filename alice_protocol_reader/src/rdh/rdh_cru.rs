@@ -1,4 +1,6 @@
 //! Contains the definition of the [RDH CRU][RdhCru].
+use crate::prelude::{BLUE, GREEN};
+
 use super::rdh0::Rdh0;
 use super::rdh1::Rdh1;
 use super::rdh2::Rdh2;
@@ -130,9 +132,9 @@ impl RdhCru {
                     let is_even = idx % 2 == 0;
                     let format_string = |txt: &str, is_even: bool| -> String {
                         if is_even {
-                            format!("{}", txt.white().bold().bg_rgb::<0, 99, 0>())
+                            format!("{}", txt.white().bold().bg_rgb::<0, GREEN, 0>())
                         } else {
-                            format!("{}", txt.white().bold().bg_rgb::<0, 0, 99>())
+                            format!("{}", txt.white().bold().bg_rgb::<0, 0, BLUE>())
                         }
                     };
                     top_text.push_str(&format_string(top, is_even));
@@ -237,13 +239,13 @@ impl RDH for RdhCru {
         format!(
             "{rdh0}{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}{rdh1}{data_format:<11}{rdh2}{det_field:#x}",
             rdh0 = self.rdh0.to_styled_row_view(),
-            tmp_offset = tmp_offset.white().bg_rgb::<0, 99, 0>(),
-            tmp_link = tmp_link.white().bg_rgb::<0, 0, 99>(),
-            tmp_packet_cnt = tmp_packet_cnt.white().bg_rgb::<0, 99, 0>(),
+            tmp_offset = tmp_offset.white().bg_rgb::<0, GREEN, 0>(),
+            tmp_link = tmp_link.white().bg_rgb::<0, 0, BLUE>(),
+            tmp_packet_cnt = tmp_packet_cnt.white().bg_rgb::<0, GREEN, 0>(),
             rdh1 = self.rdh1.to_styled_row_view(),
-            data_format = self.data_format().white().bg_rgb::<0, 0, 99>(),
+            data_format = self.data_format().white().bg_rgb::<0, 0, BLUE>(),
             rdh2 = self.rdh2.to_styled_row_view(),
-            det_field = detector_field.white().bg_rgb::<0, 0, 99>()
+            det_field = detector_field.white().bg_rgb::<0, 0, BLUE>()
         )
     }
 }

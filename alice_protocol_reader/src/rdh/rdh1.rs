@@ -1,4 +1,6 @@
 //! Struct definition of the `RDH` subword `RDH1`
+use crate::prelude::{BLUE, GREEN};
+
 use super::RdhSubword;
 use byteorder::{ByteOrder, LittleEndian};
 use owo_colors::OwoColorize;
@@ -72,8 +74,8 @@ impl RdhSubword for Rdh1 {
         let tmp_orbit = self.orbit;
         format!(
             "{:<5}{:<12}",
-            self.bc().white().bg_rgb::<0, 0, 99>(),
-            format!("{:#x}", tmp_orbit).white().bg_rgb::<0, 99, 0>()
+            self.bc().white().bg_rgb::<0, 0, BLUE>(),
+            format!("{:#x}", tmp_orbit).white().bg_rgb::<0, GREEN, 0>()
         )
     }
 }

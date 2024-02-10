@@ -1,4 +1,6 @@
 //! Struct definition of the `RDH` subword `RDH0`
+use crate::prelude::{BLUE, GREEN};
+
 use super::RdhSubword;
 use byteorder::{ByteOrder, LittleEndian};
 use owo_colors::OwoColorize;
@@ -95,10 +97,10 @@ impl RdhSubword for Rdh0 {
         let feeid = self.fee_id.0;
         format!(
             "{:<6}{:<7}{:<7}{:<6}",
-            self.header_id.white().bg_rgb::<0, 99, 0>(),
-            self.header_size.white().bg_rgb::<0, 0, 99>(),
-            feeid.white().bg_rgb::<0, 99, 0>(),
-            self.system_id.white().bg_rgb::<0, 0, 99>()
+            self.header_id.white().bg_rgb::<0, GREEN, 0>(),
+            self.header_size.white().bg_rgb::<0, 0, BLUE>(),
+            feeid.white().bg_rgb::<0, GREEN, 0>(),
+            self.system_id.white().bg_rgb::<0, 0, BLUE>()
         )
     }
 }
