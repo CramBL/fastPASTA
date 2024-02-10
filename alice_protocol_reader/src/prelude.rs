@@ -28,3 +28,6 @@ pub use super::rdh::RDH_CRU_SIZE_BYTES;
 // Filter configuration/options
 pub use super::config::filter::FilterOpt;
 pub use super::config::filter::FilterTarget;
+// RGB values for the header text background.
+pub use super::rdh::BLUE;
+pub use super::rdh::GREEN;

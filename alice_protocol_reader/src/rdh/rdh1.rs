@@ -1,6 +1,9 @@
 //! Struct definition of the `RDH` subword `RDH1`
+use crate::prelude::{BLUE, GREEN};
+
 use super::RdhSubword;
 use byteorder::{ByteOrder, LittleEndian};
+use owo_colors::OwoColorize;
 use std::fmt::{self, Debug};
 
 /// Represents the `BC` and `reserved` fields. Using a newtype because the fields are packed in 32 bits, and extracting the values requires some work.
@@ -65,6 +68,15 @@ impl RdhSubword for Rdh1 {
             bc_reserved0: BcReserved(LittleEndian::read_u32(&buf[0..=3])),
             orbit: LittleEndian::read_u32(&buf[4..=7]),
         })
+    }
+
+    fn to_styled_row_view(&self) -> String {
+        let tmp_orbit = self.orbit;
+        format!(
+            "{:<5}{:<12}",
+            self.bc().white().bg_rgb::<0, 0, BLUE>(),
+            format!("{:#x}", tmp_orbit).white().bg_rgb::<0, GREEN, 0>()
+        )
     }
 }
 

@@ -12,6 +12,11 @@ use rdh2::Rdh2;
 use rdh3::Rdh3;
 pub use rdh_cru::RdhCru;
 
+/// Value for the green in the RGB color of the background of the header text.
+pub const GREEN: u8 = 99;
+/// Value for the blue in the RGB color of the background of the header text.
+pub const BLUE: u8 = 99;
+
 /// The size of a RDH-CRU word in bytes
 pub const RDH_CRU_SIZE_BYTES: u8 = 64;
 
@@ -29,6 +34,9 @@ pub trait RdhSubword: Sized + PartialEq + std::fmt::Debug + std::fmt::Display {
     }
     /// Deserializes the GBT word from a byte slice
     fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error>;
+
+    /// Returns a styled row view of the [RDH] `subword`.
+    fn to_styled_row_view(&self) -> String;
 }
 
 /// Trait that all [RDH] words must implement
@@ -43,6 +51,8 @@ pub trait RDH: PartialEq + Sized + std::fmt::Display + std::fmt::Debug + Sync + 
 where
     Self: SerdeRdh + RDH_CRU,
 {
+    /// Returns a styled row view of the [RDH] word.
+    fn to_styled_row_view(&self) -> String;
 }
 
 #[allow(non_camel_case_types)]

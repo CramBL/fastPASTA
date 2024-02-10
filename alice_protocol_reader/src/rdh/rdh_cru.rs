@@ -1,12 +1,36 @@
 //! Contains the definition of the [RDH CRU][RdhCru].
+use crate::prelude::{BLUE, GREEN};
+
 use super::rdh0::Rdh0;
 use super::rdh1::Rdh1;
 use super::rdh2::Rdh2;
 use super::rdh3::Rdh3;
 use super::{ByteSlice, RdhSubword, SerdeRdh, RDH, RDH_CRU};
 use byteorder::{ByteOrder, LittleEndian};
+use owo_colors::OwoColorize;
 use std::fmt::Debug;
 use std::fmt::{self, Display};
+
+// Contains the header text for printing a column view of the [RDH CRU][RdhCru].
+// each tuple contains the top and bottom text for a column.
+const HEADER_TEXT_TOP_BOT: [(&str, &str); 14] = [
+    ("RDH   ", "ver   "),
+    ("Header ", "size   "),
+    ("FEE    ", "ID     "),
+    ("Sys   ", "ID    "),
+    ("Offset  ", "next    "),
+    ("Link  ", "ID    "),
+    ("Packet    ", "counter   "),
+    ("BC   ", "     "),
+    ("Orbit       ", "counter     "),
+    ("Data       ", "format     "),
+    ("Trigger   ", "type      "),
+    ("Pages    ", "counter  "),
+    ("Stop  ", "bit   "),
+    ("Detector", "field   "),
+];
+// The width of the header text column (characters)
+const HEADER_TEXT_COLUMN_WIDTH: usize = 111;
 
 /// Represents the `Data format` and `reserved` fields. Using a newtype because the fields are packed in 64 bits, and extracting the values requires some work.
 #[repr(packed)]
@@ -94,6 +118,43 @@ impl RdhCru {
     ///
     /// Can be used to print a header for a table of [RDH CRU][RdhCru]s.
     /// Takes an [usize] as an argument, which is the number of spaces to indent the 2 lines by.
+    /// the columns are styled with alternating background colors.
+    #[inline]
+    pub fn rdh_header_styled_text_with_indent_to_string(indent: usize) -> String {
+        let (top_text, bot_text) = {
+            let mut top_text = String::with_capacity(HEADER_TEXT_COLUMN_WIDTH);
+            let mut bot_text = String::with_capacity(HEADER_TEXT_COLUMN_WIDTH);
+            HEADER_TEXT_TOP_BOT
+                .iter()
+                .enumerate()
+                .for_each(|(idx, (top, bot))| {
+                    // Alternate between green and blue background colors
+                    let is_even = idx % 2 == 0;
+                    let format_string = |txt: &str, is_even: bool| -> String {
+                        if is_even {
+                            format!("{}", txt.white().bold().bg_rgb::<0, GREEN, 0>())
+                        } else {
+                            format!("{}", txt.white().bold().bg_rgb::<0, 0, BLUE>())
+                        }
+                    };
+                    top_text.push_str(&format_string(top, is_even));
+                    bot_text.push_str(&format_string(bot, is_even));
+                });
+            (top_text, bot_text)
+        };
+        format!(
+            "{:indent$}{top_text}\n{:indent2$}{bot_text}\n",
+            "",
+            "",
+            indent = indent,
+            indent2 = indent,
+        )
+    }
+
+    /// Formats a [String] containing 2 lines that serve as a header, describing columns of key values for an [RDH CRU][RdhCru].
+    ///
+    /// Can be used to print a header for a table of [RDH CRU][RdhCru]s.
+    /// Takes an [usize] as an argument, which is the number of spaces to indent the 2 lines by.
     #[inline]
     pub fn rdh_header_text_with_indent_to_string(indent: usize) -> String {
         let header_text_top = "RDH   Header  FEE   Sys   Offset  Link  Packet    BC   Orbit       Data       Trigger   Pages    Stop  Detector";
@@ -106,6 +167,7 @@ impl RdhCru {
             indent2 = indent
         )
     }
+
     /// Returns the value of the CRU ID field.
     #[inline]
     pub fn cru_id(&self) -> u16 {
@@ -168,7 +230,25 @@ impl Debug for RdhCru {
     }
 }
 
-impl RDH for RdhCru {}
+impl RDH for RdhCru {
+    fn to_styled_row_view(&self) -> String {
+        let tmp_offset = self.offset_new_packet;
+        let tmp_link = self.link_id;
+        let tmp_packet_cnt = self.packet_counter;
+        let detector_field = self.rdh3.detector_field;
+        format!(
+            "{rdh0}{tmp_offset:<8}{tmp_link:<6}{tmp_packet_cnt:<10}{rdh1}{data_format:<11}{rdh2}{det_field:#x}",
+            rdh0 = self.rdh0.to_styled_row_view(),
+            tmp_offset = tmp_offset.white().bg_rgb::<0, GREEN, 0>(),
+            tmp_link = tmp_link.white().bg_rgb::<0, 0, BLUE>(),
+            tmp_packet_cnt = tmp_packet_cnt.white().bg_rgb::<0, GREEN, 0>(),
+            rdh1 = self.rdh1.to_styled_row_view(),
+            data_format = self.data_format().white().bg_rgb::<0, 0, BLUE>(),
+            rdh2 = self.rdh2.to_styled_row_view(),
+            det_field = detector_field.white().bg_rgb::<0, 0, BLUE>()
+        )
+    }
+}
 
 impl RDH_CRU for RdhCru {
     #[inline]

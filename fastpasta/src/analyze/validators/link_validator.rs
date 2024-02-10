@@ -15,6 +15,7 @@ pub(crate) use super::{its, rdh::RdhCruSanityValidator, rdh_running::RdhCruRunni
 use crate::config::check::{CheckCommands, ChecksOpt, System};
 use crate::config::custom_checks::CustomChecksOpt;
 use crate::stats::StatType;
+use crate::UtilOpt;
 use alice_protocol_reader::prelude::FilterOpt;
 use alice_protocol_reader::prelude::{RdhCru, RDH};
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
@@ -22,7 +23,7 @@ use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
 /// Main validator that handles all checks on a specific link.
 ///
 /// A [LinkValidator] is created for each link that is being checked.
-pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt + 'static> {
+pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt + UtilOpt + 'static> {
     config: &'static C,
     running_checks: bool,
     /// Producer channel to send stats through.
@@ -37,7 +38,7 @@ pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt + 's
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
-impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator<T, C> {
+impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt + UtilOpt> LinkValidator<T, C> {
     /// Creates a new [LinkValidator] and the [StatType] sender channel to it, from a config that implements [ChecksOpt] + [FilterOpt].
     ///
     /// The sender channel is unbounded
@@ -166,12 +167,16 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt> LinkValidator
     }
 
     fn report_rdh_error(&mut self, rdh: &T, mut error: String, rdh_mem_pos: u64) {
-        error.push('\n');
-        error.push_str(RdhCru::rdh_header_text_with_indent_to_string(13).as_str());
-        self.prev_rdhs.iter().for_each(|prev_rdh| {
-            error.push_str(&format!("  previous:  {prev_rdh}\n"));
-        });
-        error.push_str(&format!("  current :  {rdh} <--- Error detected here\n"));
+        // Add additional context unless errors are muted
+        if !self.config.mute_errors() {
+            error.push('\n');
+            error.push_str(RdhCru::rdh_header_text_with_indent_to_string(13).as_str());
+
+            self.prev_rdhs.iter().for_each(|prev_rdh| {
+                error.push_str(&format!("  previous:  {prev_rdh}\n"));
+            });
+            error.push_str(&format!("  current :  {rdh} <--- Error detected here\n"));
+        }
 
         self.stats_send
             .send(StatType::Error(format!("{rdh_mem_pos:#X}: {error}").into()))

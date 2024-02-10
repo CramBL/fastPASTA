@@ -1,6 +1,9 @@
 //! Struct definition of the `RDH` subword `RDH0`
+use crate::prelude::{BLUE, GREEN};
+
 use super::RdhSubword;
 use byteorder::{ByteOrder, LittleEndian};
+use owo_colors::OwoColorize;
 use std::fmt::{self, Debug, Display};
 
 /// Represents the composite `FEE ID` fields. Using a newtype because the sub-fields are packed in 16 bits, and extracting the values requires some work.
@@ -88,6 +91,17 @@ impl RdhSubword for Rdh0 {
             system_id: buf[5],
             reserved0: LittleEndian::read_u16(&buf[6..=7]),
         })
+    }
+
+    fn to_styled_row_view(&self) -> String {
+        let feeid = self.fee_id.0;
+        format!(
+            "{:<6}{:<7}{:<7}{:<6}",
+            self.header_id.white().bg_rgb::<0, GREEN, 0>(),
+            self.header_size.white().bg_rgb::<0, 0, BLUE>(),
+            feeid.white().bg_rgb::<0, GREEN, 0>(),
+            self.system_id.white().bg_rgb::<0, 0, BLUE>()
+        )
     }
 }
 
