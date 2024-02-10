@@ -26,7 +26,7 @@ Looking for more details? see the [Documentation for developers](#documentation-
 To verify or view curated content of the scanned raw binary data from the ALICE detector at CERN.
 
 ## Demo
-![demo-gif](https://gitlab.cern.ch/mkonig/fastpasta/uploads/353320c2e078be14e1d7b5369853bb70/fastpasta_progress.gif)
+![demo-gif](doc/fastpasta_demo.gif)
 
 # Table of Contents
 - [fastPASTA](#fastpasta)
