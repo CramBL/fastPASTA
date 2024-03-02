@@ -36,9 +36,8 @@ stages:
 pre-commit:
   image: python:3.12
   stage: code-quality
-  script:
-    - pip install pre-commit
-    - pre-commit run --all-files --show-diff-on-failure
+  before_script: pip install pre-commit
+  script: pre-commit run --all-files --show-diff-on-failure
 
 lint:
   stage: code-quality
