@@ -33,7 +33,7 @@ build *ARGS:
 test *ARGS:
     cargo test {{ ARGS }}
     ./tests/regression/regression_tests.sh
-    
+
 
 # Lint the code
 lint *ARGS="-- -D warnings --no-deps":

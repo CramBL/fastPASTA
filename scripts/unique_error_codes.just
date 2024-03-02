@@ -26,6 +26,3 @@ check-unique-error-codes:
 [private]
 @filter-for-duplicates TEXT:
     echo "{{ TEXT }}" | uniq --repeated --count
-
-
-
