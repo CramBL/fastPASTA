@@ -376,7 +376,6 @@ mod tests {
     use super::*;
     use std::sync::OnceLock;
 
-    use crate::config::test_util::MockConfig;
     static CONFIG_TEST_INIT_CONTROLLER: OnceLock<MockConfig> = OnceLock::new();
 
     #[test]

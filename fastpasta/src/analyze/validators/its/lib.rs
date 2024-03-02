@@ -79,7 +79,6 @@ impl ItsPayloadWord {
 mod tests {
     use super::*;
     use crate::config::check::CheckModeArgs;
-    use crate::config::test_util::MockConfig;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
     use alice_protocol_reader::prelude::*;
     use std::sync::OnceLock;

@@ -60,7 +60,6 @@ trait StatusWordValidator<T: StatusWord> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::words::its::status_words::StatusWord;
 
     const STATUS_WORD_SANITY_CHECKER: StatusWordSanityChecker = StatusWordSanityChecker::new();
 

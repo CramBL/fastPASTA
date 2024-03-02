@@ -190,12 +190,10 @@ impl<'a, T: RDH, const CAP: usize> Iterator for CdpArrayIter<'a, T, CAP> {
 
 #[cfg(test)]
 mod tests {
-    use super::CdpArray;
     use super::*;
     use crate::prelude::test_data::CORRECT_RDH_CRU_V6;
     use crate::prelude::test_data::CORRECT_RDH_CRU_V7;
     use crate::prelude::RdhCru;
-    use crate::prelude::RDH;
 
     #[test]
     fn test_push() {

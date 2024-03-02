@@ -283,7 +283,6 @@ fn forward_input_stats_to_stats_collector(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::MockConfig;
     use alice_protocol_reader::init_reader;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
     use pretty_assertions::{assert_eq, assert_ne};

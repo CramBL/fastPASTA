@@ -15,6 +15,10 @@
 # shellcheck disable=SC1091
 source ./tests/regression/utils.sh
 
+set -euo pipefail
+#set -x # Uncomment if debugging
+
+
 # Minimum runs hyperfine performs to benchmark a given command
 declare -i MIN_RUNS=20
 
@@ -29,7 +33,8 @@ declare -a PRE_TESTS_FILES_ARRAY=(
     "thrs_cdw_links.raw"
 )
 
-if [[ "$1" == "EXTENDED" ]]; then
+
+if [[ "${EXTENDED:-false}" != "false" ]]; then
     println_bright_yellow "Running benchmarks in EXTENDED mode\n"
     (( BENCHMARK_FILE_SIZE_MIB*=2 ))
     (( MIN_RUNS*=2 ))
@@ -48,19 +53,22 @@ readonly LOCAL_PRE="target/release/fastpasta"
 readonly RELEASED_PRE="fastpasta"
 
 ## Constant arrays
-declare -a -r test_cmds_array=(
-    "check sanity"
-    "check all"
-    "check all its"
-    "check all its-stave"
-)
+test_cmd_args="${cmds:-check sanity; check all; check all its; check all its-stave}"
 
-##### Readonly variables generated from constants above #####
+IFS=';' read -ra test_cmds_array <<< "${test_cmd_args}"
+
 declare -i -r cmd_count=${#test_cmds_array[@]}
 
-println_yellow "Building in release mode\n"
+println_cyan "Benchmarking with ${cmd_count} command(s):"
+for cmd in "${test_cmds_array[@]}"; do
+    println_bright_yellow "\t- $(trim "${cmd}")"
+done
 
-cargo build -r
+##### Readonly variables generated from constants above #####
+
+println_yellow "\nBuilding in release mode\n"
+
+cargo build --release
 
 println_blue "\nInstalling latest version of fastpasta from crates.io"
 
@@ -83,14 +91,14 @@ println_cyan "Checking version of released fastpasta installation"
 fastpasta --version
 
 println_magenta "\n===================================================================================================== "
-println_magenta "*********************************************************************************"
-println_magenta "***                                                                           ***"
+println_magenta "***********************************************************************************"
+println_magenta "***                                                                             ***"
 println_magenta "*** Benchmarking the local compiled binary vs. the latest released installation ***"
-println_magenta "***                                                                           ***"
-println_magenta "*********************************************************************************\n"
+println_magenta "***                                                                             ***"
+println_magenta "***********************************************************************************\n"
 
 ## Make a temporary subdirectory for the test data (`binmult` will make+copy the larger files to this directory)
-mkdir ${tmp_file_path}
+mkdir -p ${tmp_file_path}
 
 println_blue "Growing all test files to approximately ${BENCHMARK_FILE_SIZE_MIB} MiB with binmult\n\n"
 
@@ -157,15 +165,14 @@ for file in "${tests_files_array[@]}"; do
         println_magenta "\n ==> Benchmarking file ${file} with command: ${command}\n"
 
         bench_two_cmds_return_timings "${LOCAL_PRE} ${file} ${command}" "${RELEASED_PRE} ${file} ${command}"
-        declare -i local_mean=${mean_timings[0]};
-        declare -i released_mean=${mean_timings[1]};
+        declare -i local_mean=${mean_timings[0]}
+        declare -i released_mean=${mean_timings[1]}
         declare -i local_minus_released=$(( local_mean - released_mean))
         bench_results_local_mean_diff_absolute+=("${local_minus_released}")
         bench_results_released_total_ms=$(( bench_results_released_total_ms + released_mean ))
         # Store the absolute timing values for each command run by the released version
         (( test_cmds_released_abs[test_cmd_idx]+=released_mean ))
         (( test_cmd_idx+=1 ))
-
 
         evaluate_benchmark_test_result "$local_mean" "$released_mean"
 
@@ -192,10 +199,10 @@ for i in "${bench_results_local_mean_diff_absolute[@]}"; do
     (( test_cmds_diff[test_cmds_counter]+=i ))
     (( test_cmds_counter+=1 ))
     if [[ ${test_cmds_counter} == ${cmd_count} ]]; then
-        (( test_cmds_counter=0 ))
+        test_cmds_counter=0
     fi
-done
 
+done
 
 println_blue "The released version of fastpasta took a total of ${bench_results_released_total_ms} ms [sum of means] across ${total_test_count} benchmarks\n"
 
@@ -215,15 +222,15 @@ println_magenta "\tMean : ${avg_diff} ms\n"
 declare -i idx=0
 for timing_diff in "${test_cmds_diff[@]}"; do
 
-    cmd_avg_diff=$( calc_average ${timing_diff} $total_test_count )
-    cmd_frac_diff=$( calc_relative_fraction ${timing_diff} ${test_cmds_released_abs[idx]})
-    cmd_percent_diff=$( fraction_to_percent "$cmd_frac_diff" )
+    #cmd_avg_diff=$( calc_average "${timing_diff}" $total_test_count )
+    cmd_frac_diff=$( calc_relative_fraction "${timing_diff}" "${test_cmds_released_abs[idx]}")
+    cmd_percent_diff=$( fraction_to_percent "${cmd_frac_diff}" )
     padded_timing_diff_str=$(left_pad_str "${timing_diff}" 10 ' ')
     padded_cmd_str=$(right_pad_str "${test_cmds_array[idx]}" 19 ' ')
     # Old fashioned '\t' because of the traling '$'
     println_bright_yellow "        ${padded_cmd_str}${padded_timing_diff_str} ms (${cmd_percent_diff: 0:5} %)"
     (( idx+=1 ))
-    if [[ ${idx} == ${cmd_count} ]]; then
+    if [[ ${idx} == "${cmd_count}" ]]; then
         idx=0
     fi
 done
