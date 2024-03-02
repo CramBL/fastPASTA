@@ -1,5 +1,7 @@
 import 'scripts/unique_error_codes.just'
 import 'scripts/check_version_tag.just'
+import 'scripts/test_coverage.just'
+import 'scripts/util.just'
 
 # Absolute path to the directory containing the utility recipes to invoke them from anywhere
 ## USAGE: `{{PRINT}} green "Hello world"`
@@ -34,6 +36,8 @@ test *ARGS:
     cargo test {{ ARGS }}
     ./tests/regression/regression_tests.sh
 
+test-coverage: run-test-coverage
+coverage-report: open-coverage-report
 
 # Lint the code
 lint *ARGS="-- -D warnings --no-deps":
@@ -71,10 +75,9 @@ update:
 # Audit Cargo.lock files for crates containing security vulnerabilities
 audit *ARGS:
     #!/usr/bin/env bash
-    if ! which cargo-audit; then
-        if {{ PROMPT }} "cargo-audit not found, would you like to install it with: cargo install cargo-audit?"; then
-            cargo install cargo-audit
-        fi
+    if ! which cargo-audit >/dev/null; then
+        {{PRINT}} yellow "cargo-audit not found"
+        just prompt-install "cargo install cargo-audit"
     fi
     cargo audit {{ ARGS }}
 
@@ -94,6 +97,9 @@ ci_lint: \
     (doc "--verbose") \
     check-unique-error-codes
 
+# Run tests
 [private]
 ci_test: \
     (test "--verbose")
+
+

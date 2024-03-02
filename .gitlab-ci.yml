@@ -91,46 +91,8 @@ rust-nightly-test:
 test-coverage:
   stage: test
   image: rustlang/rust:nightly
-  variables:
-    RUST_BACKTRACE: "FULL"
-    CARGO_INCREMENTAL: "0"
-    RUSTFLAGS: "-Cinstrument-coverage -Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort"
-    RUSTDOCFLAGS: "-Cpanic=abort"
-    LLVM_PROFILE_FILE: "target/coverage/%p-%m.profraw"
-  script:
-    - echo "${LLVM_PROFILE_FILE}"
-    - echo "${RUSTFLAGS}"
-    - echo "${CARGO_INCREMENTAL}"
-    - echo "${RUSTDOCFLAGS}"
-    - rustup component add llvm-tools-preview
-    - cargo install grcov
-    - apt-get update && apt-get install -y libxml2-utils
-    - cargo clean
-    - mkdir -p target/coverage
-    - ls -l -h target/coverage
-    - cargo +nightly build
-    # Rust-based tests
-    - cargo +nightly test
-    - ls -l -h target/coverage
-    # Aggregate coverage files to an HTML and a cobertura report
-    - >
-      grcov .
-      -s .
-      --binary-path ./target/debug/
-      --output-types html,cobertura
-      --branch
-      --ignore-not-existing
-      --ignore "$HOME/.cargo/**"
-      -o target/coverage/
-      --keep-only 'fastpasta/src/*'
-      --keep-only 'alice_protocol_reader/src/*'
-      --excl-start '\#\[cfg\(test\)\]'
-    - echo "Coverage files generated"
-    - ls -l -h target/coverage
-    # Extract just the top-level coverage number from the XML report.
-    - |
-      xmllint --xpath "concat('Coverage: ', 100 * string(//coverage/@line-rate), '%')" target/coverage/cobertura.xml
-
+  extends: .install-just
+  script: just test-coverage
   coverage: '/Coverage: \d+(?:\.\d+)?/'
   dependencies: []
   cache: []
