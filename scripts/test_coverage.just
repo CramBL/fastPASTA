@@ -4,7 +4,7 @@ COV_ENV_RUSTFLAGS := "-Cinstrument-coverage -Zprofile -Ccodegen-units=1 -Copt-le
 COV_ENV_RUSTDOCFLAGS := "-Cpanic=abort"
 COV_ENV_LLVM_PROFILE_FILE := "target/coverage/%p-%m.profraw"
 
-run-test-coverage ARG="" COV_DATA_DIR="target/coverage": coverage-dependencies 
+run-test-coverage ARG="" COV_DATA_DIR="target/coverage": coverage-dependencies
     #!/usr/bin/env bash
     export RUSTUP_TOOLCHAIN="nightly"
     export RUST_BACKTRACE="{{ COV_ENV_RUST_BACKTRACE }}"
@@ -42,7 +42,7 @@ open-coverage-report PATH="target/coverage/html/index.html":
         {{PRINT}} cyan "Run the test coverage recipe and try again"
         exit 1
     fi
-    if which firefox > /dev/null; then 
+    if which firefox > /dev/null; then
         firefox "{{ PATH }}"
     fi
     if which google-chrome > /dev/null; then
@@ -58,7 +58,7 @@ coverage-dependencies:
         just prompt-install "rustup toolchain install nightly"
     fi
     if [[ $(rustup +nightly component list | grep "llvm-tools.*installed" --count) -eq 0 ]]; then
-        {{PRINT}} yellow "Coverage requires llvm-tools-preview" 
+        {{PRINT}} yellow "Coverage requires llvm-tools-preview"
         just prompt-install "rustup +nightly component add llvm-tools-preview"
     fi
     if ! which grcov >/dev/null; then
