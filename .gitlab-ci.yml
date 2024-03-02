@@ -92,7 +92,11 @@ test-coverage:
   stage: test
   image: rustlang/rust:nightly
   extends: .install-just
-  script: just test-coverage
+  script:
+    - rustup +nightly component add llvm-tools-preview
+    - cargo install grcov
+    - apt-get update && apt-get install -y libxml2-utils
+    - just test-coverage
   coverage: '/Coverage: \d+(?:\.\d+)?/'
   dependencies: []
   cache: []
