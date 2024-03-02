@@ -127,9 +127,9 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
         // Check if the ID to dispatch by is already in the list of processors
         if let Some(index) = self.processors.iter().position(|&proc_id| proc_id == id) {
             // If the ID was found, use its index to send the data through the correct link validator's channel
-            unsafe {
-                self.process_channels
-                    .get_unchecked(index)
+
+            self.process_channels
+                    .get(index).unwrap()
                     .send((rdh, data, mem_pos))
                     .unwrap_or_else(|_|
                         self.stats_sender.send(
@@ -137,7 +137,6 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
                             format!("Validator #{id} has prematurely disconnected from the receiver channel and is no longer processing data from {id_desc}", id  = id.number(), id_desc = id)
                             .into_boxed_str()))
                             .unwrap());
-            }
         } else {
             // If the ID wasn't found, make a new validator to handle that ID
             let mut validator = self.init_validator(id);
@@ -154,10 +153,10 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
                     .expect("Failed to spawn link validator thread"),
             );
             // Send the data through the newly created link validator's channel, by taking the last element of the vector
-            unsafe {
-                self.process_channels
+
+            self.process_channels
                     .last()
-                    .unwrap_unchecked()
+                    .unwrap()
                     .send((rdh, data, mem_pos))
                     .unwrap_or_else(|_|
                         self.stats_sender.send(
@@ -165,7 +164,6 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
                             format!("Validator #{id} has prematurely disconnected from the receiver channel and is no longer processing data from {id_desc}", id  = id.number(), id_desc = id)
                             .into_boxed_str()))
                             .unwrap());
-            }
         }
     }
 
