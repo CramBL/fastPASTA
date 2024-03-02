@@ -92,7 +92,7 @@ test-coverage:
   extends: .install-just
   script:
     - rustup component add llvm-tools-preview
-    - rustup component add rust-src --toolchain nightly-x86_64-unknown-linu
+    - rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
   allow_failure: true
   dependencies: []
   cache: []
