@@ -50,7 +50,7 @@ audit:
   stage: code-quality
   script:
     - cargo install cargo-audit
-    - just audit
+    - cargo audit
 
 ### build ###
 
@@ -58,12 +58,10 @@ audit:
 rust-nightly-build:
   stage: build
   image: rustlang/rust:nightly
-  script:
-    - cargo build --verbose
+  script: just build --verbose
   allow_failure: true
   artifacts:
-    paths:
-      - $CI_PROJECT_DIR/target/
+    paths: [$CI_PROJECT_DIR/target/]
     untracked: true
     when: on_success
     expire_in: 50 mins
@@ -82,7 +80,7 @@ rust-nightly-test:
   stage: test
   image: rustlang/rust:nightly
   script:
-    - cargo test --verbose
+    - just test --verbose
   allow_failure: true
   dependencies:
     - rust-nightly-build
