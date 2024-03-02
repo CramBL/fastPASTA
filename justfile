@@ -1,6 +1,7 @@
 import 'scripts/unique_error_codes.just'
 import 'scripts/check_version_tag.just'
 import 'scripts/test_coverage.just'
+import 'scripts/sanitizers.just'
 import 'scripts/util.just'
 
 # Absolute path to the directory containing the utility recipes to invoke them from anywhere

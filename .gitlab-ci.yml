@@ -164,20 +164,11 @@ extended-regress-bench:
 leak-sanitizer:
   stage: test
   image: rustlang/rust:nightly
-  variables:
-    LSAN_OPTIONS: "suppressions=lsan-suppressions.txt"
-    RUSTFLAGS: "-Z sanitizer=leak"
-    RUST_BACKTRACE: "FULL"
+  extends: .install-just
   script:
     - rustup component add llvm-tools-preview
-    # to fix buggy leak analyzer:
-    # https://github.com/japaric/rust-san#unrealiable-leaksanitizer
-    - sed -i '/\[features\]/i [profile.dev]' Cargo.toml
-    - sed -i '/profile.dev/a opt-level = 1' Cargo.toml
-    - cat Cargo.toml
     - rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-    - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
-    - cargo test --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu
+    - just test-lsan
   allow_failure: true
   dependencies: []
   cache: []
@@ -185,16 +176,11 @@ leak-sanitizer:
 address-sanitizer:
   stage: test
   image: rustlang/rust:nightly
-  variables:
-    ASAN_OPTIONS: "detect_odr_violation=0:detect_leaks=0"
-    RUSTFLAGS: "-Z sanitizer=address"
-    RUST_BACKTRACE: "FULL"
+  extends: .install-just
   script:
     - rustup component add llvm-tools-preview
     - rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-    - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
-    # only --lib --tests b/c of https://github.com/rust-lang/rust/issues/53945
-    - cargo test --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu
+    - just test-asan
   allow_failure: true
   dependencies: []
   cache: []
