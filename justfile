@@ -37,7 +37,9 @@ test *ARGS:
     cargo test {{ ARGS }}
     ./tests/regression/regression_tests.sh
 
+# Run tests and collect coverage
 test-coverage: run-test-coverage
+# Open the test report that comes out of the test-coverage recipe
 coverage-report: open-coverage-report
 
 # Lint the code

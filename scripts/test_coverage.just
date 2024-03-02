@@ -2,7 +2,6 @@
 
 [private]
 run-test-coverage   \
-        ARG="" \
         COV_DATA_DIR="target/coverage" \
         $RUSTUP_TOOLCHAIN="nightly" \
         $RUST_BACKTRACE="FULL" \
@@ -17,6 +16,7 @@ run-test-coverage   \
     rm -f "{{COV_DATA_DIR}}/"*.profraw
     cargo build
     cargo test
+    ./tests/regression/regression_tests.sh "cargo +nightly run"
     grcov . \
             -s . \
             --binary-path ./target/debug/ \
