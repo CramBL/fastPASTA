@@ -51,7 +51,7 @@ function println_bright_yellow {
 # Arg3: Character to pad with
 function right_pad_str {
     local arg_str="${1}"; local -i pad_cnt="${2}"; local pad_char="${3}";
-    if (( ${pad_cnt} < ${#arg_str} )); then
+    if (( pad_cnt < ${#arg_str} )); then
         # No padding in this case
         echo "${arg_str}"
     else
@@ -69,7 +69,7 @@ function right_pad_str {
 # Arg3: Character to pad with
 function left_pad_str {
     local arg_str="${1}"; local -i pad_cnt="${2}"; local pad_char="${3}";
-    if (( ${pad_cnt} < ${#arg_str} )); then
+    if (( pad_cnt < ${#arg_str} )); then
         # No padding in this case
         echo "${arg_str}"
     else
@@ -214,4 +214,15 @@ function fraction_to_percent {
                 }'\
     )
     echo "$percent"
+}
+
+# Trim leading/trailing whitespace
+# source: https://web.archive.org/web/20121022051228/http://codesnippets.joyent.com/posts/show/1816
+function trim {
+    local var="$*"
+    # remove leading whitespace characters
+    var="${var#"${var%%[![:space:]]*}"}"
+    # remove trailing whitespace characters
+    var="${var%"${var##*[![:space:]]}"}"
+    printf '%s' "$var"
 }

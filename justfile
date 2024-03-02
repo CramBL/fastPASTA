@@ -2,6 +2,7 @@ import 'scripts/unique_error_codes.just'
 import 'scripts/check_version_tag.just'
 import 'scripts/test_coverage.just'
 import 'scripts/sanitizers.just'
+import 'scripts/benchmark.just'
 import 'scripts/util.just'
 
 # Absolute path to the directory containing the utility recipes to invoke them from anywhere
@@ -15,11 +16,6 @@ PROMPT := join(justfile_directory(), 'scripts/prompt.just') + " prompt"
     just --list
 
 alias c := check
-alias b := build
-alias t := test
-alias l := lint
-alias fmt := format
-alias fc := full-check
 
 # Run Full checks and format
 full-check: check format lint check-unique-error-codes test
@@ -61,15 +57,6 @@ publish:
 # Run the application (use `--` to pass arguments to the application)
 run *ARGS:
     cargo run {{ ARGS }}
-
-# Needs the rust toolchain
-env:
-    rustc --version
-    cargo --version
-
-# List the dependencies
-deps:
-    cargo tree
 
 # Update the dependencies
 update:
