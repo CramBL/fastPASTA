@@ -285,6 +285,8 @@ cargo +nightly build --profile release-nightly
 
 [Just](https://just.systems/) is used to run common commands in the project, install it with `cargo install just` and checkout the [main justfile](./justfile) for the available recipes.
 
+Running `just` in the project root will display the available (public) recipes.
+
 To see how data is passed around at runtime, see [data flow documentation](doc/data_flow.md).
 
 For extensive documentation of source code see [documentation](https://docs.rs/fastpasta/latest/fastpasta/index.html) or invoke ```cargo doc --open```.

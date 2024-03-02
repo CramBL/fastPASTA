@@ -1,6 +1,7 @@
 include:
   - local: /.gitlab-templates/install-just.yml
   - local: /.gitlab-templates/sanitizer.yml
+  - local: /.gitlab-templates/lint.yml
 
 image: "rust:latest"
 
@@ -36,21 +37,13 @@ pre-commit:
 
 lint:
   stage: code-quality
-  extends: .install-just
-  variables:
-    GIT_DEPTH: 0
-  script:
-    - rustup component add rustfmt clippy
-    - just ci_lint
+  extends: .lint
 
 lint-nightly:
   stage: code-quality
+  extends: .lint
   image: rustlang/rust:nightly
   allow_failure: true
-  extends: .install-just
-  script:
-    - rustup component add rustfmt clippy
-    - just ci_lint
 
 audit:
   stage: code-quality
