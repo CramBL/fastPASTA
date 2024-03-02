@@ -1,0 +1,8 @@
+.install-just:
+  variables:
+    JUST_VERSION: 1.24.0
+    INSTALL_PATH: /usr/bin
+
+  before_script:
+    - curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --tag ${JUST_VERSION} --to "${INSTALL_PATH}"
+    - just --version

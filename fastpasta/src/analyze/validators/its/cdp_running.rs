@@ -475,7 +475,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::test_util::MockConfig;
     use alice_protocol_reader::{
         prelude::{test_data::CORRECT_RDH_CRU_V7, RdhCru},
         rdh::{test_data::CORRECT_RDH_CRU_V7_SOT, RDH_CRU},

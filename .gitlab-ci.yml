@@ -1,3 +1,8 @@
+include:
+  - local: /.gitlab-templates/install-just.yml
+  - local: /.gitlab-templates/sanitizer.yml
+  - local: /.gitlab-templates/lint.yml
+
 image: "rust:latest"
 
 default:
@@ -20,57 +25,25 @@ variables:
 
 stages:
   - code-quality
-  - build
   - test
-  - release
+  - benchmark
 
 ### Code quality ###
-# * pre-commit
-# * lint
-# * format
-# * audit
-# * error-codes
-
 pre-commit:
-  image: python:3.9
+  image: python:3.12
   stage: code-quality
-  before_script:
-    - pip install pre-commit
-  script:
-    - python3 --version
-    - pre-commit --version
-    - pre-commit run --all-files --show-diff-on-failure
+  before_script: pip install pre-commit
+  script: pre-commit run --all-files --show-diff-on-failure
 
 lint:
   stage: code-quality
-  script:
-    - rustup component add clippy
-    - cargo check
-    - cargo clean
-    - cargo clippy -- -D warnings --no-deps
+  extends: .lint
 
-format:
+lint-nightly:
   stage: code-quality
-  variables:
-    GIT_DEPTH: 0
-  script:
-    - ls
-    - echo "checking if Cargo.toml version matches lates git tag"
-    - git --version
-    - git fetch --tags
-    - git tag --list # List is numerical, not sorted chronologically
-    - echo "Comparing the following two commands"
-    - cat Cargo.toml | grep -Po "(?<=^version = \").*(?=\")"
-    - git describe --tags --abbrev=0 | grep -Po "(?<=v).*" | tail -1
-    - echo "if this steps fails, update the Cargo.toml version number with the one from the newest git tag"
-    - tagdiff=$(diff <(git describe --tags --abbrev=0 | grep -Po "(?<=v).*" | tail -1) <(cat Cargo.toml | grep -Po "(?<=^version = \").*(?=\")") | wc -l | grep "[0-9]")
-    - if [ "$tagdiff" -eq 0 ]; then echo "version numbers match";
-    - fi
-    - printf "Git tag and project version match, now doing basic syntax check to confirm that code compiles\n"
-    - rustup component add rustfmt
-    - cargo fmt -- --check
-    - echo "checking if documentation builts"
-    - cargo doc
+  extends: .lint
+  image: rustlang/rust:nightly
+  allow_failure: true
 
 audit:
   stage: code-quality
@@ -78,95 +51,24 @@ audit:
     - cargo install cargo-audit
     - cargo audit
 
-error-codes:
-  stage: code-quality
-  script:
-    - tests/ci-scripts/unique-error-codes.sh
-
-### end of stage: code-quality
-
-### build ###
-
-# Build a binary with nightly rust for later jobs
-rust-nightly-build:
-  stage: build
-  image: rustlang/rust:nightly
-  script:
-    - cargo build --verbose
-  allow_failure: true
-  artifacts:
-    paths:
-      - $CI_PROJECT_DIR/target/
-    untracked: true
-    when: on_success
-    expire_in: 50 mins
-  cache: []
-
-## Regression tests
-regression-tests:
-  stage: build
-  before_script:
-    - ls -l tests/regression/
-  script:
-    - cargo build --release
-    - tests/regression/regression_tests.sh
-
 ### Tests and safety ###
-# Run unit tests with nightly build
 rust-nightly-test:
   stage: test
   image: rustlang/rust:nightly
-  script:
-    - cargo test --verbose
   allow_failure: true
-  dependencies:
-    - rust-nightly-build
-  cache: []
+  extends: .install-just
+  script: just test --verbose
 
 # Run tests and calculate code coverage
 test-coverage:
   stage: test
   image: rustlang/rust:nightly
-  variables:
-    RUST_BACKTRACE: "FULL"
-    CARGO_INCREMENTAL: "0"
-    RUSTFLAGS: "-Cinstrument-coverage -Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort"
-    RUSTDOCFLAGS: "-Cpanic=abort"
-    LLVM_PROFILE_FILE: "target/coverage/%p-%m.profraw"
+  extends: .install-just
   script:
-    - echo "${LLVM_PROFILE_FILE}"
-    - echo "${RUSTFLAGS}"
-    - echo "${CARGO_INCREMENTAL}"
-    - echo "${RUSTDOCFLAGS}"
-    - rustup component add llvm-tools-preview
+    - rustup +nightly component add llvm-tools-preview
     - cargo install grcov
     - apt-get update && apt-get install -y libxml2-utils
-    - cargo clean
-    - mkdir -p target/coverage
-    - ls -l -h target/coverage
-    - cargo +nightly build
-    # Rust-based tests
-    - cargo +nightly test
-    - ls -l -h target/coverage
-    # Aggregate coverage files to an HTML and a cobertura report
-    - >
-      grcov .
-      -s .
-      --binary-path ./target/debug/
-      --output-types html,cobertura
-      --branch
-      --ignore-not-existing
-      --ignore "$HOME/.cargo/**"
-      -o target/coverage/
-      --keep-only 'fastpasta/src/*'
-      --keep-only 'alice_protocol_reader/src/*'
-      --excl-start '\#\[cfg\(test\)\]'
-    - echo "Coverage files generated"
-    - ls -l -h target/coverage
-    # Extract just the top-level coverage number from the XML report.
-    - |
-      xmllint --xpath "concat('Coverage: ', 100 * string(//coverage/@line-rate), '%')" target/coverage/cobertura.xml
-
+    - just test-coverage
   coverage: '/Coverage: \d+(?:\.\d+)?/'
   dependencies: []
   cache: []
@@ -178,93 +80,63 @@ test-coverage:
         coverage_format: cobertura
         path: target/coverage/cobertura.xml
 
+## Safety
+# Only includes address and leak sanitizing now, as there's simply too many false positives with memory and thread sanitizing on Rust code.
+leak-sanitizer:
+  extends: [.install-just, .sanitizer-test]
+  script:
+    - !reference [.sanitizer-test, script]
+    - just test-lsan
+
+address-sanitizer:
+  extends: [.install-just, .sanitizer-test]
+  script:
+    - !reference [.sanitizer-test, script]
+    - just test-asan
+
 # Run benchmarks and check for performance regression
 limited-regress-bench:
-  stage: test
-  before_script:
-    - ls -l tests/regression/
-  script:
-    - tests/regression/regression_performance.sh
+  needs: [lint, pre-commit]
+  stage: benchmark
+  extends: .install-just
   rules:
-  # Run this job when a tag is created
-  - if: $CI_COMMIT_TAG
-    when: never
-  # Never create if the suffix is -bench (we're doing extended benchmarks then)
-  - if: $CI_COMMIT_BRANCH =~ /^.*-bench$/
-    when: never
-  # Don't create it in the MR pipeline (only use branch pipelines)
-  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    when: never
-  # Create this job if branch suffix is not -bench (that unlocks the extended benchmark)
-  - if: $CI_COMMIT_BRANCH !~ /^.*-bench$/
-    when: always
+    # Run this job when a tag is created
+    - if: $CI_COMMIT_TAG
+      when: never
+    # Never create if the suffix is -bench (we're doing extended benchmarks then)
+    - if: $CI_COMMIT_BRANCH =~ /^.*-bench$/
+      when: never
+    # Don't create it in the MR pipeline (only use branch pipelines)
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never
+    # Create this job if branch suffix is not -bench (that unlocks the extended benchmark)
+    - if: $CI_COMMIT_BRANCH !~ /^.*-bench$/
+      when: always
   dependencies: []
   cache: []
+  script: just bench "check sanity; check all; check all its; check all its-stave"
 
 # Run benchmarks and check for performance regression with bigger and more files than the limited job
 extended-regress-bench:
-  stage: test
   needs: []
-  before_script:
-    - ls -l tests/regression/
-  script:
-    - tests/regression/regression_performance.sh EXTENDED
+  stage: benchmark
+  extends: .install-just
   timeout: 3h 30m
   rules:
-  # Run this job when a tag is created
-  - if: $CI_COMMIT_TAG
-    when: always
-  # Don't create the job if commit message contains [skip-bench]
-  - if: $CI_COMMIT_MESSAGE =~ /\[.*skip-bench.*\]/
-    when: never
-  # Create job for a merge commit to the normal MR target branch of the project ("master").
-  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    when: on_success
-  # Allow manual creation of job if branch suffix is -bench
-  - if: $CI_COMMIT_BRANCH =~ /^.*-bench$/
-    when: manual
-    allow_failure: true
+    # Run this job when a tag is created
+    - if: $CI_COMMIT_TAG
+      when: always
+    # Don't create the job if commit message contains [skip-bench]
+    - if: $CI_COMMIT_MESSAGE =~ /\[.*skip-bench.*\]/
+      when: never
+    # Create job for a merge commit to the normal MR target branch of the project ("master").
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: on_success
+    # Allow manual creation of job if branch suffix is -bench
+    - if: $CI_COMMIT_BRANCH =~ /^.*-bench$/
+      when: manual
+      allow_failure: true
   dependencies: []
+  cache: []
   interruptible: true
-  cache: []
-
-## Safety
-# Only includes address and leak sanitizing now, as there's simply too many false positives with memory and thread sanitizing on Rust code...
-# Leak and address sanitizing is also bugged (see links below) but there's decent work arounds at the moment
-leak-sanitizer:
-  stage: test
-  image: rustlang/rust:nightly
-  variables:
-    LSAN_OPTIONS: "suppressions=lsan-suppressions.txt"
-    RUSTFLAGS: "-Z sanitizer=leak"
-    RUST_BACKTRACE: "FULL"
-  script:
-    - rustup component add llvm-tools-preview
-    # to fix buggy leak analyzer:
-    # https://github.com/japaric/rust-san#unrealiable-leaksanitizer
-    - sed -i '/\[features\]/i [profile.dev]' Cargo.toml
-    - sed -i '/profile.dev/a opt-level = 1' Cargo.toml
-    - cat Cargo.toml
-    - rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-    - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
-    - cargo test --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu
-  allow_failure: true
-  dependencies: []
-  cache: []
-
-address-sanitizer:
-  stage: test
-  image: rustlang/rust:nightly
-  variables:
-    ASAN_OPTIONS: "detect_odr_violation=0:detect_leaks=0"
-    RUSTFLAGS: "-Z sanitizer=address"
-    RUST_BACKTRACE: "FULL"
-  script:
-    - rustup component add llvm-tools-preview
-    - rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-    - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
-    # only --lib --tests b/c of https://github.com/rust-lang/rust/issues/53945
-    - cargo test --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu
-  allow_failure: true
-  dependencies: []
-  cache: []
+  script: just bench-extended

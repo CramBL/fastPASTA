@@ -178,8 +178,7 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::check::{CheckCommands, CheckModeArgs};
-    use crate::config::test_util::MockConfig;
+    use crate::config::check::CheckModeArgs;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
     use alice_protocol_reader::prelude::*;
     use std::sync::OnceLock;

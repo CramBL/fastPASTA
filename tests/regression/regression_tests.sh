@@ -13,8 +13,9 @@
 source ./tests/regression/utils.sh
 
 # Prefix for each command.
+## ${1-cargo run}: If no argument is specified, the default is "cargo run"
 ## Run the binary and go to the test-data folder
-readonly CMD_PREFIX="cargo run -- ./tests/test-data/"
+readonly CMD_PREFIX="${1-cargo run} -- ./tests/test-data/"
 
 ### Regex patterns ###
 ## Matches one ANSI escape code
