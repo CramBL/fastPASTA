@@ -26,7 +26,7 @@ test-sanitizers *ARGS: (sanitizer-build RUSTUP_TOOLCHAIN RUST_BACKTRACE ARGS)
     #just _run-test-tsan "{{RUSTUP_TOOLCHAIN}}" "{{RUST_BACKTRACE}}" "{{MSAN_ENV_RUSTFLAGS}}" "{{MSAN_ENV_MSAN_OPTIONS}}" {{ ARGS }}
     #{{PRINT}} green "=== STARTING MSAN TEST ==="
     #just _run-test-msan "{{RUSTUP_TOOLCHAIN}}" "{{RUST_BACKTRACE}}" "{{TSAN_ENV_RUSTFLAGS}}" "{{TSAN_ENV_TSAN_OPTIONS}}" {{ ARGS }}
-    
+
 # Build with instrumentation to prepare for tests with sanitizers
 [private]
 sanitizer-build $RUSTUP_TOOLCHAIN $RUST_BACKTRACE *ARGS: sanitizer-dependencies clean
@@ -41,7 +41,7 @@ _run-test-asan $RUSTUP_TOOLCHAIN $RUST_BACKTRACE $RUSTFLAGS $ASAN_OPTIONS *ARGS:
 
 # Run tests with leak sanitizer
 test-lsan *ARGS: (sanitizer-build RUSTUP_TOOLCHAIN RUST_BACKTRACE ARGS) (_run-test-lsan RUSTUP_TOOLCHAIN RUST_BACKTRACE LSAN_ENV_RUSTFLAGS LSAN_ENV_LSAN_OPTIONS ARGS)
-_run-test-lsan $RUSTUP_TOOLCHAIN $RUST_BACKTRACE $RUSTFLAGS $LSAN_OPTIONS *ARGS:    
+_run-test-lsan $RUSTUP_TOOLCHAIN $RUST_BACKTRACE $RUSTFLAGS $LSAN_OPTIONS *ARGS:
     @{{PRINT}} cyan "RUST_BACKTRACE=${RUST_BACKTRACE}\nRUSTFLAGS=${RUSTFLAGS}\nLSAN_OPTIONS=${LSAN_OPTIONS}"
     cargo +nightly test --target x86_64-unknown-linux-gnu {{ ARGS }}
 
