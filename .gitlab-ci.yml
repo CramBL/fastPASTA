@@ -1,7 +1,10 @@
+include: /.gitlab-templates/install-just.yml
+
 image: "rust:latest"
 
 default:
   before_script:
+    - !reference [.install-just, before_script]
     - hostname -I
     - whoami
     - rustc --version
@@ -32,27 +35,27 @@ stages:
 # * error-codes
 
 pre-commit:
-  image: python:3.9
+  image: python:3.12
   stage: code-quality
   before_script:
     - pip install pre-commit
   script:
-    - python3 --version
-    - pre-commit --version
     - pre-commit run --all-files --show-diff-on-failure
 
 lint:
   stage: code-quality
   script:
     - rustup component add clippy
-    - cargo check
-    - cargo clean
-    - cargo clippy -- -D warnings --no-deps
+    - just check
+    - just clean
+    - just lint -- -D warnings --no-deps
 
 format:
   stage: code-quality
   variables:
     GIT_DEPTH: 0
+  before_script:
+    - rustup component add rustfmt
   script:
     - ls
     - echo "checking if Cargo.toml version matches lates git tag"
@@ -67,7 +70,6 @@ format:
     - if [ "$tagdiff" -eq 0 ]; then echo "version numbers match";
     - fi
     - printf "Git tag and project version match, now doing basic syntax check to confirm that code compiles\n"
-    - rustup component add rustfmt
     - cargo fmt -- --check
     - echo "checking if documentation builts"
     - cargo doc
@@ -80,8 +82,7 @@ audit:
 
 error-codes:
   stage: code-quality
-  script:
-    - tests/ci-scripts/unique-error-codes.sh
+  script: just check-unique-error-codes
 
 ### end of stage: code-quality
 
@@ -186,18 +187,18 @@ limited-regress-bench:
   script:
     - tests/regression/regression_performance.sh
   rules:
-  # Run this job when a tag is created
-  - if: $CI_COMMIT_TAG
-    when: never
-  # Never create if the suffix is -bench (we're doing extended benchmarks then)
-  - if: $CI_COMMIT_BRANCH =~ /^.*-bench$/
-    when: never
-  # Don't create it in the MR pipeline (only use branch pipelines)
-  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    when: never
-  # Create this job if branch suffix is not -bench (that unlocks the extended benchmark)
-  - if: $CI_COMMIT_BRANCH !~ /^.*-bench$/
-    when: always
+    # Run this job when a tag is created
+    - if: $CI_COMMIT_TAG
+      when: never
+    # Never create if the suffix is -bench (we're doing extended benchmarks then)
+    - if: $CI_COMMIT_BRANCH =~ /^.*-bench$/
+      when: never
+    # Don't create it in the MR pipeline (only use branch pipelines)
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never
+    # Create this job if branch suffix is not -bench (that unlocks the extended benchmark)
+    - if: $CI_COMMIT_BRANCH !~ /^.*-bench$/
+      when: always
   dependencies: []
   cache: []
 
@@ -211,19 +212,19 @@ extended-regress-bench:
     - tests/regression/regression_performance.sh EXTENDED
   timeout: 3h 30m
   rules:
-  # Run this job when a tag is created
-  - if: $CI_COMMIT_TAG
-    when: always
-  # Don't create the job if commit message contains [skip-bench]
-  - if: $CI_COMMIT_MESSAGE =~ /\[.*skip-bench.*\]/
-    when: never
-  # Create job for a merge commit to the normal MR target branch of the project ("master").
-  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    when: on_success
-  # Allow manual creation of job if branch suffix is -bench
-  - if: $CI_COMMIT_BRANCH =~ /^.*-bench$/
-    when: manual
-    allow_failure: true
+    # Run this job when a tag is created
+    - if: $CI_COMMIT_TAG
+      when: always
+    # Don't create the job if commit message contains [skip-bench]
+    - if: $CI_COMMIT_MESSAGE =~ /\[.*skip-bench.*\]/
+      when: never
+    # Create job for a merge commit to the normal MR target branch of the project ("master").
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: on_success
+    # Allow manual creation of job if branch suffix is -bench
+    - if: $CI_COMMIT_BRANCH =~ /^.*-bench$/
+      when: manual
+      allow_failure: true
   dependencies: []
   interruptible: true
   cache: []
