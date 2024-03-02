@@ -1,4 +1,6 @@
-include: /.gitlab-templates/install-just.yml
+include:
+  - local: /.gitlab-templates/install-just.yml
+  - local: /.gitlab-templates/sanitizer.yml
 
 image: "rust:latest"
 
@@ -40,9 +42,9 @@ lint:
     - just ci_lint
 
 lint-nightly:
-  allow_failure: true
-  image: rustlang/rust:nightly
   stage: code-quality
+  image: rustlang/rust:nightly
+  allow_failure: true
   extends: .install-just
   script:
     - rustup component add rustfmt clippy
@@ -55,13 +57,12 @@ audit:
     - cargo audit
 
 ### Tests and safety ###
-# Run unit tests with nightly build
 rust-nightly-test:
-  extends: .install-just
   stage: test
   image: rustlang/rust:nightly
-  script: just test --verbose
   allow_failure: true
+  extends: .install-just
+  script: just test --verbose
 
 # Run tests and calculate code coverage
 test-coverage:
@@ -86,17 +87,6 @@ test-coverage:
 
 ## Safety
 # Only includes address and leak sanitizing now, as there's simply too many false positives with memory and thread sanitizing on Rust code.
-.sanitizer-test:
-  stage: test
-  image: rustlang/rust:nightly
-  extends: .install-just
-  script:
-    - rustup component add llvm-tools-preview
-    - rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-  allow_failure: true
-  dependencies: []
-  cache: []
-
 leak-sanitizer:
   extends: [.install-just, .sanitizer-test]
   script:
@@ -114,7 +104,6 @@ limited-regress-bench:
   needs: [lint, pre-commit]
   stage: benchmark
   extends: .install-just
-  script: just bench "check sanity; check all; check all its; check all its-stave"
   rules:
     # Run this job when a tag is created
     - if: $CI_COMMIT_TAG
@@ -130,13 +119,13 @@ limited-regress-bench:
       when: always
   dependencies: []
   cache: []
+  script: just bench "check sanity; check all; check all its; check all its-stave"
 
 # Run benchmarks and check for performance regression with bigger and more files than the limited job
 extended-regress-bench:
-  stage: benchmark
   needs: []
+  stage: benchmark
   extends: .install-just
-  script: just bench-extended
   timeout: 3h 30m
   rules:
     # Run this job when a tag is created
@@ -153,5 +142,6 @@ extended-regress-bench:
       when: manual
       allow_failure: true
   dependencies: []
-  interruptible: true
   cache: []
+  interruptible: true
+  script: just bench-extended

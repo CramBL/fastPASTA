@@ -12,4 +12,3 @@ bench-default:
 [private]
 bench-extended $EXTENDED="True":
     ./tests/regression/regression_performance.sh
-
