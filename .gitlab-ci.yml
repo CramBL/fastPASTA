@@ -57,6 +57,7 @@ audit:
 # Build a binary with nightly rust for later jobs
 rust-nightly-build:
   stage: build
+  extends: .install-just
   image: rustlang/rust:nightly
   script: just build --verbose
   allow_failure: true
