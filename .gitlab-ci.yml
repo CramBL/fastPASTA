@@ -77,10 +77,10 @@ regression-tests:
 ### Tests and safety ###
 # Run unit tests with nightly build
 rust-nightly-test:
+  extends: .install-just
   stage: test
   image: rustlang/rust:nightly
-  script:
-    - just test --verbose
+  script: just test --verbose
   allow_failure: true
   dependencies:
     - rust-nightly-build
