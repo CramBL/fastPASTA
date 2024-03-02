@@ -37,6 +37,8 @@ pre-commit:
 lint:
   stage: code-quality
   extends: .install-just
+  variables:
+    GIT_DEPTH: 0
   script:
     - rustup component add rustfmt clippy
     - just ci_lint
