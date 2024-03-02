@@ -4,7 +4,6 @@ image: "rust:latest"
 
 default:
   before_script:
-    - !reference [.install-just, before_script]
     - hostname -I
     - whoami
     - rustc --version
@@ -37,26 +36,25 @@ stages:
 pre-commit:
   image: python:3.12
   stage: code-quality
-  before_script:
-    - pip install pre-commit
   script:
+    - pip install pre-commit
     - pre-commit run --all-files --show-diff-on-failure
 
 lint:
   stage: code-quality
   script:
     - rustup component add clippy
-    - just check
-    - just clean
-    - just lint -- -D warnings --no-deps
+    - cargo check
+    - cargo clean
+    - cargo lint -- -D warnings --no-deps
 
 format:
   stage: code-quality
+  extends: .install-just
   variables:
     GIT_DEPTH: 0
-  before_script:
-    - rustup component add rustfmt
   script:
+    - rustup component add rustfmt
     - ls
     - echo "checking if Cargo.toml version matches lates git tag"
     - git --version
