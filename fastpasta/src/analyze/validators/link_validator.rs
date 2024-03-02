@@ -189,7 +189,7 @@ mod tests {
     use std::sync::OnceLock;
 
     use super::*;
-    use crate::config::check::{CheckModeArgs, CmdPathArg, System};
+    use crate::config::check::{CheckModeArgs, CmdPathArg};
     use crate::config::test_util::MockConfig;
     use crate::words::its::test_payloads::*;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;

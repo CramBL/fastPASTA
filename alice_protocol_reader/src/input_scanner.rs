@@ -352,10 +352,11 @@ fn invalid_rdh_offset<T: RDH>(rdh: &T, current_memory_address: u64, offset_to_ne
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::RDH_CRU;
-
     use super::super::config::mock_config::MockConfig;
-    use super::super::rdh::{ByteSlice, RdhCru};
+    use super::super::prelude::test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
+    use super::super::rdh::ByteSlice;
+    use super::*;
+    use crate::prelude::RDH_CRU;
     use flume::Receiver;
     use pretty_assertions::assert_eq;
     use std::{io::BufReader, path::PathBuf};
@@ -390,8 +391,6 @@ mod tests {
         )
     }
 
-    use super::super::prelude::test_data::{CORRECT_RDH_CRU_V6, CORRECT_RDH_CRU_V7};
-    use super::*;
     #[test]
     fn test_load_rdhcruv7_test() {
         let tmp_d = TempDir::new().unwrap();
