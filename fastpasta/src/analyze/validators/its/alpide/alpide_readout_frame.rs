@@ -81,7 +81,7 @@ impl AlpideReadoutFrame {
             validate_inner_lane_groupings(&self.lane_data_frames, fatal_lanes)
         } else {
             // No grouping to check for outer barrel
-            return Ok(());
+            Ok(())
         }
     }
 }
@@ -109,21 +109,18 @@ pub(crate) fn validate_inner_lane_groupings(
     if let Some(fatal_lane) = fatal_lanes {
         for fl in fatal_lane {
             match fl {
-                0..=2 => unsafe {
-                    valid_lane_groupings
-                        .get_unchecked_mut(0)
-                        .retain(|&x| x != *fl)
-                },
-                3..=5 => unsafe {
-                    valid_lane_groupings
-                        .get_unchecked_mut(1)
-                        .retain(|&x| x != *fl)
-                },
-                6..=8 => unsafe {
-                    valid_lane_groupings
-                        .get_unchecked_mut(2)
-                        .retain(|&x| x != *fl)
-                },
+                0..=2 => valid_lane_groupings
+                    .get_mut(0)
+                    .unwrap()
+                    .retain(|&x| x != *fl),
+                3..=5 => valid_lane_groupings
+                    .get_mut(1)
+                    .unwrap()
+                    .retain(|&x| x != *fl),
+                6..=8 => valid_lane_groupings
+                    .get_mut(2)
+                    .unwrap()
+                    .retain(|&x| x != *fl),
                 _ => unreachable!("Invalid fatal lane number: {fl}"),
             }
         }
