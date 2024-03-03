@@ -29,3 +29,18 @@ dep-nightly-rust-src TXT_IF_NOT_INSTALLED:
         {{PRINT}} yellow "{{ TXT_IF_NOT_INSTALLED }}"
         just prompt-install "rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu"
     fi
+
+[private]
+open-in-browser PATH:
+    #!/usr/bin/env bash
+    if which firefox > /dev/null; then
+        firefox "{{ PATH }}"
+    fi
+    if which google-chrome > /dev/null; then
+        google-chrome "{{ PATH }}"
+    fi
+
+[private]
+bin-mult-grow DATA_FILE SIZE_MB OUTPUT:
+    @{{PRINT}} cyan "Growing {{ DATA_FILE }} to {{ SIZE_MB }} at {{ OUTPUT }}"
+    binmult "{{ DATA_FILE }}" --size "{{ SIZE_MB }}" --output "{{ OUTPUT }}"

@@ -3,6 +3,7 @@ import 'scripts/check_version_tag.just'
 import 'scripts/test_coverage.just'
 import 'scripts/sanitizers.just'
 import 'scripts/benchmark.just'
+import 'scripts/profiling.just'
 import 'scripts/util.just'
 
 # Absolute path to the directory containing the utility recipes to invoke them from anywhere

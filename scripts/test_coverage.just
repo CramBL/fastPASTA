@@ -32,18 +32,12 @@ run-test-coverage   \
 
 # Attempts to open the code coverage report at PATH with Firefox or Google Chrome
 [private]
-open-coverage-report PATH="target/coverage/html/index.html":
+open-coverage-report PATH="target/coverage/html/index.html": && (open-in-browser PATH)
     #!/usr/bin/env bash
     if [ ! -f "{{ PATH }}" ]; then
         {{PRINT}} red "No coverage report at {{ PATH }}"
         {{PRINT}} cyan "Run the test coverage recipe and try again"
         exit 1
-    fi
-    if which firefox > /dev/null; then
-        firefox "{{ PATH }}"
-    fi
-    if which google-chrome > /dev/null; then
-        google-chrome "{{ PATH }}"
     fi
 
 # Check for dependencies of coverage collection
