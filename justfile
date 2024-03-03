@@ -82,7 +82,7 @@ clean:
 flamegraph ARG="check all its-stave" RAW_DATA="tests/test-data/12_links_2hbf.raw" SIZE_MIB="500": (gen-flamegraph RAW_DATA ARG SIZE_MIB)
 
 # Profile a run and view perf stats
-perf-stat ARG="check all its-stave" RAW_DATA="tests/test-data/12_links_2hbf.raw" REPEAT="3" SIZE_MIB="500": (perf-profile RAW_DATA SIZE_MIB ARG REPEAT) 
+perf-stat ARG="check all its-stave" RAW_DATA="tests/test-data/12_links_2hbf.raw" REPEAT="3" SIZE_MIB="500": (perf-profile RAW_DATA SIZE_MIB ARG REPEAT)
 
 
 ### CI variants with higher verbosities and slightly different configurations
