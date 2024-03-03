@@ -226,7 +226,7 @@ for timing_diff in "${test_cmds_diff[@]}"; do
     cmd_frac_diff=$( calc_relative_fraction "${timing_diff}" "${test_cmds_released_abs[idx]}")
     cmd_percent_diff=$( fraction_to_percent "${cmd_frac_diff}" )
     padded_timing_diff_str=$(left_pad_str "${timing_diff}" 10 ' ')
-    padded_cmd_str=$(right_pad_str "${test_cmds_array[idx]}" 19 ' ')
+    padded_cmd_str=$(right_pad_str "$(trim "${test_cmds_array[idx]}")" 19 ' ')
     # Old fashioned '\t' because of the traling '$'
     println_bright_yellow "        ${padded_cmd_str}${padded_timing_diff_str} ms (${cmd_percent_diff: 0:5} %)"
     (( idx+=1 ))

@@ -3,6 +3,7 @@ import 'scripts/check_version_tag.just'
 import 'scripts/test_coverage.just'
 import 'scripts/sanitizers.just'
 import 'scripts/benchmark.just'
+import 'scripts/profiling.just'
 import 'scripts/util.just'
 
 # Absolute path to the directory containing the utility recipes to invoke them from anywhere
@@ -74,6 +75,15 @@ audit *ARGS:
 # Clean the `target` directory
 clean:
     cargo clean
+
+### Profiling
+
+# Profile a run and generate a flamegraph
+flamegraph ARG="check all its-stave" RAW_DATA="tests/test-data/12_links_2hbf.raw" SIZE_MIB="500": (gen-flamegraph RAW_DATA ARG SIZE_MIB)
+
+# Profile a run and view perf stats
+perf-stat ARG="check all its-stave" RAW_DATA="tests/test-data/12_links_2hbf.raw" REPEAT="3" SIZE_MIB="500": (perf-profile RAW_DATA SIZE_MIB ARG REPEAT)
+
 
 ### CI variants with higher verbosities and slightly different configurations
 
