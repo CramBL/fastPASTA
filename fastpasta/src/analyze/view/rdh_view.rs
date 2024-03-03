@@ -5,7 +5,7 @@ pub(crate) fn rdh_view<T: RDH, const CAP: usize>(
     cdp_array: &CdpArray<T, CAP>,
     disable_styled_view: bool,
 ) -> Result<(), io::Error> {
-    let mut stdio_lock = std::io::stdout().lock();
+    let mut stdio_lock = io::stdout().lock();
 
     if disable_styled_view {
         let header_text = RdhCru::rdh_header_text_with_indent_to_string(11);
