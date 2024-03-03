@@ -1,6 +1,4 @@
-use crate::words::its::status_words::{cdw::Cdw, ddw::Ddw0, ihw::Ihw, tdh::Tdh, tdt::Tdt};
-
-use super::super::status_word::StatusWordSanityChecker;
+use crate::util::*;
 
 #[derive(Default)]
 struct TdhBuffer {

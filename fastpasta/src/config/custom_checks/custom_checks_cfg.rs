@@ -1,6 +1,6 @@
 //! Struct definition of the custom checks configuration TOML file.
+use crate::util::*;
 use descriptive_toml_derive::TomlConfig;
-use serde_derive::{Deserialize, Serialize};
 
 /// Struct for the configuration of various expected counters in the data.
 #[derive(TomlConfig, Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -184,9 +184,9 @@ rdh_version = 6
 
         let tmp_dir = TempDir::new().unwrap();
         let toml_file = tmp_dir.child("counters.toml");
-        std::fs::write(&toml_file, &toml).unwrap();
+        fs::write(&toml_file, &toml).unwrap();
 
-        assert_eq!(std::fs::read_to_string(toml_file).unwrap(), toml);
+        assert_eq!(fs::read_to_string(toml_file).unwrap(), toml);
     }
 
     #[test]
@@ -196,12 +196,12 @@ rdh_version = 6
         println!("toml string:\n{toml}");
         let tmp_dir = TempDir::new().unwrap();
         let toml_file = tmp_dir.child("counters.toml");
-        std::fs::write(&toml_file, &toml).unwrap();
-        let toml_deserde = std::fs::read_to_string(toml_file).expect("Failed to read TOML file");
+        fs::write(&toml_file, &toml).unwrap();
+        let toml_deserde = fs::read_to_string(toml_file).expect("Failed to read TOML file");
         let custom_checks_from_toml: CustomChecks =
             toml::from_str(&toml_deserde).expect("Failed to parse TOML");
 
-        println!("Struct from toml file: {:?}", custom_checks_from_toml);
+        println!("Struct from toml file: {custom_checks_from_toml:?}");
         assert_eq!(custom_checks_from_toml.cdps(), None);
         assert_eq!(custom_checks_from_toml.triggers_pht(), None);
     }

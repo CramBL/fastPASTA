@@ -11,14 +11,7 @@
 //! In the `do_checks` function, the [LinkValidator] will delegate the payload to the correct validator depending on the target system.
 //! The new system should be added to the match statement, along with how to delegate the payload to the new validator.
 
-pub(crate) use super::{its, rdh::RdhCruSanityValidator, rdh_running::RdhCruRunningChecker};
-use crate::config::check::{CheckCommands, ChecksOpt, System};
-use crate::config::custom_checks::CustomChecksOpt;
-use crate::stats::StatType;
-use crate::UtilOpt;
-use alice_protocol_reader::prelude::FilterOpt;
-use alice_protocol_reader::prelude::{RdhCru, RDH};
-use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
+use crate::util::*;
 
 /// Main validator that handles all checks on a specific link.
 ///
@@ -186,8 +179,6 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt + UtilOpt> Lin
 
 #[cfg(test)]
 mod tests {
-    use std::sync::OnceLock;
-
     use super::*;
     use crate::config::check::{CheckModeArgs, CmdPathArg};
     use crate::config::test_util::MockConfig;
@@ -212,7 +203,7 @@ mod tests {
         assert!(!link_validator.running_checks);
 
         // Spawn the link validator in a thread
-        let _handle = std::thread::spawn(move || {
+        let _handle = thread::spawn(move || {
             link_validator.run();
         });
 
@@ -225,7 +216,7 @@ mod tests {
         _cdp_tuple_send_ch.send(cdp).unwrap();
 
         // Wait for the link validator to process the CDP
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(100));
 
         // Check that the link validator has not sent any errors
         let stats_msg = stats_recv_chan.try_recv();
@@ -252,7 +243,7 @@ mod tests {
         assert!(!link_validator.running_checks);
 
         // Spawn the link validator in a thread
-        let _handle = std::thread::spawn(move || {
+        let _handle = thread::spawn(move || {
             link_validator.run();
         });
 
@@ -266,7 +257,7 @@ mod tests {
         cdp_tuple_send_ch.send(cdp).unwrap();
 
         // Wait for the link validator to process the CDP
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(100));
 
         // Check that the link validator has not sent any errors
         while let Ok(stats_msg) = stats_recv_chan.try_recv() {
@@ -296,7 +287,7 @@ mod tests {
         assert!(!link_validator.running_checks);
 
         // Spawn the link validator in a thread
-        let _handle = std::thread::spawn(move || {
+        let _handle = thread::spawn(move || {
             link_validator.run();
         });
 
@@ -310,7 +301,7 @@ mod tests {
         cdp_tuple_send_ch.send(cdp).unwrap();
 
         // Wait for the link validator to process the CDP
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(100));
 
         // Check that the link validator has not sent any errors
         while let Ok(stats_msg) = stats_recv_chan.try_recv() {
@@ -345,7 +336,7 @@ mod tests {
         assert!(!link_validator.running_checks);
 
         // Spawn the link validator in a thread
-        let _handle = std::thread::spawn(move || {
+        let _handle = thread::spawn(move || {
             link_validator.run();
         });
 
@@ -360,7 +351,7 @@ mod tests {
         cdp_tuple_send_ch.send(cdp).unwrap();
 
         // Wait for the link validator to process the CDP
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(100));
 
         // Check that the link validator has sent an error
         let stats_msg = stats_recv_chan.try_recv().unwrap();

@@ -1,10 +1,7 @@
 //! Contains the struct definition of the TDH
 //!
-use std::fmt::Display;
-
-use byteorder::{ByteOrder, LittleEndian};
-
 use super::{display_byte_slice, StatusWord};
+use crate::util::*;
 
 /// Struct to represent the TDH status word
 #[repr(packed)]
@@ -77,8 +74,8 @@ impl Tdh {
     }
 }
 
-impl Display for Tdh {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Tdh {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_byte_slice(self, f)
     }
 }
@@ -92,7 +89,7 @@ impl StatusWord for Tdh {
         self.reserved0() == 0 && self.reserved1() == 0 && self.reserved2() == 0
     }
 
-    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
+    fn from_buf(buf: &[u8]) -> Result<Self, io::Error> {
         Ok(Tdh {
             trigger_type_internal_trigger_no_data_continuation_reserved2: LittleEndian::read_u16(
                 &buf[0..=1],

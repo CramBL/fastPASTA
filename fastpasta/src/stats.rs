@@ -1,8 +1,6 @@
 //! All stat collecting functionality
 
-use crate::words;
-use alice_protocol_reader::prelude::RDH;
-use serde::{Deserialize, Serialize};
+use crate::util::*;
 use stats_collector::its_stats::alpide_stats::AlpideStats;
 
 pub mod err_printer;

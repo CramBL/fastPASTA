@@ -1,6 +1,6 @@
 //! Data definitions for ITS payload words
 
-use std::fmt::Display;
+use std::fmt;
 pub mod alpide;
 pub mod data_words;
 pub mod lane_data_frame;
@@ -17,8 +17,8 @@ pub enum Layer {
     Outer,
 }
 
-impl Display for Layer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Layer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Layer::Inner => write!(f, "IL"),
             Layer::Middle => write!(f, "ML"),
@@ -64,8 +64,8 @@ pub enum Stave {
     },
 }
 
-impl Display for Stave {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Stave {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Stave::InnerLayer { layer, stave } => write!(f, "L{layer}_{stave}"),
             Stave::MiddleLayer { layer, stave } => write!(f, "L{layer}_{stave}"),

@@ -1,11 +1,6 @@
-use owo_colors::OwoColorize;
-
-use super::report::StatSummary;
 use super::stat_format_utils::format_data_size;
 use super::stat_format_utils::format_layers_and_staves;
-use crate::words::its::layer_from_feeid;
-use crate::words::its::stave_number_from_feeid;
-use alice_protocol_reader::prelude::RDH_CRU_SIZE_BYTES;
+use crate::util::*;
 
 /// Helper functions to format the summary of filtered link ID
 pub(crate) fn summerize_filtered_links(link_to_filter: u8, links_observed: &[u8]) -> StatSummary {
@@ -58,7 +53,7 @@ pub(crate) fn summerize_layers_staves_seen(
         staves_with_errors.to_owned()
     } else {
         // If it's none, make a new empty vector
-        std::vec::Vec::new()
+        Vec::new()
     };
     StatSummary::new(
         "Layers/Staves".to_string(),

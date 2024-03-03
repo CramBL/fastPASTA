@@ -1,6 +1,8 @@
 //! Contains the Trait [ViewOpt] for all view options, and the [ViewCommands] enum for the view mode
 
 use clap::Subcommand;
+use std::sync::Arc;
+
 /// Data views that can be generated
 #[derive(Subcommand, Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ViewCommands {
@@ -36,7 +38,7 @@ where
     }
 }
 
-impl<T> ViewOpt for std::sync::Arc<T>
+impl<T> ViewOpt for Arc<T>
 where
     T: ViewOpt,
 {

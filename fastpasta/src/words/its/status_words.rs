@@ -1,7 +1,13 @@
 //! Definitions for status words: [IHW][Ihw], [TDH][Tdh], [TDT][Tdt], [DDW0][Ddw0] & [CDW][Cdw].
 
+use crate::util::*;
 use alice_protocol_reader::prelude::macros::load_bytes;
-use std::fmt::Display;
+use cdw::Cdw;
+use ddw::Ddw0;
+use ihw::Ihw;
+use std::fmt;
+use tdh::Tdh;
+use tdt::Tdt;
 
 pub mod cdw;
 pub mod ddw;
@@ -11,12 +17,6 @@ pub mod tdt;
 
 pub mod util;
 
-use cdw::Cdw;
-use ddw::Ddw0;
-use ihw::Ihw;
-use tdh::Tdh;
-use tdt::Tdt;
-
 impl alice_protocol_reader::prelude::ByteSlice for Ihw {}
 impl alice_protocol_reader::prelude::ByteSlice for Tdh {}
 impl alice_protocol_reader::prelude::ByteSlice for Cdw {}
@@ -25,13 +25,13 @@ impl alice_protocol_reader::prelude::ByteSlice for Ddw0 {}
 
 /// Trait to implement for all status words
 pub trait StatusWord:
-    std::fmt::Debug + PartialEq + Sized + alice_protocol_reader::prelude::ByteSlice + Display
+    fmt::Debug + PartialEq + Sized + alice_protocol_reader::prelude::ByteSlice + fmt::Display
 {
     /// Returns the id of the status word
     fn id(&self) -> u8;
     /// Deserializes the status word from a reader and a byte slice
     #[inline]
-    fn load<T: std::io::Read>(reader: &mut T) -> Result<Self, std::io::Error>
+    fn load<T: io::Read>(reader: &mut T) -> Result<Self, io::Error>
     where
         Self: Sized,
     {
@@ -39,17 +39,14 @@ pub trait StatusWord:
         Self::from_buf(&buf)
     }
     /// Deserializes the GBT word from a byte slice
-    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error>;
+    fn from_buf(buf: &[u8]) -> Result<Self, io::Error>;
     /// Sanity check that returns true if all reserved bits are 0
     fn is_reserved_0(&self) -> bool;
 }
 
 /// Helper to display all the status words in a similar way, without dynamic dispatch
 #[inline]
-fn display_byte_slice<T: StatusWord>(
-    status_word: &T,
-    f: &mut std::fmt::Formatter<'_>,
-) -> std::fmt::Result {
+fn display_byte_slice<T: StatusWord>(status_word: &T, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let slice = status_word.to_byte_slice();
     write!(
         f,

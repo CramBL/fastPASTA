@@ -1,8 +1,6 @@
 //! Contains the struct definition of the TDT
 
-use std::fmt::Display;
-
-use byteorder::{ByteOrder, LittleEndian};
+use crate::util::*;
 
 use super::{display_byte_slice, StatusWord};
 
@@ -74,8 +72,8 @@ impl Tdt {
     }
 }
 
-impl Display for Tdt {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Tdt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_byte_slice(self, f)
     }
 }
@@ -88,7 +86,7 @@ impl StatusWord for Tdt {
         self.reserved0() == 0 && self.reserved1() == 0 && self.reserved2() == 0
     }
 
-    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
+    fn from_buf(buf: &[u8]) -> Result<Self, io::Error> {
         Ok(Self {
             lane_status_15_0: LittleEndian::read_u32(&buf[0..=3]),
             lane_status_23_16: LittleEndian::read_u16(&buf[4..=5]),

@@ -1,12 +1,10 @@
-use crate::analyze::validators::lib::preprocess_payload;
-use alice_protocol_reader::cdp_wrapper::cdp_array::CdpArray;
-use alice_protocol_reader::prelude::*;
+use crate::util::*;
 
 pub(crate) fn its_readout_frame_data_view<T: RDH, const CAP: usize>(
     cdp_array: &CdpArray<T, CAP>,
     disable_styled_view: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut stdio_lock = std::io::stdout().lock();
+) -> Result<(), Box<dyn error::Error>> {
+    let mut stdio_lock = io::stdout().lock();
     super::print_start_of_its_readout_frame_header_text(&mut stdio_lock, disable_styled_view)?;
     for (rdh, payload, rdh_mem_pos) in cdp_array.iter() {
         super::print_rdh_its_readout_frame_view(

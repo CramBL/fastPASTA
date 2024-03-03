@@ -7,18 +7,18 @@
 #![allow(non_camel_case_types)]
 use self::{
     check::{CheckCommands, ChecksOpt},
-    custom_checks::{CustomChecks, CustomChecksOpt},
+    custom_checks::{custom_checks_cfg::CustomChecks, CustomChecksOpt},
     inputoutput::{DataOutputFormat, DataOutputMode, InputOutputOpt},
     prelude::Config,
     util::UtilOpt,
     view::{ViewCommands, ViewOpt},
 };
+
+use super::*;
 use crate::words::its::layer_stave_string_to_feeid;
 use alice_protocol_reader::prelude::FilterOpt;
 use clap::{Args, Parser, Subcommand};
 use clap_complete::Shell;
-use std::path::PathBuf;
-use std::sync::OnceLock;
 
 pub mod check;
 pub mod custom_checks;
@@ -232,7 +232,7 @@ impl Cfg {
             shell,
             &mut <Cfg as clap::CommandFactory>::command(),
             "fastpasta",
-            &mut std::io::stdout(),
+            &mut io::stdout(),
         );
     }
 }
@@ -316,12 +316,12 @@ impl ChecksOpt for Cfg {
 
 impl InputOutputOpt for Cfg {
     #[inline]
-    fn input_file(&self) -> Option<&PathBuf> {
-        self.file.as_ref()
+    fn input_file(&self) -> Option<&Path> {
+        self.file.as_deref()
     }
     #[inline]
-    fn output(&self) -> Option<&PathBuf> {
-        self.output.as_ref()
+    fn output(&self) -> Option<&Path> {
+        self.output.as_deref()
     }
     // Determine data output mode
     #[inline]
@@ -333,7 +333,7 @@ impl InputOutputOpt for Cfg {
             }
             // if output is set and a file path is given, output to file
             else {
-                DataOutputMode::File(self.output().unwrap().clone().into())
+                DataOutputMode::File(self.output().unwrap().into())
             }
         }
         // if output is not set, but checks or prints are enabled, suppress output
@@ -354,8 +354,8 @@ impl InputOutputOpt for Cfg {
         self.stats_output_format
     }
 
-    fn input_stats_file(&self) -> Option<&PathBuf> {
-        self.input_stats_file.as_ref()
+    fn input_stats_file(&self) -> Option<&Path> {
+        self.input_stats_file.as_deref()
     }
 }
 

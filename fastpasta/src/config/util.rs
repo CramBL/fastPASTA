@@ -1,5 +1,7 @@
 //! Contains the [UtilOpt] Trait for all small utility options set by a user, that are not specific to any other subfunctionality.
 
+use std::sync::Arc;
+
 /// Trait for all small utility options that are not specific to any other trait
 pub trait UtilOpt {
     /// Verbosity level of the logger: 0 = error, 1 = warn, 2 = info, 3 = debug, 4 = trace
@@ -94,7 +96,7 @@ where
     }
 }
 
-impl<T> UtilOpt for std::sync::Arc<T>
+impl<T> UtilOpt for Arc<T>
 where
     T: UtilOpt,
 {

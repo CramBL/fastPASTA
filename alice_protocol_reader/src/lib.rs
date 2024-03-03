@@ -25,7 +25,7 @@
 //! Additionally it contains a helper function [spawn_reader] that spawns a thread that reads input and sents it to a channel that is returned from the function.
 //!
 //! The [InputScanner] is a generic type that can be instantiated with any type that implements the [BufferedReaderWrapper] trait.
-//! This trait is implemented for the [StdInReaderSeeker] and the [BufReader](std::io::BufReader) types.
+//! This trait is implemented for the [StdInReaderSeeker] and the [BufReader](io::BufReader) types.
 //! Allowing the [InputScanner] to read from both stdin and files, in a convenient and efficient way.
 //!
 //! The [CdpArray] is a wrapper for the data read from the input, it contains the data and the memory address of the first byte of the data.
@@ -120,8 +120,14 @@ pub mod stdin_reader;
 use cdp_wrapper::cdp_array::CdpArray;
 use crossbeam_channel::Receiver;
 use prelude::{BufferedReaderWrapper, CdpVec, InputScanner, ScanCDP, RDH};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::{io::IsTerminal, path::PathBuf};
+use std::sync::Arc;
+use std::thread::{Builder, JoinHandle};
+use std::{fs, io};
+use std::{
+    io::IsTerminal,
+    path::Path,
+    sync::atomic::{AtomicBool, Ordering},
+};
 use stdin_reader::StdInReaderSeeker;
 
 /// Depth of the FIFO where the CDP batches are inserted as they are read
@@ -132,22 +138,20 @@ const READER_BUFFER_SIZE: usize = 1024 * 50; // 50KB
 ///
 /// The input mode is determined by the presence of the input file path in the config
 #[inline]
-pub fn init_reader(
-    input_file: Option<&PathBuf>,
-) -> Result<Box<dyn BufferedReaderWrapper>, std::io::Error> {
+pub fn init_reader(input_file: Option<&Path>) -> Result<Box<dyn BufferedReaderWrapper>, io::Error> {
     if let Some(path) = input_file {
-        let f = std::fs::OpenOptions::new().read(true).open(path)?;
-        Ok(Box::new(std::io::BufReader::with_capacity(
+        let f = fs::OpenOptions::new().read(true).open(path)?;
+        Ok(Box::new(io::BufReader::with_capacity(
             READER_BUFFER_SIZE,
             f,
         )))
-    } else if !std::io::stdin().is_terminal() {
+    } else if !io::stdin().is_terminal() {
         Ok(Box::new(StdInReaderSeeker {
-            reader: std::io::stdin(),
+            reader: io::stdin(),
         }))
     } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        Err(io::Error::new(
+            io::ErrorKind::Other,
             "stdin not redirected!",
         ))
     }
@@ -160,10 +164,10 @@ pub fn init_reader(
 /// If you want more control of the batch size at runtime, use [spawn_vec_reader] instead.
 #[inline]
 pub fn spawn_reader<T: RDH + 'static, const CAP: usize>(
-    stop_flag: std::sync::Arc<AtomicBool>,
-    input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
-) -> (std::thread::JoinHandle<()>, Receiver<CdpArray<T, CAP>>) {
-    let reader_thread = std::thread::Builder::new().name("Reader".to_string());
+    stop_flag: Arc<AtomicBool>,
+    input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + Send + 'static>,
+) -> (JoinHandle<()>, Receiver<CdpArray<T, CAP>>) {
+    let reader_thread = Builder::new().name("Reader".to_string());
     let (send_chan, recv_chan) = crossbeam_channel::bounded(CHANNEL_CDP_BATCH_CAPACITY);
     let mut local_stop_on_non_full_batch = false;
 
@@ -204,16 +208,16 @@ pub fn spawn_reader<T: RDH + 'static, const CAP: usize>(
 #[inline]
 fn get_array_batch<T: RDH, const CAP: usize>(
     file_scanner: &mut InputScanner<impl BufferedReaderWrapper + ?Sized>,
-) -> Result<CdpArray<T, CAP>, std::io::Error> {
+) -> Result<CdpArray<T, CAP>, io::Error> {
     let mut cdp_arr = CdpArray::<T, CAP>::new_const();
 
     for _ in 0..CAP {
         let (rdh, payload, mem_pos) = match file_scanner.load_cdp() {
             Ok(cdp) => cdp,
-            Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
+            Err(e) if e.kind() == io::ErrorKind::InvalidData => {
                 break;
             }
-            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+            Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {
                 break;
             }
             Err(e) => return Err(e),
@@ -222,8 +226,8 @@ fn get_array_batch<T: RDH, const CAP: usize>(
     }
 
     if cdp_arr.is_empty() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::UnexpectedEof,
+        return Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
             "No CDPs found",
         ));
     }
@@ -236,10 +240,10 @@ fn get_array_batch<T: RDH, const CAP: usize>(
 /// Returns the thread handle and the receiver channel
 #[inline]
 pub fn spawn_vec_reader<T: RDH + 'static>(
-    stop_flag: std::sync::Arc<AtomicBool>,
-    input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
-) -> (std::thread::JoinHandle<()>, Receiver<CdpVec<T>>) {
-    let reader_thread = std::thread::Builder::new().name("Reader".to_string());
+    stop_flag: Arc<AtomicBool>,
+    input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + Send + 'static>,
+) -> (JoinHandle<()>, Receiver<CdpVec<T>>) {
+    let reader_thread = Builder::new().name("Reader".to_string());
     let (send_chan, recv_chan) = crossbeam_channel::bounded(CHANNEL_CDP_BATCH_CAPACITY);
     let mut local_stop_on_non_full_batch = false;
     const CDP_BATCH_SIZE: usize = 100;
@@ -281,16 +285,16 @@ pub fn spawn_vec_reader<T: RDH + 'static>(
 fn get_vec_batch<T: RDH>(
     file_scanner: &mut InputScanner<impl BufferedReaderWrapper + ?Sized>,
     batch_size_cdps: usize,
-) -> Result<CdpVec<T>, std::io::Error> {
+) -> Result<CdpVec<T>, io::Error> {
     let mut cdp_batch = CdpVec::with_capacity(batch_size_cdps);
 
     for _ in 0..batch_size_cdps {
         let cdp_tuple = match file_scanner.load_cdp() {
             Ok(cdp) => cdp,
-            Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
+            Err(e) if e.kind() == io::ErrorKind::InvalidData => {
                 break;
             }
-            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+            Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {
                 // This error will always be returned when the input is exhausted
                 //  as we try to read a CDP from the input without knowing if there is one
                 break;
@@ -301,8 +305,8 @@ fn get_vec_batch<T: RDH>(
     }
 
     if cdp_batch.is_empty() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::UnexpectedEof,
+        return Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
             "No CDPs found",
         ));
     }

@@ -1,5 +1,6 @@
 //! ALPIDE words and APEs
-use std::{fmt::Display, ops::RangeInclusive};
+#![allow(dead_code)]
+use crate::util::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum AlpideProtocolExtension {
@@ -80,8 +81,8 @@ impl AlpideProtocolExtension {
     }
 }
 
-impl Display for AlpideProtocolExtension {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for AlpideProtocolExtension {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AlpideProtocolExtension::Padding => write!(f, "APE_PADDING"),
             AlpideProtocolExtension::StripStart => write!(f, "APE_STRIP_START"),

@@ -2,8 +2,7 @@
 //!
 //! Each validator is aggregated by the [StatusWordSanityChecker] struct.
 
-use crate::words::its::status_words::{ddw::Ddw0, ihw::Ihw, tdh::Tdh, tdt::Tdt, StatusWord};
-
+use crate::util::*;
 use ddw::Ddw0Validator;
 use ihw::IhwValidator;
 use tdh::TdhValidator;

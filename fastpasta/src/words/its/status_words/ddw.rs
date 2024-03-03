@@ -1,10 +1,7 @@
 //! Contains the struct definition of the DDW0
 
-use std::fmt::Display;
-
-use byteorder::{ByteOrder, LittleEndian};
-
 use super::{display_byte_slice, StatusWord};
+use crate::util::*;
 
 /// Struct representing the DDW0.
 #[repr(packed)]
@@ -45,8 +42,8 @@ impl Ddw0 {
     }
 }
 
-impl Display for Ddw0 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Ddw0 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_byte_slice(self, f)
     }
 }
@@ -60,7 +57,7 @@ impl StatusWord for Ddw0 {
         (self.index & 0b0000_0101) == 0 && (self.res3_lane_status & 0xFF00_0000_0000_0000) == 0
     }
 
-    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
+    fn from_buf(buf: &[u8]) -> Result<Self, io::Error> {
         Ok(Self {
             res3_lane_status: LittleEndian::read_u64(&buf[0..=7]),
             index: buf[8],

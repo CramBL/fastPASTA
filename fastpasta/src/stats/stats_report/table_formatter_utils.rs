@@ -1,4 +1,4 @@
-use owo_colors::OwoColorize;
+use crate::util::*;
 use tabled::settings::object::{Columns, Rows};
 use tabled::settings::{Alignment, Format, Modify, Panel};
 use tabled::Table;
@@ -15,10 +15,7 @@ pub(crate) enum SubtableColor {
 }
 
 /// The super table is the table that contains all the other tables
-pub(crate) fn format_super_table(
-    super_table: &Table,
-    processing_time: std::time::Duration,
-) -> Table {
+pub(crate) fn format_super_table(super_table: &Table, processing_time: Duration) -> Table {
     let mut modded_table = super_table.clone();
 
     let _ = modded_table.with(Panel::header("Report")).with(

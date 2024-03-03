@@ -1,5 +1,7 @@
 //! Contains utility functions for preprocessing the payload
 
+use crate::util::*;
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 enum DataFormat {
     V0,
@@ -69,7 +71,7 @@ fn chunkify_payload<'a>(
     payload: &'a [u8],
     data_format: DataFormat,
     ff_padding: &[&'a u8],
-) -> std::slice::ChunksExact<'a, u8> {
+) -> ChunksExact<'a, u8> {
     match data_format {
         DataFormat::V0 => {
             let chunks = payload.chunks_exact(16);

@@ -1,7 +1,5 @@
 //! Trait for all check options.
-use std::path::PathBuf;
-
-use clap::{Args, Subcommand};
+use crate::util::*;
 /// A config that implements this trait can be used to enable checks.
 pub trait ChecksOpt {
     /// Type of Check to perform.
@@ -34,7 +32,7 @@ where
         (**self).check_its_trigger_period()
     }
 }
-impl<T> ChecksOpt for std::sync::Arc<T>
+impl<T> ChecksOpt for Arc<T>
 where
     T: ChecksOpt,
 {

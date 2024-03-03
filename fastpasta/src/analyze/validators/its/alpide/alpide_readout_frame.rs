@@ -1,6 +1,7 @@
 //! Contains the [AlpideReadoutFrame] struct that stores information about a readout frame from the ALPIDE chips.
 //!
 //! A readout frame should contain data from multiple lanes, and the data from each lane is stored in a [LaneDataFrame].
+use crate::util::*;
 use crate::words::its::{
     data_words::ib_data_word_id_to_lane, lane_data_frame::LaneDataFrame, Layer,
 };
@@ -172,12 +173,12 @@ impl AlpideReadoutFrame {
     }
 
     /// Drain the vector of [LaneDataFrame]s
-    pub fn drain_lane_data_frames(&mut self) -> std::vec::Drain<LaneDataFrame> {
+    pub fn drain_lane_data_frames(&mut self) -> Drain<LaneDataFrame> {
         self.lane_data_frames.drain(..)
     }
 
     /// Take (consumes) the vector of [LaneDataFrame]s
-    pub fn take_lane_data_frames(&mut self) -> std::vec::Vec<LaneDataFrame> {
-        std::mem::take(&mut self.lane_data_frames)
+    pub fn take_lane_data_frames(&mut self) -> Vec<LaneDataFrame> {
+        mem::take(&mut self.lane_data_frames)
     }
 }

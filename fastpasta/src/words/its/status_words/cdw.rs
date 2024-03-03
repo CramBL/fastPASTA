@@ -1,10 +1,7 @@
 //! Contains the struct definition of the CDW
 
-use std::fmt::Display;
-
-use byteorder::{ByteOrder, LittleEndian};
-
 use super::{display_byte_slice, StatusWord};
+use crate::util::*;
 
 /// Struct representing the CDW.
 #[repr(packed)]
@@ -28,8 +25,8 @@ impl Cdw {
     }
 }
 
-impl Display for Cdw {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Cdw {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_byte_slice(self, f)
     }
 }
@@ -43,7 +40,7 @@ impl StatusWord for Cdw {
         true // No reserved bits
     }
 
-    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
+    fn from_buf(buf: &[u8]) -> Result<Self, io::Error> {
         Ok(Self {
             calibration_word_index_lsb_calibration_user_fields: LittleEndian::read_u64(&buf[0..=7]),
             calibration_word_index_msb: buf[8],
@@ -54,19 +51,19 @@ impl StatusWord for Cdw {
 
 #[cfg(test)]
 mod tests {
-    use alice_protocol_reader::prelude::ByteSlice;
-
     use super::*;
+    use alice_protocol_reader::prelude::ByteSlice;
     use pretty_assertions::assert_eq;
 
     #[test]
     fn cdw_read_write() {
         const VALID_ID: u8 = 0xF8;
         let raw_data_cdw = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0xF8];
-        assert!(raw_data_cdw[9] == VALID_ID);
+
         let cdw = Cdw::load(&mut raw_data_cdw.as_slice()).unwrap();
-        println!("{cdw:#?}");
+
         assert_eq!(cdw.id(), VALID_ID);
+
         assert!(cdw.is_reserved_0());
         assert_eq!(cdw.calibration_user_fields(), 0x050403020100);
         assert_eq!(cdw.calibration_word_index(), 0x080706);

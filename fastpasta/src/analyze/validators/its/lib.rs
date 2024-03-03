@@ -1,9 +1,5 @@
 //! Contains the [do_payload_checks] which is the entry point for the ITS specific CDP validator
-use super::cdp_running::CdpRunningValidator;
-use crate::config::prelude::*;
-use crate::stats::StatType;
-use alice_protocol_reader::prelude::FilterOpt;
-use alice_protocol_reader::prelude::RDH;
+use crate::util::*;
 
 /// # Arguments
 /// * `cdp` - A tuple containing the RDH, the payload and the RDH memory position
@@ -16,7 +12,7 @@ pub fn do_payload_checks<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt>(
 ) {
     let (rdh, payload, rdh_mem_pos) = cdp;
     cdp_validator.set_current_rdh(rdh, rdh_mem_pos);
-    match crate::analyze::validators::lib::preprocess_payload(payload) {
+    match preprocess_payload(payload) {
         Ok(gbt_word_chunks) => gbt_word_chunks.for_each(|gbt_word| {
             cdp_validator.check(&gbt_word[..10]); // Take 10 bytes as flavor 0 would have additional 6 bytes of padding
         }),
@@ -80,8 +76,6 @@ mod tests {
     use super::*;
     use crate::config::check::CheckModeArgs;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use alice_protocol_reader::prelude::*;
-    use std::sync::OnceLock;
 
     static CFG_TEST_DO_PAYLOAD_CHECKS: OnceLock<MockConfig> = OnceLock::new();
 
