@@ -3,3 +3,4 @@
 .vscode/launch.json
 /fastpasta/target
 /alice_protocol_reader/target/coverage
+/perf.data*
