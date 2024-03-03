@@ -1,6 +1,6 @@
 //! Contains the struct definition of the DDW0
 
-use super::{display_byte_slice, StatusWord};
+use super::display_byte_slice;
 use crate::util::*;
 
 /// Struct representing the DDW0.
@@ -68,8 +68,6 @@ impl StatusWord for Ddw0 {
 
 #[cfg(test)]
 mod tests {
-    use alice_protocol_reader::prelude::ByteSlice;
-
     use super::*;
     use pretty_assertions::assert_eq;
 

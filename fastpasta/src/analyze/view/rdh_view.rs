@@ -1,6 +1,5 @@
 use crate::util::*;
 use io::Write;
-use owo_colors::OwoColorize;
 
 pub(crate) fn rdh_view<T: RDH, const CAP: usize>(
     cdp_array: &CdpArray<T, CAP>,

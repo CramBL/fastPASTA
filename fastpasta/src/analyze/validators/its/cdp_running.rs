@@ -461,8 +461,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 mod tests {
     use super::*;
     use alice_protocol_reader::{
-        prelude::{test_data::CORRECT_RDH_CRU_V7, RdhCru},
-        rdh::{test_data::CORRECT_RDH_CRU_V7_SOT, RDH_CRU},
+        prelude::test_data::CORRECT_RDH_CRU_V7, rdh::test_data::CORRECT_RDH_CRU_V7_SOT,
     };
     use pretty_assertions::{assert_eq, assert_ne, assert_str_eq};
 

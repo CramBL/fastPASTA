@@ -1,7 +1,6 @@
 //! All stat collecting functionality
 
 use crate::util::*;
-use stats_collector::its_stats::alpide_stats::AlpideStats;
 
 pub mod err_printer;
 pub mod lib;

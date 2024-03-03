@@ -3,7 +3,6 @@
 
 pub mod custom_checks_cfg;
 
-use self::custom_checks_cfg::CustomChecks;
 use crate::util::*;
 
 /// Trait for the configuration of various expected counters in the data.

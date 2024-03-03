@@ -22,7 +22,7 @@ enum DataFormat {
 /// Returns:
 ///
 /// * An iterator over the GBT words
-pub fn preprocess_payload(payload: &[u8]) -> Result<impl Iterator<Item = &[u8]>, String> {
+pub fn preprocess_payload(payload: &[u8]) -> Result<ChunksExact<'_, u8>, String> {
     let ff_padding = extract_payload_ff_padding(payload)?;
 
     // Determine if padding is flavor 0 (6 bytes of 0x00 padding following GBT words) or flavor 1 (no padding)

@@ -7,8 +7,6 @@ pub mod trigger_stats;
 use super::stats_validation::validate_custom_stats;
 use crate::util::*;
 use error_stats::ErrorStats;
-use its_stats::alpide_stats::AlpideStats;
-use rdh_stats::RdhStats;
 
 /// Collects stats from analysis.
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]

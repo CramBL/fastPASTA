@@ -3,16 +3,13 @@
 //! Analysis consists of decoding the ALPIDE data and then performing checks on the decoded data.
 
 use crate::util::*;
-use crate::{
-    stats::stats_collector::its_stats::alpide_stats::AlpideStats,
-    words::its::{
-        alpide::{
-            alpide_word::{AlpideProtocolExtension, AlpideWord},
-            AlpideFrameChipData,
-        },
-        lane_data_frame::LaneDataFrame,
-        Layer,
+use crate::words::its::{
+    alpide::{
+        alpide_word::{AlpideProtocolExtension, AlpideWord},
+        AlpideFrameChipData,
     },
+    lane_data_frame::LaneDataFrame,
+    Layer,
 };
 
 /// Decodes the ALPIDE data from a readout frame for a single lane

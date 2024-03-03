@@ -285,7 +285,6 @@ mod tests {
     use alice_protocol_reader::init_reader;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
     use pretty_assertions::{assert_eq, assert_ne};
-    use std::path::PathBuf;
 
     static CFG_TEST_INIT_PROCESSING: OnceLock<MockConfig> = OnceLock::new();
 

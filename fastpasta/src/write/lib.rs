@@ -2,10 +2,7 @@
 
 use super::writer::BufferedWriter;
 use super::writer::Writer;
-use crate::config::inputoutput::InputOutputOpt;
 use crate::util::*;
-use alice_protocol_reader::cdp_wrapper::cdp_array::CdpArray;
-use alice_protocol_reader::prelude::RDH;
 use crossbeam_channel::Receiver;
 
 /// The size of the buffer used by the writer

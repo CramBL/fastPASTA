@@ -27,8 +27,8 @@ pub(crate) use {
             },
         },
         config::{
-            check::CheckModeArgs,
-            custom_checks,
+            check::{CheckModeArgs, ChecksOpt},
+            custom_checks::{custom_checks_cfg::CustomChecks, CustomChecksOpt},
             inputoutput::{DataOutputFormat, DataOutputMode},
             prelude::*,
             Cfg,

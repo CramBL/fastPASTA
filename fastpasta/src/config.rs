@@ -5,18 +5,9 @@
 
 // Unfortunately needed because of the arg_enum macro not handling doc comments properly
 #![allow(non_camel_case_types)]
-use self::{
-    check::{CheckCommands, ChecksOpt},
-    custom_checks::{custom_checks_cfg::CustomChecks, CustomChecksOpt},
-    inputoutput::{DataOutputFormat, DataOutputMode, InputOutputOpt},
-    prelude::Config,
-    util::UtilOpt,
-    view::{ViewCommands, ViewOpt},
-};
 
-use super::*;
+use crate::util::*;
 use crate::words::its::layer_stave_string_to_feeid;
-use alice_protocol_reader::prelude::FilterOpt;
 use clap::{Args, Parser, Subcommand};
 use clap_complete::Shell;
 

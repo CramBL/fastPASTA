@@ -2,7 +2,7 @@
 
 use crate::util::*;
 
-use super::{display_byte_slice, StatusWord};
+use super::display_byte_slice;
 
 /// Struct representing the TDT
 #[repr(packed)]
@@ -100,8 +100,6 @@ impl StatusWord for Tdt {
 
 #[cfg(test)]
 mod tests {
-    use alice_protocol_reader::prelude::ByteSlice;
-
     use super::*;
     use pretty_assertions::assert_eq;
 

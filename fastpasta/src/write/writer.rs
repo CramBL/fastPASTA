@@ -145,7 +145,6 @@ impl<T: RDH> Drop for BufferedWriter<T> {
 mod tests {
     use super::*;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use alice_protocol_reader::prelude::RdhCru;
     use clap::Parser;
     use temp_dir::TempDir;
 

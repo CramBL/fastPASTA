@@ -1,6 +1,6 @@
 //! Contains the struct definition of the TDH
 //!
-use super::{display_byte_slice, StatusWord};
+use super::display_byte_slice;
 use crate::util::*;
 
 /// Struct to represent the TDH status word
@@ -103,8 +103,6 @@ impl StatusWord for Tdh {
 
 #[cfg(test)]
 mod tests {
-    use alice_protocol_reader::prelude::ByteSlice;
-
     use super::*;
     use pretty_assertions::assert_eq;
 

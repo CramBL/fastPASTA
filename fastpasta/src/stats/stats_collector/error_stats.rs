@@ -1,6 +1,5 @@
 //! Contains the [ErrorStats] struct which stores error messages observed in the raw data and related data
 use crate::util::*;
-use words::its::{layer_from_feeid, stave_number_from_feeid};
 
 type LayerStave = (u8, u8);
 

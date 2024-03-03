@@ -2,10 +2,6 @@
 //!
 //! Implementing the [Config] super trait is required by configs passed to structs in other modules as part of instantiation.
 
-use super::{
-    check::{CheckCommands, ChecksOpt, System},
-    custom_checks::CustomChecksOpt,
-};
 use crate::util::*;
 
 // Styles for the help message

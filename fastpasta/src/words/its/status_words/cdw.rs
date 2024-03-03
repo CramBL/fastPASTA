@@ -1,6 +1,6 @@
 //! Contains the struct definition of the CDW
 
-use super::{display_byte_slice, StatusWord};
+use super::display_byte_slice;
 use crate::util::*;
 
 /// Struct representing the CDW.
@@ -52,7 +52,6 @@ impl StatusWord for Cdw {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alice_protocol_reader::prelude::ByteSlice;
     use pretty_assertions::assert_eq;
 
     #[test]

@@ -4,7 +4,6 @@
 //!
 //! Also contains the convenience [init_controller] function, which spawns a thread with the [Controller] running, and returns the thread handle, the channel to send stats to, and the stop flag.
 
-use super::stats::stats_collector::StatsCollector;
 use super::*;
 use crate::stats::err_printer::ErrPrinter;
 use std::io::Write;

@@ -1,5 +1,5 @@
 //! Contains the struct definition of the IHW
-use super::{display_byte_slice, StatusWord};
+use super::display_byte_slice;
 use crate::util::*;
 
 /// Struct to represent the IHW status word
@@ -52,8 +52,6 @@ impl StatusWord for Ihw {
 
 #[cfg(test)]
 mod tests {
-    use alice_protocol_reader::prelude::ByteSlice;
-
     use super::*;
     use pretty_assertions::assert_eq;
 

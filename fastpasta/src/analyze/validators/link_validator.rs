@@ -23,7 +23,7 @@ pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt + Ut
     pub stats_send: flume::Sender<StatType>,
     /// Consumer channel to receive data from.
     pub data_recv_chan: crossbeam_channel::Receiver<CdpTuple<T>>,
-    its_cdp_validator: its::cdp_running::CdpRunningValidator<T, C>,
+    its_cdp_validator: CdpRunningValidator<T, C>,
     rdh_running_validator: RdhCruRunningChecker<T>,
     rdh_sanity_validator: RdhCruSanityValidator<T>,
     prev_rdhs: ConstGenericRingBuffer<T, 2>,
@@ -126,7 +126,8 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt + UtilOpt> Lin
                             (&rdh, &payload, rdh_mem_pos),
                             &self.stats_send,
                             &mut self.its_cdp_validator,
-                        );
+                        )
+                        .unwrap();
                     }
                 } // Example of how to add a new system to the validator
                   //
@@ -180,8 +181,7 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt + UtilOpt> Lin
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::check::{CheckModeArgs, CmdPathArg};
-    use crate::config::test_util::MockConfig;
+    use crate::config::check::CmdPathArg;
     use crate::words::its::test_payloads::*;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
 

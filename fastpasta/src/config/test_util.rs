@@ -1,8 +1,6 @@
 #![allow(missing_docs)]
 
-use self::custom_checks::custom_checks_cfg::CustomChecks;
 use crate::util::*;
-use custom_checks::CustomChecksOpt;
 
 #[derive(Debug, Clone)]
 /// Complete configurable Mock config for testing

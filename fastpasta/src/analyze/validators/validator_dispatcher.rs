@@ -174,7 +174,6 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::check::CheckModeArgs;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
 
     static CFG_TEST_DISPACTER: OnceLock<MockConfig> = OnceLock::new();
