@@ -9,9 +9,9 @@ gen-flamegraph DATA_FILE ARGS $CARGO_PROFILE_RELEASE_DEBUG="true": flamegraph-de
     @{{PRINT}} cyan "Building in release mode with debug info CARGO_PROFILE_RELEASE_DEBUG=${CARGO_PROFILE_RELEASE_DEBUG}"
     cargo build --release
     @{{PRINT}} cyan "Growing {{ DATA_FILE }} to {{ TMP_DATA_SIZE_MIB }} at {{ TMP_DATA_PATH }}"
-    just bin-mult-grow "{{ DATA_FILE }}" "{{ TMP_DATA_SIZE_MIB }}" "{{ TMP_DATA_PATH }}" 
+    just bin-mult-grow "{{ DATA_FILE }}" "{{ TMP_DATA_SIZE_MIB }}" "{{ TMP_DATA_PATH }}"
     @{{PRINT}} cyan "Running flamegraph on: fastpasta {{ TMP_DATA_PATH }} {{ ARGS }}"
-    just run-flamegraph "target/flamegraph.svg" "target/release/fastpasta" "{{ TMP_DATA_PATH }}" "{{ ARGS }}"  
+    just run-flamegraph "target/flamegraph.svg" "target/release/fastpasta" "{{ TMP_DATA_PATH }}" "{{ ARGS }}"
     @{{PRINT}} cyan "Done. Cleaning up by removing {{ TMP_DATA_PATH }}"
     rm -f "{{ TMP_DATA_PATH }}"
 
@@ -25,7 +25,7 @@ run-flamegraph SVG BIN DATA ARGS:
 # Run perf on fastpasta
 perf-profile DATA_FILE SIZE_MB ARGS: perf-deps
     cargo build --release
-    just bin-mult-grow "{{ DATA_FILE }}" "{{ SIZE_MB }}" "target/tmp_raw_data.raw" 
+    just bin-mult-grow "{{ DATA_FILE }}" "{{ SIZE_MB }}" "target/tmp_raw_data.raw"
     perf stat -B target/release/fastpasta "target/tmp_raw_data.raw" {{ ARGS }}
     rm -f "target/tmp_raw_data.raw"
 
