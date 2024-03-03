@@ -23,10 +23,10 @@ run-flamegraph SVG BIN DATA ARGS:
     {{PRINT}} green "Flamegraph finished in $(( ${SECONDS} - start )) seconds"
 
 # Run perf on fastpasta
-perf-profile DATA_FILE SIZE_MB ARGS: perf-deps
+perf-profile DATA_FILE SIZE_MB ARGS REPEAT="3": perf-deps
     cargo build --release
     just bin-mult-grow "{{ DATA_FILE }}" "{{ SIZE_MB }}" "target/tmp_raw_data.raw"
-    perf stat -B target/release/fastpasta "target/tmp_raw_data.raw" {{ ARGS }}
+    perf stat --repeat "{{ REPEAT }}" -B target/release/fastpasta "target/tmp_raw_data.raw" {{ ARGS }}
     rm -f "target/tmp_raw_data.raw"
 
 
