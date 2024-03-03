@@ -29,6 +29,26 @@ perf-profile DATA_FILE SIZE_MB ARGS: perf-deps
     perf stat -B target/release/fastpasta "target/tmp_raw_data.raw" {{ ARGS }}
     rm -f "target/tmp_raw_data.raw"
 
+
+[private]
+ci-perf-profile: ci-perf-deps
+    cargo build --release
+    just bin-mult-grow "tests/test-data/12_links_2hbf.raw" "500" "target/tmp_raw_data.raw"
+    perf stat -B target/release/fastpasta "target/tmp_raw_data.raw" --mute-errors check sanity
+    perf stat -B target/release/fastpasta "target/tmp_raw_data.raw" --mute-errors check all
+    perf stat -B target/release/fastpasta "target/tmp_raw_data.raw" --mute-errors check all its
+    perf stat -B target/release/fastpasta "target/tmp_raw_data.raw" --mute-errors check all its-stave
+    rm -f "target/tmp_raw_data.raw"
+
+[private]
+ci-perf-deps:
+    #!/usr/bin/env bash
+    cargo install binmult
+    if ! which perf; then
+        apt-get update -qq
+        apt-get --assume-yes install linux-tools-common linux-tools-generic linux-tools-`uname -r`
+    fi
+
 # Check dependencies for profiling with perf
 [private]
 perf-deps:

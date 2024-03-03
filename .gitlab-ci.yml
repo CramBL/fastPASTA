@@ -140,3 +140,13 @@ extended-regress-bench:
   cache: []
   interruptible: true
   script: just bench-extended
+
+perf-profile:
+  needs: []
+  dependencies: []
+  cache: []
+  stage: benchmark
+  extends: .install-just
+  script:
+    - just ci-perf-deps
+    - just ci-perf-profile
