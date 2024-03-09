@@ -94,6 +94,23 @@ address-sanitizer:
     - !reference [.sanitizer-test, script]
     - just test-asan
 
+old-leak-sanitizer:
+  stage: test
+  image: rustlang/rust:nightly
+  variables:
+    LSAN_OPTIONS: "suppressions=lsan-suppressions.txt"
+    RUSTFLAGS: "-Z sanitizer=leak"
+    RUST_BACKTRACE: "FULL"
+  script:
+    - rustup component add llvm-tools-preview
+    - rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+    - cargo build -Z build-std --target x86_64-unknown-linux-gnu --verbose
+    - cargo test --verbose --lib --tests --all-features --target x86_64-unknown-linux-gnu
+  allow_failure: true
+  dependencies: []
+  cache: []
+
+
 # Run benchmarks and check for performance regression
 limited-regress-bench:
   needs: [lint, pre-commit]
