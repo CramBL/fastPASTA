@@ -43,7 +43,7 @@ _run-test-asan $RUSTUP_TOOLCHAIN $RUST_BACKTRACE $RUSTFLAGS $ASAN_OPTIONS *ARGS:
 test-lsan *ARGS: (sanitizer-build RUSTUP_TOOLCHAIN RUST_BACKTRACE ARGS) (_run-test-lsan RUSTUP_TOOLCHAIN RUST_BACKTRACE LSAN_ENV_RUSTFLAGS LSAN_ENV_LSAN_OPTIONS ARGS)
 _run-test-lsan $RUSTUP_TOOLCHAIN $RUST_BACKTRACE $RUSTFLAGS $LSAN_OPTIONS *ARGS:
     @{{PRINT}} cyan "RUSTUP_TOOLCHAIN=${RUSTUP_TOOLCHAIN}\nRUST_BACKTRACE=${RUST_BACKTRACE}\nRUSTFLAGS=${RUSTFLAGS}\nLSAN_OPTIONS=${LSAN_OPTIONS}"
-    cargo +nightly test --target x86_64-unknown-linux-gnu {{ ARGS }}
+    cargo +nightly test --lib --tests --all-features  --target x86_64-unknown-linux-gnu {{ ARGS }}
 
 # Run tests with memory sanitizer
 test-msan *ARGS: (sanitizer-build RUSTUP_TOOLCHAIN RUST_BACKTRACE ARGS) (_run-test-msan RUSTUP_TOOLCHAIN RUST_BACKTRACE MSAN_ENV_RUSTFLAGS MSAN_ENV_MSAN_OPTIONS ARGS)
