@@ -181,7 +181,7 @@ impl RdhStats {
         self.rdhs_seen += 1;
     }
 
-    pub(super) fn add_rdhs_seen(&mut self, rdhs_seen: u16) {
+    pub(super) fn add_rdhs_seen(&mut self, rdhs_seen: u32) {
         self.rdhs_seen += rdhs_seen as u64;
     }
 

@@ -24,7 +24,7 @@ pub enum StatType {
     /// The first system ID observed is the basis for the rest of processing
     SystemId(SystemId),
     /// Increment the total RDHs seen.
-    RDHSeen(u16),
+    RDHSeen(u32),
     /// Increment the total RDHs filtered.
     RDHFiltered(u32),
     /// Increment the total payload size.
