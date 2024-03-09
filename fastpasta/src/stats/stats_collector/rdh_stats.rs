@@ -194,7 +194,7 @@ impl RdhStats {
         self.rdhs_filtered += 1;
     }
 
-    pub(super) fn add_rdhs_filtered(&mut self, rdhs_filtered: u16) {
+    pub(super) fn add_rdhs_filtered(&mut self, rdhs_filtered: u32) {
         self.rdhs_filtered += rdhs_filtered as u64;
     }
 

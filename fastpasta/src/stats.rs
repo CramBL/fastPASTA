@@ -26,7 +26,7 @@ pub enum StatType {
     /// Increment the total RDHs seen.
     RDHSeen(u16),
     /// Increment the total RDHs filtered.
-    RDHFiltered(u16),
+    RDHFiltered(u32),
     /// Increment the total payload size.
     PayloadSize(u32),
     /// Add a link to the list of links observed.

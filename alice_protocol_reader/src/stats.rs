@@ -21,7 +21,7 @@ pub enum InputStatType {
     /// Increment the total RDHs seen.
     RDHSeen(u16),
     /// Increment the total RDHs filtered.
-    RDHFiltered(u16),
+    RDHFiltered(u32),
     /// Increment the total payload size.
     PayloadSize(u32),
     /// The first system ID observed is the basis for the rest of processing
@@ -33,7 +33,7 @@ pub enum InputStatType {
 pub struct Stats {
     reporter: flume::Sender<InputStatType>,
     rdhs_seen: u16,
-    rdhs_filtered: u16,
+    rdhs_filtered: u32,
     payload_size_seen: u32,
     unique_links_observed: Vec<u8>,
     unique_feeids_observed: Vec<u16>,
@@ -82,9 +82,9 @@ impl Stats {
     /// Increment the RDH filtered counter.
     pub fn rdh_filtered(&mut self) {
         self.rdhs_filtered += 1;
-        if self.rdhs_filtered == 1000 {
+        if self.rdhs_filtered == u32::MAX {
             self.reporter
-                .send(InputStatType::RDHFiltered(1000))
+                .send(InputStatType::RDHFiltered(u32::MAX))
                 .unwrap();
             self.rdhs_filtered = 0;
         }
