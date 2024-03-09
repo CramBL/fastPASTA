@@ -50,8 +50,8 @@ pub enum StatType {
     AlpideStats(AlpideStats),
 }
 
-impl std::fmt::Display for StatType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for StatType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             StatType::RunTriggerType((val, description)) => {
                 write!(f, "Run trigger type: {val}: {description}")
@@ -133,8 +133,8 @@ impl SystemId {
     }
 }
 
-impl std::fmt::Display for SystemId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for SystemId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SystemId::TPC => write!(f, "TPC"),
             SystemId::TRD => write!(f, "TRD"),

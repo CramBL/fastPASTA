@@ -5,6 +5,7 @@ use super::RdhSubword;
 use byteorder::{ByteOrder, LittleEndian};
 use owo_colors::OwoColorize;
 use std::fmt::{self, Debug, Display};
+use std::io;
 
 /// Represents the composite `FEE ID` fields. Using a newtype because the sub-fields are packed in 16 bits, and extracting the values requires some work.
 #[repr(packed)]
@@ -82,7 +83,7 @@ impl Display for Rdh0 {
 
 impl RdhSubword for Rdh0 {
     #[inline]
-    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
+    fn from_buf(buf: &[u8]) -> Result<Self, io::Error> {
         Ok(Rdh0 {
             header_id: buf[0],
             header_size: buf[1],

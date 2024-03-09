@@ -348,12 +348,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_header_text() {
-        let header_text = RdhCru::rdh_header_text_with_indent_to_string(7);
-        println!("{header_text}");
-    }
-
-    #[test]
     fn test_correct_rdh_fields() {
         let rdh = CORRECT_RDH_CRU_V7;
 
@@ -451,31 +445,6 @@ mod tests {
         assert_eq!(rdh_v7.payload_size(), 0);
     }
 
-    #[test]
-    fn test_print_generic() {
-        let rdh_v7: RdhCru = CORRECT_RDH_CRU_V7;
-        let rdh_v6: RdhCru = CORRECT_RDH_CRU_V6;
-        println!("{}", RdhCru::rdh_header_text_with_indent_to_string(7));
-        println!("{rdh_v7}");
-        println!("{rdh_v6}");
-        let v = rdh_v7.version();
-        println!("{v:?}");
-        print_rdh_cru_v6(&rdh_v6);
-        print_rdh_cru(&rdh_v7);
-        println!("{}", RdhCru::rdh_header_text_with_indent_to_string(7));
-        let rdh_v7: RdhCru = CORRECT_RDH_CRU_V7;
-        let rdh_v6: RdhCru = CORRECT_RDH_CRU_V6;
-        print_rdh_cru(&rdh_v6);
-        print_rdh_cru(&rdh_v7);
-    }
-
-    fn print_rdh_cru(rdh: &RdhCru) {
-        println!("{rdh}");
-    }
-    fn print_rdh_cru_v6(rdh: &RdhCru) {
-        println!("{rdh}");
-    }
-
     // Test from old implementation
 
     #[test]
@@ -492,8 +461,6 @@ mod tests {
             ][..],
         )
         .unwrap();
-        // Check that the fields are correct
-        println!("{rdhcruv7}");
 
         let rdh_from_old = RdhCru::load(&mut rdhcruv7.to_byte_slice()).unwrap();
         let rdh_inferred_from_old = RdhCru::load(&mut rdhcruv7.to_byte_slice()).unwrap();

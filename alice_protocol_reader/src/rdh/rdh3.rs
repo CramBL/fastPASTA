@@ -145,9 +145,18 @@ mod tests {
             par_bit: 0x0000,
             reserved0: 0x0000,
         };
-        println!("{:?}", rdh3);
         let rdh3_2 = rdh3;
 
         assert_eq!(rdh3, rdh3_2);
+    }
+
+    #[test]
+    fn test_rdh3_to_string() {
+        let rdh3 = Rdh3::from_buf(&[1, 2, 3, 4, 5, 6, 7, 8]).unwrap();
+
+        assert_eq!(
+            rdh3.to_string(),
+            "Rdh3: detector_field: 4030201, par_bit: 605, reserved0: 807"
+        );
     }
 }
