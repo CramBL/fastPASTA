@@ -1,7 +1,6 @@
 //! Contains the [ErrPrinter] that prints error messages in accordance to a given configuration
 
-use itertools::Itertools;
-use std::str::Chars;
+use crate::util::*;
 
 /// Prints error messages in accordance to a given configuration
 #[derive(Debug, Default)]

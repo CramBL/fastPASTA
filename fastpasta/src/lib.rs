@@ -77,10 +77,8 @@
 //! $ fastpasta <input_file> view rdh
 //! ```
 
-use alice_protocol_reader::{cdp_wrapper::cdp_array::CdpArray, prelude::*};
+use crate::util::*;
 use analyze::validators::rdh::Rdh0Validator;
-use config::prelude::*;
-use stats::StatType;
 
 /// Write an error message to stderr.
 /// All error messages should be written through this function to ensure consistency.
@@ -92,6 +90,7 @@ pub fn display_error(err_msg: &str) {
 pub mod analyze;
 pub mod config;
 pub mod controller;
+pub mod init;
 pub mod stats;
 pub mod util;
 pub mod words;
@@ -103,14 +102,14 @@ pub fn init_processing(
     config: &'static impl Config,
     mut reader: Box<dyn BufferedReaderWrapper>,
     stat_send: flume::Sender<StatType>,
-    stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
-) -> std::io::Result<()> {
+    stop_flag: Arc<atomic::AtomicBool>,
+) -> io::Result<()> {
     // Load the first few bytes that should contain RDH0 and do a basic sanity check before continuing.
     // Early exit if the check fails.
     let rdh0 = Rdh0::load(&mut reader).expect("Failed to read first RDH0");
     if let Err(e) = Rdh0Validator::default().sanity_check(&rdh0) {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
             format!("Initial RDH0 deserialization failed sanity check: {e}"),
         ));
     }
@@ -152,8 +151,8 @@ pub fn init_processing(
                 }
             }
         }
-        _ => Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
             format!("Unknown RDH version: {rdh_version}"),
         )),
     }
@@ -169,14 +168,14 @@ pub fn init_processing(
 ///     - Write data to `file` or `stdout` with [write::lib::spawn_writer].
 pub fn process<T: RDH + 'static, const CAP: usize>(
     config: &'static impl Config,
-    loader: InputScanner<impl BufferedReaderWrapper + ?Sized + std::marker::Send + 'static>,
+    loader: InputScanner<impl BufferedReaderWrapper + ?Sized + marker::Send + 'static>,
     input_stats_recv: Option<&flume::Receiver<InputStatType>>,
     stats_send: &flume::Sender<StatType>,
-    stop_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
-) -> std::io::Result<()> {
+    stop_flag: Arc<atomic::AtomicBool>,
+) -> io::Result<()> {
     // 1. Launch reader thread to read data from file or stdin
     let (reader_handle, reader_data_recv): (
-        std::thread::JoinHandle<()>,
+        thread::JoinHandle<()>,
         crossbeam_channel::Receiver<CdpArray<T, CAP>>,
     ) = alice_protocol_reader::spawn_reader(stop_flag.clone(), loader);
 
@@ -188,14 +187,14 @@ pub fn process<T: RDH + 'static, const CAP: usize>(
             stop_flag.clone(),
             stats_send.clone(),
             reader_data_recv.clone(),
-        );
+        )?;
         Some(handle)
     } else {
         None
     };
 
     // 3. Write data out only in the case where no analysis is performed and a filter link is set
-    let output_handle: Option<std::thread::JoinHandle<()>> = match (
+    let output_handle: Option<thread::JoinHandle<()>> = match (
         config.check(),
         config.view(),
         config.filter_enabled(),
@@ -286,8 +285,6 @@ mod tests {
     use alice_protocol_reader::init_reader;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
     use pretty_assertions::{assert_eq, assert_ne};
-    use std::path::PathBuf;
-    use std::sync::OnceLock;
 
     static CFG_TEST_INIT_PROCESSING: OnceLock<MockConfig> = OnceLock::new();
 
@@ -306,7 +303,7 @@ mod tests {
         let (sender, receiver): (flume::Sender<StatType>, flume::Receiver<StatType>) =
             flume::unbounded();
 
-        let stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let stop_flag = Arc::new(AtomicBool::new(false));
 
         // Act
         init_processing(
@@ -342,7 +339,7 @@ mod tests {
 
         assert!(is_rdh_version_detected_7);
         assert_eq!(how_many_rdh_seen, 10);
-        assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));
+        assert!(!stop_flag.load(Ordering::SeqCst));
     }
 
     static CFG_TEST_SPAWN_ANALYSIS: OnceLock<MockConfig> = OnceLock::new();
@@ -355,7 +352,7 @@ mod tests {
         let (stat_sender, stat_receiver): (flume::Sender<StatType>, flume::Receiver<StatType>) =
             flume::unbounded();
         let (data_sender, data_receiver) = crossbeam_channel::unbounded();
-        let stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let stop_flag = Arc::new(AtomicBool::new(false));
         let mut cdp_batch: CdpArray<RdhCru, 1> = CdpArray::new();
         cdp_batch.push(CORRECT_RDH_CRU_V7, Vec::new(), 0);
 
@@ -365,12 +362,13 @@ mod tests {
             stop_flag.clone(),
             stat_sender,
             data_receiver,
-        );
+        )
+        .unwrap();
         data_sender.send(cdp_batch).unwrap();
         drop(data_sender);
         // Sleep to give the thread time to process the data
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        stop_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+        thread::sleep(Duration::from_millis(100));
+        stop_flag.store(true, Ordering::SeqCst);
 
         // Receive all messages
         let mut stats: Vec<StatType> = Vec::new();

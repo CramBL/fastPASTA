@@ -1,7 +1,6 @@
 //! Contains the struct definition of the IHW
-use super::{display_byte_slice, StatusWord};
-use byteorder::{ByteOrder, LittleEndian};
-use std::fmt::Display;
+use super::display_byte_slice;
+use crate::util::*;
 
 /// Struct to represent the IHW status word
 #[repr(packed)]
@@ -27,8 +26,8 @@ impl Ihw {
     }
 }
 
-impl Display for Ihw {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Ihw {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_byte_slice(self, f)
     }
 }
@@ -42,7 +41,7 @@ impl StatusWord for Ihw {
         self.reserved() == 0
     }
 
-    fn from_buf(buf: &[u8]) -> Result<Self, std::io::Error> {
+    fn from_buf(buf: &[u8]) -> Result<Self, io::Error> {
         Ok(Ihw {
             active_lanes: LittleEndian::read_u32(&buf[0..=3]),
             reserved: LittleEndian::read_u32(&buf[4..=7]),
@@ -53,8 +52,6 @@ impl StatusWord for Ihw {
 
 #[cfg(test)]
 mod tests {
-    use alice_protocol_reader::prelude::ByteSlice;
-
     use super::*;
     use pretty_assertions::assert_eq;
 

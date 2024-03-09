@@ -1,6 +1,6 @@
 //! Contains utility functions for working with data words in a CDP payload
 
-use std::ops::RangeInclusive;
+use crate::util::*;
 
 /// Takes an OL/ML (OB) data word ID and returns the lane number
 #[inline]

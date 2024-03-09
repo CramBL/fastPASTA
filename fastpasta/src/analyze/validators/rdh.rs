@@ -2,10 +2,7 @@
 //!
 //! The [RdhCruSanityValidator] is composed of multiple subvalidators, each checking an [RDH] subword.
 
-use crate::config::check::{ChecksOpt, System};
-use crate::config::custom_checks::CustomChecksOpt;
-use alice_protocol_reader::prelude::*;
-
+use crate::util::*;
 use std::fmt::Write as _;
 
 /// Enum to specialize the checks performed by the [RdhCruSanityValidator] for a specific system.
@@ -21,7 +18,7 @@ pub struct RdhCruSanityValidator<T: RDH> {
     rdh1_validator: &'static Rdh1Validator,
     rdh2_validator: &'static Rdh2Validator,
     rdh3_validator: &'static Rdh3Validator,
-    _phantom: std::marker::PhantomData<T>,
+    _phantom: PhantomData<T>,
     // valid_dataformat_reserved0: DataformatReserved,
     // valid link IDs are 0-11 and 15
     // datawrapper ID is 0 or 1
@@ -51,7 +48,7 @@ impl<T: RDH> RdhCruSanityValidator<T> {
             rdh1_validator: &RDH1_VALIDATOR,
             rdh2_validator: &RDH2_VALIDATOR,
             rdh3_validator: &RDH3_VALIDATOR,
-            _phantom: std::marker::PhantomData,
+            _phantom: PhantomData,
         }
     }
 
@@ -90,7 +87,7 @@ impl<T: RDH> RdhCruSanityValidator<T> {
                 rdh1_validator: &RDH1_VALIDATOR,
                 rdh2_validator: &RDH2_VALIDATOR,
                 rdh3_validator: &RDH3_VALIDATOR,
-                _phantom: std::marker::PhantomData,
+                _phantom: PhantomData,
             },
         }
     }
@@ -111,7 +108,7 @@ impl<T: RDH> RdhCruSanityValidator<T> {
                 rdh1_validator: &RDH1_VALIDATOR,
                 rdh2_validator: &RDH2_VALIDATOR,
                 rdh3_validator: &RDH3_VALIDATOR,
-                _phantom: std::marker::PhantomData,
+                _phantom: PhantomData,
             }
         } else {
             Self::default()

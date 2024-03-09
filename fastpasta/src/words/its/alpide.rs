@@ -1,6 +1,5 @@
-#![allow(dead_code)]
-
 //! Word definitions and utility functions for working with ALPIDE data words
+#![allow(missing_copy_implementations)]
 
 pub mod alpide_word;
 
@@ -12,8 +11,8 @@ pub struct AlpideFrameChipData {
     pub(crate) chip_id: u8,
     /// Bunch counter for the frame \[10:3\]
     pub(crate) bunch_counter: Option<u8>,
-    /// Other data from the chip
-    pub(crate) data: Vec<u8>,
+    // Other data from the chip
+    //pub(crate) data: Vec<u8>,
 }
 
 impl AlpideFrameChipData {
@@ -22,7 +21,7 @@ impl AlpideFrameChipData {
         Self {
             chip_id,
             bunch_counter: None,
-            data: Vec::new(),
+            //data: Vec::new(),
         }
     }
     /// Create a new instance from the chip ID but disallow adding data
@@ -32,7 +31,7 @@ impl AlpideFrameChipData {
         Self {
             chip_id,
             bunch_counter: None,
-            data: Vec::with_capacity(0),
+            //data: Vec::with_capacity(0),
         }
     }
 

@@ -1,8 +1,7 @@
 //! Validator for [Tdt]
-use std::fmt::Write;
-
 use super::StatusWordValidator;
 use crate::words::its::status_words::{tdt::Tdt, StatusWord};
+use std::fmt::Write;
 
 /// Validator for [Tdt]
 #[derive(Debug, Copy, Clone)]

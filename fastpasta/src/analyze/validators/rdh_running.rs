@@ -1,8 +1,7 @@
 //! Performs running (stateful) checks on [RDH]s.
 
+use crate::util::*;
 use std::fmt::Write;
-
-use alice_protocol_reader::prelude::{Rdh1, Rdh2, RDH};
 
 /// Performs running (stateful) checks on [RDH]s.
 pub struct RdhCruRunningChecker<T: RDH> {

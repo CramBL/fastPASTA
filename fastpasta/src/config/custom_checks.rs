@@ -3,8 +3,7 @@
 
 pub mod custom_checks_cfg;
 
-pub(crate) use custom_checks_cfg::CustomChecks;
-use std::path::PathBuf;
+use crate::util::*;
 
 /// Trait for the configuration of various expected counters in the data.
 pub trait CustomChecksOpt {
@@ -19,7 +18,7 @@ pub trait CustomChecksOpt {
 
     /// Get the custom checks from a TOML file returning a [CustomChecks] instance.
     fn custom_checks_from_path(&self, toml_path: &PathBuf) -> CustomChecks {
-        let toml = std::fs::read_to_string(toml_path).expect("Failed to read TOML file");
+        let toml = fs::read_to_string(toml_path).expect("Failed to read TOML file");
         toml::from_str(&toml).expect("Failed to parse TOML")
     }
 
@@ -27,7 +26,7 @@ pub trait CustomChecksOpt {
     fn generate_custom_checks_toml(&self, file_name: &str) {
         let toml =
             descriptive_toml_derive::TomlConfig::to_string_pretty_toml(&CustomChecks::default());
-        std::fs::write(file_name, toml).expect("Failed to write TOML file");
+        fs::write(file_name, toml).expect("Failed to write TOML file");
     }
 
     /// Get the number of CDPs expected in the data, if it is set.
@@ -122,7 +121,7 @@ where
     }
 }
 
-impl<T> CustomChecksOpt for std::sync::Arc<T>
+impl<T> CustomChecksOpt for Arc<T>
 where
     T: CustomChecksOpt,
 {
@@ -166,9 +165,9 @@ mod tests {
     #[test]
     fn test_write_toml_to_file_trait() {
         let mock_file_name = "mock_test_custom_checks.toml";
-        let mock_config = super::super::test_util::MockConfig::default();
+        let mock_config = MockConfig::default();
         mock_config.generate_custom_checks_toml(mock_file_name);
         // Cleanup
-        std::fs::remove_file(mock_file_name).unwrap();
+        fs::remove_file(mock_file_name).unwrap();
     }
 }

@@ -2,8 +2,7 @@
 
 use super::super::stats_collector::its_stats::ItsStats;
 use super::trigger_stats::TriggerStats;
-use crate::stats::SystemId;
-use serde::{Deserialize, Serialize};
+use crate::util::*;
 
 /// Stores stats extracted from the RDHs of the raw data.
 #[derive(Default, PartialEq, Debug, Serialize, Deserialize)]

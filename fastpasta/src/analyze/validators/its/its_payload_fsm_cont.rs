@@ -1,7 +1,8 @@
 //! State machine for ITS payload continuous mode
 #![allow(non_camel_case_types)]
 
-use super::lib::ItsPayloadWord;
+use self::ITS_Payload_Continuous::IHW_;
+use crate::util::*;
 
 /// Types that can be returned as an error from the FSM.
 ///
@@ -20,7 +21,6 @@ pub enum AmbigiousError {
     DDW0_or_TDH_IHW,
 }
 
-use sm::sm;
 sm! {
     // All states have the '_' suffix and events have '_' prefix so they show up as `STATE_BY_EVENT` in the generated code
     // The statemachine macro notation goes like this:
@@ -80,7 +80,6 @@ sm! {
     }
 }
 
-use self::ITS_Payload_Continuous::IHW_;
 /// State machine for ITS payload continuous mode.
 pub struct ItsPayloadFsmContinuous {
     state_machine: ITS_Payload_Continuous::Variant,
@@ -110,9 +109,6 @@ impl ItsPayloadFsmContinuous {
     /// Returns the type of the word wrapped in an OK if the ID was identified.
     /// If the ID could not be determined, a best guess is returned wrapped in an error type to be handled by the caller
     pub fn advance(&mut self, gbt_word: &[u8]) -> Result<ItsPayloadWord, AmbigiousError> {
-        use crate::words::its::status_words;
-        use status_words::util::tdh_no_data;
-        use status_words::util::tdt_packet_done;
         use ITS_Payload_Continuous as event;
         use ITS_Payload_Continuous::Variant as state;
 

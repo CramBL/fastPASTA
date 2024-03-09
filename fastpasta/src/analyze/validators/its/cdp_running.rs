@@ -5,26 +5,12 @@
 mod cdp_tracker;
 mod rdh_validator;
 mod readout_frame;
-
 use self::{
     cdp_tracker::CdpTracker, rdh_validator::ItsRdhValidator,
     readout_frame::ItsReadoutFrameValidator,
 };
-
-use super::{
-    data_words::{ib::IbDataWordValidator, ob::ObDataWordValidator, DATA_WORD_SANITY_CHECKER},
-    its_payload_fsm_cont::{self, ItsPayloadFsmContinuous},
-    lib::ItsPayloadWord,
-    status_word::{tdh::TdhValidator, util::StatusWordContainer},
-};
-use crate::config::prelude::*;
-use crate::stats::StatType;
-use crate::words::its::status_words::{
-    cdw::Cdw, ddw::Ddw0, ihw::Ihw, tdh::Tdh, tdt::Tdt, StatusWord,
-};
-use crate::words::its::Stave;
-use alice_protocol_reader::prelude::FilterOpt;
-use alice_protocol_reader::prelude::RDH;
+use super::status_word::{tdh::TdhValidator, util::StatusWordContainer};
+use crate::util::*;
 
 #[derive(Debug, Clone, Copy)]
 enum StatusWordKind<'a> {
@@ -111,10 +97,9 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             .as_ref()
             .is_some_and(|rfv| rfv.stave().is_none())
         {
-            self.readout_frame_validator
-                .as_mut()
-                .unwrap()
-                .set_stave(Stave::from_feeid(self.rdh_validator.rdh().fee_id()));
+            self.readout_frame_validator.as_mut().unwrap().set_stave(
+                words::its::Stave::from_feeid(self.rdh_validator.rdh().fee_id()),
+            );
         }
     }
 
@@ -476,11 +461,9 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
 mod tests {
     use super::*;
     use alice_protocol_reader::{
-        prelude::{test_data::CORRECT_RDH_CRU_V7, RdhCru},
-        rdh::{test_data::CORRECT_RDH_CRU_V7_SOT, RDH_CRU},
+        prelude::test_data::CORRECT_RDH_CRU_V7, rdh::test_data::CORRECT_RDH_CRU_V7_SOT,
     };
     use pretty_assertions::{assert_eq, assert_ne, assert_str_eq};
-    use std::sync::OnceLock;
 
     static MOCK_CONFIG_DEFAULT: OnceLock<MockConfig> = OnceLock::new();
     fn get_default_config() -> &'static MockConfig {

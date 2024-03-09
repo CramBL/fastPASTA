@@ -1,5 +1,7 @@
 //! Contains utility functions for preprocessing the payload
 
+use crate::util::*;
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 enum DataFormat {
     V0,
@@ -20,7 +22,7 @@ enum DataFormat {
 /// Returns:
 ///
 /// * An iterator over the GBT words
-pub fn preprocess_payload(payload: &[u8]) -> Result<impl Iterator<Item = &[u8]>, String> {
+pub fn preprocess_payload(payload: &[u8]) -> Result<ChunksExact<'_, u8>, String> {
     let ff_padding = extract_payload_ff_padding(payload)?;
 
     // Determine if padding is flavor 0 (6 bytes of 0x00 padding following GBT words) or flavor 1 (no padding)
@@ -69,7 +71,7 @@ fn chunkify_payload<'a>(
     payload: &'a [u8],
     data_format: DataFormat,
     ff_padding: &[&'a u8],
-) -> std::slice::ChunksExact<'a, u8> {
+) -> ChunksExact<'a, u8> {
     match data_format {
         DataFormat::V0 => {
             let chunks = payload.chunks_exact(16);

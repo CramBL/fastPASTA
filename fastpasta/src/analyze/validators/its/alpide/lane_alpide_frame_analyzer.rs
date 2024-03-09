@@ -2,18 +2,14 @@
 //!
 //! Analysis consists of decoding the ALPIDE data and then performing checks on the decoded data.
 
-use itertools::Itertools;
-
-use crate::{
-    stats::stats_collector::its_stats::alpide_stats::AlpideStats,
-    words::its::{
-        alpide::{
-            alpide_word::{AlpideProtocolExtension, AlpideWord},
-            AlpideFrameChipData,
-        },
-        lane_data_frame::LaneDataFrame,
-        Layer,
+use crate::util::*;
+use crate::words::its::{
+    alpide::{
+        alpide_word::{AlpideProtocolExtension, AlpideWord},
+        AlpideFrameChipData,
     },
+    lane_data_frame::LaneDataFrame,
+    Layer,
 };
 
 /// Decodes the ALPIDE data from a readout frame for a single lane
@@ -165,7 +161,7 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
                         AlpideProtocolExtension::Padding => unsafe {
                             // Unreachable because the earlier check !is_header_seen && alpide_byte == 0 maches padding bytes
                             // And in this match statement, a padding byte would instead be interpreted as a Data Long
-                            std::hint::unreachable_unchecked()
+                            hint::unreachable_unchecked()
                         },
                         // APEs signifying Lane status = FATAL
                         fatal_ape => {

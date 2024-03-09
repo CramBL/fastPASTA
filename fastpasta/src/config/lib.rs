@@ -2,17 +2,7 @@
 //!
 //! Implementing the [Config] super trait is required by configs passed to structs in other modules as part of instantiation.
 
-use super::{
-    check::{CheckCommands, ChecksOpt, System},
-    custom_checks::CustomChecksOpt,
-    prelude::{InputOutputOpt, ViewOpt},
-    util::UtilOpt,
-};
-use alice_protocol_reader::prelude::FilterOpt;
-use clap::builder::{
-    styling::{AnsiColor, Effects},
-    Styles,
-};
+use crate::util::*;
 
 // Styles for the help message
 pub(crate) fn styles() -> Styles {
@@ -25,7 +15,7 @@ pub(crate) fn styles() -> Styles {
 
 /// Super trait for all the traits that needed to be implemented by the config struct
 // Generic traits that are required by the config struct
-pub trait Config: Send + Sync + std::marker::Sized
+pub trait Config: Send + Sync + Sized
 where
     // Subtraits that group together related configuration options
     Self: UtilOpt + FilterOpt + InputOutputOpt + ChecksOpt + ViewOpt + CustomChecksOpt,
@@ -112,7 +102,7 @@ where
         (**self).alpide_checks_enabled()
     }
 }
-impl<T> Config for std::sync::Arc<T>
+impl<T> Config for Arc<T>
 where
     T: Config,
 {

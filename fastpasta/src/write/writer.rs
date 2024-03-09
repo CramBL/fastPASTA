@@ -4,15 +4,12 @@
 //! write it out to file/stdout.
 //! Implements drop to flush the remaining data to the file once processing is done.
 
-use crate::config::inputoutput::InputOutputOpt;
-use alice_protocol_reader::cdp_wrapper::cdp_array::CdpArray;
-use alice_protocol_reader::prelude::CdpVec;
-use alice_protocol_reader::prelude::RDH;
+use crate::util::*;
 
 /// Trait for a writer that can write ALICE readout data to file/stdout.
 pub trait Writer<T: RDH> {
     /// Write data to file/stdout
-    fn write(&mut self, data: &[u8]) -> std::io::Result<()>;
+    fn write(&mut self, data: &[u8]) -> io::Result<()>;
     /// Push a vector of RDHs to the buffer
     fn push_rdhs(&mut self, rdhs: Vec<T>);
     /// Push a vector of payloads to the buffer
@@ -22,14 +19,14 @@ pub trait Writer<T: RDH> {
     /// Push a CDP array to the buffer
     fn push_cdp_arr<const CAP: usize>(&mut self, cdp_arr: CdpArray<T, CAP>);
     /// Flush the buffer to file/stdout
-    fn flush(&mut self) -> std::io::Result<()>;
+    fn flush(&mut self) -> io::Result<()>;
 }
 
 /// A writer that uses a buffer to reduce the amount of syscalls.
 pub struct BufferedWriter<T: RDH> {
     filtered_rdhs_buffer: Vec<T>,
     filtered_payload_buffers: Vec<Vec<u8>>, // 1 Linked list per payload
-    buf_writer: Option<std::io::BufWriter<std::fs::File>>, // If no file is specified -> write to stdout
+    buf_writer: Option<io::BufWriter<fs::File>>, // If no file is specified -> write to stdout
     max_buffer_size: usize,
 }
 
@@ -40,14 +37,14 @@ impl<T: RDH> BufferedWriter<T> {
         let buf_writer = match config.output() {
             Some(path) if "stdout".eq(path.to_str().unwrap()) => None,
             Some(path) => {
-                let path: std::path::PathBuf = path.to_owned();
+                let path: path::PathBuf = path.to_owned();
                 // Likely better to use File::create_new() but it's not stable yet
-                let mut _f = std::fs::File::create(&path).expect("Failed to create output file");
-                let file = std::fs::File::options()
+                let mut _f = fs::File::create(&path).expect("Failed to create output file");
+                let file = fs::File::options()
                     .append(true)
                     .open(path)
                     .expect("Failed to open/create output file");
-                let buf_writer = std::io::BufWriter::new(file);
+                let buf_writer = io::BufWriter::new(file);
                 Some(buf_writer)
             }
             None => None,
@@ -63,10 +60,10 @@ impl<T: RDH> BufferedWriter<T> {
 
 impl<T: RDH> Writer<T> for BufferedWriter<T> {
     #[inline]
-    fn write(&mut self, data: &[u8]) -> std::io::Result<()> {
+    fn write(&mut self, data: &[u8]) -> io::Result<()> {
         match &mut self.buf_writer {
-            Some(buf_writer) => std::io::Write::write_all(buf_writer, data),
-            None => std::io::Write::write_all(&mut std::io::stdout(), data),
+            Some(buf_writer) => io::Write::write_all(buf_writer, data),
+            None => io::Write::write_all(&mut io::stdout(), data),
         }
     }
 
@@ -113,7 +110,7 @@ impl<T: RDH> Writer<T> for BufferedWriter<T> {
     }
 
     #[inline]
-    fn flush(&mut self) -> std::io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         debug_assert_eq!(
             self.filtered_rdhs_buffer.len(),
             self.filtered_payload_buffers.len()
@@ -138,7 +135,7 @@ impl<T: RDH> Writer<T> for BufferedWriter<T> {
 
 impl<T: RDH> Drop for BufferedWriter<T> {
     fn drop(&mut self) {
-        if std::mem::needs_drop::<Self>() {
+        if mem::needs_drop::<Self>() {
             self.flush().expect("Failed to flush buffer");
         }
     }
@@ -146,29 +143,21 @@ impl<T: RDH> Drop for BufferedWriter<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::vec;
-
-    use crate::config::check::{CheckCommands, CheckModeArgs};
-    use crate::config::inputoutput::DataOutputMode;
-    use crate::config::test_util::MockConfig;
-    use crate::config::Cfg;
+    use super::*;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use alice_protocol_reader::prelude::RdhCru;
     use clap::Parser;
     use temp_dir::TempDir;
-
-    use super::*;
 
     const INPUT_FILE_STR: &str = "tests/test-data/10_rdh.raw";
     const CONFIG_STR_NEEDS_OUTPUT: [&str; 4] =
         ["fastpasta", "tests/test-data/10_rdh.raw", "-f", "2"];
 
-    fn build_test_config(output_path: &std::path::Path) -> MockConfig {
+    fn build_test_config(output_path: &path::Path) -> MockConfig {
         let mut cfg = MockConfig::new();
         cfg.check = Some(CheckCommands::Sanity(CheckModeArgs::default()));
         cfg.output = Some(output_path.to_owned());
         cfg.output_mode = DataOutputMode::File(output_path.into());
-        cfg.input_file = Some(std::path::PathBuf::from(INPUT_FILE_STR));
+        cfg.input_file = Some(path::PathBuf::from(INPUT_FILE_STR));
         cfg.filter_link = Some(2);
         cfg
     }
@@ -196,16 +185,16 @@ mod tests {
         config_str.push("-o");
         config_str.push(test_file_path.to_str().unwrap());
 
-        println!("config_str: {:?}", config_str);
+        println!("config_str: {config_str:?}");
         let config: Cfg = <Cfg>::parse_from(config_str);
         let rdhs = vec![CORRECT_RDH_CRU_V7, CORRECT_RDH_CRU_V7];
         let length = rdhs.len();
-        println!("length: {}", length);
+        println!("length: {length}");
         {
             let mut writer = BufferedWriter::<RdhCru>::new(&config, 10);
             writer.push_rdhs(rdhs);
             let buf_size = writer.filtered_rdhs_buffer.len();
-            println!("buf_size: {}", buf_size);
+            println!("buf_size: {buf_size}");
             assert_eq!(buf_size, length);
         }
     }

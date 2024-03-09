@@ -1,6 +1,5 @@
 //! Contains the [ErrorStats] struct which stores error messages observed in the raw data and related data
-use crate::words::its::{layer_from_feeid, stave_number_from_feeid};
-use serde::{Deserialize, Serialize};
+use crate::util::*;
 
 type LayerStave = (u8, u8);
 
@@ -37,7 +36,7 @@ impl ErrorStats {
     pub(super) fn sort_error_msgs_by_mem_pos(&mut self) {
         // Regex to extract the memory address from the error message
         // State machine: https://regexper.com/#0x%28%5B0-9A-F%5D%2B%29%3A
-        let re = regex::Regex::new(r"^0x(?<mem_pos>[0-9A-F]+)").unwrap();
+        let re = Regex::new(r"^0x(?<mem_pos>[0-9A-F]+)").unwrap();
         // Sort the errors by memory address
         if !self.reported_errors.is_empty() {
             self.reported_errors.sort_unstable_by_key(|e| {
@@ -80,8 +79,7 @@ impl ErrorStats {
 
         // State machine:
         // https://regexper.com/#FEE%28%3F%3A.%7C%29ID%3A%28%5B1-9%5D%5B0-9%5D%7B0%2C4%7D%29
-        let re: regex::Regex =
-            regex::Regex::new("FEE(?:.|)ID:(?P<fee_id>[1-9][0-9]{0,4})").unwrap();
+        let re: Regex = Regex::new("FEE(?:.|)ID:(?P<fee_id>[1-9][0-9]{0,4})").unwrap();
 
         self.reported_errors.iter().for_each(|err_msg| {
             let fee_id_match: Option<regex::Captures> = re.captures(err_msg);
@@ -188,7 +186,7 @@ impl ErrorStats {
 
 fn extract_unique_error_codes(error_messages: &[Box<str>]) -> Vec<String> {
     let mut error_codes: Vec<String> = Vec::new();
-    let re = regex::Regex::new(r"\[E(?P<err_code>[0-9]{2,4})\]").unwrap();
+    let re = Regex::new(r"\[E(?P<err_code>[0-9]{2,4})\]").unwrap();
     error_messages.iter().for_each(|err_msg| {
         let err_code_matches: Vec<String> = re
             .captures_iter(err_msg)

@@ -4,24 +4,18 @@
 //!
 //! Also contains the convenience [init_controller] function, which spawns a thread with the [Controller] running, and returns the thread handle, the channel to send stats to, and the stop flag.
 
-use super::stats;
-use super::stats::stats_collector::StatsCollector;
-use super::StatType;
-use crate::config::prelude::*;
+use super::*;
 use crate::stats::err_printer::ErrPrinter;
-use indicatif::{ProgressBar, ProgressStyle};
-use owo_colors::OwoColorize;
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
+use std::io::Write;
 
 /// Spawns a thread with the [Controller] running, and returns the thread handle, the channel to send stats to, and the stop flag.
 pub fn init_controller<C: Config + 'static>(
     config: &'static C,
 ) -> (
-    std::thread::JoinHandle<()>,
+    JoinHandle<()>,
     flume::Sender<StatType>,
-    std::sync::Arc<std::sync::atomic::AtomicBool>,
-    std::sync::Arc<std::sync::atomic::AtomicBool>,
+    Arc<AtomicBool>,
+    Arc<AtomicBool>,
 ) {
     log::trace!("Initializing stats controller");
     let mut stats = Controller::new(config);
@@ -29,7 +23,7 @@ pub fn init_controller<C: Config + 'static>(
     let thread_stop_flag = stats.end_processing_flag();
     let any_errors_flag = stats.any_errors_flag();
 
-    let stats_thread = std::thread::Builder::new()
+    let stats_thread = Builder::new()
         .name("stats_thread".to_string())
         .spawn(move || {
             stats.run();
@@ -47,7 +41,7 @@ pub fn init_controller<C: Config + 'static>(
 pub struct Controller<C: Config + 'static> {
     stats_collector: StatsCollector,
     /// Time from [Controller] is instantiated, to all data processing threads disconnected their [StatType] producer channel.
-    pub processing_time: std::time::Instant,
+    pub processing_time: Instant,
     config: &'static C,
     max_tolerate_errors: u32,
     // The channel where stats are received from other threads.
@@ -63,7 +57,7 @@ pub struct Controller<C: Config + 'static> {
     spinner_message: String,
 }
 impl<C: Config + 'static> Controller<C> {
-    /// Creates a new [Controller] from a [Config], a [flume::Receiver] for [StatType], and a [std::sync::Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
+    /// Creates a new [Controller] from a [Config], a [flume::Receiver] for [StatType], and a [Arc] of an [AtomicBool] that is used to signal to other threads to exit if a fatal error occurs.
     pub fn new(global_config: &'static C) -> Self {
         let (stats_send_chan, stats_recv_chan): (
             flume::Sender<StatType>,
@@ -77,7 +71,7 @@ impl<C: Config + 'static> Controller<C> {
                 StatsCollector::default()
             },
             config: global_config,
-            processing_time: std::time::Instant::now(),
+            processing_time: Instant::now(),
             max_tolerate_errors: global_config.max_tolerate_errors(),
             stats_recv_chan,
             stats_send_chan: Some(stats_send_chan),
@@ -143,8 +137,7 @@ impl<C: Config + 'static> Controller<C> {
             }
         }
         if self.stats_collector.any_errors() {
-            self.any_errors_flag
-                .store(true, std::sync::atomic::Ordering::SeqCst);
+            self.any_errors_flag.store(true, Ordering::SeqCst);
         }
 
         // Stats collector will serialize and write out stats if the config specifies it
@@ -159,7 +152,7 @@ impl<C: Config + 'static> Controller<C> {
         if let Some(input_stats) = self.config.input_stats_file() {
             log::info!("Validating input stats file against collected stats");
             let input_stats_str =
-                std::fs::read_to_string(input_stats).expect("Failed to read input stats file");
+                fs::read_to_string(input_stats).expect("Failed to read input stats file");
 
             let input_stats_collector: StatsCollector = if input_stats.extension().unwrap()
                 == "json"
@@ -178,8 +171,7 @@ impl<C: Config + 'static> Controller<C> {
                 .validate_other_stats(&input_stats_collector, self.config.mute_errors())
                 .is_err()
             {
-                self.any_errors_flag
-                    .store(true, std::sync::atomic::Ordering::SeqCst);
+                self.any_errors_flag.store(true, Ordering::SeqCst);
                 log::warn!("Input stats did not match collected stats");
             } else {
                 log::info!("Input stats matched collected stats");
@@ -238,8 +230,7 @@ impl<C: Config + 'static> Controller<C> {
                     log::trace!("Error count: {}", self.stats_collector.err_count());
                     if self.stats_collector.err_count() == self.max_tolerate_errors as u64 {
                         log::trace!("Errors reached maximum tolerated errors, exiting...");
-                        self.end_processing_flag
-                            .store(true, std::sync::atomic::Ordering::SeqCst);
+                        self.end_processing_flag.store(true, Ordering::SeqCst);
                     }
                 }
             }
@@ -249,8 +240,7 @@ impl<C: Config + 'static> Controller<C> {
                     log::trace!("Fatal error already seen, ignoring error: {err}");
                     return;
                 }
-                self.end_processing_flag
-                    .store(true, std::sync::atomic::Ordering::SeqCst);
+                self.end_processing_flag.store(true, Ordering::SeqCst);
                 log::error!("FATAL: {err}\nShutting down...");
                 self.stats_collector.collect(StatType::Fatal(err));
             }
@@ -303,10 +293,9 @@ impl<C: Config + 'static> Controller<C> {
             self.spinner.as_mut().unwrap().abandon();
         }
 
-        use std::io::Write;
-        let mut lock = std::io::stdout().lock();
+        let mut lock = io::stdout().lock();
         if let Err(e) = writeln!(lock, "{}", report.format()) {
-            if e.kind() == std::io::ErrorKind::BrokenPipe {
+            if e.kind() == io::ErrorKind::BrokenPipe {
                 log::warn!("Broken pipe, stdout was closed before report could be written");
             } else {
                 log::error!("Failed to write report to stdout: {e}");
@@ -367,14 +356,13 @@ fn new_styled_spinner() -> ProgressBar {
             ]);
     let pb = ProgressBar::new_spinner();
     pb.set_style(spinner_style);
-    pb.enable_steady_tick(std::time::Duration::from_millis(120));
+    pb.enable_steady_tick(Duration::from_millis(120));
     pb
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::OnceLock;
 
     static CONFIG_TEST_INIT_CONTROLLER: OnceLock<MockConfig> = OnceLock::new();
 
@@ -387,7 +375,7 @@ mod tests {
             init_controller(CONFIG_TEST_INIT_CONTROLLER.get().unwrap());
 
         // Stop flag should be false
-        assert!(!stop_flag.load(std::sync::atomic::Ordering::SeqCst));
+        assert!(!stop_flag.load(Ordering::SeqCst));
 
         // Send RDH version seen
         send_ch.send(StatType::RdhVersion(7)).unwrap();
@@ -415,6 +403,6 @@ mod tests {
         handle.join().unwrap();
 
         // Stop flag should be true
-        assert!(stop_flag.load(std::sync::atomic::Ordering::SeqCst));
+        assert!(stop_flag.load(Ordering::SeqCst));
     }
 }

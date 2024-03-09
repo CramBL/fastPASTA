@@ -1,9 +1,5 @@
 //! Contains the [do_payload_checks] which is the entry point for the ITS specific CDP validator
-use super::cdp_running::CdpRunningValidator;
-use crate::config::prelude::*;
-use crate::stats::StatType;
-use alice_protocol_reader::prelude::FilterOpt;
-use alice_protocol_reader::prelude::RDH;
+use crate::util::*;
 
 /// # Arguments
 /// * `cdp` - A tuple containing the RDH, the payload and the RDH memory position
@@ -13,23 +9,22 @@ pub fn do_payload_checks<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt>(
     cdp: (&T, &[u8], u64),
     stats_send_chan: &flume::Sender<StatType>,
     cdp_validator: &mut CdpRunningValidator<T, C>,
-) {
+) -> Result<(), flume::SendError<StatType>> {
     let (rdh, payload, rdh_mem_pos) = cdp;
     cdp_validator.set_current_rdh(rdh, rdh_mem_pos);
-    match crate::analyze::validators::lib::preprocess_payload(payload) {
+    match preprocess_payload(payload) {
         Ok(gbt_word_chunks) => gbt_word_chunks.for_each(|gbt_word| {
             cdp_validator.check(&gbt_word[..10]); // Take 10 bytes as flavor 0 would have additional 6 bytes of padding
         }),
         Err(e) => {
-            stats_send_chan
-                .send(StatType::Error(
-                    format!("{rdh_mem_pos:#X}: Payload error following RDH at this location: {e}")
-                        .into(),
-                ))
-                .unwrap();
+            stats_send_chan.send(StatType::Error(
+                format!("{rdh_mem_pos:#X}: Payload error following RDH at this location: {e}")
+                    .into(),
+            ))?;
             cdp_validator.reset_fsm();
         }
     }
+    Ok(())
 }
 
 #[allow(non_camel_case_types)] // An exception to the Rust naming convention, for these words that are already acronyms
@@ -78,10 +73,7 @@ impl ItsPayloadWord {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::check::CheckModeArgs;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use alice_protocol_reader::prelude::*;
-    use std::sync::OnceLock;
 
     static CFG_TEST_DO_PAYLOAD_CHECKS: OnceLock<MockConfig> = OnceLock::new();
 
@@ -105,7 +97,7 @@ mod tests {
         let rdh_mem_pos = 0;
         let cdp_slice = (&rdh, payload.as_slice(), rdh_mem_pos);
 
-        do_payload_checks(cdp_slice, &stats_send_chan, &mut cdp_validator);
+        do_payload_checks(cdp_slice, &stats_send_chan, &mut cdp_validator).unwrap();
 
         // Receive and check stats
         while let Ok(stats) = stats_recv_chan.try_recv() {

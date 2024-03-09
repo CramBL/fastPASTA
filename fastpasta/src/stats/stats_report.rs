@@ -4,25 +4,17 @@ pub(super) mod stat_summerize_utils;
 mod table_formatter_utils;
 
 use self::{
-    report::StatSummary,
     stat_format_utils::{format_error_codes, format_fee_ids, format_links_observed},
     stat_summerize_utils::{
         summerize_data_size, summerize_filtered_fee_ids, summerize_filtered_its_layer_staves,
         summerize_filtered_links, summerize_layers_staves_seen,
     },
 };
-
-use super::{
-    stats_collector::{its_stats::alpide_stats::AlpideStats, rdh_stats::RdhStats, StatsCollector},
-    SystemId,
-};
-use alice_protocol_reader::prelude::FilterTarget;
-use owo_colors::OwoColorize;
-use report::Report;
+use crate::util::*;
 
 /// Helper function that makes the report
 pub fn make_report(
-    processing_time: std::time::Duration,
+    processing_time: Duration,
     stats: &mut StatsCollector,
     filter_target: Option<FilterTarget>,
 ) -> Report {

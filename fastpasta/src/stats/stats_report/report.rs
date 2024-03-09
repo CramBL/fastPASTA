@@ -1,3 +1,8 @@
+use super::table_formatter_utils::format_global_stats_sub_table;
+use super::table_formatter_utils::format_sub_table;
+use super::table_formatter_utils::format_super_table;
+use super::table_formatter_utils::SubtableColor;
+use crate::util::*;
 /// The Report struct is used by the Controller to structure the report printed at the end of execution
 ///
 /// Report contains several StatSummary structs that are used to generate the report table
@@ -5,12 +10,6 @@ use tabled::{
     settings::{object::Rows, Alignment, Format, Modify, Panel},
     Table, Tabled,
 };
-
-use super::table_formatter_utils::format_global_stats_sub_table;
-use super::table_formatter_utils::format_sub_table;
-use super::table_formatter_utils::format_super_table;
-use super::table_formatter_utils::SubtableColor;
-use owo_colors::OwoColorize;
 
 /// Describes the columns of the report table
 #[derive(Tabled)]
@@ -33,7 +32,7 @@ impl StatSummary {
         }
     }
 }
-impl std::default::Default for StatSummary {
+impl Default for StatSummary {
     fn default() -> Self {
         Self {
             statistic: "".to_string(),
@@ -55,7 +54,7 @@ struct DetectedAttribute {
 pub struct Report {
     pub(crate) stats: Vec<StatSummary>,
     detected_attributes: Vec<DetectedAttribute>,
-    processing_time: std::time::Duration,
+    processing_time: Duration,
     fatal_error: Option<String>,
     report_table: Option<Table>,
     filter_stats_table: Option<Table>,
@@ -63,7 +62,7 @@ pub struct Report {
 }
 
 impl Report {
-    pub fn new(processing_time: std::time::Duration) -> Self {
+    pub fn new(processing_time: Duration) -> Self {
         Self {
             stats: Vec::new(),
             detected_attributes: Vec::new(),
@@ -197,7 +196,7 @@ mod tests {
     #[ignore = "Uses stdout which prevents concurrent test execution and also break without --nocapture"]
     #[test]
     fn test_summary_contains_filtered_links_rdhs() {
-        let processing_time = std::time::Instant::now();
+        let processing_time = Instant::now();
         let mut report = Report::new(processing_time.elapsed());
         let statistic_tot_errs = "Total errors".to_string();
         report.add_stat(StatSummary::new(statistic_tot_errs, "0".to_string(), None));
@@ -242,7 +241,7 @@ mod tests {
     #[ignore = "Uses stdout which prevents concurrent test execution and also break without --nocapture"]
     #[test]
     fn test_fatal_error_report() {
-        let processing_time = std::time::Instant::now();
+        let processing_time = Instant::now();
         let fatal_error = "Fatal Error happened";
         let mut report = Report::new(processing_time.elapsed());
         report.add_fatal_error(fatal_error.to_string());

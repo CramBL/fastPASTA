@@ -1,10 +1,5 @@
 //! Contains the [ValidatorDispatcher], that manages [LinkValidator]s and iterates over and consumes a [`CdpArray<T>`], dispatching the data to the correct thread based on the Link ID running an instance of [LinkValidator].
-use std::fmt::Display;
-
-use super::link_validator::LinkValidator;
-use crate::config::prelude::*;
-use crate::stats::StatType;
-use alice_protocol_reader::{cdp_wrapper::cdp_array::CdpArray, prelude::RDH};
+use crate::util::*;
 
 type CdpTuple<T> = (T, Vec<u8>, u64);
 
@@ -14,7 +9,7 @@ type CdpTuple<T> = (T, Vec<u8>, u64);
 pub struct ValidatorDispatcher<T: RDH, C: Config + 'static> {
     processors: Vec<DispatchId>,
     process_channels: Vec<crossbeam_channel::Sender<CdpTuple<T>>>,
-    validator_thread_handles: Vec<std::thread::JoinHandle<()>>,
+    validator_thread_handles: Vec<thread::JoinHandle<()>>,
     stats_sender: flume::Sender<StatType>,
     global_config: &'static C,
     dispatch_by: DispatchId,
@@ -35,8 +30,8 @@ impl DispatchId {
     }
 }
 
-impl Display for DispatchId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for DispatchId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             DispatchId::FeeId(id) => write!(f, "FEE ID {id}"),
             DispatchId::GbtLink(id) => write!(f, "GBT Link {id}"),
@@ -143,7 +138,7 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
 
             // Spawn a thread where the newly created link validator will run
             self.validator_thread_handles.push(
-                std::thread::Builder::new()
+                Builder::new()
                     .name(format!("Validator #{}", id.number()))
                     .spawn({
                         move || {
@@ -178,12 +173,8 @@ impl<T: RDH + 'static, C: Config + 'static> ValidatorDispatcher<T, C> {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::check::CheckModeArgs;
-    use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
-    use alice_protocol_reader::prelude::*;
-    use std::sync::OnceLock;
-
     use super::*;
+    use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
 
     static CFG_TEST_DISPACTER: OnceLock<MockConfig> = OnceLock::new();
 

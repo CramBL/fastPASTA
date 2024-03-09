@@ -1,15 +1,9 @@
 //! Contains functionality for writing filtered data to disk or stdout.
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::thread;
-
-use alice_protocol_reader::cdp_wrapper::cdp_array::CdpArray;
-use crossbeam_channel::Receiver;
 
 use super::writer::BufferedWriter;
 use super::writer::Writer;
-use crate::config::inputoutput::InputOutputOpt;
-use alice_protocol_reader::prelude::RDH;
+use crate::util::*;
+use crossbeam_channel::Receiver;
 
 /// The size of the buffer used by the writer
 ///

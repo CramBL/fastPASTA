@@ -1,5 +1,7 @@
 //! Contains the Trait [FilterOpt] for all filter options, and the [FilterTarget] enum for the filter target
 
+use std::sync::Arc;
+
 #[derive(Debug, Clone, Copy)]
 /// The target of an optional filter on the input data
 pub enum FilterTarget {
@@ -80,7 +82,7 @@ where
         (**self).skip_payload()
     }
 }
-impl<T> FilterOpt for std::sync::Arc<T>
+impl<T> FilterOpt for Arc<T>
 where
     T: FilterOpt,
 {

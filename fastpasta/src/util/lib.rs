@@ -1,8 +1,5 @@
 //! Miscellaneous utility functions
-
-use crate::config::prelude::*;
-use crate::config::Cfg;
-use std::sync::{atomic::AtomicBool, Arc};
+use crate::util::*;
 
 /// Start the [stderrlog] instance, and immediately use it to log the configured [DataOutputMode].
 pub fn init_error_logger(cfg: &(impl UtilOpt + InputOutputOpt)) {
@@ -34,7 +31,7 @@ pub fn init_ctrlc_handler(stop_flag: Arc<AtomicBool>) {
             log::warn!(
                 "Stop Ctrl+C, SIGTERM, or SIGHUP received, stopping gracefully, please wait..."
             );
-            stop_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+            stop_flag.store(true, Ordering::SeqCst);
             stop_sig_count += 1;
             if stop_sig_count > 1 {
                 log::warn!("Second stop signal received, ungraceful shutdown.");
@@ -46,17 +43,16 @@ pub fn init_ctrlc_handler(stop_flag: Arc<AtomicBool>) {
 }
 
 /// Exits the program with the appropriate exit code
-pub fn exit(exit_code: u8, any_errors_flag: &AtomicBool) -> std::process::ExitCode {
+pub fn exit(exit_code: u8, any_errors_flag: &AtomicBool) -> ExitCode {
     if exit_code == 0 {
         log::debug!("Exit successful from data processing");
-        if Cfg::global().any_errors_exit_code().is_some()
-            && any_errors_flag.load(std::sync::atomic::Ordering::Relaxed)
+        if Cfg::global().any_errors_exit_code().is_some() && any_errors_flag.load(Ordering::Relaxed)
         {
-            std::process::ExitCode::from(Cfg::global().any_errors_exit_code().unwrap())
+            ExitCode::from(Cfg::global().any_errors_exit_code().unwrap())
         } else {
-            std::process::ExitCode::SUCCESS
+            ExitCode::SUCCESS
         }
     } else {
-        std::process::ExitCode::from(exit_code)
+        ExitCode::from(exit_code)
     }
 }

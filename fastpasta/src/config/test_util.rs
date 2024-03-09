@@ -1,10 +1,6 @@
 #![allow(missing_docs)]
 
-use super::check::CheckModeArgs;
-use super::custom_checks::CustomChecks;
-use super::inputoutput::DataOutputFormat;
-use super::prelude::*;
-use alice_protocol_reader::prelude::FilterOpt;
+use crate::util::*;
 
 #[derive(Debug, Clone)]
 /// Complete configurable Mock config for testing
@@ -16,9 +12,9 @@ pub struct MockConfig {
     pub filter_its_stave: Option<String>,
     pub verbosity: u8,
     pub max_tolerate_errors: u32,
-    pub input_file: Option<std::path::PathBuf>,
+    pub input_file: Option<PathBuf>,
     pub skip_payload: bool,
-    pub output: Option<std::path::PathBuf>,
+    pub output: Option<PathBuf>,
     pub output_mode: DataOutputMode,
     pub its_trigger_period: Option<u16>,
     pub exit_code_any_errors: Option<u8>,
@@ -27,7 +23,7 @@ pub struct MockConfig {
     pub custom_checks: Option<CustomChecks>,
     pub stats_output_mode: DataOutputMode,
     pub stats_output_format: Option<DataOutputFormat>,
-    pub stats_input_file: Option<std::path::PathBuf>,
+    pub stats_input_file: Option<PathBuf>,
     pub show_error_codes: Vec<String>,
 }
 
@@ -149,12 +145,12 @@ impl UtilOpt for MockConfig {
     }
 }
 impl InputOutputOpt for MockConfig {
-    fn input_file(&self) -> Option<&std::path::PathBuf> {
-        self.input_file.as_ref()
+    fn input_file(&self) -> Option<&Path> {
+        self.input_file.as_deref()
     }
 
-    fn output(&self) -> Option<&std::path::PathBuf> {
-        self.output.as_ref()
+    fn output(&self) -> Option<&Path> {
+        self.output.as_deref()
     }
 
     fn output_mode(&self) -> DataOutputMode {
@@ -169,8 +165,8 @@ impl InputOutputOpt for MockConfig {
         self.stats_output_format
     }
 
-    fn input_stats_file(&self) -> Option<&std::path::PathBuf> {
-        self.stats_input_file.as_ref()
+    fn input_stats_file(&self) -> Option<&Path> {
+        self.stats_input_file.as_deref()
     }
 }
 

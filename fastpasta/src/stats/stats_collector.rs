@@ -4,16 +4,9 @@ pub mod its_stats;
 pub mod rdh_stats;
 pub mod trigger_stats;
 
-use crate::config::custom_checks::CustomChecksOpt;
-use crate::config::inputoutput::{DataOutputFormat, DataOutputMode};
-
 use super::stats_validation::validate_custom_stats;
-use super::{StatType, SystemId};
+use crate::util::*;
 use error_stats::ErrorStats;
-use its_stats::alpide_stats::AlpideStats;
-
-use rdh_stats::RdhStats;
-use serde::{Deserialize, Serialize};
 
 /// Collects stats from analysis.
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -182,11 +175,7 @@ impl StatsCollector {
     }
 
     /// Validate that the other stats (from user input) matches the collected stats.
-    pub fn validate_other_stats(
-        &self,
-        other: &Self,
-        mute_errors: bool,
-    ) -> Result<(), std::io::Error> {
+    pub fn validate_other_stats(&self, other: &Self, mute_errors: bool) -> Result<(), io::Error> {
         let mut errs = Vec::new();
 
         if let Err(mut err_msgs) = self.rdh_stats.validate_other(other.rdh_stats()) {
@@ -220,8 +209,8 @@ impl StatsCollector {
                     crate::display_error(err);
                 });
             }
-            Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            Err(io::Error::new(
+                io::ErrorKind::InvalidData,
                 "Stats validation failed",
             ))
         }
@@ -231,7 +220,7 @@ impl StatsCollector {
 fn write_stats_str(mode: &DataOutputMode, stats_str: &str) {
     match mode {
         DataOutputMode::File(path) => {
-            std::fs::write(path, stats_str).expect("Failed writing stats output file")
+            fs::write(path, stats_str).expect("Failed writing stats output file")
         }
         DataOutputMode::Stdout => println!("{stats_str}"),
         DataOutputMode::None => (),

@@ -1,10 +1,5 @@
-use crate::{
-    analyze::{validators::its::lib::ItsPayloadWord, view::lib::format_word_slice},
-    words::its::Stave,
-};
-use alice_protocol_reader::prelude::RDH;
-use owo_colors::OwoColorize;
-use std::io::Write;
+use crate::util::*;
+use io::Write;
 
 pub mod its_readout_frame_data_view;
 pub mod its_readout_frame_view;
@@ -15,7 +10,7 @@ fn mem_pos_calc_to_string(
     rdh_mem_pos: u64,
     disable_styled_view: bool,
 ) -> String {
-    let current_mem_pos = super::lib::calc_current_word_mem_pos(idx, data_format, rdh_mem_pos);
+    let current_mem_pos = calc_current_word_mem_pos(idx, data_format, rdh_mem_pos);
     if disable_styled_view {
         format!("{current_mem_pos:>8X}:",)
     } else {
@@ -41,9 +36,9 @@ pub const TRIGGER_ORBIT_BC_YELLOW_R: u8 = 50;
 pub const TRIGGER_ORBIT_BC_YELLOW_G: u8 = 50;
 
 fn print_start_of_its_readout_frame_header_text(
-    stdio_lock: &mut std::io::StdoutLock,
+    stdio_lock: &mut io::StdoutLock,
     disable_styled_view: bool,
-) -> Result<(), std::io::Error> {
+) -> Result<(), io::Error> {
     const MEM_POS_TOP: &str = "Memory  ";
     const MEM_POS_BOT: &str = "Position";
     const WORD_TYPE_TOP: &str = "Word ";
@@ -94,9 +89,9 @@ fn print_start_of_its_readout_frame_header_text(
 fn print_rdh_its_readout_frame_view<T: RDH>(
     rdh: &T,
     rdh_mem_pos: u64,
-    stdio_lock: &mut std::io::StdoutLock,
+    stdio_lock: &mut StdoutLock,
     disable_styled_view: bool,
-) -> Result<(), std::io::Error> {
+) -> Result<(), io::Error> {
     let orbit = rdh.rdh1().orbit; // Packed field
 
     let rdh_info_row = format!(
@@ -104,7 +99,10 @@ fn print_rdh_its_readout_frame_view<T: RDH>(
         mem_pos = format_args!("{:>8X}:", rdh_mem_pos),
         rdh_v = format_args!("RDH v{version}", version = rdh.version()),
         stop = format_args!("stop={}", rdh.stop_bit()),
-        stave = format_args!("stave: {:<15}", Stave::from_feeid(rdh.fee_id()).to_string()),
+        stave = format_args!(
+            "stave: {:<15}",
+            words::its::Stave::from_feeid(rdh.fee_id()).to_string()
+        ),
         trig = format_args!("{:<35}", super::lib::rdh_trigger_type_as_string(rdh)),
         link = format_args!("#{:>2}", rdh.link_id().to_string()),
         lane_status = format_args!(
@@ -130,10 +128,10 @@ fn print_rdh_its_readout_frame_view<T: RDH>(
 pub fn generate_status_word_view(
     word: &[u8],
     mem_pos_str: &str,
-    stdio_lock: &mut std::io::StdoutLock,
+    stdio_lock: &mut StdoutLock,
     disable_styled_view: bool,
     display_data_words: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn error::Error>> {
     match ItsPayloadWord::from_id(word[9]) {
         Ok(word_type) => generate_its_readout_frame_word_view(
             word_type,
@@ -172,16 +170,16 @@ const CDW_PURPLE_B: u8 = 77;
 ///     * The type of PayloadWord from the ITS payload protocol
 ///     * The memory position of the word
 fn generate_its_readout_frame_word_view(
-    word_type: crate::analyze::validators::its::lib::ItsPayloadWord,
+    word_type: ItsPayloadWord,
     gbt_word_slice: &[u8],
     mem_pos_str: &str,
-    stdio_lock: &mut std::io::StdoutLock,
+    stdio_lock: &mut StdoutLock,
     disable_styled_view: bool,
     display_data_words: bool,
-) -> Result<(), std::io::Error> {
+) -> Result<(), io::Error> {
     use crate::words::its::status_words::util as sw_util;
 
-    let word_slice_str = crate::analyze::view::lib::format_word_slice(gbt_word_slice);
+    let word_slice_str = format_word_slice(gbt_word_slice);
     match word_type {
         // Ignore data words
         ItsPayloadWord::DataWord => {
@@ -293,7 +291,7 @@ fn generate_its_readout_frame_word_view(
             unsafe {
                 // This function receives only simple types,
                 //  as they are coming from ItsPayloadWord::from_id() and not from the FSM that can determine more complex types
-                std::hint::unreachable_unchecked()
+                hint::unreachable_unchecked()
             }
         }
     }

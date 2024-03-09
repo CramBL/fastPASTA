@@ -1,7 +1,6 @@
 //! Trigger statistics collector
 
-use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use crate::util::*;
 
 /// Struct to store observed trigger statistics
 #[derive(Debug, PartialEq, Clone, Copy, Default, Deserialize, Serialize)]
@@ -271,8 +270,8 @@ impl TriggerStats {
     );
 }
 
-impl Display for TriggerStats {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for TriggerStats {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Trigger statistics:")?;
         writeln!(f, "  Orbit:    {:>6}", self.orbit)?;
         writeln!(f, "  HB:       {:>6}", self.hb)?;
@@ -353,8 +352,8 @@ mod tests {
         assert_eq!(trigger_stats, trigger_stats_de_toml);
 
         // Display
-        println!("{}", trigger_stats_ser_json);
-        println!("{}", trigger_stats_ser_toml);
+        println!("{trigger_stats_ser_json}");
+        println!("{trigger_stats_ser_toml}");
 
         // Make sure the counters are correct
         assert_eq!(trigger_stats.orbit(), 1);
