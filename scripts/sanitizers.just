@@ -70,7 +70,7 @@ warn-if-no-llvm-symbolizer:
     #!/usr/bin/env bash
     if ! which llvm-symbolizer >/dev/null; then
         {{PRINT}} yellow "WARNING: No llvm-symbolizer in PATH, sanitizer errors won't be correlated to source code"
-        if [[ $(ls -l /usr/bin/llvm-symbolizer-* | wc -l) -ne 0 ]]; then
+        if [[ $(ls -l /usr/bin/llvm-symbolizer-* 2>/dev/null | wc -l) -ne 0 ]]; then
             {{PRINT}} cyan "A possible match exists in /usr/bin:"
             {{PRINT}} cyan "$(ls -l /usr/bin/llvm-symbolizer-*)"
             {{PRINT}} cyan "Creating a symbolic link at /usr/bin/llvm-symbolizer to an llvm-symbolizer binary will resolve the issue"
