@@ -54,6 +54,7 @@ toml = "0.8.0"
 descriptive_toml_derive = "0.1.0"
 serde_json = "1.0.107"
 clap_complete = "4.4.10"
+human-panic = "1.2.3"
 
 [[bench]]
 name = "benchmarks"
