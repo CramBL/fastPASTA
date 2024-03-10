@@ -95,7 +95,7 @@ impl Stats {
     /// Add a payload size to the total payload size seen.
     pub fn add_payload_size(&mut self, payload_size: u16) {
         self.payload_size_seen += payload_size as u32;
-        if self.payload_size_seen > (u32::MAX) {
+        if self.payload_size_seen == u32::MAX {
             self.reporter
                 .send(InputStatType::PayloadSize(u32::MAX))
                 .unwrap();
