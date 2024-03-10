@@ -29,23 +29,19 @@ impl<'a> ErrPrinter<'a> {
         err_msgs: E,
         unique_error_codes: &[String],
     ) {
-        if let Some(filter) = self.error_code_filter {
-            // Reduce the error code filter to codes that were actually seen
-            let filter = self.minify_filter(filter, unique_error_codes);
-            // If the filter is empty, don't print anything
-            if filter.is_empty() {
-                return;
+        match self.error_code_filter {
+            Some(filter) => {
+                // Reduce the error code filter to codes that were actually seen
+                let min_filter = self.minify_filter(filter, unique_error_codes);
+                // Filter the error messages and take the first `max_errors` if set
+                self.filter_error_msgs(self.max_errors, &min_filter, err_msgs)
+                    .for_each(|e| crate::display_error(e));
             }
-            // Filter the error messages and take the first `max_errors` if set
-            let err_msgs = self.filter_error_msgs(self.max_errors, &filter, err_msgs);
-            for err_msg in err_msgs {
-                crate::display_error(err_msg);
-            }
-        } else {
-            // Take the first `max_errors` if set
-            let err_msgs = err_msgs.take(self.max_errors.unwrap_or(u32::MAX) as usize);
-            for err_msg in err_msgs {
-                crate::display_error(err_msg);
+            None => {
+                // Take the first `max_errors` if set
+                err_msgs
+                    .take(self.max_errors.unwrap_or(u32::MAX) as usize)
+                    .for_each(|e| crate::display_error(e));
             }
         };
     }
@@ -69,36 +65,6 @@ impl<'a> ErrPrinter<'a> {
         ec_filter: &'b [String],
         err_msgs: E,
     ) -> impl Iterator<Item = &'a Box<str>> + 'b {
-        // Closure to check if the error code matches the filter (and giving many opportunities for short circuiting)
-        // Takes the error message, the filter characters, the message characters and the position of the '[' character
-        let match_err_code = |err_msg: &str,
-                              filter_chars: Chars<'_>,
-                              err_msg_chars: Chars<'_>,
-                              pos_err_code: usize| {
-            // The position in the err_msg where we are comparing the characters
-            let mut pos_char_cmp: usize = pos_err_code;
-
-            // Skip the 'E' in the msg_chars iterator that comes are the '[' character so now we are comparing the error code digits
-            let msg_chars = err_msg_chars.skip(1);
-            pos_char_cmp += 1;
-            // Compare the error code digits in the filter and the message
-            filter_chars
-                .zip(msg_chars)
-                .all(|(fchar, mchar)| {
-                    // Increment the position in the err_msg where we are comparing the characters
-                    pos_char_cmp += 1;
-                    fchar == mchar
-                })
-                .then(|| {
-                    // Check that the next character in the err_msg is a ']'
-                    pos_char_cmp += 1;
-                    err_msg
-                        .chars()
-                        .nth(pos_char_cmp)
-                        .map_or(false, |c| c == ']')
-                })
-                .unwrap_or(false)
-        };
         err_msgs
             .filter(move |err_msg| {
                 for ec in ec_filter {
@@ -108,7 +74,7 @@ impl<'a> ErrPrinter<'a> {
                     if msg_chars
                         .position(|c| c == '[')
                         .map_or(false, |pos_err_code| {
-                            match_err_code(err_msg, ec.chars(), msg_chars, pos_err_code)
+                            match_error_code(err_msg, ec.chars(), msg_chars, pos_err_code)
                         })
                     {
                         return true;
@@ -118,6 +84,44 @@ impl<'a> ErrPrinter<'a> {
             })
             .take(max_errors.unwrap_or(u32::MAX) as usize)
     }
+}
+
+/// Check if the error code matches the filter (with many opportunities for short circuiting)
+/// # Arguments
+/// * `err_msg`: the error message
+/// * `filter_chars`: the characters of the filter
+/// * `err_msg_chars`: the characters of the error message
+/// * `pos_err_code`: the position of the '[' character
+fn match_error_code(
+    err_msg: &str,
+    filter_chars: Chars,
+    err_msg_chars: Chars,
+    pos_err_code: usize,
+) -> bool {
+    // The position in the err_msg where we are comparing the characters
+    let mut pos_char_cmp: usize = pos_err_code;
+
+    // Skip the 'E' in the msg_chars iterator that comes after the '[' character so now we are comparing the error code digits
+    debug_assert_eq!(&err_msg_chars.as_str()[0..=0], "E");
+    let msg_chars = err_msg_chars.skip(1);
+    pos_char_cmp += 1;
+    // Compare the error code digits in the filter and the message
+    filter_chars
+        .zip(msg_chars)
+        .all(|(fchar, mchar)| {
+            // Increment the position in the err_msg where we are comparing the characters
+            pos_char_cmp += 1;
+            fchar == mchar
+        })
+        .then(|| {
+            // Check that the next character in the err_msg is a ']'
+            pos_char_cmp += 1;
+            err_msg
+                .chars()
+                .nth(pos_char_cmp)
+                .map_or(false, |c| c == ']')
+        })
+        .unwrap_or(false)
 }
 
 #[cfg(test)]
