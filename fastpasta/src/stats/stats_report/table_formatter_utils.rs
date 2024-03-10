@@ -1,6 +1,6 @@
 use crate::util::*;
 use tabled::settings::object::{Columns, Rows};
-use tabled::settings::{Alignment, Format, Modify, Panel};
+use tabled::settings::{style, Alignment, Format, Modify, Panel, Style};
 use tabled::Table;
 
 #[allow(dead_code)]
@@ -38,18 +38,13 @@ pub(crate) fn format_super_table(super_table: &Table, processing_time: Duration)
 }
 
 pub(crate) fn format_global_stats_sub_table(global_stats_table: &mut Table) {
-    let style = tabled::settings::Style::rounded()
+    let style = Style::rounded()
         .remove_left()
         .remove_right()
         .remove_top()
         .remove_bottom()
         .remove_vertical()
-        .horizontals([tabled::settings::style::HorizontalLine::new(
-            1,
-            tabled::settings::Style::rounded().get_horizontal(),
-        )
-        .main(Some('═'))
-        .intersection(None)]);
+        .horizontals([(1, style::HorizontalLine::new('═'))]);
 
     let _ = global_stats_table
         .with(style.clone())
@@ -86,12 +81,7 @@ pub(crate) fn format_sub_table(subtable: Table, header: String, color: SubtableC
         .remove_top()
         .remove_bottom()
         .remove_vertical()
-        .horizontals([tabled::settings::style::HorizontalLine::new(
-            1,
-            tabled::settings::Style::rounded().get_horizontal(),
-        )
-        .main(Some('═'))
-        .intersection(None)]);
+        .horizontals([(1, style::HorizontalLine::new('═'))]);
     let _ = modded_subtable.with(style);
     let _ = modded_subtable.with(Panel::header(header)).with(
         Modify::new(Rows::single(0))
