@@ -13,7 +13,7 @@ pub(crate) use {
                     },
                     cdp_running::CdpRunningValidator,
                     data_words::{
-                        ib::IbDataWordValidator, ob::ObDataWordValidator, DATA_WORD_SANITY_CHECKER,
+                        ib::IbDataWordValidator, ob::ObDataWordValidator, DataWordSanityChecker,
                     },
                     its_payload_fsm_cont::{self, ItsPayloadFsmContinuous},
                     lib::ItsPayloadWord,
