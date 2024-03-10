@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 # [Unreleased]
 
+# v1.21.0 (2023-3-6) - User-friendly crash reports, performance, and maintenance
 ### Added
 [MR141](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/141) Add human panics to let users easily report errors on crashes.
 
@@ -16,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Misc
 [MR142](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/142) Code refactors + update dependencies
 [MR143](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/143) Code refactors + update tabled
+[MR146](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/146) Small Code refactor
 
 # v1.20.0 (2023-2-10) - Styled views, performance, shell completion, & SEC fix
 ### Added

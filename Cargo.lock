@@ -28,7 +28,7 @@ dependencies = [
 
 [[package]]
 name = "alice_protocol_reader"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "arrayvec 0.7.4",
  "byteorder",
@@ -457,9 +457,9 @@ checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 
 [[package]]
 name = "ctrlc"
-version = "3.4.3"
+version = "3.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66ba08eff649795412705351c11358001781278102196f49623d9c8d240ed8b9"
+checksum = "672465ae37dc1bc6380a6547a8883d5dd397b0f1faaad4f265726cc7042a5345"
 dependencies = [
  "nix",
  "windows-sys",
@@ -543,7 +543,7 @@ dependencies = [
 
 [[package]]
 name = "fastpasta"
-version = "1.20.0"
+version = "1.21.0"
 dependencies = [
  "alice_protocol_reader",
  "assert_cmd",

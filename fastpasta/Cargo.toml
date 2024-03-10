@@ -32,7 +32,7 @@ temp-dir = "0.1.11"
 
 
 [dependencies]
-alice_protocol_reader = { version = "0.13.0", path = "../alice_protocol_reader"}
+alice_protocol_reader = { version = "0.14.0", path = "../alice_protocol_reader"}
 byteorder = "1.4.3"
 clap = { version = "4.4.4", features = ["derive"] }
 crossbeam-channel = "0.5.8"
