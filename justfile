@@ -44,7 +44,7 @@ test-coverage: run-test-coverage
 coverage-report: open-coverage-report
 
 # Lint the code
-lint *ARGS="-- -D warnings --no-deps":
+lint *ARGS="--all-targets --all-features -- -D warnings --no-deps":
     cargo clippy {{ ARGS }}
 
 # Format the code

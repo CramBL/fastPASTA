@@ -9,7 +9,6 @@ use crate::words::its::{
         AlpideFrameChipData,
     },
     lane_data_frame::LaneDataFrame,
-    Layer,
 };
 
 /// Decodes the ALPIDE data from a readout frame for a single lane

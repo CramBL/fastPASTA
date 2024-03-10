@@ -6,7 +6,6 @@ pub mod alpide_readout_frame;
 pub mod lane_alpide_frame_analyzer;
 
 use crate::util::*;
-use alpide_readout_frame::AlpideReadoutFrame;
 
 // Helper struct to group lanes and bunch counters, used for comparing bunch counters between lanes
 struct ValidatedLane {
