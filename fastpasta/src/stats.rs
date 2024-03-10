@@ -24,9 +24,9 @@ pub enum StatType {
     /// The first system ID observed is the basis for the rest of processing
     SystemId(SystemId),
     /// Increment the total RDHs seen.
-    RDHSeen(u16),
+    RDHSeen(u32),
     /// Increment the total RDHs filtered.
-    RDHFiltered(u16),
+    RDHFiltered(u32),
     /// Increment the total payload size.
     PayloadSize(u32),
     /// Add a link to the list of links observed.
@@ -50,8 +50,8 @@ pub enum StatType {
     AlpideStats(AlpideStats),
 }
 
-impl std::fmt::Display for StatType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for StatType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             StatType::RunTriggerType((val, description)) => {
                 write!(f, "Run trigger type: {val}: {description}")
@@ -133,8 +133,8 @@ impl SystemId {
     }
 }
 
-impl std::fmt::Display for SystemId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for SystemId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SystemId::TPC => write!(f, "TPC"),
             SystemId::TRD => write!(f, "TRD"),

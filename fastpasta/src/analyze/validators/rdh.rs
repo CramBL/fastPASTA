@@ -420,7 +420,7 @@ mod tests {
 
     #[test]
     fn invalidate_fee_id_bad_stave_number() {
-        let validator = FEE_ID_SANITY_VALIDATOR;
+        let validator = FeeIdSanityValidator::new((0, 6), (0, 47));
         let fee_id_bad_stave_number_is_48 = FeeId(0x30);
         let res = validator.sanity_check(fee_id_bad_stave_number_is_48);
         println!("{res:?}");

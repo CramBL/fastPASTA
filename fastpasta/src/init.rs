@@ -5,6 +5,8 @@ use alice_protocol_reader::init_reader;
 
 /// Entry point for fastPASTA
 pub fn run() -> ExitCode {
+    human_panic::setup_panic!();
+
     if let Err(e) = init_config() {
         eprintln!("{e}");
         return ExitCode::from(1);

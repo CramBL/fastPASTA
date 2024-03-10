@@ -53,4 +53,5 @@ coverage-dependencies: \
     if ! which xmllint >/dev/null; then
         {{PRINT}} red "xmllint is required for generating the coverage report"
         {{PRINT}} cyan "xmllint is included in the libxml2-utils, install it with your systems package manager to continue"
+        exit 1
     fi

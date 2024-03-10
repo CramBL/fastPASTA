@@ -19,9 +19,9 @@ pub enum InputStatType {
     /// Record the generic FEE ID
     FeeId(u16),
     /// Increment the total RDHs seen.
-    RDHSeen(u16),
+    RDHSeen(u32),
     /// Increment the total RDHs filtered.
-    RDHFiltered(u16),
+    RDHFiltered(u32),
     /// Increment the total payload size.
     PayloadSize(u32),
     /// The first system ID observed is the basis for the rest of processing
@@ -32,8 +32,8 @@ pub enum InputStatType {
 #[derive(Debug)]
 pub struct Stats {
     reporter: flume::Sender<InputStatType>,
-    rdhs_seen: u16,
-    rdhs_filtered: u16,
+    rdhs_seen: u32,
+    rdhs_filtered: u32,
     payload_size_seen: u32,
     unique_links_observed: Vec<u8>,
     unique_feeids_observed: Vec<u16>,
@@ -73,8 +73,10 @@ impl Stats {
     /// Increment the RDH seen counter..
     pub fn rdh_seen(&mut self) {
         self.rdhs_seen += 1;
-        if self.rdhs_seen == 1000 {
-            self.reporter.send(InputStatType::RDHSeen(1000)).unwrap();
+        if self.rdhs_seen == u32::MAX {
+            self.reporter
+                .send(InputStatType::RDHSeen(u32::MAX))
+                .unwrap();
             self.rdhs_seen = 0;
         }
     }
@@ -82,9 +84,9 @@ impl Stats {
     /// Increment the RDH filtered counter.
     pub fn rdh_filtered(&mut self) {
         self.rdhs_filtered += 1;
-        if self.rdhs_filtered == 1000 {
+        if self.rdhs_filtered == u32::MAX {
             self.reporter
-                .send(InputStatType::RDHFiltered(1000))
+                .send(InputStatType::RDHFiltered(u32::MAX))
                 .unwrap();
             self.rdhs_filtered = 0;
         }
@@ -93,10 +95,9 @@ impl Stats {
     /// Add a payload size to the total payload size seen.
     pub fn add_payload_size(&mut self, payload_size: u16) {
         self.payload_size_seen += payload_size as u32;
-        // 10 MB
-        if self.payload_size_seen > (10 * 1048576) {
+        if self.payload_size_seen == u32::MAX {
             self.reporter
-                .send(InputStatType::PayloadSize(self.payload_size_seen))
+                .send(InputStatType::PayloadSize(u32::MAX))
                 .unwrap();
             self.payload_size_seen = 0;
         }
