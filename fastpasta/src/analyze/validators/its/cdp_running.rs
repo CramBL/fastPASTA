@@ -9,7 +9,7 @@ use self::{
     cdp_tracker::CdpTracker, rdh_validator::ItsRdhValidator,
     readout_frame::ItsReadoutFrameValidator,
 };
-use super::status_word::{tdh::TdhValidator, util::StatusWordContainer};
+use super::status_word::tdh::TdhValidator;
 use crate::util::*;
 
 #[derive(Debug, Clone, Copy)]
