@@ -172,8 +172,8 @@ impl RdhStats {
         self.hbfs_seen
     }
 
-    pub(super) fn incr_hbf_seen(&mut self) {
-        self.hbfs_seen += 1;
+    pub(super) fn add_hbfs_seen(&mut self, hbfs: u32) {
+        self.hbfs_seen += hbfs;
     }
 
     #[allow(dead_code)]

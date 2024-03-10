@@ -28,10 +28,10 @@ pub fn spawn_analysis<T: RDH + 'static, const CAP: usize>(
 
                 // Collect global stats
                 // Send HBF seen if stop bit is 1
+                let mut hbfs_seen: u32 = 0;
                 for rdh in cdp_batch.rdh_slice().iter() {
-                    if rdh.stop_bit() == 1 {
-                        stats_send.send(StatType::HBFSeen).unwrap();
-                    }
+                    hbfs_seen += (rdh.stop_bit() == 1) as u32;
+
                     stats_send
                         .send(StatType::TriggerType(rdh.trigger_type()))
                         .unwrap();
@@ -43,6 +43,7 @@ pub fn spawn_analysis<T: RDH + 'static, const CAP: usize>(
                         break; // Fatal error
                     }
                 }
+                stats_send.send(StatType::HBFsSeen(hbfs_seen)).unwrap();
 
                 // Do checks or view
                 if config.check().is_some() {
