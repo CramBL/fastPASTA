@@ -20,9 +20,9 @@ pub struct LinkValidator<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt + Ut
     config: &'static C,
     running_checks: bool,
     /// Producer channel to send stats through.
-    pub stats_send: flume::Sender<StatType>,
+    stats_send: flume::Sender<StatType>,
     /// Consumer channel to receive data from.
-    pub data_recv_chan: crossbeam_channel::Receiver<CdpTuple<T>>,
+    data_recv_chan: crossbeam_channel::Receiver<CdpTuple<T>>,
     its_cdp_validator: CdpRunningValidator<T, C>,
     rdh_running_validator: RdhCruRunningChecker<T>,
     rdh_sanity_validator: RdhCruSanityValidator<T>,
