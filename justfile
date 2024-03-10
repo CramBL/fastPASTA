@@ -99,8 +99,7 @@ ci_lint: \
     check-version \
     (format "-- --check --verbose") \
     (doc "--verbose") \
-    check-unique-error-codes \
-    pre-commit
+    check-unique-error-codes
 
 # Run tests
 [private]
