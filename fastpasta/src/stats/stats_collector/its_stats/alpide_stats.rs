@@ -79,15 +79,9 @@ impl ReadoutFlags {
             // If the chip trailer doesn't match any of the above values it can contain multiple flags
             // So we check for each of those flags
             val => {
-                if val & 0b0000_0100 == 0b0000_0100 {
-                    self.flushed_incomplete += 1;
-                }
-                if val & 0b0000_0010 == 0b0000_0010 {
-                    self.strobe_extended += 1;
-                }
-                if val & 0b0000_0001 == 0b0000_0001 {
-                    self.busy_transitions += 1;
-                }
+                self.flushed_incomplete += (val & 0b0000_0100 == 0b0000_0100) as u32;
+                self.strobe_extended += (val & 0b0000_0010 == 0b0000_0010) as u32;
+                self.busy_transitions += (val & 0b0000_0001 == 0b0000_0001) as u32;
             }
         }
     }

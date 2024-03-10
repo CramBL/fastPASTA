@@ -257,7 +257,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
             self.process_cdw(data_word_slice);
         } else {
             // Regular data word
-            if let Err(e) = DATA_WORD_SANITY_CHECKER.check_any(data_word_slice) {
+            if let Err(e) = DataWordSanityChecker::check_any(data_word_slice) {
                 self.report_error(&format!("[E70] {e}"), data_word_slice);
             }
 
