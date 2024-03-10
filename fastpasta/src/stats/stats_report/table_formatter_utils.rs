@@ -75,7 +75,7 @@ pub(crate) fn format_global_stats_sub_table(global_stats_table: &mut Table) {
 /// Adds a header to the subtable in all caps, aligned center, and with the chosen color
 pub(crate) fn format_sub_table(subtable: Table, header: String, color: SubtableColor) -> Table {
     let mut modded_subtable = subtable;
-    let style = tabled::settings::Style::rounded()
+    let style = Style::rounded()
         .remove_left()
         .remove_right()
         .remove_top()

@@ -70,24 +70,25 @@ impl ReadoutFlags {
     /// Log a chip trailer and update the stats
     pub fn log(&mut self, chip_trailer: u8) {
         self.chip_trailers_seen += 1;
-        if chip_trailer == Self::CHIP_TRAILER_BUSY_VIOLATION {
-            self.busy_violations += 1;
-            return; // The other flags are not set in this case
-        } else if chip_trailer == Self::CHIP_TRAILER_DATA_OVERRUN {
-            self.data_overrun += 1;
-            return;
-        } else if chip_trailer == Self::CHIP_TRAILER_TRANSMISSION_IN_FATAL {
-            self.transmission_in_fatal += 1;
-            return;
-        }
-        if chip_trailer & 0b0000_0100 == 0b0000_0100 {
-            self.flushed_incomplete += 1;
-        }
-        if chip_trailer & 0b0000_0010 == 0b0000_0010 {
-            self.strobe_extended += 1;
-        }
-        if chip_trailer & 0b0000_0001 == 0b0000_0001 {
-            self.busy_transitions += 1;
+
+        match chip_trailer {
+            Self::CHIP_TRAILER_BUSY_VIOLATION => self.busy_violations += 1,
+            Self::CHIP_TRAILER_DATA_OVERRUN => self.data_overrun += 1,
+            Self::CHIP_TRAILER_TRANSMISSION_IN_FATAL => self.transmission_in_fatal += 1,
+
+            // If the chip trailer doesn't match any of the above values it can contain multiple flags
+            // So we check for each of those flags
+            val => {
+                if val & 0b0000_0100 == 0b0000_0100 {
+                    self.flushed_incomplete += 1;
+                }
+                if val & 0b0000_0010 == 0b0000_0010 {
+                    self.strobe_extended += 1;
+                }
+                if val & 0b0000_0001 == 0b0000_0001 {
+                    self.busy_transitions += 1;
+                }
+            }
         }
     }
 
@@ -191,6 +192,6 @@ mod tests {
         let alpide_stats_ser_toml = toml::to_string(&alpide_stats).unwrap();
         let alpide_stats_de_toml: AlpideStats = toml::from_str(&alpide_stats_ser_toml).unwrap();
         assert_eq!(alpide_stats, alpide_stats_de_toml);
-        println!("{}", alpide_stats_ser_toml);
+        println!("{alpide_stats_ser_toml}");
     }
 }
