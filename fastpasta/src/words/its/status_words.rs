@@ -42,18 +42,13 @@ pub trait StatusWord:
 #[inline]
 fn display_byte_slice<T: StatusWord>(status_word: &T, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let slice = status_word.to_byte_slice();
-    write!(
-        f,
-        "{:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}",
-        slice[0],
-        slice[1],
-        slice[2],
-        slice[3],
-        slice[4],
-        slice[5],
-        slice[6],
-        slice[7],
-        slice[8],
-        slice[9],
-    )
+    for (i, byte) in slice.iter().enumerate() {
+        if i > 0 {
+            // Add a space before every byte after the first
+            f.write_str(" ")?;
+        }
+        // Use format_args! to defer formatting, avoiding intermediate strings
+        write!(f, "{}", format_args!("{:02X}", byte))?;
+    }
+    Ok(())
 }

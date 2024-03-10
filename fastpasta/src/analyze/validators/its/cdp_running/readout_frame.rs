@@ -1,16 +1,4 @@
-use alice_protocol_reader::rdh::RDH;
-use itertools::Itertools;
-
-use crate::{
-    analyze::validators::its::{
-        alpide::{self, alpide_readout_frame::AlpideReadoutFrame},
-        status_word::util::StatusWordContainer,
-    },
-    config::{custom_checks::CustomChecksOpt, Cfg},
-    stats::StatType,
-    words::its::{data_words::lane_id_to_lane_number, Layer, Stave},
-    UtilOpt,
-};
+use crate::util::*;
 
 /// Manages the state of the analyzed readout frames.
 ///
@@ -131,7 +119,7 @@ impl<C: CustomChecksOpt> ItsReadoutFrameValidator<C> {
                 "{mem_pos_start:#X}: [{err_code}] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} {err_msg}. Lanes: {lanes:?}",
                 feeid=current_rdh.fee_id(),
                 lanes = frame.lane_data_frames_as_slice().iter().map(|lane|
-                    lane_id_to_lane_number(lane.lane_id, is_ib)).collect::<Vec<u8>>(),
+                    lane_id_to_lane_number(lane.id(), is_ib)).collect::<Vec<u8>>(),
             );
             err_chan
                 .send(StatType::Error(err_msg.into()))

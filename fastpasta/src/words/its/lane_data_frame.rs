@@ -11,12 +11,32 @@ use super::{
 #[derive(Default)]
 pub struct LaneDataFrame {
     /// The lane ID
-    pub(crate) lane_id: u8,
+    lane_id: u8,
     /// The data contents of data words (the 9 bytes of data excluding the ID)
-    pub(crate) lane_data: Vec<u8>,
+    lane_data: Vec<u8>,
 }
 
 impl LaneDataFrame {
+    /// Create a [LaneDataFrame] instance from a lane ID and Alpide data of the data frame.
+    pub fn new(lane_id: u8, lane_data: Vec<u8>) -> Self {
+        Self { lane_id, lane_data }
+    }
+
+    /// ID of the lane corresponding to the [Lane Data Frame][LaneDataFrame].
+    pub fn id(&self) -> u8 {
+        self.lane_id
+    }
+
+    /// Get a borrowed slice of the Alpide data of the [Lane Data Frame][LaneDataFrame].
+    pub fn data(&self) -> &[u8] {
+        &self.lane_data
+    }
+
+    /// Add data to the lane data. Useful for incrementally building the [LaneDataFrame] as data is processed.
+    pub fn append_data(&mut self, data: &[u8]) {
+        self.lane_data.extend_from_slice(data);
+    }
+
     /// Returns the lane number for the [LaneDataFrame] based on the [Layer] it is from
     ///
     /// The [LaneDataFrame] does not store the barrel it is from, so this must be provided.

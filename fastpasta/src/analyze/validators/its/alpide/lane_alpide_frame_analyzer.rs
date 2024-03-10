@@ -75,9 +75,9 @@ impl<'a> LaneAlpideFrameAnalyzer<'a> {
         self.lane_number = lane_data_frame.lane_number(self.from_layer.unwrap());
         log::debug!(
             "Processing ALPIDE frame for lane {lane_id}",
-            lane_id = lane_data_frame.lane_id
+            lane_id = lane_data_frame.id()
         );
-        lane_data_frame.lane_data.iter().for_each(|alpide_byte| {
+        lane_data_frame.data().iter().for_each(|alpide_byte| {
             self.decode(*alpide_byte);
         });
         if self.lane_status_fatal {

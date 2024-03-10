@@ -6,15 +6,13 @@ use crate::words::its::status_words::{ddw::Ddw0, StatusWord};
 
 /// Validator for [Ddw0]
 #[derive(Debug, Copy, Clone)]
-pub struct Ddw0Validator {
-    valid_id: u8,
-}
+pub struct Ddw0Validator;
 
 impl StatusWordValidator<Ddw0> for Ddw0Validator {
-    fn sanity_check(&self, ddw0: &Ddw0) -> Result<(), String> {
+    fn sanity_check(ddw0: &Ddw0) -> Result<(), String> {
         let mut err_str = String::new();
 
-        if ddw0.id() != self.valid_id {
+        if ddw0.id() != Ddw0::ID {
             write!(err_str, "ID is not 0xE4: {:#2X} ", ddw0.id()).unwrap();
             // Early return if ID is wrong
             return Err(err_str);
@@ -41,26 +39,28 @@ impl StatusWordValidator<Ddw0> for Ddw0Validator {
     }
 }
 
-impl Ddw0Validator {
-    pub const fn new_const() -> Self {
-        Self { valid_id: 0xE4 }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const DDW0_VALIDATOR: Ddw0Validator = Ddw0Validator::new_const();
-
     #[test]
     fn test_ddw0_valid() {
-        let raw_data_ddw0 = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE4];
+        let raw_data_ddw0 = [
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            Ddw0::ID,
+        ];
 
         let ddw0 = Ddw0::load(&mut raw_data_ddw0.as_slice()).unwrap();
-        assert!(DDW0_VALIDATOR.sanity_check(&ddw0).is_ok());
+        assert!(Ddw0Validator::sanity_check(&ddw0).is_ok());
 
-        const VALID_ID: u8 = 0xE4;
         // Atypical TDT, some lane errors and warnings etc.
         const LANE_0_AND_3_IN_WARNING: u8 = 0b0100_0001;
         const LANE_4_TO_7_IN_FATAL: u8 = 0b1111_1111;
@@ -82,11 +82,11 @@ mod tests {
             LANE_24_AND_25_IN_ERROR,
             RESERVED0,
             TRANSMISSION_TO_LANE_STARTS_VIOLATION_SET,
-            VALID_ID,
+            Ddw0::ID,
         ];
 
         let ddw0_new = Ddw0::load(&mut raw_data_ddw0_new.as_slice()).unwrap();
         println!("{ddw0:#?}");
-        assert!(DDW0_VALIDATOR.sanity_check(&ddw0_new).is_ok());
+        assert!(Ddw0Validator::sanity_check(&ddw0_new).is_ok());
     }
 }

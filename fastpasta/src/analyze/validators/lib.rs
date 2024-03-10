@@ -51,17 +51,19 @@ fn extract_payload_ff_padding(payload: &[u8]) -> Result<Vec<&u8>, String> {
 fn detect_payload_data_format(payload: &[u8]) -> DataFormat {
     // Using an iterator approach instead of indexing also supports the case where the payload is smaller than 16 bytes or even empty
     if payload
-    .iter() // Create an iterator over the payload
-    .skip(10) // Skip the first 10 bytes, meaning the first GBT word
-    .take(6) // Take the next 6 bytes
-    .take_while(|&x| *x == 0x00) // Take bytes while they are equal to 0x00
-    .count() // Count them and check if they are equal to 6
-    == 6
+        .iter()
+        // Skip the first 10 bytes, meaning the first GBT word
+        .skip(10)
+        // Take the next 6 bytes
+        .take(6)
+        // Take bytes while they are equal to 0x00
+        .take_while(|&x| *x == 0x00)
+        // Count them and check if they are equal to 6
+        .count()
+        == 6
     {
-        log::trace!("Data format 0 detected");
         DataFormat::V0
     } else {
-        log::trace!("Data format 2 detected");
         DataFormat::V2
     }
 }
@@ -100,7 +102,6 @@ fn chunkify_payload<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::words::its::test_payloads::*;
 
     #[test]
     fn test_preprocess_payload_flavors() {

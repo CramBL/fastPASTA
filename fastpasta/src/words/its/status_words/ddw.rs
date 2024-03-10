@@ -16,6 +16,9 @@ pub struct Ddw0 {
 }
 
 impl Ddw0 {
+    /// ID for [DDW][Ddw0] positioned at `79:72` in the 80 bits that make up the word.
+    pub const ID: u8 = 0xE4;
+
     /// Returns the integer value of the index field.
     pub fn index(&self) -> u8 {
         (self.index & 0xF0) >> 4
@@ -73,12 +76,21 @@ mod tests {
 
     #[test]
     fn ddw0_read_write() {
-        const VALID_ID: u8 = 0xE4;
-        let raw_data_ddw0 = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE4];
-        assert!(raw_data_ddw0[9] == VALID_ID);
+        let raw_data_ddw0 = [
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            Ddw0::ID,
+        ];
         let ddw0 = Ddw0::load(&mut raw_data_ddw0.as_slice()).unwrap();
 
-        assert_eq!(ddw0.id(), VALID_ID);
+        assert_eq!(ddw0.id(), Ddw0::ID);
         assert!(ddw0.is_reserved_0());
         assert!(!ddw0.transmission_timeout());
         assert!(!ddw0.lane_starts_violation());
@@ -90,7 +102,6 @@ mod tests {
 
     #[test]
     fn ddw0_reporting_errors_read_write() {
-        const VALID_ID: u8 = 0xE4;
         // Atypical TDT, some lane errors and warnings etc.
         const LANE_0_AND_3_IN_WARNING: u8 = 0b0100_0001;
         const LANE_4_TO_7_IN_FATAL: u8 = 0b1111_1111;
@@ -112,12 +123,10 @@ mod tests {
             LANE_24_AND_25_IN_ERROR,
             RESERVED0,
             TRANSMISSION_TO_LANE_STARTS_VIOLATION_SET,
-            0xE4,
+            Ddw0::ID,
         ];
-        assert_eq!(raw_data_ddw0[9], VALID_ID);
         let ddw0 = Ddw0::load(&mut raw_data_ddw0.as_slice()).unwrap();
-        println!("{ddw0}");
-        assert_eq!(ddw0.id(), VALID_ID);
+        assert_eq!(ddw0.id(), Ddw0::ID);
 
         assert!(ddw0.index() == 0);
         assert!(ddw0.is_reserved_0());

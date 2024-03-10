@@ -122,15 +122,15 @@ impl ItsPayloadFsmContinuous {
                         stm.transition(event::_WasData).as_enum(),
                         Ok(ItsPayloadWord::DataWord),
                     ),
-                    0xF0 if !tdt_packet_done(gbt_word) => (
+                    Tdt::ID if !tdt_packet_done(gbt_word) => (
                         stm.transition(event::_WasTDTpacketDoneFalse).as_enum(),
                         Ok(ItsPayloadWord::TDT),
                     ),
-                    0xF0 if tdt_packet_done(gbt_word) => (
+                    Tdt::ID if tdt_packet_done(gbt_word) => (
                         stm.transition(event::_WasTDTpacketDoneTrue).as_enum(),
                         Ok(ItsPayloadWord::TDT),
                     ),
-                    0xF8 => (
+                    Cdw::ID => (
                         stm.transition(event::_WasData).as_enum(),
                         Ok(ItsPayloadWord::CDW),
                     ),
@@ -142,19 +142,19 @@ impl ItsPayloadFsmContinuous {
                 },
 
                 state::DDW0_or_TDH_or_IHW_By_NoDataTrue(stm) => match gbt_word[9] {
-                    0xE8 if tdh_no_data(gbt_word) => (
+                    Tdh::ID if tdh_no_data(gbt_word) => (
                         stm.transition(event::_NoDataTrue).as_enum(),
                         Ok(ItsPayloadWord::TDH_after_packet_done),
                     ),
-                    0xE8 if !tdh_no_data(gbt_word) => (
+                    Tdh::ID if !tdh_no_data(gbt_word) => (
                         stm.transition(event::_NoDataFalse).as_enum(),
                         Ok(ItsPayloadWord::TDH_after_packet_done),
                     ),
-                    0xE0 => (
+                    Ihw::ID => (
                         stm.transition(event::_WasIhw).as_enum(),
                         Ok(ItsPayloadWord::IHW),
                     ),
-                    0xE4 => (
+                    Ddw0::ID => (
                         stm.transition(event::_WasDdw0).as_enum(),
                         Ok(ItsPayloadWord::DDW0),
                     ),
@@ -171,15 +171,15 @@ impl ItsPayloadFsmContinuous {
                         stm.transition(event::_WasData).as_enum(),
                         Ok(ItsPayloadWord::DataWord),
                     ),
-                    0xF0 if tdt_packet_done(gbt_word) => (
+                    Tdt::ID if tdt_packet_done(gbt_word) => (
                         stm.transition(event::_WasTDTpacketDoneTrue).as_enum(),
                         Ok(ItsPayloadWord::TDT),
                     ),
-                    0xF0 if !tdt_packet_done(gbt_word) => (
+                    Tdt::ID if !tdt_packet_done(gbt_word) => (
                         stm.transition(event::_WasTDTpacketDoneFalse).as_enum(),
                         Ok(ItsPayloadWord::TDT),
                     ),
-                    0xF8 => (
+                    Cdw::ID => (
                         stm.transition(event::_WasData).as_enum(),
                         Ok(ItsPayloadWord::CDW),
                     ),
@@ -205,15 +205,15 @@ impl ItsPayloadFsmContinuous {
                         stm.transition(event::_WasData).as_enum(),
                         Ok(ItsPayloadWord::DataWord),
                     ),
-                    0xF0 if tdt_packet_done(gbt_word) => (
+                    Tdt::ID if tdt_packet_done(gbt_word) => (
                         stm.transition(event::_WasTDTpacketDoneTrue).as_enum(),
                         Ok(ItsPayloadWord::TDT),
                     ),
-                    0xF0 if !tdt_packet_done(gbt_word) => (
+                    Tdt::ID if !tdt_packet_done(gbt_word) => (
                         stm.transition(event::_WasTDTpacketDoneFalse).as_enum(),
                         Ok(ItsPayloadWord::TDT),
                     ),
-                    0xF8 => (
+                    Cdw::ID => (
                         stm.transition(event::_WasData).as_enum(),
                         Ok(ItsPayloadWord::CDW),
                     ),
@@ -230,15 +230,15 @@ impl ItsPayloadFsmContinuous {
                         stm.transition(event::_WasData).as_enum(),
                         Ok(ItsPayloadWord::DataWord),
                     ),
-                    0xF0 if tdt_packet_done(gbt_word) => (
+                    Tdt::ID if tdt_packet_done(gbt_word) => (
                         stm.transition(event::_WasTDTpacketDoneTrue).as_enum(),
                         Ok(ItsPayloadWord::TDT),
                     ),
-                    0xF0 if !tdt_packet_done(gbt_word) => (
+                    Tdt::ID if !tdt_packet_done(gbt_word) => (
                         stm.transition(event::_WasTDTpacketDoneFalse).as_enum(),
                         Ok(ItsPayloadWord::TDT),
                     ),
-                    0xF8 => (
+                    Cdw::ID => (
                         stm.transition(event::_WasData).as_enum(),
                         Ok(ItsPayloadWord::CDW),
                     ),
@@ -260,19 +260,19 @@ impl ItsPayloadFsmContinuous {
                 ),
 
                 state::DDW0_or_TDH_or_IHW_By_WasTDTpacketDoneTrue(stm) => match gbt_word[9] {
-                    0xE8 if tdh_no_data(gbt_word) => (
+                    Tdh::ID if tdh_no_data(gbt_word) => (
                         stm.transition(event::_NoDataTrue).as_enum(),
                         Ok(ItsPayloadWord::TDH_after_packet_done),
                     ),
-                    0xE8 if !tdh_no_data(gbt_word) => (
+                    Tdh::ID if !tdh_no_data(gbt_word) => (
                         stm.transition(event::_NoDataFalse).as_enum(),
                         Ok(ItsPayloadWord::TDH_after_packet_done),
                     ),
-                    0xE0 => (
+                    Ihw::ID => (
                         stm.transition(event::_WasIhw).as_enum(),
                         Ok(ItsPayloadWord::IHW),
                     ),
-                    0xE4 => (
+                    Ddw0::ID => (
                         stm.transition(event::_WasDdw0).as_enum(),
                         Ok(ItsPayloadWord::DDW0),
                     ),

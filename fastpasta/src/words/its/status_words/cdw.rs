@@ -14,6 +14,9 @@ pub struct Cdw {
 }
 
 impl Cdw {
+    /// ID for [CDW][Cdw] positioned at `79:72` in the 80 bits that make up the word.
+    pub const ID: u8 = 0xF8;
+
     /// Returns the integer value of the calibration_word_index field.
     pub fn calibration_word_index(&self) -> u32 {
         ((self.calibration_word_index_msb as u32) << 16)
@@ -56,12 +59,22 @@ mod tests {
 
     #[test]
     fn cdw_read_write() {
-        const VALID_ID: u8 = 0xF8;
-        let raw_data_cdw = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0xF8];
+        let raw_data_cdw = [
+            0x00,
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            0x05,
+            0x06,
+            0x07,
+            0x08,
+            Cdw::ID,
+        ];
 
         let cdw = Cdw::load(&mut raw_data_cdw.as_slice()).unwrap();
 
-        assert_eq!(cdw.id(), VALID_ID);
+        assert_eq!(cdw.id(), Cdw::ID);
 
         assert!(cdw.is_reserved_0());
         assert_eq!(cdw.calibration_user_fields(), 0x050403020100);

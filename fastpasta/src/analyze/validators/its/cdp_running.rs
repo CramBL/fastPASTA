@@ -253,8 +253,7 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     #[inline]
     fn preprocess_data_word(&mut self, data_word_slice: &[u8]) {
         const ID_INDEX: usize = 9;
-        if self.tracker.start_of_data() && data_word_slice[ID_INDEX] == 0xF8 {
-            // CDW
+        if self.tracker.start_of_data() && data_word_slice[ID_INDEX] == Cdw::ID {
             self.process_cdw(data_word_slice);
         } else {
             // Regular data word
@@ -476,10 +475,18 @@ mod tests {
 
     #[test]
     fn test_validate_ihw() {
-        const VALID_ID: u8 = 0xE0;
         const _ACTIVE_LANES_14_ACTIVE: u32 = 0x3F_FF;
         let raw_data_ihw = [
-            0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, VALID_ID,
+            0xFF,
+            0x3F,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            Ihw::ID,
         ];
         let (send, stats_recv_ch) = flume::unbounded();
 
@@ -525,7 +532,6 @@ mod tests {
 
     #[test]
     fn test_expect_ihw_invalidate_tdh() {
-        const _VALID_ID: u8 = 0xF0;
         // Boring but very typical TDT, everything is 0 except for packet_done
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
 
@@ -553,14 +559,47 @@ mod tests {
     fn test_tdh_trigger_bc_increasing_fail() {
         // ARRANGE
         // RDH -> IHW -> TDH0 no_data -> TDH1
-        let raw_data_ihw = [0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE0];
-        let raw_data_tdh0 = [0x03, 0x3A, 0x01, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x00, 0xE8];
+        let raw_data_ihw = [
+            0xFF,
+            0x3F,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            Ihw::ID,
+        ];
+        let raw_data_tdh0 = [
+            0x03,
+            0x3A,
+            0x01,
+            0x00,
+            0x75,
+            0xD5,
+            0x7D,
+            0x0B,
+            0x00,
+            Tdh::ID,
+        ];
         let tdh0 = Tdh::load(&mut raw_data_tdh0.as_slice()).unwrap();
         println!("cont:{}", tdh0.continuation());
         println!("int:{}", tdh0.internal_trigger());
         println!("no_data={}", tdh0.no_data());
         assert_eq!(tdh0.no_data(), 1);
-        let raw_data_tdh1 = [0x03, 0x1A, 0x00, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x00, 0xE8];
+        let raw_data_tdh1 = [
+            0x03,
+            0x1A,
+            0x00,
+            0x00,
+            0x75,
+            0xD5,
+            0x7D,
+            0x0B,
+            0x00,
+            Tdh::ID,
+        ];
         let tdh1 = Tdh::load(&mut raw_data_tdh1.as_slice()).unwrap();
         // They are TDH0 is larger than TDH1 which is an error.
         assert!(tdh0.trigger_bc() > tdh1.trigger_bc());
@@ -596,8 +635,30 @@ mod tests {
         const TDH_TRIGGER_TYPE: u16 = 0xA03;
         let rdh_trig_type_12_lsb = CORRECT_RDH_CRU_V7_SOT.rdh2().trigger_type as u16 & 0xFFF;
         assert_ne!(rdh_trig_type_12_lsb, TDH_TRIGGER_TYPE);
-        let raw_data_ihw = [0xFF, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE0];
-        let raw_data_tdh = [0x03, 0x1A, 0x00, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x00, 0xE8];
+        let raw_data_ihw = [
+            0xFF,
+            0x3F,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            Ihw::ID,
+        ];
+        let raw_data_tdh = [
+            0x03,
+            0x1A,
+            0x00,
+            0x00,
+            0x75,
+            0xD5,
+            0x7D,
+            0x0B,
+            0x00,
+            Tdh::ID,
+        ];
         let tdh = Tdh::load(&mut raw_data_tdh.as_slice()).unwrap();
         assert_eq!(tdh.trigger_type(), TDH_TRIGGER_TYPE);
         assert_eq!(tdh.internal_trigger(), 1);
@@ -628,7 +689,6 @@ mod tests {
 
     #[test]
     fn test_expect_ihw_invalidate_tdh_and_next() {
-        const _VALID_ID: u8 = 0xF0;
         // Boring but very typical TDT, everything is 0 except for packet_done
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
         let raw_data_tdt_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF2];
@@ -668,7 +728,6 @@ mod tests {
 
     #[test]
     fn test_expect_ihw_invalidate_tdh_and_next_next() {
-        const _VALID_ID: u8 = 0xF0;
         // Boring but very typical TDT, everything is 0 except for packet_done
         let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF1];
         let raw_data_tdt_next = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF2];

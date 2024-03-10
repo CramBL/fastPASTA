@@ -191,12 +191,25 @@ pub fn is_lane_active(lane: u8, active_lanes: u32) -> bool {
 #[cfg(test)]
 mod tests {
 
+    use crate::Tdh;
+
     use super::*;
     use pretty_assertions::assert_eq;
 
     #[test]
     fn test_tdh_trigger_as_string() {
-        let tdh_slice = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE8];
+        let tdh_slice = [
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            Tdh::ID,
+        ];
 
         let trig_as_string = tdh_trigger_as_string(&tdh_slice);
 
@@ -216,7 +229,7 @@ mod tests {
             0x00,
             0x00,
             0x00,
-            0xE8,
+            Tdh::ID,
         ];
 
         let cont_as_string = tdh_continuation_as_string(&tdh_slice);

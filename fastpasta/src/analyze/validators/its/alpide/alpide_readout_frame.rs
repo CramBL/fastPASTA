@@ -40,17 +40,14 @@ impl AlpideReadoutFrame {
         match self
             .lane_data_frames
             .iter_mut()
-            .find(|lane_data_frame| lane_data_frame.lane_id == data_word[9])
+            .find(|lane_data_frame| lane_data_frame.id() == data_word[9])
         {
             Some(lane_data_frame) => {
-                lane_data_frame
-                    .lane_data
-                    .extend_from_slice(&data_word[0..=8]);
+                lane_data_frame.append_data(&data_word[0..=8]);
             }
-            None => self.lane_data_frames.push(LaneDataFrame {
-                lane_id: data_word[9],
-                lane_data: data_word[0..=8].to_vec(),
-            }),
+            None => self
+                .lane_data_frames
+                .push(LaneDataFrame::new(data_word[9], data_word[0..=8].to_vec())),
         }
     }
 
@@ -102,7 +99,7 @@ pub(crate) fn validate_inner_lane_groupings(
 ) -> Result<(), String> {
     let mut lane_ids = lane_data_frames
         .iter()
-        .map(|lane_data_frame| ib_data_word_id_to_lane(lane_data_frame.lane_id))
+        .map(|lane_data_frame| ib_data_word_id_to_lane(lane_data_frame.id()))
         .collect::<Vec<u8>>();
     lane_ids.sort_unstable();
 

@@ -10,11 +10,6 @@ use crate::words::its::{
 pub struct ObDataWordValidator;
 
 impl ObDataWordValidator {
-    /// Constant initialize a [ObDataWordValidator]
-    pub const fn new_const() -> Self {
-        Self {}
-    }
-
     /// Performs checks on a data word from outer barrell.
     ///
     /// If any checks fail, an [Err] is returned containing a vector of error messages
