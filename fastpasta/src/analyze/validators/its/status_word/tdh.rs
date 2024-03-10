@@ -7,15 +7,13 @@ use super::{util::StatusWordContainer, StatusWordValidator};
 use crate::words::its::status_words::{tdh::Tdh, StatusWord};
 
 #[derive(Debug, Copy, Clone)]
-pub struct TdhValidator {
-    valid_id: u8,
-}
+pub struct TdhValidator;
 
 impl StatusWordValidator<Tdh> for TdhValidator {
-    fn sanity_check(&self, tdh: &Tdh) -> Result<(), String> {
+    fn sanity_check(tdh: &Tdh) -> Result<(), String> {
         let mut err_str = String::new();
 
-        if tdh.id() != self.valid_id {
+        if tdh.id() != Tdh::ID {
             write!(err_str, "ID is not 0xE8: {:#2X} ", tdh.id()).unwrap();
             // Early return if ID is wrong
             return Err(err_str);
@@ -54,10 +52,6 @@ impl StatusWordValidator<Tdh> for TdhValidator {
 }
 
 impl TdhValidator {
-    pub const fn new_const() -> Self {
-        Self { valid_id: 0xE8 }
-    }
-
     /// Checks if the TDH trigger_bc period matches the specified value
     ///
     /// reports an error with the detected erroneous period if the check fails
@@ -216,18 +210,37 @@ impl TdhValidator {
 mod tests {
     use super::*;
 
-    const TDH_VALIDATOR: TdhValidator = TdhValidator::new_const();
-
     #[test]
     fn test_tdh_validator() {
-        let raw_data_tdh = [0x03, 0x1A, 0x00, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x00, 0xE8];
+        let raw_data_tdh = [
+            0x03,
+            0x1A,
+            0x00,
+            0x00,
+            0x75,
+            0xD5,
+            0x7D,
+            0x0B,
+            0x00,
+            Tdh::ID,
+        ];
         let tdh = Tdh::load(&mut raw_data_tdh.as_slice()).unwrap();
         println!("{tdh:#?}");
-        assert!(TDH_VALIDATOR.sanity_check(&tdh).is_ok());
-        let raw_data_tdh_bad_reserved =
-            [0x03, 0x1A, 0x00, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x0F, 0xE8];
+        assert!(TdhValidator::sanity_check(&tdh).is_ok());
+        let raw_data_tdh_bad_reserved = [
+            0x03,
+            0x1A,
+            0x00,
+            0x00,
+            0x75,
+            0xD5,
+            0x7D,
+            0x0B,
+            0x0F,
+            Tdh::ID,
+        ];
         let tdh_bad = Tdh::load(&mut raw_data_tdh_bad_reserved.as_slice()).unwrap();
-        assert!(TDH_VALIDATOR.sanity_check(&tdh_bad).is_err());
+        assert!(TdhValidator::sanity_check(&tdh_bad).is_err());
     }
 
     #[test]
@@ -235,14 +248,14 @@ mod tests {
     fn test_tdh_validator_bad_id() {
         let raw_data_tdh_bad_id = [0x03, 0x1A, 0x00, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x00, 0xE7];
         let tdh = Tdh::load(&mut raw_data_tdh_bad_id.as_slice()).unwrap();
-        TDH_VALIDATOR.sanity_check(&tdh).unwrap();
+        TdhValidator::sanity_check(&tdh).unwrap();
     }
 
     #[test]
     fn test_tdh_err_msg() {
         let raw_data_tdh_bad_id = [0x03, 0x1A, 0x00, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x00, 0xE7];
         let tdh = Tdh::load(&mut raw_data_tdh_bad_id.as_slice()).unwrap();
-        let err = TDH_VALIDATOR.sanity_check(&tdh).err();
+        let err = TdhValidator::sanity_check(&tdh).err();
         println!("{err:?}");
         assert!(err.unwrap().contains("ID is not 0xE8: 0x"));
     }

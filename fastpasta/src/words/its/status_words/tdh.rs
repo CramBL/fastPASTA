@@ -16,8 +16,12 @@ pub struct Tdh {
     reserved0_id: u16, // 71:64 reserved, 79:72 id
 }
 impl Tdh {
+    /// ID for [TDH][Tdh] positioned at `79:72` in the 80 bits that make up the word.
+    pub const ID: u8 = 0xE8;
+
     /// Maximum value of the trigger_bc field
     pub const MAX_BC: u16 = 3563;
+
     /// Returns the integer value of the reserved0 field
     pub fn reserved0(&self) -> u16 {
         self.reserved0_id & 0xFF
@@ -108,8 +112,18 @@ mod tests {
 
     #[test]
     fn tdh_read_write() {
-        const VALID_ID: u8 = 0xE8;
-        let raw_data_tdh = [0x03, 0x1A, 0x00, 0x00, 0x75, 0xD5, 0x7D, 0x0B, 0x00, 0xE8];
+        let raw_data_tdh = [
+            0x03,
+            0x1A,
+            0x00,
+            0x00,
+            0x75,
+            0xD5,
+            0x7D,
+            0x0B,
+            0x00,
+            Tdh::ID,
+        ];
         const TRIGGER_TYPE: u16 = 0xA03;
         const INTERNAL_TRIGGER: u16 = 1; // 0x1
         const NO_DATA: u16 = 0; // 0x0
@@ -118,7 +132,7 @@ mod tests {
         const TRIGGER_ORBIT: u32 = 0x0B7DD575;
         let tdh = Tdh::load(&mut raw_data_tdh.as_slice()).unwrap();
         println!("{tdh}");
-        assert_eq!(tdh.id(), VALID_ID);
+        assert_eq!(tdh.id(), Tdh::ID);
         assert!(tdh.is_reserved_0());
         assert_eq!(tdh.trigger_type(), TRIGGER_TYPE);
         assert_eq!(tdh.internal_trigger(), INTERNAL_TRIGGER);

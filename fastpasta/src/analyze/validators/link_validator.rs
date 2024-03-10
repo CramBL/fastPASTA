@@ -182,7 +182,6 @@ impl<T: RDH, C: 'static + ChecksOpt + FilterOpt + CustomChecksOpt + UtilOpt> Lin
 mod tests {
     use super::*;
     use crate::config::check::CmdPathArg;
-    use crate::words::its::test_payloads::*;
     use alice_protocol_reader::prelude::test_data::CORRECT_RDH_CRU_V7;
 
     static CFG_TEST_RUN_LINK_VALIDATOR: OnceLock<MockConfig> = OnceLock::new();

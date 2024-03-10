@@ -7,14 +7,17 @@ pub(crate) use {
             validators::{
                 its::{
                     self,
-                    alpide::lane_alpide_frame_analyzer::LaneAlpideFrameAnalyzer,
+                    alpide::{
+                        self, alpide_readout_frame::AlpideReadoutFrame,
+                        lane_alpide_frame_analyzer::LaneAlpideFrameAnalyzer,
+                    },
                     cdp_running::CdpRunningValidator,
                     data_words::{
                         ib::IbDataWordValidator, ob::ObDataWordValidator, DATA_WORD_SANITY_CHECKER,
                     },
                     its_payload_fsm_cont::{self, ItsPayloadFsmContinuous},
                     lib::ItsPayloadWord,
-                    status_word::StatusWordSanityChecker,
+                    status_word::{util::StatusWordContainer, StatusWordSanityChecker},
                 },
                 lib::preprocess_payload,
                 link_validator::LinkValidator,
@@ -44,10 +47,11 @@ pub(crate) use {
         words::{
             self,
             its::{
+                data_words::lane_id_to_lane_number,
                 layer_from_feeid,
                 status_words::util::*,
                 status_words::{cdw::Cdw, ddw::Ddw0, ihw::Ihw, tdh::Tdh, tdt::Tdt, StatusWord},
-                stave_number_from_feeid,
+                stave_number_from_feeid, Layer, Stave,
             },
         },
     },
@@ -89,3 +93,6 @@ pub(crate) use {
         vec::Drain,
     },
 };
+
+#[cfg(test)]
+pub(crate) use crate::words::example_data::data::*;

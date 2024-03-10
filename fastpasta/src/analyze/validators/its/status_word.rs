@@ -12,79 +12,103 @@ mod ddw;
 mod ihw;
 pub(super) mod tdh;
 pub(super) mod tdt;
-pub(super) mod util;
+pub mod util;
 
-/// Aggregates all status word validators.
+/// Encapsulates all status word validators.
 #[derive(Debug, Clone, Copy)]
-pub struct StatusWordSanityChecker {
-    ihw_validator: IhwValidator,
-    tdh_validator: TdhValidator,
-    tdt_validator: TdtValidator,
-    ddw0_validator: Ddw0Validator,
-    // No checks for CDW
-}
-impl StatusWordSanityChecker {
-    /// Creates a new [StatusWordSanityChecker] in a const context.
-    pub const fn new() -> Self {
-        Self {
-            ihw_validator: IhwValidator::new_const(),
-            tdh_validator: TdhValidator::new_const(),
-            tdt_validator: TdtValidator::new_const(),
-            ddw0_validator: Ddw0Validator::new_const(),
-        }
-    }
+pub struct StatusWordSanityChecker;
 
+impl StatusWordSanityChecker {
     /// Checks if argument is a valid [IHW][Ihw] status word.
-    pub fn check_ihw(&self, ihw: &Ihw) -> Result<(), String> {
-        self.ihw_validator.sanity_check(ihw)
+    pub fn check_ihw(ihw: &Ihw) -> Result<(), String> {
+        IhwValidator::sanity_check(ihw)
     }
     /// Checks if argument is a valid [TDH][Tdh] status word.
-    pub fn check_tdh(&self, tdh: &Tdh) -> Result<(), String> {
-        self.tdh_validator.sanity_check(tdh)
+    pub fn check_tdh(tdh: &Tdh) -> Result<(), String> {
+        TdhValidator::sanity_check(tdh)
     }
     /// Checks if argument is a valid [TDT][Tdt] status word.
-    pub fn check_tdt(&self, tdt: &Tdt) -> Result<(), String> {
-        self.tdt_validator.sanity_check(tdt)
+    pub fn check_tdt(tdt: &Tdt) -> Result<(), String> {
+        TdtValidator::sanity_check(tdt)
     }
     /// Checks if argument is a valid [DDW0][Ddw0] status word.
-    pub fn check_ddw0(&self, ddw0: &Ddw0) -> Result<(), String> {
-        self.ddw0_validator.sanity_check(ddw0)
+    pub fn check_ddw0(ddw0: &Ddw0) -> Result<(), String> {
+        Ddw0Validator::sanity_check(ddw0)
     }
 }
 
-trait StatusWordValidator<T: StatusWord> {
-    fn sanity_check(&self, status_word: &T) -> Result<(), String>;
+/// Abstraction of a status word validator, each validator should implement this interface.
+pub trait StatusWordValidator<T: StatusWord> {
+    /// Perform a sanity check on a [Status Word][StatusWord].
+    ///
+    /// # Returns
+    /// [Ok] if the sanity check passes
+    ///
+    /// # Errors
+    /// If a check fails, returns [Err(String)][Err] where the string describes the sanity check that failed
+    fn sanity_check(status_word: &T) -> Result<(), String>;
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const STATUS_WORD_SANITY_CHECKER: StatusWordSanityChecker = StatusWordSanityChecker::new();
-
     #[test]
     #[should_panic]
     fn test_ddw0_invalid() {
-        let raw_ddw0_bad_index = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0xE4];
+        let raw_ddw0_bad_index = [
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x10,
+            Ddw0::ID,
+        ];
 
         let ddw0_bad = Ddw0::load(&mut raw_ddw0_bad_index.as_slice()).unwrap();
-        STATUS_WORD_SANITY_CHECKER.check_ddw0(&ddw0_bad).unwrap();
+        StatusWordSanityChecker::check_ddw0(&ddw0_bad).unwrap();
     }
 
     #[test]
     fn test_ddw0_invalid_handled() {
-        let raw_ddw0_bad_index = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0xE4];
+        let raw_ddw0_bad_index = [
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x10,
+            Ddw0::ID,
+        ];
 
         let ddw0_bad = Ddw0::load(&mut raw_ddw0_bad_index.as_slice()).unwrap();
-        assert!(STATUS_WORD_SANITY_CHECKER.check_ddw0(&ddw0_bad).is_err());
+        assert!(StatusWordSanityChecker::check_ddw0(&ddw0_bad).is_err());
     }
 
     #[test]
     fn test_ddw0_error_msg_bad_index() {
-        let raw_ddw0_bad_index = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0xE4];
+        let raw_ddw0_bad_index = [
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x10,
+            Ddw0::ID,
+        ];
 
         let ddw0_bad = Ddw0::load(&mut raw_ddw0_bad_index.as_slice()).unwrap();
-        let err = STATUS_WORD_SANITY_CHECKER.check_ddw0(&ddw0_bad).err();
+        let err = StatusWordSanityChecker::check_ddw0(&ddw0_bad).err();
         eprintln!("{:?}", err);
         assert!(err.unwrap().contains("index is not 0"));
     }
@@ -93,7 +117,7 @@ mod tests {
         let raw_data_ddw0_bad_id = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14];
 
         let ddw0_bad = Ddw0::load(&mut raw_data_ddw0_bad_id.as_slice()).unwrap();
-        let err = STATUS_WORD_SANITY_CHECKER.check_ddw0(&ddw0_bad).err();
+        let err = StatusWordSanityChecker::check_ddw0(&ddw0_bad).err();
         eprintln!("{:?}", err);
         assert!(err.unwrap().contains("ID is not 0xE4: 0x"));
     }

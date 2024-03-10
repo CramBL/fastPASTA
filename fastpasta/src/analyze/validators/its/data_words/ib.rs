@@ -7,11 +7,6 @@ use crate::words::its::status_words::util::is_lane_active;
 pub struct IbDataWordValidator;
 
 impl IbDataWordValidator {
-    /// Constant initialize a [IbDataWordValidator]
-    pub const fn new_const() -> Self {
-        Self {}
-    }
-
     /// Checks validity of an Inner Barrel data word
     ///
     /// If the check fails, returns an [Err] containing the error message

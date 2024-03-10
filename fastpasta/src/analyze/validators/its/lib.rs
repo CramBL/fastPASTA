@@ -60,11 +60,11 @@ impl ItsPayloadWord {
             0x20..=0x28 | 0x40..=0x46 | 0x48..=0x4E | 0x50..=0x56 | 0x58..=0x5E => {
                 Ok(ItsPayloadWord::DataWord)
             }
-            0xE8 => Ok(ItsPayloadWord::TDH),
-            0xF0 => Ok(ItsPayloadWord::TDT),
-            0xE0 => Ok(ItsPayloadWord::IHW),
-            0xE4 => Ok(ItsPayloadWord::DDW0),
-            0xF8 => Ok(ItsPayloadWord::CDW),
+            Tdh::ID => Ok(ItsPayloadWord::TDH),
+            Tdt::ID => Ok(ItsPayloadWord::TDT),
+            Ihw::ID => Ok(ItsPayloadWord::IHW),
+            Ddw0::ID => Ok(ItsPayloadWord::DDW0),
+            Cdw::ID => Ok(ItsPayloadWord::CDW),
             _ => Err("Unknown ITS Payload Word ID".to_string()),
         }
     }

@@ -15,7 +15,9 @@ source ./tests/regression/utils.sh
 # Prefix for each command.
 ## ${1-cargo run}: If no argument is specified, the default is "cargo run"
 ## Run the binary and go to the test-data folder
-readonly CMD_PREFIX="${1-cargo run} -- ./tests/test-data/"
+cargo "${1-build}"
+
+readonly CMD_PREFIX="target/debug/fastpasta ./tests/test-data/"
 
 ### Regex patterns ###
 ## Matches one ANSI escape code
@@ -377,8 +379,8 @@ function run_test {
     local -r cond=$4
     echo -e "==> running ${TXT_BRIGHT_MAGENTA}${test_var_name}${TXT_CLEAR}: ${TXT_BRIGHT_YELLOW}${test_case}${TXT_CLEAR}"
     echo -e "\tCondition is: ${TXT_BLUE}[number of matches] == ${cond}${TXT_CLEAR}, for pattern: ${TXT_BRIGHT_CYAN}${pattern}${TXT_CLEAR}"
-    # Run the test, redirecting stderr to stdout, and skipping the first 2 lines (which are the "Finished dev..., Running..." lines)
-    local -r test_out=$(eval "${CMD_PREFIX}${test_case}" 2>&1 | tail -n +3 )
+    # Run the test, redirecting stderr to stdout
+    local -r test_out=$( eval "${CMD_PREFIX}${test_case}" 2>&1 )
     # Count the number of matches
     local -r matches=$(echo "${test_out}" | grep -E -i -c "${pattern}")
     # Check if the number of matches is the same as the expected number of matches

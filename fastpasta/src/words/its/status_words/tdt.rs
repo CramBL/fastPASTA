@@ -22,6 +22,9 @@ pub struct Tdt {
 }
 
 impl Tdt {
+    /// ID for [TDT][Tdt] positioned at `79:72` in the 80 bits that make up the word.
+    pub const ID: u8 = 0xF0;
+
     /// Returns the integer value of the reserved0 field.
     pub fn reserved0(&self) -> u8 {
         self.res0_lane_starts_violation_res1_transmission_timeout_packet_done >> 4
@@ -105,13 +108,21 @@ mod tests {
 
     #[test]
     fn tdt_read_write() {
-        const VALID_ID: u8 = 0xF0;
         // Boring but very typical TDT, everything is 0 except for packet_done
-        let raw_data_tdt = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF0];
-        assert_eq!(raw_data_tdt[9], VALID_ID);
+        let raw_data_tdt = [
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x01,
+            Tdt::ID,
+        ];
         let tdt = Tdt::load(&mut raw_data_tdt.as_slice()).unwrap();
-        println!("{tdt}");
-        assert_eq!(tdt.id(), VALID_ID);
+        assert_eq!(tdt.id(), Tdt::ID);
         assert!(tdt.is_reserved_0());
         assert!(tdt.packet_done());
         let loaded_tdt = Tdt::load(&mut tdt.to_byte_slice()).unwrap();
@@ -120,7 +131,6 @@ mod tests {
 
     #[test]
     fn tdt_reporting_errors_read_write() {
-        const VALID_ID: u8 = 0xF0;
         // Atypical TDT, some lane errors and warnings etc.
         const LANE_0_AND_3_IN_WARNING: u8 = 0b0100_0001;
         const LANE_4_TO_7_IN_FATAL: u8 = 0b1111_1111;
@@ -142,12 +152,11 @@ mod tests {
             LANE_24_AND_25_IN_ERROR,
             TIMEOUT_TO_START_TIMEOUT_START_STOP_TIMEOUT_IN_IDLE_ALL_SET,
             LANE_STARTS_VIOLATION_AND_TRANSMISSION_TIMEOUT_SET,
-            0xF0,
+            Tdt::ID,
         ];
-        assert!(raw_data_tdt[9] == VALID_ID);
         let tdt = Tdt::load(&mut raw_data_tdt.as_slice()).unwrap();
         println!("{tdt}");
-        assert_eq!(tdt.id(), VALID_ID);
+        assert_eq!(tdt.id(), Tdt::ID);
         println!("tdt.is_reserved_0() = {}", tdt.is_reserved_0());
         println!(
             "{:x} {:x} {:x}",

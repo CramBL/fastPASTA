@@ -19,11 +19,15 @@ PROMPT := join(justfile_directory(), 'scripts/prompt.just') + " prompt"
 alias c := check
 
 # Run Full checks and format
-full-check: check format lint check-unique-error-codes check-version test
+full-check: check format pre-commit lint check-unique-error-codes check-version test
 
 # Check if it compiles without compiling
 check *ARGS:
     cargo check {{ ARGS }}
+
+# Run pre-commit hooks
+pre-commit *ARGS:
+    pre-commit run {{ ARGS }}
 
 # Build the application
 build *ARGS:
@@ -40,7 +44,7 @@ test-coverage: run-test-coverage
 coverage-report: open-coverage-report
 
 # Lint the code
-lint *ARGS="-- -D warnings --no-deps":
+lint *ARGS="--all-targets --all-features -- -D warnings --no-deps":
     cargo clippy {{ ARGS }}
 
 # Format the code
