@@ -19,11 +19,15 @@ PROMPT := join(justfile_directory(), 'scripts/prompt.just') + " prompt"
 alias c := check
 
 # Run Full checks and format
-full-check: check format lint check-unique-error-codes check-version test
+full-check: check format pre-commit lint check-unique-error-codes check-version test
 
 # Check if it compiles without compiling
 check *ARGS:
     cargo check {{ ARGS }}
+
+# Run pre-commit hooks
+pre-commit *ARGS:
+    pre-commit run {{ ARGS }}
 
 # Build the application
 build *ARGS:
@@ -95,7 +99,8 @@ ci_lint: \
     check-version \
     (format "-- --check --verbose") \
     (doc "--verbose") \
-    check-unique-error-codes
+    check-unique-error-codes \
+    pre-commit
 
 # Run tests
 [private]
