@@ -161,43 +161,49 @@ fn add_alpide_stats_to_report(report: &mut Report, alpide_stats: &AlpideStats) {
 
     let readout_flags = alpide_stats.readout_flags();
 
+    let chip_trailer_seen_str = readout_flags.chip_trailers_seen().to_string();
+
+    // The chip trailers seen will be the largest number, use the length of
+    // the string representation to pad/align the numbers of the readout flags
+    let max_num_len = chip_trailer_seen_str.len();
+
     alpide_stat.push(StatSummary::new(
         "Chip Trailers seen".to_string(),
-        readout_flags.chip_trailers_seen().to_string(),
+        chip_trailer_seen_str,
         None,
     ));
 
     alpide_stat.push(StatSummary::new(
         "Busy Violations".to_string(),
-        readout_flags.busy_violations().to_string(),
+        format!("{:>max_num_len$}", readout_flags.busy_violations()),
         None,
     ));
 
     alpide_stat.push(StatSummary::new(
         "Data Overrun".to_string(),
-        readout_flags.data_overrun().to_string(),
+        format!("{:>max_num_len$}", readout_flags.data_overrun()),
         None,
     ));
 
     alpide_stat.push(StatSummary::new(
         "Transmission in Fatal".to_string(),
-        readout_flags.transmission_in_fatal().to_string(),
+        format!("{:>max_num_len$}", readout_flags.transmission_in_fatal()),
         None,
     ));
 
     alpide_stat.push(StatSummary::new(
         "Flushed Incomplete".to_string(),
-        readout_flags.flushed_incomplete().to_string(),
+        format!("{:>max_num_len$}", readout_flags.flushed_incomplete()),
         None,
     ));
     alpide_stat.push(StatSummary::new(
         "Strobe Extended".to_string(),
-        readout_flags.strobe_extended().to_string(),
+        format!("{:>max_num_len$}", readout_flags.strobe_extended()),
         None,
     ));
     alpide_stat.push(StatSummary::new(
         "Busy Transitions".to_string(),
-        readout_flags.busy_transitions().to_string(),
+        format!("{:>max_num_len$}", readout_flags.busy_transitions()),
         None,
     ));
 
