@@ -194,7 +194,7 @@ impl<C: Config + 'static> Controller<C> {
             | StatType::AlpideStats(_) => {
                 self.stats_collector.collect(stat);
             }
-            StatType::HBFSeen => {
+            StatType::HBFsSeen(_) => {
                 self.stats_collector.collect(stat);
                 if self.spinner.is_some() {
                     self.spinner.as_mut().unwrap().set_prefix(format!(

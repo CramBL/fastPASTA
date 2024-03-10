@@ -34,7 +34,7 @@ impl StatsCollector {
     pub fn collect(&mut self, stat: StatType) {
         match stat {
             StatType::RDHSeen(e) => self.rdh_stats.add_rdhs_seen(e),
-            StatType::HBFSeen => self.rdh_stats.incr_hbf_seen(),
+            StatType::HBFsSeen(val) => self.rdh_stats.add_hbfs_seen(val),
             StatType::PayloadSize(sz) => self.rdh_stats.add_payload_size(sz as u64),
             StatType::LinksObserved(id) => self.rdh_stats.record_link(id),
             StatType::RdhVersion(v) => self.rdh_stats.record_rdh_version(v),
@@ -247,7 +247,7 @@ mod tests {
         stats_collector.collect(StatType::LinksObserved(4));
         stats_collector.collect(StatType::RdhVersion(5));
         stats_collector.collect(StatType::DataFormat(2));
-        stats_collector.collect(StatType::HBFSeen);
+        stats_collector.collect(StatType::HBFsSeen(1));
         stats_collector.collect(StatType::LayerStaveSeen { layer: 6, stave: 7 });
         stats_collector.collect(StatType::FeeId(8));
         stats_collector.collect(StatType::AlpideStats(AlpideStats::default()));

@@ -130,7 +130,6 @@ mod tests {
         stat_type_vec.push(StatType::LinksObserved(0));
         stat_type_vec.push(StatType::RdhVersion(1));
         stat_type_vec.push(StatType::DataFormat(1));
-        stat_type_vec.push(StatType::HBFSeen);
 
         for stat_type in stat_type_vec {
             // Test to_string() method

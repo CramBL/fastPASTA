@@ -2,9 +2,7 @@
 //!
 //! A readout frame should contain data from multiple lanes, and the data from each lane is stored in a [LaneDataFrame].
 use crate::util::*;
-use crate::words::its::{
-    data_words::ib_data_word_id_to_lane, lane_data_frame::LaneDataFrame, Layer,
-};
+use crate::words::its::{data_words::ib_data_word_id_to_lane, lane_data_frame::LaneDataFrame};
 
 /// Struct for storing the contents of a single ALPIDE readout frame
 #[derive(Default)]

@@ -172,8 +172,8 @@ impl RdhStats {
         self.hbfs_seen
     }
 
-    pub(super) fn incr_hbf_seen(&mut self) {
-        self.hbfs_seen += 1;
+    pub(super) fn add_hbfs_seen(&mut self, hbfs: u32) {
+        self.hbfs_seen += hbfs;
     }
 
     #[allow(dead_code)]
@@ -285,7 +285,7 @@ mod tests {
             trigger_stats: TriggerStats::default(),
         };
 
-        rdh_stats.incr_hbf_seen();
+        rdh_stats.add_hbfs_seen(1);
 
         let rdh_stats_ser_json = serde_json::to_string(&rdh_stats).unwrap();
         println!("{}", serde_json::to_string_pretty(&rdh_stats).unwrap());
