@@ -10,7 +10,7 @@ pub struct ErrorStats {
     reported_errors: Vec<Box<str>>,
     custom_checks_stats_errors: Vec<Box<str>>,
     total_errors: u64,
-    unique_error_codes: Option<Vec<String>>,
+    unique_error_codes: Vec<String>,
     // Only applicable if the data is from ITS
     staves_with_errors: Option<Vec<LayerStave>>,
 }
@@ -38,37 +38,27 @@ impl ErrorStats {
         // State machine: https://regexper.com/#0x%28%5B0-9A-F%5D%2B%29%3A
         let re = Regex::new(r"^0x(?<mem_pos>[0-9A-F]+)").unwrap();
         // Sort the errors by memory address
-        if !self.reported_errors.is_empty() {
-            self.reported_errors.sort_unstable_by_key(|e| {
-                let addr = re
-                    .captures(e)
-                    .unwrap_or_else(|| panic!("Error parsing memory address from error msg: {e}"));
-                u64::from_str_radix(&addr["mem_pos"], 16).expect("Error parsing memory address")
-            });
-        }
+        self.reported_errors.sort_unstable_by_key(|e| {
+            let addr = re
+                .captures(e)
+                .unwrap_or_else(|| panic!("Error parsing memory address from error msg: {e}"));
+            u64::from_str_radix(&addr["mem_pos"], 16).expect("Error parsing memory address")
+        });
     }
 
     pub(super) fn process_unique_error_codes(&mut self) {
         // Extract unique error codes from reported errors
-        if !self.reported_errors.is_empty() {
-            let unique_error_codes = extract_unique_error_codes(&self.reported_errors);
-            self.unique_error_codes = Some(unique_error_codes);
-        }
+        self.unique_error_codes = extract_unique_error_codes(&self.reported_errors);
 
         // If there's any errors from the custom checks on stats, find the error codes and add them.
-        if !self.custom_checks_stats_errors.is_empty() {
-            let unique_custom_error_codes: Vec<String> =
-                extract_unique_error_codes(&self.custom_checks_stats_errors);
-            if self.unique_error_codes.is_none() {
-                self.unique_error_codes = Some(unique_custom_error_codes);
-            } else {
-                self.unique_error_codes
-                    .as_mut()
-                    .unwrap()
-                    .extend(unique_custom_error_codes);
-                self.unique_error_codes.as_mut().unwrap().dedup();
+        let unique_custom_error_codes: Vec<String> =
+            extract_unique_error_codes(&self.custom_checks_stats_errors);
+
+        unique_custom_error_codes.into_iter().for_each(|s| {
+            if !self.unique_error_codes.contains(&s) {
+                self.unique_error_codes.push(s);
             }
-        }
+        })
     }
 
     pub(super) fn check_errors_for_stave_id(&mut self, layer_staves_seen: &[LayerStave]) {
@@ -130,9 +120,7 @@ impl ErrorStats {
     }
 
     pub(super) fn unique_error_codes_as_slice(&self) -> &[String] {
-        self.unique_error_codes
-            .as_ref()
-            .expect("Unique error codes were never set")
+        &self.unique_error_codes
     }
 
     /// Returns a slice of Layer/Staves seen in error messages
@@ -141,11 +129,12 @@ impl ErrorStats {
     /// Panics if staves with errors is None when there's errors.
     pub(crate) fn staves_with_errors_as_slice(&self) -> Option<&[LayerStave]> {
         if self.staves_with_errors.is_none() {
-            if self.total_errors == 0 {
-                return None;
-            } else {
-                panic!("Staves with errors were never set")
-            }
+            debug_assert!(
+                self.total_errors == 0,
+                "staves_with_errors is none but {} errors were found",
+                self.total_errors
+            );
+            return None;
         }
         Some(self.staves_with_errors.as_ref().unwrap())
     }
@@ -186,7 +175,9 @@ impl ErrorStats {
 
 fn extract_unique_error_codes(error_messages: &[Box<str>]) -> Vec<String> {
     let mut error_codes: Vec<String> = Vec::new();
-    let re = Regex::new(r"\[E(?P<err_code>[0-9]{2,4})\]").unwrap();
+    static RE: OnceLock<regex::Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| Regex::new(r"\[E(?P<err_code>[0-9]{2,4})\]").unwrap());
+
     error_messages.iter().for_each(|err_msg| {
         let err_code_matches: Vec<String> = re
             .captures_iter(err_msg)
@@ -224,6 +215,6 @@ mod tests {
         let error_stats_ser_toml = toml::to_string(&error_stats).unwrap();
         let error_stats_de_toml: ErrorStats = toml::from_str(&error_stats_ser_toml).unwrap();
         assert_eq!(error_stats, error_stats_de_toml);
-        println!("{}", error_stats_ser_toml);
+        println!("{error_stats_ser_toml}");
     }
 }
