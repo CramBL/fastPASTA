@@ -16,7 +16,7 @@ run-test-coverage   \
     rm -f "{{COV_DATA_DIR}}/"*.profraw
     cargo build
     cargo test
-    ./tests/regression/regression_tests.sh "cargo +nightly run"
+    ./tests/regression/regression_tests.sh "+nightly build"
     grcov . \
             -s . \
             --binary-path ./target/debug/ \
