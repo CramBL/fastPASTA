@@ -57,7 +57,7 @@ impl StatusWord for Ddw0 {
     }
 
     fn is_reserved_0(&self) -> bool {
-        (self.index & 0b0000_0101) == 0 && (self.res3_lane_status & 0xFF00_0000_0000_0000) == 0
+        self.reserved0_1() == 0 && (self.res3_lane_status & 0xFF00_0000_0000_0000) == 0
     }
 
     fn from_buf(buf: &[u8]) -> Result<Self, io::Error> {

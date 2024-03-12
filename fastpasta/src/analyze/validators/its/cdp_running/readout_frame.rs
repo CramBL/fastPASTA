@@ -165,8 +165,7 @@ impl<C: CustomChecksOpt> ItsReadoutFrameValidator<C> {
         let (mem_pos_start, mem_pos_end) = (frame.start_mem_pos(), frame.end_mem_pos());
         log::warn!("ALPIDE data frame at {mem_pos_start:#X} - {mem_pos_end:#X} is empty",);
         // TODO: Check lane errors in TDT and DDW
-        let ddw_lane_status_str = if status_words.ddw().is_some() {
-            let ddw0 = status_words.ddw().unwrap();
+        let ddw_lane_status_str = if let Some(ddw0) = status_words.ddw() {
             format!("Last DDW [{ddw0}] lane status: {:#X}", ddw0.lane_status())
         } else {
             "No DDW seen yet".to_string()

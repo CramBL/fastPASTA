@@ -74,7 +74,6 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
     /// Resets the state machine to the initial state and logs a warning
     ///
     /// Use this if a payload format is invalid and the next payload can be processed from the initial state
-    #[inline]
     pub fn reset_fsm(&mut self) {
         log::warn!("Resetting CDP Payload FSM");
         self.its_state_machine.reset_fsm();
@@ -90,16 +89,17 @@ impl<T: RDH, C: ChecksOpt + FilterOpt + CustomChecksOpt> CdpRunningValidator<T, 
         self.tracker = CdpTracker::new(rdh, rdh_mem_pos);
         self.rdh_validator = ItsRdhValidator::new(rdh);
 
-        // If the an ItsReadoutFrameValidator is present
+        // If the ItsReadoutFrameValidator is present (meaning ALPIDE checks are enabled)
         // and the stave the data is from is not known yet, then set the stave.
         if self
             .readout_frame_validator
             .as_ref()
             .is_some_and(|rfv| rfv.stave().is_none())
         {
-            self.readout_frame_validator.as_mut().unwrap().set_stave(
-                words::its::Stave::from_feeid(self.rdh_validator.rdh().fee_id()),
-            );
+            self.readout_frame_validator
+                .as_mut()
+                .unwrap()
+                .set_stave(Stave::from_feeid(self.rdh_validator.rdh().fee_id()));
         }
     }
 

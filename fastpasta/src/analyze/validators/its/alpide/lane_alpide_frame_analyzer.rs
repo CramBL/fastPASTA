@@ -35,7 +35,7 @@ pub struct LaneAlpideFrameAnalyzer<'a> {
 
 // impl for core utility
 impl<'a> LaneAlpideFrameAnalyzer<'a> {
-    const ERR_MSG_PREFIX: &'static str = "\n\t\t\t"; // Newline + indentation for error messages
+    const ERR_MSG_PREFIX: &'static str = "\n\t\t\t   "; // Newline + indentation for error messages
     const IL_CHIP_COUNT: usize = 1; // Number of chips in an inner layer readout frame
     const ML_OL_CHIP_COUNT: usize = 7; // Number of chips in a middle/outer layer readout frame
 
