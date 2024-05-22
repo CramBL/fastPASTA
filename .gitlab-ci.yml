@@ -114,6 +114,8 @@ limited-regress-bench:
       when: always
   dependencies: []
   cache: []
+  before_script:
+    - !reference [.install-just, before_script]
   script: just bench "check sanity; check all; check all its; check all its-stave"
 
 # Run benchmarks and check for performance regression with bigger and more files than the limited job
@@ -139,4 +141,6 @@ extended-regress-bench:
   dependencies: []
   cache: []
   interruptible: true
+  before_script:
+    - !reference [.install-just, before_script]
   script: just bench-extended
