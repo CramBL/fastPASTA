@@ -12,7 +12,7 @@ check-version:
 
 # Get the version as specified in Cargo.toml
 _get_cargo_toml_version:
-    grep --perl-regexp --only-matching "(?<=version = \")[0-9.]*" Cargo.toml
+    grep --perl-regexp --only-matching "(?<=^version = \")[0-9.]*" Cargo.toml
 
 # Get the semver described by the latest tag
 _latest_git_tag:
