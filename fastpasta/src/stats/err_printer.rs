@@ -202,7 +202,7 @@ mod tests {
         let err_code_filter = vec!["1".into()];
         let err_printer = ErrPrinter::new(None, Some(&err_code_filter));
 
-        let err_msgs = vec![
+        let err_msgs = [
             "Error message [E1] 1st of should be filtered".into(),
             "Error message [E2]".into(),
             "Error message [E1] 2nd of should be filtered".into(),
@@ -215,7 +215,7 @@ mod tests {
 
         assert_eq!(
             filtered_err_msgs,
-            vec![
+            [
                 &"Error message [E1] 1st of should be filtered".into(),
                 &"Error message [E1] 2nd of should be filtered".into(),
             ]
@@ -227,7 +227,7 @@ mod tests {
         let err_code_filter = vec!["1".into(), "2".into(), "3".into(), "4".into(), "5".into()];
         let err_printer = ErrPrinter::new(None, Some(&err_code_filter));
 
-        let err_msgs = vec![
+        let err_msgs = [
             "Error message [E1]".into(),
             "Error message [E2]".into(),
             "Error message [E3]".into(),
