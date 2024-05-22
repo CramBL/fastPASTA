@@ -98,6 +98,9 @@ println_cyan "Checking version of released fastpasta installation"
 
 fastpasta --version
 
+# Unset echoing each line to make this printing much more clear
+set +x
+
 println_magenta "\n===================================================================================================== "
 println_magenta "***********************************************************************************"
 println_magenta "***                                                                             ***"
