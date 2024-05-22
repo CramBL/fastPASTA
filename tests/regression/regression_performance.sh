@@ -98,6 +98,9 @@ println_cyan "Checking version of released fastpasta installation"
 
 fastpasta --version
 
+# Unset echoing each line to make this printing much more clear
+set +x
+
 println_magenta "\n===================================================================================================== "
 println_magenta "***********************************************************************************"
 println_magenta "***                                                                             ***"
@@ -243,8 +246,6 @@ for timing_diff in "${test_cmds_diff[@]}"; do
     fi
 done
 
-# Unset echoing each line to make this printing much more clear
-set +x
 println_cyan "\n--- CONCLUSION --- \n"
 
 if [[ $(float_cmp "${avg_diff}" 0) == 0 ]]; then
