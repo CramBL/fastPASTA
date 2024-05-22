@@ -48,6 +48,12 @@ audit:
     - cargo audit
 
 ### Test compilation ###
+build-msrv:
+  stage: build
+  script:
+    - cargo install cargo-msrv
+    - cargo msrv --path fastpasta verify
+
 build-default-debug:
   stage: build
   script: cargo build
