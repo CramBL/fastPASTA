@@ -13,13 +13,13 @@ PRINT := join(justfile_directory(), 'scripts/pretty_print.just')
 PROMPT := join(justfile_directory(), 'scripts/prompt.just') + " prompt"
 
 [private]
-@default:
+@_default:
     just --list
 
 alias c := check
 
 # Run Full checks and format
-full-check: check format pre-commit lint check-unique-error-codes check-version test
+full-check: check format pre-commit lint check-unique-error-codes check-version test check-build-msrv
 
 # Check if it compiles without compiling
 check *ARGS:
@@ -32,6 +32,15 @@ pre-commit *ARGS:
 # Build the application
 build *ARGS:
     cargo build {{ ARGS }}
+
+# Check that fastPASTA builds with the MSRV specified
+check-build-msrv:
+    #!/usr/bin/env bash
+    if ! which cargo-msrv >/dev/null; then
+        {{PRINT}} yellow "cargo-msrv not found"
+        just prompt-install "cargo install cargo-msrv"
+    fi
+    cargo msrv --path fastpasta verify
 
 # Run the tests
 test *ARGS:
