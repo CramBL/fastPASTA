@@ -6,21 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 # [Unreleased]
 
-# v1.21.0 (2023-3-6) - User-friendly crash reports, performance, and maintenance
+### Changed
+
+- Remove the compiler flag `-C target-cpu=native` due to issues in GitLab CI (tracking issue [#47](https://gitlab.cern.ch/mkonig/fastpasta/-/issues/47)) hopefully it can soon be readded
+
+### Fix
+
+- Various new lints introduced by newer Rust versions
+- Specify Minimum support rust version (MSRV)
+
+## v1.21.0 (2023-3-6) - User-friendly crash reports, performance, and maintenance
+
 ### Added
+
 [MR141](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/141) Add human panics to let users easily report errors on crashes.
 
 ### Performance
+
 [MR144](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/144) Code refactors + branchless refactor
 [MR145](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/145) Stats collectin refactor to reduce lock contention in IPC.
 
 ### Misc
+
 [MR142](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/142) Code refactors + update dependencies
 [MR143](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/143) Code refactors + update tabled
 [MR146](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/146) Small Code refactor
 
-# v1.20.0 (2023-2-10) - Styled views, performance, shell completion, & SEC fix
+## v1.20.0 (2023-2-10) - Styled views, performance, shell completion, & SEC fix
+
 ### Added
+
 [MR131](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/131) Shell completion for bash, zsh, fish, powershell, elvish. Generate the completion scripts with `fastpasta --generate-completions <SHELL>`.
 
 [MR132](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/132) Style for `view rdh`. The output is styled with bold and/or background colors to make it easier to parse.
@@ -29,67 +44,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [MR132](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/132) Flag `--disable-styled-views`/`-d` disables text/color styling for views
 
 ### Changed
+
 [MR134](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/134) When the `--mute-errors` flag is set, validators now provide much less context to error messages which leads to [dramatic performance increase](https://gitlab.cern.ch/mkonig/fastpasta/-/jobs/36002848) for data with a large amount of errors.
 
 ### Fixed
+
 [MR133](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/133) Upgrade stderrlog to address [vulnerability RUSTSEC-2021-0145](https://rustsec.org/advisories/RUSTSEC-2021-0145)
 
 
 ### Misc
+
 [MR130](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/130/diffs) maintenance.
 
-
-# v1.18.0 (2023-12-28) - Colored styling of help text
+## v1.18.0 (2023-12-28) - Colored styling of help text
 
 ### Added
+
 - Terminal colors are back and better for help text!
 
 ### Other
+
 Update dependencies
 
-# v1.17.3 (2023-10-23) - Detector field value change within HBF downgraded to warning
+## v1.17.3 (2023-10-23) - Detector field value change within HBF downgraded to warning
 
 ### Fix
+
 - [MR128](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/128) Detector field changing within an HBF is now a warning instead of error.
 
 
-# v1.17.2 (2023-10-19) - minor fixes and QoL improvements
+## v1.17.2 (2023-10-19) - minor fixes and QoL improvements
 
 ### Fix
+
 - Error handling for TDTs signaling `end of readout frame` when the state is `start of readout frame` was never signaled.
 - Now allow specifying a file path in the position of the optional `target system` check subcommand, e.g. `check all bin.raw`
 - Improve formatting of some error messages.
 
-# v1.17.0 (2023-10-11) - Add error code filter, fix valid state that generated error, performance improvements
+## v1.17.0 (2023-10-11) - Add error code filter, fix valid state that generated error, performance improvements
+
 ### Added
+
 - `--show-only-errors-with-codes X Y Z...` allows specifying a list of error codes, only error messages that matches any of the specified error codes are displayed.
 
 ### Fix
+
 - The initial TDH in an ITS payload was always interpreted as `no_data = 0`, now also allows `no_data = 1` which allows trigger echoing immediately after an IHW.
 
 ### Performance
+
 - [CdpArray](https://docs.rs/alice_protocol_reader/0.12.0/alice_protocol_reader/cdp_wrapper/cdp_array/struct.CdpArray.html) from [ALICE Protocol Reader](alice_protocol_reader/README.md) now used to store batches of CDPs during analysis. Replaces the `CdpVec` (preallocated vector), with an array backed vector.
+
 ### Other
+
 - Code refactorings (simplifying).
 
-# v1.16.3 (2023-10-4) - Handle edge case in piping scenario
+## v1.16.3 (2023-10-4) - Handle edge case in piping scenario
+
 ### Fix
+
 - Handle broken pipe error when encountered during report printing
 
-# v1.16.2 (2023-10-4) - Performance tweaks
+## v1.16.2 (2023-10-4) - Performance tweaks
+
 ### Added
+
 - By default, compilation now generates specific instructions for the target's CPU.
 - Performance tweaks to certain thread's channel capacity [details](https://gitlab.cern.ch/mkonig/fastpasta/-/commit/005eda799a5f1dc8f67103401b3fec38aaee1e58)
 
 
-# v1.16.1 (2023-10-3) - Fix edge case in reading CDP with RDH with erroneous offset_to_next field
+## v1.16.1 (2023-10-3) - Fix edge case in reading CDP with RDH with erroneous offset_to_next field
+
+
 ### Fix
 [45](https://gitlab.cern.ch/mkonig/fastpasta/-/issues/45) Failure to report error if RDH specifies larger payload size than is actually present in the input data.
 
 ### Added
 Performance tweaks.
 
-# v1.16.0 (2023-09-22) Detector field info in all `view` subcommands
+## v1.16.0 (2023-09-22) Detector field info in all `view` subcommands
+
 ### Added
 1. Detector field lane status to RDH row in the commands:
      - `view its-readout-frames`
@@ -128,8 +162,10 @@ Example: `fastpasta view rdh bin.raw`
 710:       7     64     24612  32    80      0     47        0    0x61e9f41   2          0x6003    1        1     0xd
 ```
 
-# v1.15.0 (2023-09-21) statistics output and validation
+## v1.15.0 (2023-09-21) statistics output and validation
+
 ### Added
+
 1. **Output analysis stats using the following two options**:
 - `--output-stats <PATH/STDOUT>`
 - `--stats-format <JSON/TOML>`
@@ -143,16 +179,18 @@ At end of analysis, the collected stats are compared with every stat in the inpu
 
 See readme for more information including examples.
 
-# v1.14.2 (2023-09-18)
+## v1.14.2 (2023-09-18)
 
 ### Fix
+
 Update RDH sanity check for [detector field v1.21.0](https://gitlab.cern.ch/alice-its-wp10-firmware/RU_mainFPGA/-/wikis/ITS%20Data%20Format#RDHDetectorField)
 
 A crash occured if a TDT with packet_done closed an ALPIDE readout frame with no data words. Now this is checked before processing the readout frame and an error is reported that includes information about lane status from any potential APEs and from the last seen TDT and DDW.
 
-# v1.14.0 (2023-08-31)
+## v1.14.0 (2023-08-31)
 
 ### Features
+
 [MR95](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/95) Allow specifying any amount of custom valid chip ordering as part of a custom checks config.
 
 [MR97](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/97) Inner Layer lane grouping validation now takes into account
@@ -161,14 +199,16 @@ lanes that correctly reported themselves as being in fatal state. e.g. if lane 2
 Various code quality improvements resulting in [~5%](https://gitlab.cern.ch/mkonig/fastpasta/-/jobs/32141026) performance improvement over `v1.13.0` even with added features.
 
 ### Fix
+
 [!39](https://gitlab.cern.ch/mkonig/fastpasta/-/issues/39) Validator panic during alpide data parsing fixed in [MR96](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/96)
 
 The long deprecated `view hbf` subcommand is now removed.
 
-# v1.13.0 - Add ALPIDE stats (2023-07-26)
+## v1.13.0 - Add ALPIDE stats (2023-07-26)
 Add ALPIDE stats table when using commands that check ALPIDE data. Currently only includes stats about the readout flags of the chip trailer.
 
-# v1.12.2 - Performance improvements (2023-07-20)
+## v1.12.2 - Performance improvements (2023-07-20)
+
 Benchmarks show >10% performance improvements over `v1.12.1` across all check commands with varying types of files.
 [Example CI benchmark](https://gitlab.cern.ch/mkonig/fastpasta/-/jobs/31170333).
 
@@ -181,7 +221,8 @@ Benchmarks are performed with the [regression_performance.sh script](https://git
 - Change some trivial pass-by-value to borrows
 - Replace all stable sort with unstable sort.
 
-# v1.12.0 - Unique error codes, custom checks for OB chip count (2023-07-13)
+## v1.12.0 - Unique error codes, custom checks for OB chip count (2023-07-13)
+
 ### Features
 - Custom check for chip count in OB (ML/OL)
 - Error codes are now unique
@@ -193,7 +234,8 @@ Benchmarks are performed with the [regression_performance.sh script](https://git
 ### Code quality
 Add a CI job that performs benchmarks on the local binary vs. the latest published version and fails on >10% performance regression.
 
-# v1.11.0 - Add ability to define custom checks through a TOML file (2023-07-06)
+## v1.11.0 - Add ability to define custom checks through a TOML file (2023-07-06)
+
 ### Features
 - Adds the `--generate-checks-toml` flag to generate a TOML file that is a template to configuring customized checks on raw data
 - Adds the `--checks-toml <PATH>` option to supply a TOML file with customized checks to do on the raw data in addition to other checks
@@ -231,7 +273,8 @@ chip_orders_ob = [[0, 1, 2, 3, 4, 5, 6], [8, 9, 10, 11, 12, 13, 14]]
 ```
 
 
-# v1.10.0 - Add `progress bar`, improve report formatting, add command aliases, and minor fixes (2023-06-19)
+## v1.10.0 - Add `progress bar`, improve report formatting, add command aliases, and minor fixes (2023-06-19)
+
 Adds a new "progress bar" that dynamically counts and displays how many HBFs are being analyzed, and continuously counts if and how many errors are detected in the data.
 
 Adds several command aliases. Tired of writing `--filter-its-stave` and think `-s` is just too cryptic? Now there's middle grounds for several commands, e.g. write `--stave` or `--its-stave` to filter by an ITS stave.
@@ -239,11 +282,13 @@ Adds several command aliases. Tired of writing `--filter-its-stave` and think `-
 
 Fixes minor issues with the report summary and improves its formatting. Small improvements to CLI argument validation.
 
-# v1.9.0 - Check ITS lane and ALPIDE checks and new `view its-readout-frames-data` command (2023-06-14)
-## Features
+## v1.9.0 - Check ITS lane and ALPIDE checks and new `view its-readout-frames-data` command (2023-06-14)
+
+### Features
 View formatted ITS readout frames including datawords with `view its-readout-frames-data`
 
-## Adds The following checks to the `check all its-stave` command
+### Adds The following checks to the `check all its-stave` command
+
 ### Staves & lanes
 **In a readout frame**
 Lanes that pass all ALPIDE checks are checked to see if their bunch counters match.
@@ -270,7 +315,7 @@ Lanes that pass all ALPIDE checks are checked to see if their bunch counters mat
 - Add Layer/stave to RDH row in `view its-readout-frames`/`view its-readout-frames-data` commands
 
 
-# v1.8.0 - Check ITS Staves in parallel - better report summary (2023-06-12)
+## v1.8.0 - Check ITS Staves in parallel - better report summary (2023-06-12)
 ## Features
 - Add option to `--mute-errors` which will prevent displaying of error messages, something that can have significant impact on execution time in cases where data contains high amounts of errors (>10k). Useful if you just wanna see the report summary at end of execution.
 - The `check all its-stave` command no longer needs the `--filter-its-stave` option, by default all staves are processed (in parallel).
@@ -284,22 +329,24 @@ Lanes that pass all ALPIDE checks are checked to see if their bunch counters mat
 
 
 
-# v1.7.4 - New option for custom exit code, big performance increase, minor fixes (2023-06-05)
-## Features
+## v1.7.4 - New option for custom exit code, big performance increase, minor fixes (2023-06-05)
+
+### Features
 - Add feature to set a custom exit code to use if any input data fails validation, useful for using fastpasta in CI.
 
-## Fix
+### Fix
 - Fix colors sticking around in the terminal after an interrupt. Now `CTRL+C` initiates a graceful shutdown, a second `CTRL+C` will immediately exit.
 - Fix a corner case that caused a thread to hang.
 
 
-## Other
+### Other
 - Significant deserialization performance increase [about ~4x](https://gitlab.cern.ch/mkonig/fastpasta/uploads/a2bd71cc8ce40b356cad88e62b4719db/rdh_deserialize_impl.png)
 - Some improvements to APIs
 - Small improvements to error messages.
 
 
-# v1.6.10 - New checks on timestamps including ALPIDE chips, small fixes (2023-05-08)
+## v1.6.10 - New checks on timestamps including ALPIDE chips, small fixes (2023-05-08)
+
 ### Features
 - Add `check all its_stave` subcommand to enable checks that are valid when data is coming from a single ITS Stave. this includes parsing ALPIDE data and asserting that all bunch counters from chips in each lane in a data frame are the same.
 - Add `--its-trigger-period` that can be used to specify a trigger period that all `TDH`s with internal trigger set should be checked against.
@@ -309,7 +356,7 @@ Lanes that pass all ALPIDE checks are checked to see if their bunch counters mat
 - Edge case in ITS payload fsm that didn't accept a TDH with `no_data == 1` followed by another `TDH` or an `IHW`.
 - The newly introduced bug with the changes to the report summary being printed to stdout instead of stderr The change breaks piping from e.g. a fastpasta filtering and piping to another fastpasta that is checking like: `fastpasta --filter-link 8 10_rdh.raw | fastpasta check sanity` because the report summary also gets piped. Fixed it by not printing the report when `DataOutputMode` is `Stdout`.
 
-# v1.3.9 - new view command `view its-readout-frames` - fix another ITS payload validation edge case (2023-05-05)
+## v1.3.9 - new view command `view its-readout-frames` - fix another ITS payload validation edge case (2023-05-05)
 Get the newest version with `cargo install fastpasta`
 
 ### Features
@@ -318,7 +365,7 @@ Get the newest version with `cargo install fastpasta`
 ### Fix
 - Another case related to TDH `no_data` transitions. It is now valid to transition from a TDH `no_data=1` to an `IHW` (of course separated by an RDH). See #29 for more details.
 
-# v1.2.8 - New filter options - fixes to validation edge cases, report formatting, strict ordering of error logs (2023-05-04)
+## v1.2.8 - New filter options - fixes to validation edge cases, report formatting, strict ordering of error logs (2023-05-04)
 Get the newest version with `cargo install fastpasta`
 
 ### Features
@@ -331,7 +378,8 @@ Get the newest version with `cargo install fastpasta`
 - Bad formatting on the end of processing report when a very large number of FEE IDs are present in data.
 - Race conditions in Error reporting would occasionally cause errors for lower memory locations to be reported later than errors in higher memory locations. Errors are now strictly printed ordered by the memory locations where they were detected.
 
-# v1.0.5 - Small fixes - big improvements to QA and code quality (2023-05-01)
+## v1.0.5 - Small fixes - big improvements to QA and code quality (2023-05-01)
+
 ### Feature(s)
 
 * Add detect subsystem from System ID and add it to summary report
@@ -354,9 +402,8 @@ Get the newest version with `cargo install fastpasta`
 * Adds some tests and reduces the size of some functions
 * Decouple config from the input scanner (now uses the trait)
 
-# v1.0.3 - Minor fixes and big reliability improvements (2023-04-25)
+## v1.0.3 - Minor fixes and big reliability improvements (2023-04-25)
 Minor fixes, features, and big stability improvements, both long and short term in the form of regression tests. As part of any future bug fixes, a test that reproduces the bug will be added to the regression tests, so that the bug is never reintroduced in a future change.
-
 
 - Add `Run trigger type` to the report summary.
    - This stat is collected by looking at the trigger type of the first parsed RDH which should always include the trigger type for the whole run, such as `SOT` or `SOC`.
@@ -369,13 +416,13 @@ Minor fixes, features, and big stability improvements, both long and short term 
    - This fix also includes decoupling the payload from all modes that are only "interested" in RDHs. Which in turn speeds up execution significantly.
 
 
-# v1.0.1 - Minor improvements to prints and user feedback (2023-04-05)
+## v1.0.1 - Minor improvements to prints and user feedback (2023-04-05)
 - Fix a case where error message had misaligned text.
 - Now report to user when output is ignored, in the case where user sets output destination and also enables checks/views, as they are mutually exclusive.
 - Minor code improvements.
 
 
-# v1.0.0 - Stable release of feature complete fastPASTA (2023-03-28)
+## v1.0.0 - Stable release of feature complete fastPASTA (2023-03-28)
 ### fastPASTA leaves initial development and is now considered stable. New features can be added, but current features are staying, and the way they are used will stay the same.
 
 ### Summary of current features:
@@ -389,10 +436,10 @@ Minor fixes, features, and big stability improvements, both long and short term 
    - Generic RDH checks including stateful _running_ checks: `check all`
    - Specific checks including _running_ RDH & payload checks targeting ITS `check all its` (case-insensitive)
 
-# v0.1.1 - Fix for RDH load crash (2023-16-03)
+## v0.1.1 - Fix for RDH load crash (2023-16-03)
 Fixed crash occurring if an EOF is encountered while loading any RDH subword except for RDH0.
 
-# v0.1.0 - Minimum Viable Product (MVP) (2023-16-03)
+## v0.1.0 - Minimum Viable Product (MVP) (2023-16-03)
 fastPASTA 0.1.0 (MVP) releases to early adopters.
 
 Contains the following major functionalities:
