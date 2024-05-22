@@ -243,6 +243,8 @@ for timing_diff in "${test_cmds_diff[@]}"; do
     fi
 done
 
+# Unset echoing each line to make this printing much more clear
+set +x
 println_cyan "\n--- CONCLUSION --- \n"
 
 if [[ $(float_cmp "${avg_diff}" 0) == 0 ]]; then
