@@ -168,7 +168,7 @@ pub fn init_processing(
 ///     - Write data to `file` or `stdout` with [write::lib::spawn_writer].
 pub fn process<T: RDH + 'static, const CAP: usize>(
     config: &'static impl Config,
-    loader: InputScanner<impl BufferedReaderWrapper + ?Sized + marker::Send + 'static>,
+    loader: InputScanner<impl BufferedReaderWrapper + ?Sized + 'static>,
     input_stats_recv: Option<&flume::Receiver<InputStatType>>,
     stats_send: &flume::Sender<StatType>,
     stop_flag: Arc<atomic::AtomicBool>,

@@ -77,7 +77,7 @@ pub(crate) use {
     std::{
         error, fmt, fs, hint,
         io::{self, StdoutLock},
-        marker::{self, PhantomData},
+        marker::PhantomData,
         mem,
         ops::RangeInclusive,
         path::{self, Path, PathBuf},

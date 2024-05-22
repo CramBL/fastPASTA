@@ -165,8 +165,7 @@ impl<C: CustomChecksOpt> ItsReadoutFrameValidator<C> {
         let (mem_pos_start, mem_pos_end) = (frame.start_mem_pos(), frame.end_mem_pos());
         log::warn!("ALPIDE data frame at {mem_pos_start:#X} - {mem_pos_end:#X} is empty",);
         // TODO: Check lane errors in TDT and DDW
-        let ddw_lane_status_str = if status_words.ddw().is_some() {
-            let ddw0 = status_words.ddw().unwrap();
+        let ddw_lane_status_str = if let Some(ddw0) = status_words.ddw() {
             format!("Last DDW [{ddw0}] lane status: {:#X}", ddw0.lane_status())
         } else {
             "No DDW seen yet".to_string()
@@ -174,12 +173,22 @@ impl<C: CustomChecksOpt> ItsReadoutFrameValidator<C> {
 
         let tdt_lane_status_str = {
             let curr_tdt = status_words.tdt().unwrap();
-            format!("Frame closing TDT [{curr_tdt}] lane status: 0:15={lane_0_15:#X} 16:23={lane_16_23:#X} 24:27={lane_24_27:#X}", lane_0_15 = curr_tdt.lane_status_15_0(),
-            lane_16_23 = curr_tdt.lane_status_23_16(), lane_24_27 = curr_tdt.lane_status_27_24())
+            format!("\
+            Frame closing TDT [{curr_tdt}] lane status: 0:15={lane_0_15:#X} 16:23={lane_16_23:#X} 24:27={lane_24_27:#X}\
+            ",
+            lane_0_15 = curr_tdt.lane_status_15_0(),
+            lane_16_23 = curr_tdt.lane_status_23_16(),
+            lane_24_27 = curr_tdt.lane_status_27_24(),
+        )
         };
 
         let error_string = format!(
-            "{mem_pos_start:#X}: [E701] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has no data words. \n\t Additional information:\n\t\t - Lanes in error (as indicated by APEs): {fatal_lanes:?}\n\t\t - {ddw_lane_status_str}\n\t\t - {tdt_lane_status_str}",
+            "\
+        {mem_pos_start:#X}: [E701] FEE ID:{feeid} ALPIDE data frame ending at {mem_pos_end:#X} has no data words.\
+        \n\t Additional information:\
+        \n\t\t - Lanes in error (as indicated by APEs): {fatal_lanes:?}\
+        \n\t\t - {ddw_lane_status_str}\
+        \n\t\t - {tdt_lane_status_str}",
             feeid = current_rdh.fee_id(),
             fatal_lanes = self.fatal_lanes()
         );

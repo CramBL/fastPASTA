@@ -1,6 +1,6 @@
 .install-just:
   variables:
-    JUST_VERSION: 1.24.0
+    JUST_VERSION: 1.26.0
     INSTALL_PATH: /usr/bin
 
   before_script:

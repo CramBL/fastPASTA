@@ -36,6 +36,7 @@ fn write_rdh_manual(fileout: &str) {
     let file = std::fs::File::options()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(filepath)
         .unwrap();
     let mut buf_writer = std::io::BufWriter::new(file);

@@ -17,7 +17,10 @@ source ./tests/regression/utils.sh
 
 set -euo pipefail
 #set -x # Uncomment if debugging
-
+# Echo each line if running in CI
+if [ -n "${CI-}" ]; then
+    set -x
+fi
 
 # Minimum runs hyperfine performs to benchmark a given command
 declare -i MIN_RUNS=20
@@ -65,6 +68,11 @@ for cmd in "${test_cmds_array[@]}"; do
 done
 
 ##### Readonly variables generated from constants above #####
+
+println_blue "\n == Toolchain versions =="
+
+cargo --version
+rustc --version
 
 println_yellow "\nBuilding in release mode\n"
 

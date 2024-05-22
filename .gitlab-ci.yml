@@ -12,19 +12,15 @@ default:
     - rustc --version
     - cargo --version
 
-# Setup a cache to cache job parts between jobs to ensure faster builds
-cache:
-  - key: "$CI_JOB_NAME"
-    untracked: true
-    paths:
-      - $CI_PROJECT_DIR/target/
-
 # Set any required environment variables here (defaults)
 variables:
   RUST_BACKTRACE: "FULL"
+  CARGO_TERM_COLOR: "always"
+  CARGO_TERM_VERBOSE: "true"
 
 stages:
   - code-quality
+  - build
   - test
   - benchmark
 
@@ -50,6 +46,33 @@ audit:
   script:
     - cargo install cargo-audit
     - cargo audit
+
+### Test compilation ###
+build-msrv:
+  stage: build
+  script:
+    - cargo install cargo-msrv
+    - cargo msrv --path fastpasta verify
+
+build-default-debug:
+  stage: build
+  script: cargo build
+
+build-default-release:
+  stage: build
+  script: cargo build --release
+
+build-nightly-debug:
+  stage: build
+  image: rustlang/rust:nightly
+  script: cargo build
+  allow_failure: true
+
+build-nightly-release:
+  stage: build
+  image: rustlang/rust:nightly
+  script: cargo build --release
+  allow_failure: true
 
 ### Tests and safety ###
 rust-nightly-test:
@@ -114,6 +137,8 @@ limited-regress-bench:
       when: always
   dependencies: []
   cache: []
+  before_script:
+    - !reference [.install-just, before_script]
   script: just bench "check sanity; check all; check all its; check all its-stave"
 
 # Run benchmarks and check for performance regression with bigger and more files than the limited job
@@ -139,4 +164,6 @@ extended-regress-bench:
   dependencies: []
   cache: []
   interruptible: true
+  before_script:
+    - !reference [.install-just, before_script]
   script: just bench-extended

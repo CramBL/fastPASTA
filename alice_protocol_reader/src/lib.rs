@@ -165,7 +165,7 @@ pub fn init_reader(input_file: Option<&Path>) -> Result<Box<dyn BufferedReaderWr
 #[inline]
 pub fn spawn_reader<T: RDH + 'static, const CAP: usize>(
     stop_flag: Arc<AtomicBool>,
-    input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + Send + 'static>,
+    input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + 'static>,
 ) -> (JoinHandle<()>, Receiver<CdpArray<T, CAP>>) {
     let reader_thread = Builder::new().name("Reader".to_string());
     let (send_chan, recv_chan) = crossbeam_channel::bounded(CHANNEL_CDP_BATCH_CAPACITY);
@@ -241,7 +241,7 @@ fn get_array_batch<T: RDH, const CAP: usize>(
 #[inline]
 pub fn spawn_vec_reader<T: RDH + 'static>(
     stop_flag: Arc<AtomicBool>,
-    input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + Send + 'static>,
+    input_scanner: InputScanner<impl BufferedReaderWrapper + ?Sized + 'static>,
 ) -> (JoinHandle<()>, Receiver<CdpVec<T>>) {
     let reader_thread = Builder::new().name("Reader".to_string());
     let (send_chan, recv_chan) = crossbeam_channel::bounded(CHANNEL_CDP_BATCH_CAPACITY);
