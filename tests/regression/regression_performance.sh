@@ -17,6 +17,10 @@ source ./tests/regression/utils.sh
 
 set -euo pipefail
 #set -x # Uncomment if debugging
+# Echo each line if running in CI
+if [ -n "${CI-}" ]; then
+    set -x
+fi
 
 
 # Minimum runs hyperfine performs to benchmark a given command
