@@ -12,16 +12,11 @@ default:
     - rustc --version
     - cargo --version
 
-# Setup a cache to cache job parts between jobs to ensure faster builds
-cache:
-  - key: "$CI_JOB_NAME"
-    untracked: true
-    paths:
-      - $CI_PROJECT_DIR/target/
-
 # Set any required environment variables here (defaults)
 variables:
   RUST_BACKTRACE: "FULL"
+  CARGO_TERM_COLOR: "always"
+  CARGO_TERM_VERBOSE: "true"
 
 stages:
   - code-quality
