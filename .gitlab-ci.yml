@@ -62,12 +62,16 @@ build-default-release:
   script: cargo build --release
 
 build-nightly-debug:
+  stage: build
   image: rustlang/rust:nightly
   script: cargo build
+  allow_failure: true
 
 build-nightly-release:
+  stage: build
   image: rustlang/rust:nightly
   script: cargo build --release
+  allow_failure: true
 
 ### Tests and safety ###
 rust-nightly-test:
