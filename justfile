@@ -19,7 +19,7 @@ PROMPT := join(justfile_directory(), 'scripts/prompt.just') + " prompt"
 alias c := check
 
 # Run Full checks and format
-full-check: check format pre-commit lint check-unique-error-codes check-version test check-build-msrv
+full-check: check format pre-commit lint check-unique-error-codes check-version test audit check-build-msrv
 
 # Check if it compiles without compiling
 check *ARGS:
