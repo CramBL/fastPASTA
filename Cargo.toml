@@ -13,4 +13,3 @@ readme = "README.md"
 authors = ["Marc Beck König <mbkj@tutamail.com>"]
 license = "MIT OR Apache-2.0"
 repository = "https://gitlab.cern.ch/mkonig/fastpasta"
-rust-version = "1.74.1"                                # Minimum supported rust version (MSRV)
