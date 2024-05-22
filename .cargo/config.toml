@@ -12,5 +12,6 @@ codegen-units = 1
 rustflags = ["-C", "llvm-args=-inline-threshold=335"]
 
 # Disabled because it causes problems on GitLab CI atm (2024-05-22)
+# tracking issue: https://gitlab.cern.ch/mkonig/fastpasta/-/issues/47
 # [build]
 # rustflags = ["-C", "target-cpu=native"]
