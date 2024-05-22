@@ -175,7 +175,7 @@ impl<C: CustomChecksOpt> ItsReadoutFrameValidator<C> {
             let curr_tdt = status_words.tdt().unwrap();
             format!("\
             Frame closing TDT [{curr_tdt}] lane status: 0:15={lane_0_15:#X} 16:23={lane_16_23:#X} 24:27={lane_24_27:#X}\
-            ", 
+            ",
             lane_0_15 = curr_tdt.lane_status_15_0(),
             lane_16_23 = curr_tdt.lane_status_23_16(),
             lane_24_27 = curr_tdt.lane_status_27_24(),
