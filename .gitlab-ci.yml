@@ -25,6 +25,7 @@ variables:
 
 stages:
   - code-quality
+  - build
   - test
   - benchmark
 
@@ -50,6 +51,23 @@ audit:
   script:
     - cargo install cargo-audit
     - cargo audit
+
+### Test compilation ###
+build-default-debug:
+  stage: build
+  script: cargo build
+
+build-default-release:
+  stage: build
+  script: cargo build --release
+
+build-nightly-debug:
+  image: rustlang/rust:nightly
+  script: cargo build
+
+build-nightly-release:
+  image: rustlang/rust:nightly
+  script: cargo build --release
 
 ### Tests and safety ###
 rust-nightly-test:
