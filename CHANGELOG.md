@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # [Unreleased]
 
-## v1.22.0 (2024-3-6) - Internal code quality and future-proofing
+## v1.22.0 (2024-5-23) - Internal code quality and future-proofing
 
 ### Changed
 
