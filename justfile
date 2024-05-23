@@ -66,7 +66,7 @@ doc *ARGS:
 
 # Publish to crates.io
 publish:
-    cargo publish
+    cargo publish -p fastpasta
 
 # Run the application (use `--` to pass arguments to the application)
 run *ARGS:
