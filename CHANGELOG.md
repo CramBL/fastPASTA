@@ -4,18 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 # [Unreleased]
+
+## v1.22.0 (2024-3-6) - Internal code quality and future-proofing
 
 ### Changed
 
 - Remove the compiler flag `-C target-cpu=native` due to issues in GitLab CI (tracking issue [#47](https://gitlab.cern.ch/mkonig/fastpasta/-/issues/47)) hopefully it can soon be readded
+- Scheduled weekly builds to ensure compilation doesn't break
 
 ### Fix
 
 - Various new lints introduced by newer Rust versions
 - Specify Minimum support rust version (MSRV)
 
-## v1.21.0 (2023-3-6) - User-friendly crash reports, performance, and maintenance
+## v1.21.0 (2024-3-6) - User-friendly crash reports, performance, and maintenance
 
 ### Added
 
@@ -32,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [MR143](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/143) Code refactors + update tabled
 [MR146](https://gitlab.cern.ch/mkonig/fastpasta/-/merge_requests/146) Small Code refactor
 
-## v1.20.0 (2023-2-10) - Styled views, performance, shell completion, & SEC fix
+## v1.20.0 (2024-2-10) - Styled views, performance, shell completion, & SEC fix
 
 ### Added
 
